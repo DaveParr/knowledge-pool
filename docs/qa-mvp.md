@@ -16,7 +16,7 @@ Needs uv and Node.js.
 ## 2. Set up and load cards
 
 ```bash
-uv sync
+uv sync --locked
 rm -rf .jac/data                   # start with no decks
 uv run python -m catalog.ingest    # downloads MTGJSON AtomicCards (~26 MB) and builds data/catalog.sqlite
 ```
@@ -90,7 +90,7 @@ To undo the registration afterwards, run `claude mcp remove knowledge-pool`.
 
 ```bash
 cd ~/Development/knowledge-pool-worktrees/25-jac-go-no-go
-uv sync && uv run python -m catalog.ingest
+uv sync --locked && uv run python -m catalog.ingest
 uv run jac run spike/bench.jac
 ```
 
