@@ -76,3 +76,7 @@ uv run pytest tests    # ingest, search, REST, legality and MCP tests
 - `frontend.cl.jac`, `frontend.impl.jac` the Decks view
 - `deck_detail.cl.jac`, `deck_detail.impl.jac` one deck: search, add, change, remove
 - `tests/` walker and REST tests
+
+### Spikes
+
+- [S02: Jac go/no-go](docs/spikes/s02-jac-go-no-go.md): go, with the catalogue graph held in memory. Code in `spike/`.
