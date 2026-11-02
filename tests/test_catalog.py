@@ -57,3 +57,22 @@ def test_ingest_command_builds_from_a_local_file(tmp_path, capsys):
     assert main(["--source", str(FIXTURE), "--out", str(out)]) == 0
     assert "16 cards from MTGJSON 5.3.0+fixture (2026-01-01)" in capsys.readouterr().out
     assert out.exists()
+
+
+def test_download_sends_a_user_agent(tmp_path, monkeypatch):
+    """MTGJSON returns 403 to Python's default user agent."""
+    import io
+    import urllib.request
+
+    from catalog import ingest
+
+    seen = {}
+
+    def fake_urlopen(req, timeout=None):
+        seen["ua"] = req.get_header("User-agent")
+        return io.BytesIO(b"data")
+
+    monkeypatch.setattr(urllib.request, "urlopen", fake_urlopen)
+    dest = ingest.download(tmp_path / "AtomicCards.json.xz")
+    assert dest.read_bytes() == b"data"
+    assert seen["ua"] == ingest.USER_AGENT

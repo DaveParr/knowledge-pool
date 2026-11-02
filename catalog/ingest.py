@@ -14,6 +14,7 @@ import argparse
 import json
 import lzma
 import os
+import shutil
 import sqlite3
 import sys
 import time
@@ -22,6 +23,8 @@ from datetime import datetime, timezone
 from pathlib import Path
 
 ATOMIC_URL = "https://mtgjson.com/api/v5/AtomicCards.json.xz"
+# MTGJSON answers 403 to Python's default "Python-urllib" user agent.
+USER_AGENT = "knowledge-pool-ingest/0.1 (+https://github.com/DaveParr/knowledge-pool)"
 DEFAULT_DB = Path("data/catalog.sqlite")
 DEFAULT_DOWNLOAD = Path("data/mtgjson/AtomicCards.json.xz")
 
@@ -111,7 +114,11 @@ def build(atomic: dict, out: Path) -> dict:
 def download(dest: Path) -> Path:
     dest.parent.mkdir(parents=True, exist_ok=True)
     print(f"Downloading {ATOMIC_URL} ...", file=sys.stderr)
-    urllib.request.urlretrieve(ATOMIC_URL, dest)
+    req = urllib.request.Request(ATOMIC_URL, headers={"User-Agent": USER_AGENT})
+    tmp = dest.with_suffix(".part")
+    with urllib.request.urlopen(req, timeout=120) as resp, open(tmp, "wb") as out:
+        shutil.copyfileobj(resp, out)
+    tmp.replace(dest)
     return dest
 
 
