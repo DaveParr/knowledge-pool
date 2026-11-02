@@ -20,8 +20,10 @@ A local Magic: The Gathering deckbuilder written in [Jac](https://www.jaseci.org
 
 Needs [uv](https://docs.astral.sh/uv/) and Node.js (the Jac client build uses npm packages). Jac is pinned in `pyproject.toml` because it is pre-1.0 and changes between minor versions.
 
+Dependencies are pinned to exact versions. Python packages are locked by `uv.lock`; `uv sync --locked` fails instead of rewriting the lockfile if it is out of date with `pyproject.toml`. Change Python dependencies with `uv add`/`uv remove`, not `jac add`/`jac install`, which install into a separate `.jac/venv` and ignore `uv.lock`. The npm packages for the client are pinned to exact versions in `jac.toml`; Jac has no npm lockfile it reuses, so their own dependencies are not locked.
+
 ```bash
-uv sync
+uv sync --locked
 uv run python -m catalog.ingest
 ```
 
