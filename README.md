@@ -51,6 +51,10 @@ The MCP server also serves the web app at http://localhost:8000 while Claude is 
 
 `uv run python scripts/mcp_smoke.py` runs a full stdio session against your local data as a check.
 
+### QA
+
+[docs/qa-mvp.md](docs/qa-mvp.md) walks through running the MVP locally and checking each P0 issue by hand.
+
 ### Test
 
 ```bash
