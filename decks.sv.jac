@@ -7,25 +7,31 @@ caller shares one graph and nobody has to log in.
 
 import from datetime { datetime, timezone }
 import from cards { Card, card_node }
+import from legality { Format, Violation, Entry, FORMAT_LABELS, format_node, check_entries }
 
 node Deck {
     has name: str,
-        created_at: str = "";
+        created_at: str = "",
+        format: str = "standard";
 }
+
+glob ZONES: list[str] = ["main", "sideboard"];
 
 """Create a deck and report it. A blank name creates nothing and reports nothing."""
 walker:pub CreateDeck {
     has name: str,
+        format: str = "standard",
         reports: list[Deck] = [];
 
     can create with Root entry {
         name = self.name.strip();
-        if not name {
+        if not name or self.format not in FORMAT_LABELS {
             disengage;
         }
         deck = Deck(
             name=name,
-            created_at=datetime.now(timezone.utc).isoformat()
+            created_at=datetime.now(timezone.utc).isoformat(),
+            format=self.format
         );
         here ++> deck;
         report deck;
@@ -42,9 +48,10 @@ walker:pub ListDecks {
     }
 }
 
-"""A deck holds `count` copies of a card."""
+"""A deck holds `count` copies of a card in one zone (main or sideboard)."""
 edge Holds: Deck --> Card {
-    has count: int = 1;
+    has count: int = 1,
+        zone: str = "main";
 }
 
 """One line of a deck's card list."""
@@ -52,46 +59,101 @@ obj DeckCard {
     has oracle_id: str,
         name: str,
         count: int,
+        zone: str,
         mana_cost: str,
         type_line: str;
 }
 
-"""A deck and its cards, sorted by name."""
+"""A deck, its cards (sorted by zone then name) and whether it is legal in its format."""
 obj DeckView {
     has id: str,
         name: str,
+        format: str,
         cards: list[DeckCard] = [],
-        total: int = 0;
+        main_total: int = 0,
+        sideboard_total: int = 0,
+        legal: bool = False,
+        violations: list[Violation] = [];
+}
+
+"""Every (edge, card) pair a deck holds. A card in both zones has two edges."""
+def holdings(deck: Deck) -> list[tuple[Holds, Card]] {
+    pairs: list[tuple[Holds, Card]] = [];
+    seen: set[str] = set();
+    for c in [deck ->:Holds:->] {
+        if jid(c) in seen {
+            continue;
+        }
+        seen.add(jid(c));
+        for e in [edge deck ->:Holds:-> c] {
+            pairs.append((e, c));
+        }
+    }
+    return pairs;
+}
+
+"""Check a deck against its format's rules. Runs after every edit."""
+walker ValidateDeck {
+    has violations: list[Violation] = [];
+
+    can check with Deck entry {
+        fmt = format_node(root, here.format);
+        if fmt is None {
+            self.violations = [
+                Violation(rule="unknown-format", message=f"Unknown format: {here.format}.")
+            ];
+            disengage;
+        }
+        entries: list[Entry] = [];
+        for (e, c) in holdings(here) {
+            entries.append(
+                Entry(
+                    name=c.name,
+                    zone=e.zone,
+                    count=e.count,
+                    type_line=c.type_line,
+                    text=c.text,
+                    status=c.legal.get(here.format, "Not legal")
+                )
+            );
+        }
+        self.violations = check_entries(entries, fmt);
+    }
 }
 
 def deck_view(deck: Deck) -> DeckView {
     lines: list[DeckCard] = [];
-    for c in [deck ->:Holds:->] {
-        e = [edge deck ->:Holds:-> c][0];
+    for (e, c) in holdings(deck) {
         lines.append(
             DeckCard(
                 oracle_id=c.oracle_id,
                 name=c.name,
                 count=e.count,
+                zone=e.zone,
                 mana_cost=c.mana_cost,
                 type_line=c.type_line
             )
         );
     }
-    lines.sort(key=lambda l: DeckCard : l.name);
+    lines.sort(key=lambda l: DeckCard : (ZONES.index(l.zone), l.name));
+    check = deck spawn ValidateDeck();
     return DeckView(
         id=jid(deck),
         name=deck.name,
+        format=deck.format,
         cards=lines,
-        total=sum([l.count for l in lines])
+        main_total=sum([l.count for l in lines if l.zone == "main"]),
+        sideboard_total=sum([l.count for l in lines if l.zone == "sideboard"]),
+        legal=len(check.violations) == 0,
+        violations=check.violations
     );
 }
 
-"""The Holds edge from a deck to the card with this oracle id, if any."""
-def holds_edge(deck: Deck, oid: str) -> Holds | None {
-    for c in [deck ->:Holds:->] {
-        if c.oracle_id == oid {
-            return [edge deck ->:Holds:-> c][0];
+"""The Holds edge for this card in this zone, if any."""
+def holds_edge(deck: Deck, oid: str, zone: str) -> Holds | None {
+    for (e, c) in holdings(deck) {
+        if c.oracle_id == oid and e.zone == zone {
+            return e;
         }
     }
     return None;
@@ -114,23 +176,37 @@ walker DeckAction {
     }
 }
 
-"""Report a deck and its cards."""
+"""Report a deck, its cards and its legality."""
 walker:pub GetDeck(DeckAction) {
     can show with Deck entry {
         report deck_view(here);
     }
 }
 
-"""Add copies of a card to a deck (on top of any already there)."""
-walker:pub AddCard(DeckAction) {
-    has oracle_id: str,
-        count: int = 1;
+"""Change the format a deck is checked against."""
+walker:pub SetDeckFormat(DeckAction) {
+    has format: str;
 
-    can add with Deck entry {
-        if self.count < 1 {
+    can set_format with Deck entry {
+        if self.format not in FORMAT_LABELS {
             disengage;
         }
-        existing = holds_edge(here, self.oracle_id);
+        here.format = self.format;
+        report deck_view(here);
+    }
+}
+
+"""Add copies of a card to a zone of a deck (on top of any already there)."""
+walker:pub AddCard(DeckAction) {
+    has oracle_id: str,
+        count: int = 1,
+        zone: str = "main";
+
+    can add with Deck entry {
+        if self.count < 1 or self.zone not in ZONES {
+            disengage;
+        }
+        existing = holds_edge(here, self.oracle_id, self.zone);
         if existing is not None {
             existing.count += self.count;
         } else {
@@ -138,22 +214,23 @@ walker:pub AddCard(DeckAction) {
             if card is None {
                 disengage;
             }
-            here +>:Holds(count=self.count):+> card;
+            here +>:Holds(count=self.count, zone=self.zone):+> card;
         }
         report deck_view(here);
     }
 }
 
-"""Set how many copies of a card a deck holds. Zero removes the card."""
+"""Set how many copies of a card a zone holds. Zero removes the card from that zone."""
 walker:pub SetCardCount(DeckAction) {
     has oracle_id: str,
-        count: int;
+        count: int,
+        zone: str = "main";
 
     can set_count with Deck entry {
-        if self.count < 0 {
+        if self.count < 0 or self.zone not in ZONES {
             disengage;
         }
-        existing = holds_edge(here, self.oracle_id);
+        existing = holds_edge(here, self.oracle_id, self.zone);
         if existing is None {
             if self.count == 0 {
                 report deck_view(here);
@@ -163,7 +240,7 @@ walker:pub SetCardCount(DeckAction) {
             if card is None {
                 disengage;
             }
-            here +>:Holds(count=self.count):+> card;
+            here +>:Holds(count=self.count, zone=self.zone):+> card;
         } elif self.count == 0 {
             del existing;
         } else {
@@ -173,15 +250,26 @@ walker:pub SetCardCount(DeckAction) {
     }
 }
 
-"""Take a card out of a deck."""
+"""Take a card out of one zone of a deck."""
 walker:pub RemoveCard(DeckAction) {
-    has oracle_id: str;
+    has oracle_id: str,
+        zone: str = "main";
 
     can remove with Deck entry {
-        existing = holds_edge(here, self.oracle_id);
+        existing = holds_edge(here, self.oracle_id, self.zone);
         if existing is not None {
             del existing;
         }
         report deck_view(here);
     }
+}
+
+"""The formats a deck can be checked against."""
+obj FormatInfo {
+    has name: str,
+        label: str;
+}
+
+def:pub list_formats() -> list[FormatInfo] {
+    return [FormatInfo(name=k, label=v) for (k, v) in FORMAT_LABELS.items()];
 }

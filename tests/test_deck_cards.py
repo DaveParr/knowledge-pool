@@ -46,7 +46,7 @@ def test_add_change_remove(tmp_path):
         view = _reports(client.post("/walker/AddCard", json={"deck_id": deck_id, "oracle_id": mountain, "count": 20}))[0]
         view = _reports(client.post("/walker/AddCard", json={"deck_id": deck_id, "oracle_id": mountain}))[0]
         assert _lines(view) == {"Lightning Bolt": 4, "Mountain": 21}
-        assert view["total"] == 25
+        assert view["main_total"] == 25
 
         view = _reports(client.post("/walker/SetCardCount", json={"deck_id": deck_id, "oracle_id": bolt, "count": 2}))[0]
         assert _lines(view)["Lightning Bolt"] == 2
@@ -55,7 +55,7 @@ def test_add_change_remove(tmp_path):
         assert _lines(view) == {"Mountain": 21}
 
         view = _reports(client.post("/walker/RemoveCard", json={"deck_id": deck_id, "oracle_id": mountain}))[0]
-        assert view["cards"] == [] and view["total"] == 0
+        assert view["cards"] == [] and view["main_total"] == 0
     finally:
         client.close()
 
