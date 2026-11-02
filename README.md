@@ -37,11 +37,25 @@ Open http://localhost:8000. The Decks view lists your decks and creates new ones
 
 The full catalogue stays in SQLite. A `Card` node is added to the graph the first time a deck uses that card, because saving all 35,000 cards as graph nodes took more than 15 minutes.
 
+### Use with Claude (MCP)
+
+`mcp_server.jac` is a local stdio MCP server for Claude Code or Claude Desktop. Register it once from the repo folder:
+
+```bash
+claude mcp add knowledge-pool -- uv run --directory "$PWD" jac run mcp_server.jac
+```
+
+Then ask Claude to build or change a deck, for example "build a Modern mono-red burn deck around Lightning Bolt and Goblin Guide". The tools are `search_cards`, `get_card`, `resolve_names`, `get_format_rules`, `deck_list`, `deck_create`, `deck_get`, `deck_edit` and `deck_validate`. Card names have to go through `resolve_names`, which splits them into exact, fuzzy and unknown, so an invented card can't get into a deck. Every `deck_edit` change needs a reason, and the reasons are kept in the deck's history. No tool calls a model.
+
+The MCP server also serves the web app at http://localhost:8000 while Claude is connected, so decks made in either place show up in the other straight away. Stop `jac start` first: two Jac processes writing the same saved graph overwrite each other's decks, so the MCP server refuses to start while the port is taken. Set `KP_PORT` to use a different port, or `KP_WEB=0` to skip the web app.
+
+`uv run python scripts/mcp_smoke.py` runs a full stdio session against your local data as a check.
+
 ### Test
 
 ```bash
 uv run jac test        # walker tests in tests/*_tests.jac
-uv run pytest tests    # ingest, search and REST tests, including restart tests
+uv run pytest tests    # ingest, search, REST, legality and MCP tests
 ```
 
 `tests/fixtures/legality_decks.json` holds 27 known legal and illegal decks that the validator is tested against. Tests build their catalogue from `tests/fixtures/atomic_small.json`, 31 real cards taken from MTGJSON (legalities as of 2 Nov 2026). Type-check with `uv run jac check *.jac`. Run `jac guide` for Jac's own reference guides (see `AGENTS.md`).
@@ -53,6 +67,8 @@ uv run pytest tests    # ingest, search and REST tests, including restart tests
 - `cards.sv.jac` the `Card` node and the `search_cards` endpoint
 - `decks.sv.jac` the `Deck` node, the `Holds` edge, the deck walkers and `ValidateDeck`
 - `legality.sv.jac` `Format` nodes and the deck-construction rules
+- `mcp_server.jac` the MCP server (and the web app, in the same process)
+- `scripts/mcp_smoke.py` an MCP client session that checks the tools end to end
 - `frontend.cl.jac`, `frontend.impl.jac` the Decks view
 - `deck_detail.cl.jac`, `deck_detail.impl.jac` one deck: search, add, change, remove
 - `tests/` walker and REST tests

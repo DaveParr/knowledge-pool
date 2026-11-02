@@ -145,3 +145,39 @@ def check_entries(entries: list[Entry], fmt: Format) -> list[Violation] {
     }
     return found;
 }
+
+"""A format's deck-construction rules, as reported to MCP clients."""
+obj FormatRules {
+    has name: str,
+        label: str,
+        min_main: int,
+        copy_limit: int,
+        sideboard_max: int,
+        notes: list[str] = [];
+}
+
+"""Report the rules for one format (nothing if the format is unknown)."""
+walker GetFormatRules {
+    has format: str,
+        reports: list[FormatRules] = [];
+
+    can show with Root entry {
+        fmt = format_node(here, self.format);
+        if fmt is None {
+            disengage;
+        }
+        report FormatRules(
+            name=fmt.name,
+            label=fmt.label,
+            min_main=fmt.min_main,
+            copy_limit=fmt.copy_limit,
+            sideboard_max=fmt.sideboard_max,
+            notes=[
+                "The copy limit counts main deck and sideboard together.",
+                "Basic lands, and cards that say a deck can have any number of them, have no copy limit.",
+                "Cards that say a deck can have up to N of them use N instead.",
+                f"Every card must be legal in {fmt.label} according to MTGJSON; banned and not-legal cards are violations."
+            ]
+        );
+    }
+}

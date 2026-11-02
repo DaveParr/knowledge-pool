@@ -81,4 +81,4 @@ def test_changing_format_revalidates(client):
 def test_legality_is_not_stored_on_the_deck_or_cards(client):
     view = _build(client, {"name": "x", "format": "standard", "main": {"Mountain": 60}, "sideboard": {}})
     deck = next(d for d in _reports(client.post("/walker/ListDecks"))[0] if d["_jac_id"] == view["id"])
-    assert set(deck) - {"_jac_type", "_jac_id", "_jac_archetype"} == {"name", "created_at", "format"}
+    assert set(deck) - {"_jac_type", "_jac_id", "_jac_archetype"} == {"name", "created_at", "format", "history"}

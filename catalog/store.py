@@ -72,3 +72,60 @@ def get_card(oracle_id: str) -> dict | None:
 
 def meta() -> dict[str, str]:
     return {k: v for k, v in connection().execute("SELECT key, value FROM meta")}
+
+
+@lru_cache(maxsize=4)
+def _all_names(path: str) -> tuple[str, ...]:
+    return tuple(r[0] for r in _connect(path).execute("SELECT name FROM cards"))
+
+
+def find_by_name(name: str) -> dict | None:
+    """Exact card name, ignoring case. A double-faced card also matches by either face."""
+    con = connection()
+    cleaned = name.strip()
+    row = con.execute(f"SELECT {_COLUMNS} FROM cards c WHERE c.name = ? COLLATE NOCASE", (cleaned,)).fetchone()
+    if row is None:
+        row = con.execute(
+            f"SELECT {_COLUMNS} FROM cards c WHERE c.name LIKE ? OR c.name LIKE ? LIMIT 1",
+            (f"{cleaned} // %", f"% // {cleaned}"),
+        ).fetchone()
+    return _card(row) if row else None
+
+
+def close_names(name: str, limit: int = 5) -> list[str]:
+    """Card names that look like `name`: spelling matches first, then name-word matches."""
+    import difflib
+
+    names = _all_names(str(db_path().resolve()))
+    found = difflib.get_close_matches(name, names, n=limit, cutoff=0.75)
+    lowered = {n.lower(): n for n in found}
+    if len(found) < limit:
+        words = fts_query(name)
+        if words:
+            rows = connection().execute(
+                "SELECT c.name FROM cards_fts f JOIN cards c ON c.rowid = f.rowid "
+                "WHERE cards_fts MATCH ? ORDER BY bm25(cards_fts, 10.0, 0.0, 0.0) LIMIT ?",
+                (f"name : ({words})", limit),
+            )
+            for (n,) in rows:
+                if n.lower() not in lowered and len(found) < limit:
+                    found.append(n)
+                    lowered[n.lower()] = n
+    return found
+
+
+def resolve_names(names: list[str]) -> dict:
+    """Sort names into exact matches, fuzzy candidates and unknowns. Never guesses."""
+    exact, fuzzy, unknown = [], [], []
+    for raw in names:
+        card = find_by_name(raw)
+        if card is not None:
+            exact.append({"input": raw, "oracle_id": card["oracle_id"], "name": card["name"]})
+            continue
+        candidates = [find_by_name(n) for n in close_names(raw)]
+        candidates = [{"oracle_id": c["oracle_id"], "name": c["name"]} for c in candidates if c]
+        if candidates:
+            fuzzy.append({"input": raw, "candidates": candidates})
+        else:
+            unknown.append(raw)
+    return {"exact": exact, "fuzzy": fuzzy, "unknown": unknown}

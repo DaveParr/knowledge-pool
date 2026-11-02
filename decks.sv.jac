@@ -9,10 +9,22 @@ import from datetime { datetime, timezone }
 import from cards { Card, card_node }
 import from legality { Format, Violation, Entry, FORMAT_LABELS, format_node, check_entries }
 
+"""One change made to a deck through MCP, with the reason given for it."""
+obj ChangeNote {
+    has at: str,
+        oracle_id: str,
+        name: str,
+        zone: str,
+        before: int,
+        after: int,
+        reason: str;
+}
+
 node Deck {
     has name: str,
         created_at: str = "",
-        format: str = "standard";
+        format: str = "standard",
+        history: list[ChangeNote] = [];
 }
 
 glob ZONES: list[str] = ["main", "sideboard"];
@@ -73,7 +85,9 @@ obj DeckView {
         main_total: int = 0,
         sideboard_total: int = 0,
         legal: bool = False,
-        violations: list[Violation] = [];
+        violations: list[Violation] = [],
+        history: list[ChangeNote] = [],
+        rejected: list[str] = [];
 }
 
 """Every (edge, card) pair a deck holds. A card in both zones has two edges."""
@@ -145,7 +159,8 @@ def deck_view(deck: Deck) -> DeckView {
         main_total=sum([l.count for l in lines if l.zone == "main"]),
         sideboard_total=sum([l.count for l in lines if l.zone == "sideboard"]),
         legal=len(check.violations) == 0,
-        violations=check.violations
+        violations=check.violations,
+        history=deck.history[-20:]
     );
 }
 
@@ -217,6 +232,83 @@ walker:pub AddCard(DeckAction) {
             here +>:Holds(count=self.count, zone=self.zone):+> card;
         }
         report deck_view(here);
+    }
+}
+
+"""Set a card's count in one zone of a deck (0 removes it). Returns the count
+before the change, or None if the card id is unknown."""
+def set_card_count(deck: Deck, oid: str, zone: str, count: int) -> int | None {
+    existing = holds_edge(deck, oid, zone);
+    if existing is None {
+        if count == 0 {
+            return 0;
+        }
+        card = card_node(root, oid);
+        if card is None {
+            return None;
+        }
+        deck +>:Holds(count=count, zone=zone):+> card;
+        return 0;
+    }
+    before = existing.count;
+    if count == 0 {
+        del existing;
+    } else {
+        existing.count = count;
+    }
+    return before;
+}
+
+"""Apply a batch of changes, each with a reason, and log each one on the deck.
+
+Each change is {"oracle_id", "count", "zone", "reason"} and sets that card's
+count in that zone. Bad changes are skipped and listed in the view's `rejected`.
+"""
+walker EditDeck(DeckAction) {
+    has changes: list[dict] = [];
+
+    can edit with Deck entry {
+        rejected: list[str] = [];
+        now = datetime.now(timezone.utc).isoformat();
+        for (i, ch) in enumerate(self.changes) {
+            oid = str(ch.get("oracle_id", ""));
+            zone = str(ch.get("zone", "main"));
+            reason = str(ch.get("reason", "")).strip();
+            raw_count = ch.get("count");
+            if not reason {
+                rejected.append(f"Change {i + 1} ({oid}): every change needs a reason.");
+                continue;
+            }
+            if zone not in ZONES {
+                rejected.append(f"Change {i + 1} ({oid}): zone must be main or sideboard.");
+                continue;
+            }
+            if not isinstance(raw_count, int) or isinstance(raw_count, bool) or raw_count < 0 {
+                rejected.append(f"Change {i + 1} ({oid}): count must be a whole number, 0 or more.");
+                continue;
+            }
+            count = raw_count as int;
+            before = set_card_count(here, oid, zone, count);
+            if before is None {
+                rejected.append(f"Change {i + 1}: {oid} is not a known oracle id. Use resolve_names.");
+                continue;
+            }
+            card = card_node(root, oid);
+            here.history.append(
+                ChangeNote(
+                    at=now,
+                    oracle_id=oid,
+                    name=card.name if card is not None else oid,
+                    zone=zone,
+                    before=before,
+                    after=count,
+                    reason=reason
+                )
+            );
+        }
+        view = deck_view(here);
+        view.rejected = rejected;
+        report view;
     }
 }
 
