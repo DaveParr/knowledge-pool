@@ -5,6 +5,7 @@ requires-python = ">=3.12"
 dependencies = [
     "jac-client==0.3.25",
     "jaclang==0.16.7",
+    "mcp==2.3.0",
 ]
 
 [dependency-groups]

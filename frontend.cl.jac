@@ -1,11 +1,14 @@
 """Decks view: list your decks and create a new one."""
 
+import from .deck_detail { DeckDetail }
+
 sv import from decks { Deck, CreateDeck, ListDecks }
 
 def:pub app -> JsxElement {
     has decks: list[Deck] = [],
         name: str = "",
-        error: str = "";
+        error: str = "",
+        openDeckId: str = "";
 
     can with entry {
         loadDecks();
@@ -13,6 +16,25 @@ def:pub app -> JsxElement {
 
     async def loadDecks -> None;
     async def createDeck(e: FormEvent) -> None;
+
+    def closeDeck {
+        openDeckId = "";
+        loadDecks();
+    }
+
+    if openDeckId {
+        return
+            <main
+                style={{
+                    "maxWidth": "860px",
+                    "margin": "2rem auto",
+                    "padding": "0 1rem",
+                    "fontFamily": "system-ui, -apple-system, sans-serif"
+                }}
+            >
+                <DeckDetail key={openDeckId} deckId={openDeckId} onBack={closeDeck}/>
+            </main>;
+    }
 
     return
         <main
@@ -48,7 +70,12 @@ def:pub app -> JsxElement {
                         key={jid(deck)}
                         style={{"padding": "0.5rem 0", "borderBottom": "1px solid #ddd"}}
                     >
-                        {deck.name}
+                        <a
+                            href="#"
+                            onClick={lambda e: MouseEvent { e.preventDefault(); openDeckId = jid(deck); }}
+                        >
+                            {deck.name}
+                        </a>
                     </li>
                     for deck in decks
                 ]}

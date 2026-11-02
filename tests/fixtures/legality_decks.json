@@ -1,0 +1,352 @@
+[
+ {
+  "name": "Standard red creatures",
+  "format": "standard",
+  "main": {
+   "Shock": 4,
+   "Adrenaline Jockey": 4,
+   "Angry Rabble": 4,
+   "Axgard Cavalry": 4,
+   "Ball Lightning": 4,
+   "Mountain": 40
+  },
+  "sideboard": {},
+  "legal": true,
+  "rules": []
+ },
+ {
+  "name": "Standard 60 basics",
+  "format": "standard",
+  "main": {
+   "Mountain": 60
+  },
+  "sideboard": {},
+  "legal": true,
+  "rules": []
+ },
+ {
+  "name": "Standard 59 cards",
+  "format": "standard",
+  "main": {
+   "Mountain": 55,
+   "Shock": 4
+  },
+  "sideboard": {},
+  "legal": false,
+  "rules": [
+   "main-deck-size"
+  ]
+ },
+ {
+  "name": "Standard five Shock",
+  "format": "standard",
+  "main": {
+   "Shock": 5,
+   "Mountain": 55
+  },
+  "sideboard": {},
+  "legal": false,
+  "rules": [
+   "copy-limit"
+  ]
+ },
+ {
+  "name": "Standard banned Heartfire Hero",
+  "format": "standard",
+  "main": {
+   "Heartfire Hero": 4,
+   "Mountain": 56
+  },
+  "sideboard": {},
+  "legal": false,
+  "rules": [
+   "banned"
+  ]
+ },
+ {
+  "name": "Standard with Lightning Bolt",
+  "format": "standard",
+  "main": {
+   "Lightning Bolt": 4,
+   "Mountain": 56
+  },
+  "sideboard": {},
+  "legal": false,
+  "rules": [
+   "not-legal"
+  ]
+ },
+ {
+  "name": "Standard snow basics",
+  "format": "standard",
+  "main": {
+   "Snow-Covered Mountain": 60
+  },
+  "sideboard": {},
+  "legal": false,
+  "rules": [
+   "not-legal"
+  ]
+ },
+ {
+  "name": "Standard 20 Hare Apparent",
+  "format": "standard",
+  "main": {
+   "Hare Apparent": 20,
+   "Plains": 40
+  },
+  "sideboard": {},
+  "legal": true,
+  "rules": []
+ },
+ {
+  "name": "Standard 15-card sideboard",
+  "format": "standard",
+  "main": {
+   "Mountain": 56,
+   "Shock": 4
+  },
+  "sideboard": {
+   "Ball Lightning": 4,
+   "Axgard Cavalry": 4,
+   "Angry Rabble": 4,
+   "Adrenaline Jockey": 3
+  },
+  "legal": true,
+  "rules": []
+ },
+ {
+  "name": "Standard 16-card sideboard",
+  "format": "standard",
+  "main": {
+   "Mountain": 56,
+   "Shock": 4
+  },
+  "sideboard": {
+   "Ball Lightning": 4,
+   "Axgard Cavalry": 4,
+   "Angry Rabble": 4,
+   "Adrenaline Jockey": 4
+  },
+  "legal": false,
+  "rules": [
+   "sideboard-size"
+  ]
+ },
+ {
+  "name": "Standard Shock split across zones",
+  "format": "standard",
+  "main": {
+   "Shock": 3,
+   "Mountain": 57
+  },
+  "sideboard": {
+   "Shock": 2
+  },
+  "legal": false,
+  "rules": [
+   "copy-limit"
+  ]
+ },
+ {
+  "name": "Standard 70 cards",
+  "format": "standard",
+  "main": {
+   "Mountain": 66,
+   "Wastes": 4
+  },
+  "sideboard": {},
+  "legal": true,
+  "rules": []
+ },
+ {
+  "name": "Standard empty deck",
+  "format": "standard",
+  "main": {},
+  "sideboard": {},
+  "legal": false,
+  "rules": [
+   "main-deck-size"
+  ]
+ },
+ {
+  "name": "Pioneer prowess",
+  "format": "pioneer",
+  "main": {
+   "Monastery Swiftspear": 4,
+   "Abbot of Keral Keep": 4,
+   "Shock": 4,
+   "Monstrous Rage": 4,
+   "Snow-Covered Mountain": 44
+  },
+  "sideboard": {},
+  "legal": true,
+  "rules": []
+ },
+ {
+  "name": "Pioneer banned fetchland",
+  "format": "pioneer",
+  "main": {
+   "Bloodstained Mire": 4,
+   "Mountain": 56
+  },
+  "sideboard": {},
+  "legal": false,
+  "rules": [
+   "banned"
+  ]
+ },
+ {
+  "name": "Pioneer seven Seven Dwarves",
+  "format": "pioneer",
+  "main": {
+   "Seven Dwarves": 7,
+   "Mountain": 53
+  },
+  "sideboard": {},
+  "legal": true,
+  "rules": []
+ },
+ {
+  "name": "Pioneer eight Seven Dwarves",
+  "format": "pioneer",
+  "main": {
+   "Seven Dwarves": 8,
+   "Mountain": 52
+  },
+  "sideboard": {},
+  "legal": false,
+  "rules": [
+   "copy-limit"
+  ]
+ },
+ {
+  "name": "Pioneer with Goblin Guide",
+  "format": "pioneer",
+  "main": {
+   "Goblin Guide": 4,
+   "Mountain": 56
+  },
+  "sideboard": {},
+  "legal": false,
+  "rules": [
+   "not-legal"
+  ]
+ },
+ {
+  "name": "Pioneer banned Heartfire Hero",
+  "format": "pioneer",
+  "main": {
+   "Heartfire Hero": 4,
+   "Mountain": 56
+  },
+  "sideboard": {},
+  "legal": false,
+  "rules": [
+   "banned"
+  ]
+ },
+ {
+  "name": "Modern burn",
+  "format": "modern",
+  "main": {
+   "Lightning Bolt": 4,
+   "Goblin Guide": 4,
+   "Monastery Swiftspear": 4,
+   "Heartfire Hero": 4,
+   "Bloodstained Mire": 4,
+   "Mountain": 40
+  },
+  "sideboard": {},
+  "legal": true,
+  "rules": []
+ },
+ {
+  "name": "Modern Chrome Mox",
+  "format": "modern",
+  "main": {
+   "Chrome Mox": 1,
+   "Mountain": 59
+  },
+  "sideboard": {},
+  "legal": false,
+  "rules": [
+   "banned"
+  ]
+ },
+ {
+  "name": "Modern 30 Relentless Rats",
+  "format": "modern",
+  "main": {
+   "Relentless Rats": 30,
+   "Mountain": 30
+  },
+  "sideboard": {},
+  "legal": true,
+  "rules": []
+ },
+ {
+  "name": "Modern nine Nazgul",
+  "format": "modern",
+  "main": {
+   "Nazgûl": 9,
+   "Mountain": 51
+  },
+  "sideboard": {},
+  "legal": true,
+  "rules": []
+ },
+ {
+  "name": "Modern ten Nazgul",
+  "format": "modern",
+  "main": {
+   "Nazgûl": 10,
+   "Mountain": 50
+  },
+  "sideboard": {},
+  "legal": false,
+  "rules": [
+   "copy-limit"
+  ]
+ },
+ {
+  "name": "Modern Black Lotus",
+  "format": "modern",
+  "main": {
+   "Black Lotus": 1,
+   "Mountain": 59
+  },
+  "sideboard": {},
+  "legal": false,
+  "rules": [
+   "not-legal"
+  ]
+ },
+ {
+  "name": "Modern three problems",
+  "format": "modern",
+  "main": {
+   "Lightning Bolt": 6,
+   "Chrome Mox": 1,
+   "Mountain": 40
+  },
+  "sideboard": {},
+  "legal": false,
+  "rules": [
+   "banned",
+   "copy-limit",
+   "main-deck-size"
+  ]
+ },
+ {
+  "name": "Modern Expressive Iteration",
+  "format": "modern",
+  "main": {
+   "Expressive Iteration": 4,
+   "Mountain": 56
+  },
+  "sideboard": {},
+  "legal": true,
+  "rules": []
+ }
+]

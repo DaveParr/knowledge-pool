@@ -1,5 +1,5 @@
 [project]
-name = "23-jac-init-poc"
+name = "knowledge-pool"
 version = "0.1.0"
 description = "A full-stack Jac application"
 entry-point = "main.jac"
