@@ -728,6 +728,611 @@
      "Land"
     ]
    }
+  ],
+  "Adrenaline Jockey": [
+   {
+    "colorIdentity": [
+     "R"
+    ],
+    "identifiers": {
+     "scryfallOracleId": "c3dc6b0e-8790-4bd3-b166-63b2dc77488f"
+    },
+    "layout": "normal",
+    "legalities": {
+     "alchemy": "Legal",
+     "brawl": "Legal",
+     "commander": "Legal",
+     "competitivebrawl": "Legal",
+     "duel": "Legal",
+     "future": "Legal",
+     "gladiator": "Legal",
+     "historic": "Legal",
+     "legacy": "Legal",
+     "modern": "Legal",
+     "oathbreaker": "Legal",
+     "pioneer": "Legal",
+     "standard": "Legal",
+     "standardbrawl": "Legal",
+     "timeless": "Legal",
+     "vintage": "Legal"
+    },
+    "manaCost": "{2}{R}",
+    "manaValue": 3.0,
+    "name": "Adrenaline Jockey",
+    "subtypes": [
+     "Minotaur",
+     "Pilot"
+    ],
+    "supertypes": [],
+    "text": "Whenever a player casts a spell, if it's not their turn, this creature deals 4 damage to them.\nWhenever you activate an exhaust ability, put a +1/+1 counter on this creature.",
+    "type": "Creature — Minotaur Pilot",
+    "types": [
+     "Creature"
+    ]
+   }
+  ],
+  "Angry Rabble": [
+   {
+    "colorIdentity": [
+     "R"
+    ],
+    "identifiers": {
+     "scryfallOracleId": "cf6dc79e-840c-4d47-8f94-c8623528acd2"
+    },
+    "layout": "normal",
+    "legalities": {
+     "alchemy": "Legal",
+     "brawl": "Legal",
+     "commander": "Legal",
+     "competitivebrawl": "Legal",
+     "duel": "Legal",
+     "future": "Legal",
+     "gladiator": "Legal",
+     "historic": "Legal",
+     "legacy": "Legal",
+     "modern": "Legal",
+     "oathbreaker": "Legal",
+     "pauper": "Legal",
+     "paupercommander": "Legal",
+     "pioneer": "Legal",
+     "standard": "Legal",
+     "standardbrawl": "Legal",
+     "timeless": "Legal",
+     "vintage": "Legal"
+    },
+    "manaCost": "{1}{R}",
+    "manaValue": 2.0,
+    "name": "Angry Rabble",
+    "subtypes": [
+     "Human",
+     "Citizen"
+    ],
+    "supertypes": [],
+    "text": "Trample\nWhenever you cast a spell with mana value 4 or greater, this creature deals 1 damage to each opponent.\n{5}{R}: Put two +1/+1 counters on this creature. Activate only as a sorcery.",
+    "type": "Creature — Human Citizen",
+    "types": [
+     "Creature"
+    ]
+   }
+  ],
+  "Axgard Cavalry": [
+   {
+    "colorIdentity": [
+     "R"
+    ],
+    "identifiers": {
+     "scryfallOracleId": "6a92b011-fd01-4b6a-a17c-73ac1967ff98"
+    },
+    "layout": "normal",
+    "legalities": {
+     "alchemy": "Legal",
+     "brawl": "Legal",
+     "commander": "Legal",
+     "competitivebrawl": "Legal",
+     "duel": "Legal",
+     "future": "Legal",
+     "gladiator": "Legal",
+     "historic": "Legal",
+     "legacy": "Legal",
+     "modern": "Legal",
+     "oathbreaker": "Legal",
+     "pauper": "Legal",
+     "paupercommander": "Legal",
+     "pioneer": "Legal",
+     "standard": "Legal",
+     "standardbrawl": "Legal",
+     "timeless": "Legal",
+     "vintage": "Legal"
+    },
+    "manaCost": "{1}{R}",
+    "manaValue": 2.0,
+    "name": "Axgard Cavalry",
+    "subtypes": [
+     "Dwarf",
+     "Berserker"
+    ],
+    "supertypes": [],
+    "text": "{T}: Target creature gains haste until end of turn. (It can attack and {T} this turn.)",
+    "type": "Creature — Dwarf Berserker",
+    "types": [
+     "Creature"
+    ]
+   }
+  ],
+  "Ball Lightning": [
+   {
+    "colorIdentity": [
+     "R"
+    ],
+    "identifiers": {
+     "scryfallOracleId": "7485cf25-eb41-4397-be13-7f0b8c10c70a"
+    },
+    "layout": "normal",
+    "legalities": {
+     "alchemy": "Legal",
+     "brawl": "Legal",
+     "commander": "Legal",
+     "competitivebrawl": "Legal",
+     "duel": "Legal",
+     "future": "Legal",
+     "gladiator": "Legal",
+     "historic": "Legal",
+     "legacy": "Legal",
+     "modern": "Legal",
+     "oathbreaker": "Legal",
+     "oldschool": "Legal",
+     "penny": "Legal",
+     "pioneer": "Legal",
+     "predh": "Legal",
+     "premodern": "Legal",
+     "standard": "Legal",
+     "standardbrawl": "Legal",
+     "timeless": "Legal",
+     "vintage": "Legal"
+    },
+    "manaCost": "{R}{R}{R}",
+    "manaValue": 3.0,
+    "name": "Ball Lightning",
+    "subtypes": [
+     "Elemental"
+    ],
+    "supertypes": [],
+    "text": "Trample (This creature can deal excess combat damage to the player or planeswalker it's attacking.)\nHaste (This creature can attack and {T} as soon as it comes under your control.)\nAt the beginning of the end step, sacrifice this creature.",
+    "type": "Creature — Elemental",
+    "types": [
+     "Creature"
+    ]
+   }
+  ],
+  "Hare Apparent": [
+   {
+    "colorIdentity": [
+     "W"
+    ],
+    "identifiers": {
+     "scryfallOracleId": "3c1619bd-db5e-4df6-a196-0a9d62374f6d"
+    },
+    "layout": "normal",
+    "legalities": {
+     "alchemy": "Legal",
+     "brawl": "Legal",
+     "commander": "Legal",
+     "competitivebrawl": "Legal",
+     "duel": "Legal",
+     "future": "Legal",
+     "gladiator": "Legal",
+     "historic": "Legal",
+     "legacy": "Legal",
+     "modern": "Legal",
+     "oathbreaker": "Legal",
+     "pauper": "Legal",
+     "paupercommander": "Legal",
+     "pioneer": "Legal",
+     "standard": "Legal",
+     "standardbrawl": "Legal",
+     "timeless": "Legal",
+     "vintage": "Legal"
+    },
+    "manaCost": "{1}{W}",
+    "manaValue": 2.0,
+    "name": "Hare Apparent",
+    "subtypes": [
+     "Rabbit",
+     "Noble"
+    ],
+    "supertypes": [],
+    "text": "When this creature enters, create a number of 1/1 white Rabbit creature tokens equal to the number of other creatures you control named Hare Apparent.\nA deck can have any number of cards named Hare Apparent.",
+    "type": "Creature — Rabbit Noble",
+    "types": [
+     "Creature"
+    ]
+   }
+  ],
+  "Heartfire Hero": [
+   {
+    "colorIdentity": [
+     "R"
+    ],
+    "identifiers": {
+     "scryfallOracleId": "49e1e202-37bf-46ed-93d1-1adb13726039"
+    },
+    "layout": "normal",
+    "legalities": {
+     "alchemy": "Legal",
+     "brawl": "Legal",
+     "commander": "Legal",
+     "competitivebrawl": "Legal",
+     "duel": "Legal",
+     "future": "Banned",
+     "gladiator": "Legal",
+     "historic": "Legal",
+     "legacy": "Legal",
+     "modern": "Legal",
+     "oathbreaker": "Legal",
+     "pioneer": "Banned",
+     "standard": "Banned",
+     "standardbrawl": "Legal",
+     "timeless": "Legal",
+     "vintage": "Legal"
+    },
+    "manaCost": "{R}",
+    "manaValue": 1.0,
+    "name": "Heartfire Hero",
+    "subtypes": [
+     "Mouse",
+     "Soldier"
+    ],
+    "supertypes": [],
+    "text": "Valiant — Whenever this creature becomes the target of a spell or ability you control for the first time each turn, put a +1/+1 counter on it.\nWhen this creature dies, it deals damage equal to its power to each opponent.",
+    "type": "Creature — Mouse Soldier",
+    "types": [
+     "Creature"
+    ]
+   }
+  ],
+  "Monstrous Rage": [
+   {
+    "colorIdentity": [
+     "R"
+    ],
+    "identifiers": {
+     "scryfallOracleId": "646a2371-54c0-4492-ac2f-20f109d6108c"
+    },
+    "layout": "normal",
+    "legalities": {
+     "brawl": "Legal",
+     "commander": "Legal",
+     "competitivebrawl": "Legal",
+     "duel": "Legal",
+     "future": "Banned",
+     "gladiator": "Legal",
+     "historic": "Legal",
+     "legacy": "Legal",
+     "modern": "Legal",
+     "oathbreaker": "Legal",
+     "pioneer": "Legal",
+     "standard": "Banned",
+     "standardbrawl": "Legal",
+     "timeless": "Legal",
+     "vintage": "Legal"
+    },
+    "manaCost": "{R}",
+    "manaValue": 1.0,
+    "name": "Monstrous Rage",
+    "subtypes": [],
+    "supertypes": [],
+    "text": "Target creature gets +2/+0 until end of turn. Create a Monster Role token attached to it. (If you control another Role on it, put that one into the graveyard. Enchanted creature gets +1/+1 and has trample.)",
+    "type": "Instant",
+    "types": [
+     "Instant"
+    ]
+   }
+  ],
+  "Abbot of Keral Keep": [
+   {
+    "colorIdentity": [
+     "R"
+    ],
+    "identifiers": {
+     "scryfallOracleId": "09be0f69-9c7f-491f-964d-bfbbc2d4251f"
+    },
+    "layout": "normal",
+    "legalities": {
+     "brawl": "Legal",
+     "commander": "Legal",
+     "competitivebrawl": "Legal",
+     "duel": "Legal",
+     "gladiator": "Legal",
+     "historic": "Legal",
+     "legacy": "Legal",
+     "modern": "Legal",
+     "oathbreaker": "Legal",
+     "penny": "Legal",
+     "pioneer": "Legal",
+     "timeless": "Legal",
+     "vintage": "Legal"
+    },
+    "manaCost": "{1}{R}",
+    "manaValue": 2.0,
+    "name": "Abbot of Keral Keep",
+    "subtypes": [
+     "Human",
+     "Monk"
+    ],
+    "supertypes": [],
+    "text": "Prowess (Whenever you cast a noncreature spell, this creature gets +1/+1 until end of turn.)\nWhen this creature enters, exile the top card of your library. Until end of turn, you may play that card.",
+    "type": "Creature — Human Monk",
+    "types": [
+     "Creature"
+    ]
+   }
+  ],
+  "Seven Dwarves": [
+   {
+    "colorIdentity": [
+     "R"
+    ],
+    "identifiers": {
+     "scryfallOracleId": "526ca4a9-3f50-4f7a-8169-2bda95792401"
+    },
+    "layout": "normal",
+    "legalities": {
+     "brawl": "Legal",
+     "commander": "Legal",
+     "competitivebrawl": "Legal",
+     "duel": "Legal",
+     "gladiator": "Legal",
+     "historic": "Legal",
+     "legacy": "Legal",
+     "modern": "Legal",
+     "oathbreaker": "Legal",
+     "pauper": "Legal",
+     "paupercommander": "Legal",
+     "pioneer": "Legal",
+     "timeless": "Legal",
+     "vintage": "Legal"
+    },
+    "manaCost": "{1}{R}",
+    "manaValue": 2.0,
+    "name": "Seven Dwarves",
+    "subtypes": [
+     "Dwarf"
+    ],
+    "supertypes": [],
+    "text": "This creature gets +1/+1 for each other creature named Seven Dwarves you control.\nA deck can have up to seven cards named Seven Dwarves.",
+    "type": "Creature — Dwarf",
+    "types": [
+     "Creature"
+    ]
+   }
+  ],
+  "Bloodstained Mire": [
+   {
+    "colorIdentity": [],
+    "identifiers": {
+     "scryfallOracleId": "fc0707c7-d504-4ccf-a0d2-3eb6e26e7a57"
+    },
+    "layout": "normal",
+    "legalities": {
+     "brawl": "Legal",
+     "commander": "Legal",
+     "competitivebrawl": "Legal",
+     "duel": "Legal",
+     "gladiator": "Legal",
+     "historic": "Banned",
+     "legacy": "Legal",
+     "modern": "Legal",
+     "oathbreaker": "Legal",
+     "pioneer": "Banned",
+     "predh": "Legal",
+     "premodern": "Legal",
+     "timeless": "Legal",
+     "vintage": "Legal"
+    },
+    "manaValue": 0.0,
+    "name": "Bloodstained Mire",
+    "subtypes": [],
+    "supertypes": [],
+    "text": "{T}, Pay 1 life, Sacrifice this land: Search your library for a Swamp or Mountain card, put it onto the battlefield, then shuffle.",
+    "type": "Land",
+    "types": [
+     "Land"
+    ]
+   }
+  ],
+  "Expressive Iteration": [
+   {
+    "colorIdentity": [
+     "R",
+     "U"
+    ],
+    "identifiers": {
+     "scryfallOracleId": "c7aecca5-2f67-4245-ab2d-e723d8b23a67"
+    },
+    "layout": "normal",
+    "legalities": {
+     "brawl": "Legal",
+     "commander": "Legal",
+     "competitivebrawl": "Legal",
+     "duel": "Legal",
+     "gladiator": "Legal",
+     "historic": "Legal",
+     "legacy": "Banned",
+     "modern": "Legal",
+     "oathbreaker": "Legal",
+     "pioneer": "Banned",
+     "timeless": "Legal",
+     "vintage": "Legal"
+    },
+    "manaCost": "{U}{R}",
+    "manaValue": 2.0,
+    "name": "Expressive Iteration",
+    "subtypes": [],
+    "supertypes": [],
+    "text": "Look at the top three cards of your library. Put one of them into your hand, put one of them on the bottom of your library, and exile one of them. You may play the exiled card this turn.",
+    "type": "Sorcery",
+    "types": [
+     "Sorcery"
+    ]
+   }
+  ],
+  "Nazgûl": [
+   {
+    "colorIdentity": [
+     "B"
+    ],
+    "identifiers": {
+     "scryfallOracleId": "48a62778-7c11-486f-a0e1-020c283a7ef9"
+    },
+    "layout": "normal",
+    "legalities": {
+     "brawl": "Legal",
+     "commander": "Legal",
+     "competitivebrawl": "Legal",
+     "duel": "Legal",
+     "gladiator": "Legal",
+     "historic": "Legal",
+     "legacy": "Legal",
+     "modern": "Legal",
+     "oathbreaker": "Legal",
+     "timeless": "Legal",
+     "vintage": "Legal"
+    },
+    "manaCost": "{2}{B}",
+    "manaValue": 3.0,
+    "name": "Nazgûl",
+    "subtypes": [
+     "Wraith",
+     "Knight"
+    ],
+    "supertypes": [],
+    "text": "Deathtouch\nWhen this creature enters, the Ring tempts you.\nWhenever the Ring tempts you, put a +1/+1 counter on each Wraith you control.\nA deck can have up to nine cards named Nazgûl.",
+    "type": "Creature — Wraith Knight",
+    "types": [
+     "Creature"
+    ]
+   }
+  ],
+  "Chrome Mox": [
+   {
+    "colorIdentity": [],
+    "identifiers": {
+     "scryfallOracleId": "ec3d4466-547c-4e02-b1b5-a156ec4637e9"
+    },
+    "layout": "normal",
+    "legalities": {
+     "brawl": "Banned",
+     "commander": "Legal",
+     "competitivebrawl": "Legal",
+     "duel": "Banned",
+     "gladiator": "Legal",
+     "historic": "Banned",
+     "legacy": "Legal",
+     "modern": "Banned",
+     "oathbreaker": "Legal",
+     "predh": "Legal",
+     "timeless": "Legal",
+     "vintage": "Legal"
+    },
+    "manaCost": "{0}",
+    "manaValue": 0.0,
+    "name": "Chrome Mox",
+    "subtypes": [],
+    "supertypes": [],
+    "text": "Imprint — When this artifact enters, you may exile a nonartifact, nonland card from your hand.\n{T}: Add one mana of any of the exiled card's colors.",
+    "type": "Artifact",
+    "types": [
+     "Artifact"
+    ]
+   }
+  ],
+  "Wastes": [
+   {
+    "colorIdentity": [],
+    "identifiers": {
+     "scryfallOracleId": "05d24b0c-904a-46b6-b42a-96a4d91a0dd4"
+    },
+    "layout": "normal",
+    "legalities": {
+     "alchemy": "Legal",
+     "brawl": "Legal",
+     "commander": "Legal",
+     "competitivebrawl": "Legal",
+     "duel": "Legal",
+     "future": "Legal",
+     "gladiator": "Legal",
+     "historic": "Legal",
+     "legacy": "Legal",
+     "modern": "Legal",
+     "oathbreaker": "Legal",
+     "pauper": "Legal",
+     "paupercommander": "Legal",
+     "pioneer": "Legal",
+     "standard": "Legal",
+     "standardbrawl": "Legal",
+     "timeless": "Legal",
+     "vintage": "Legal"
+    },
+    "manaValue": 0.0,
+    "name": "Wastes",
+    "subtypes": [],
+    "supertypes": [
+     "Basic"
+    ],
+    "text": "{T}: Add {C}.",
+    "type": "Basic Land",
+    "types": [
+     "Land"
+    ]
+   }
+  ],
+  "Plains": [
+   {
+    "colorIdentity": [
+     "W"
+    ],
+    "identifiers": {
+     "scryfallOracleId": "bc71ebf6-2056-41f7-be35-b2e5c34afa99"
+    },
+    "layout": "normal",
+    "legalities": {
+     "alchemy": "Legal",
+     "brawl": "Legal",
+     "commander": "Legal",
+     "competitivebrawl": "Legal",
+     "duel": "Legal",
+     "future": "Legal",
+     "gladiator": "Legal",
+     "historic": "Legal",
+     "legacy": "Legal",
+     "modern": "Legal",
+     "oathbreaker": "Legal",
+     "oldschool": "Legal",
+     "pauper": "Legal",
+     "paupercommander": "Legal",
+     "penny": "Legal",
+     "pioneer": "Legal",
+     "predh": "Legal",
+     "premodern": "Legal",
+     "standard": "Legal",
+     "standardbrawl": "Legal",
+     "timeless": "Legal",
+     "vintage": "Legal"
+    },
+    "manaValue": 0.0,
+    "name": "Plains",
+    "subtypes": [
+     "Plains"
+    ],
+    "supertypes": [
+     "Basic"
+    ],
+    "text": "({T}: Add {W}.)",
+    "type": "Basic Land — Plains",
+    "types": [
+     "Land"
+    ]
+   }
   ]
  }
 }

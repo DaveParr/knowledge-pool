@@ -33,7 +33,7 @@ The ingest downloads MTGJSON's `AtomicCards.json.xz` (about 26 MB) and builds `d
 uv run jac start main.jac
 ```
 
-Open http://localhost:8000. The Decks view lists your decks and creates new ones. Open a deck to search cards by name or rules text, add them, change counts and remove them. Decks are stored in `.jac/data` and survive a restart; delete that folder to start fresh.
+Open http://localhost:8000. The Decks view lists your decks and creates new ones. Open a deck to search cards by name or rules text, add them to the main deck or sideboard, change counts and remove them. Each deck has a format (Standard, Pioneer or Modern), and the deck view shows straight away whether it is legal and lists each rule it breaks: at least 60 main-deck cards, at most 15 in the sideboard, at most 4 copies of a card across both (basic lands and "any number" cards are exempt, and cards like Seven Dwarves use their own limit), and every card legal in the format according to MTGJSON. Legality is worked out on every view and edit; it is never stored. Decks are stored in `.jac/data` and survive a restart; delete that folder to start fresh.
 
 The full catalogue stays in SQLite. A `Card` node is added to the graph the first time a deck uses that card, because saving all 35,000 cards as graph nodes took more than 15 minutes.
 
@@ -44,14 +44,15 @@ uv run jac test        # walker tests in tests/*_tests.jac
 uv run pytest tests    # ingest, search and REST tests, including restart tests
 ```
 
-Tests build their catalogue from `tests/fixtures/atomic_small.json`, 16 real cards taken from MTGJSON. Type-check with `uv run jac check *.jac`. Run `jac guide` for Jac's own reference guides (see `AGENTS.md`).
+`tests/fixtures/legality_decks.json` holds 27 known legal and illegal decks that the validator is tested against. Tests build their catalogue from `tests/fixtures/atomic_small.json`, 31 real cards taken from MTGJSON (legalities as of 2 Nov 2026). Type-check with `uv run jac check *.jac`. Run `jac guide` for Jac's own reference guides (see `AGENTS.md`).
 
 ### Layout
 
 - `main.jac` entry point, joins server and client
 - `catalog/` Python ingest (`ingest.py`) and search (`store.py`) over `data/catalog.sqlite`
 - `cards.sv.jac` the `Card` node and the `search_cards` endpoint
-- `decks.sv.jac` the `Deck` node, the `Holds` edge and the deck walkers
+- `decks.sv.jac` the `Deck` node, the `Holds` edge, the deck walkers and `ValidateDeck`
+- `legality.sv.jac` `Format` nodes and the deck-construction rules
 - `frontend.cl.jac`, `frontend.impl.jac` the Decks view
 - `deck_detail.cl.jac`, `deck_detail.impl.jac` one deck: search, add, change, remove
 - `tests/` walker and REST tests
