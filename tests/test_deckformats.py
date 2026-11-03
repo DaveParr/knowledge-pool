@@ -52,3 +52,15 @@ def test_parse_mtgdeck1_round_trips_every_field():
 def test_get_format_rejects_unknown_name():
     with pytest.raises(ValueError, match="Unknown deck format"):
         get_format("not-a-format")
+
+
+def test_render_mtgjson_groups_entries_by_zone():
+    doc = json.loads(get_format("mtgjson").render(_sample_deck()))
+    assert {e["name"]: e["count"] for e in doc["mainBoard"]} == {"Ledger Shredder": 4, "Consider": 4}
+    assert {e["name"]: e["count"] for e in doc["sideBoard"]} == {"Unlicensed Hearse": 2}
+    assert {e["name"]: e["count"] for e in doc["commander"]} == {"Atraxa, Grand Unifier": 1}
+
+
+def test_mtgjson_does_not_support_import():
+    with pytest.raises(NotImplementedError):
+        get_format("mtgjson").parse("anything")
