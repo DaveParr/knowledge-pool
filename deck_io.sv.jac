@@ -48,3 +48,47 @@ walker:pub DeckExport(DeckAction) {
         report ExportResult(format=self.format, content=content);
     }
 }
+
+"""Import a deck list, replacing the deck's current holdings entirely.
+Lines or entries that don't resolve to a known card are listed in
+`unresolved` and never added."""
+walker:pub DeckImport(DeckAction) {
+    has format: str = "mtgdeck1",
+        text: str = "";
+
+    can do_import with Deck entry {
+        try {
+            fmt = get_format(self.format);
+        } except ValueError {
+            disengage;
+        }
+        try {
+            parsed = fmt.parse(self.text);
+        } except NotImplementedError {
+            disengage;
+        }
+        for (e, c) in holdings(here) {
+            del e;
+        }
+        unresolved: list[str] = [*parsed.unparsed];
+        for entry in parsed.entries {
+            oid = "";
+            if entry.oracle_id {
+                if catalog_get_card(entry.oracle_id) is not None {
+                    oid = entry.oracle_id;
+                }
+            } else {
+                found = find_by_name(entry.raw_name);
+                if found is not None {
+                    oid = found["oracle_id"] as str;
+                }
+            }
+            if not oid {
+                unresolved.append(entry.raw_name);
+                continue;
+            }
+            set_card_entry(here, oid, entry.zone, entry.count, entry.role, entry.tags, entry.locked, entry.reason);
+        }
+        report ImportResult(deck=deck_view(here), unresolved=unresolved);
+    }
+}

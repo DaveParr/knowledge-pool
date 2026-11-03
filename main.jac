@@ -9,7 +9,7 @@ import from decks {
 }
 import from legality { Violation }
 import from cards { CardHit, CatalogInfo, search_cards, catalog_info }
-import from deck_io { DeckExport }
+import from deck_io { DeckExport, DeckImport }
 
 cl {
     import from .frontend { app as ClientApp }
