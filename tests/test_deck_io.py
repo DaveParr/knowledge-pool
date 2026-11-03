@@ -117,3 +117,27 @@ def test_import_with_an_unknown_format_reports_nothing(tmp_path):
         assert _reports(client.post("/walker/DeckImport", json={"deck_id": deck_id, "format": "nope", "text": ""})) == []
     finally:
         client.close()
+
+
+def test_import_flags_an_invalid_zone_instead_of_bricking_the_deck(tmp_path):
+    client = JacTestClient.from_file("main.jac", base_path=str(tmp_path))
+    try:
+        deck_id = _new_deck(client)
+        client.post("/walker/AddCard", json={"deck_id": deck_id, "oracle_id": _oracle_id("Goblin Guide"), "count": 4})
+        text = json.dumps({
+            "schema": "mtgdeck/1", "name": "bad zone test", "format": "modern",
+            "zones": {
+                "bogus_zone": [{"name": "Mountain", "count": 1}],
+                "main": [{"name": "Lightning Bolt", "count": 4}],
+            },
+        })
+        result = _reports(client.post("/walker/DeckImport", json={"deck_id": deck_id, "format": "mtgdeck1", "text": text}))[0]
+        assert result["unresolved"] == ["Mountain"]
+        assert [c["name"] for c in result["deck"]["cards"]] == ["Lightning Bolt"]
+
+        # The deck must still be readable afterwards - a bad zone entry must
+        # never be persisted onto the deck.
+        view = _reports(client.post("/walker/GetDeck", json={"deck_id": deck_id}))[0]
+        assert [c["name"] for c in view["cards"]] == ["Lightning Bolt"]
+    finally:
+        client.close()

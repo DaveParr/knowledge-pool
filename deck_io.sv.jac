@@ -5,7 +5,7 @@ protocol, never on a specific format's parsing or rendering code.
 
 import from deckformats { get_format, ExportEntry, ExportDeck }
 import from catalog.store { find_by_name, get_card as catalog_get_card }
-import from decks { Deck, DeckAction, DeckView, holdings, deck_view, set_card_entry }
+import from decks { Deck, DeckAction, DeckView, DECK_ZONES, holdings, deck_view, set_card_entry }
 
 obj ExportResult {
     has format: str,
@@ -72,6 +72,10 @@ walker:pub DeckImport(DeckAction) {
         }
         unresolved: list[str] = [*parsed.unparsed];
         for entry in parsed.entries {
+            if entry.zone not in DECK_ZONES {
+                unresolved.append(entry.raw_name);
+                continue;
+            }
             oid = "";
             if entry.oracle_id {
                 if catalog_get_card(entry.oracle_id) is not None {
