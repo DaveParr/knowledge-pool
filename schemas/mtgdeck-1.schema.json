@@ -1,0 +1,63 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/DaveParr/knowledge-pool/schemas/mtgdeck-1.schema.json",
+  "title": "mtgdeck/1",
+  "type": "object",
+  "required": ["schema", "name", "zones"],
+  "additionalProperties": false,
+  "properties": {
+    "schema": { "const": "mtgdeck/1" },
+    "name": { "type": "string" },
+    "format": { "type": "string" },
+    "brief": {
+      "type": "object",
+      "properties": {
+        "archetype": { "type": "string" },
+        "themes": { "type": "array", "items": { "type": "string" } },
+        "budgetUsd": { "type": "number" }
+      },
+      "additionalProperties": true
+    },
+    "seeds": { "type": "array", "items": { "type": "string" } },
+    "zones": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "commander": { "$ref": "#/$defs/entryList" },
+        "companion": { "$ref": "#/$defs/entryList" },
+        "main": { "$ref": "#/$defs/entryList" },
+        "sideboard": { "$ref": "#/$defs/entryList" },
+        "maybeboard": { "$ref": "#/$defs/entryList" }
+      }
+    },
+    "validation": {
+      "type": "object",
+      "properties": {
+        "legal": { "type": "boolean" },
+        "mtgjsonVersion": { "type": "string" },
+        "checkedAt": { "type": "string" }
+      },
+      "additionalProperties": true
+    }
+  },
+  "$defs": {
+    "entryList": {
+      "type": "array",
+      "items": { "$ref": "#/$defs/entry" }
+    },
+    "entry": {
+      "type": "object",
+      "required": ["name", "count"],
+      "additionalProperties": false,
+      "properties": {
+        "name": { "type": "string" },
+        "oracleId": { "type": "string" },
+        "count": { "type": "integer", "minimum": 1 },
+        "role": { "type": "string" },
+        "tags": { "type": "array", "items": { "type": "string" } },
+        "locked": { "type": "boolean" },
+        "reason": { "type": "string" }
+      }
+    }
+  }
+}
