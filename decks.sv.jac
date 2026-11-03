@@ -29,6 +29,11 @@ node Deck {
 
 glob ZONES: list[str] = ["main", "sideboard"];
 
+"""All five mtgdeck/1 zones. Additive to ZONES: used by set_card_entry and
+later import/export walkers, not by AddCard/SetCardCount/RemoveCard, which
+keep governing only the 60-card-format gameplay zones via ZONES."""
+glob DECK_ZONES: list[str] = ["commander", "companion", "main", "sideboard", "maybeboard"];
+
 """Create a deck and report it. A blank name creates nothing and reports nothing."""
 walker:pub CreateDeck {
     has name: str,
@@ -60,10 +65,16 @@ walker:pub ListDecks {
     }
 }
 
-"""A deck holds `count` copies of a card in one zone (main or sideboard)."""
+"""A deck holds `count` copies of a card in one zone (main or sideboard, or,
+via set_card_entry, one of the other mtgdeck/1 zones). role/tags/locked/reason
+are mtgdeck/1 entry metadata, unused by the 60-card-format gameplay walkers."""
 edge Holds: Deck --> Card {
     has count: int = 1,
-        zone: str = "main";
+        zone: str = "main",
+        role: str = "",
+        tags: list[str] = [],
+        locked: bool = False,
+        reason: str = "";
 }
 
 """One line of a deck's card list."""
@@ -73,7 +84,11 @@ obj DeckCard {
         count: int,
         zone: str,
         mana_cost: str,
-        type_line: str;
+        type_line: str,
+        role: str = "",
+        tags: list[str] = [],
+        locked: bool = False,
+        reason: str = "";
 }
 
 """A deck, its cards (sorted by zone then name) and whether it is legal in its format."""
@@ -120,6 +135,9 @@ walker ValidateDeck {
         }
         entries: list[Entry] = [];
         for (e, c) in holdings(here) {
+            if e.zone not in ["main", "sideboard"] {
+                continue;
+            }
             entries.append(
                 Entry(
                     name=c.name,
@@ -145,7 +163,11 @@ def deck_view(deck: Deck) -> DeckView {
                 count=e.count,
                 zone=e.zone,
                 mana_cost=c.mana_cost,
-                type_line=c.type_line
+                type_line=c.type_line,
+                role=e.role,
+                tags=e.tags,
+                locked=e.locked,
+                reason=e.reason
             )
         );
     }
@@ -256,6 +278,29 @@ def set_card_count(deck: Deck, oid: str, zone: str, count: int) -> int | None {
     } else {
         existing.count = count;
     }
+    return before;
+}
+
+"""Set a card's full entry (count plus role, tags, locked and reason) in one
+zone. Like set_card_count, but also carries the mtgdeck/1 entry metadata;
+used by DeckImport. Always overwrites, never accumulates. Returns the count
+before the change, or None if the card id is unknown."""
+def set_card_entry(deck: Deck, oid: str, zone: str, count: int, role: str = "", tags: list[str] = [], locked: bool = False, reason: str = "") -> int | None {
+    existing = holds_edge(deck, oid, zone);
+    if existing is None {
+        card = card_node(root, oid);
+        if card is None {
+            return None;
+        }
+        deck +>:Holds(count=count, zone=zone, role=role, tags=tags, locked=locked, reason=reason):+> card;
+        return 0;
+    }
+    before = existing.count;
+    existing.count = count;
+    existing.role = role;
+    existing.tags = tags;
+    existing.locked = locked;
+    existing.reason = reason;
     return before;
 }
 
