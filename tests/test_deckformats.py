@@ -64,3 +64,29 @@ def test_render_mtgjson_groups_entries_by_zone():
 def test_mtgjson_does_not_support_import():
     with pytest.raises(NotImplementedError):
         get_format("mtgjson").parse("anything")
+
+
+@pytest.mark.parametrize("name", ["text", "arena", "moxfield"])
+def test_round_trips_a_simple_main_and_sideboard_list(name):
+    deck = ExportDeck(name="d", format="modern", entries=[
+        ExportEntry(oracle_id="o1", name="Lightning Bolt", count=4, zone="main"),
+        ExportEntry(oracle_id="o2", name="Mountain", count=20, zone="main"),
+        ExportEntry(oracle_id="o3", name="Negate", count=2, zone="sideboard"),
+    ])
+    fmt = get_format(name)
+    parsed = fmt.parse(fmt.render(deck))
+    assert {(e.raw_name, e.count, e.zone) for e in parsed.entries} == {
+        ("Lightning Bolt", 4, "main"), ("Mountain", 20, "main"), ("Negate", 2, "sideboard"),
+    }
+
+
+def test_arena_strips_the_set_and_collector_number_suffix():
+    parsed = get_format("arena").parse("4 Lightning Bolt (M10) 146\n")
+    assert parsed.entries[0].raw_name == "Lightning Bolt"
+    assert parsed.entries[0].count == 4
+
+
+def test_a_line_that_is_not_count_and_name_is_unparsed_not_dropped():
+    parsed = get_format("text").parse("4 Lightning Bolt\nthis is not a deck line\n")
+    assert parsed.unparsed == ["this is not a deck line"]
+    assert len(parsed.entries) == 1
