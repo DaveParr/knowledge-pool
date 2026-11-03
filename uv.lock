@@ -345,7 +345,7 @@ requires-dist = [
 
 [package.metadata.requires-dev]
 dev = [
-    { name = "jsonschema", specifier = ">=4.26.0" },
+    { name = "jsonschema", specifier = "==4.26.0" },
     { name = "pytest", specifier = ">=9.2.0" },
 ]
 
