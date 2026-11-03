@@ -171,7 +171,7 @@ def deck_view(deck: Deck) -> DeckView {
             )
         );
     }
-    lines.sort(key=lambda l: DeckCard : (ZONES.index(l.zone), l.name));
+    lines.sort(key=lambda l: DeckCard : (DECK_ZONES.index(l.zone), l.name));
     check = deck spawn ValidateDeck();
     return DeckView(
         id=jid(deck),
