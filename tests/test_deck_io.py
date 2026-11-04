@@ -132,12 +132,117 @@ def test_import_flags_an_invalid_zone_instead_of_bricking_the_deck(tmp_path):
             },
         })
         result = _reports(client.post("/walker/DeckImport", json={"deck_id": deck_id, "format": "mtgdeck1", "text": text}))[0]
-        assert result["unresolved"] == ["Mountain"]
+        assert result["unresolved"] == ["Mountain (invalid zone: bogus_zone)"]
         assert [c["name"] for c in result["deck"]["cards"]] == ["Lightning Bolt"]
 
         # The deck must still be readable afterwards - a bad zone entry must
         # never be persisted onto the deck.
         view = _reports(client.post("/walker/GetDeck", json={"deck_id": deck_id}))[0]
         assert [c["name"] for c in view["cards"]] == ["Lightning Bolt"]
+    finally:
+        client.close()
+
+
+def test_importing_plain_text_as_mtgdeck1_reports_a_parse_error_and_keeps_the_deck(tmp_path):
+    client = JacTestClient.from_file("main.jac", base_path=str(tmp_path))
+    try:
+        deck_id = _new_deck(client)
+        client.post("/walker/AddCard", json={"deck_id": deck_id, "oracle_id": _oracle_id("Goblin Guide"), "count": 4})
+        result = _reports(client.post("/walker/DeckImport", json={
+            "deck_id": deck_id, "format": "mtgdeck1", "text": "4 Lightning Bolt",
+        }))[0]
+        assert len(result["unresolved"]) == 1
+        assert "not JSON" in result["unresolved"][0]
+        assert [(c["name"], c["count"]) for c in result["deck"]["cards"]] == [("Goblin Guide", 4)]
+    finally:
+        client.close()
+
+
+def test_mtgdeck1_entries_with_invalid_counts_are_never_persisted(tmp_path):
+    client = JacTestClient.from_file("main.jac", base_path=str(tmp_path))
+    try:
+        deck_id = _new_deck(client)
+        text = json.dumps({
+            "schema": "mtgdeck/1", "name": "bad counts", "format": "modern",
+            "zones": {"main": [
+                {"name": "Mountain", "count": -5},
+                {"name": "Goblin Guide", "count": "4"},
+                {"name": "Lightning Bolt", "count": 4},
+            ]},
+        })
+        result = _reports(client.post("/walker/DeckImport", json={"deck_id": deck_id, "format": "mtgdeck1", "text": text}))[0]
+        assert result["unresolved"] == ["Mountain (invalid count)", "Goblin Guide (invalid count)"]
+        view = _reports(client.post("/walker/GetDeck", json={"deck_id": deck_id}))[0]
+        assert [(c["name"], c["count"]) for c in view["cards"]] == [("Lightning Bolt", 4)]
+        assert view["main_total"] == 4
+    finally:
+        client.close()
+
+
+def test_the_same_card_listed_across_printings_is_summed(tmp_path):
+    client = JacTestClient.from_file("main.jac", base_path=str(tmp_path))
+    try:
+        deck_id = _new_deck(client)
+        result = _reports(client.post("/walker/DeckImport", json={
+            "deck_id": deck_id, "format": "arena",
+            "text": "Deck\n2 Lightning Bolt (M10) 146\n2 Lightning Bolt (2XM) 123\n\nSideboard\n1 Lightning Bolt (M10) 146\n",
+        }))[0]
+        assert result["unresolved"] == []
+        cards = {(c["name"], c["zone"]): c["count"] for c in result["deck"]["cards"]}
+        assert cards == {("Lightning Bolt", "main"): 4, ("Lightning Bolt", "sideboard"): 1}
+    finally:
+        client.close()
+
+
+def test_duplicate_mtgdeck1_entries_sum_counts_and_keep_the_last_metadata(tmp_path):
+    client = JacTestClient.from_file("main.jac", base_path=str(tmp_path))
+    try:
+        deck_id = _new_deck(client)
+        text = json.dumps({
+            "schema": "mtgdeck/1", "name": "dupes", "format": "modern",
+            "zones": {"main": [
+                {"name": "Lightning Bolt", "count": 1, "tags": ["first"]},
+                {"name": "Lightning Bolt", "count": 3, "tags": ["last"], "reason": "burn"},
+            ]},
+        })
+        result = _reports(client.post("/walker/DeckImport", json={"deck_id": deck_id, "format": "mtgdeck1", "text": text}))[0]
+        [card] = result["deck"]["cards"]
+        assert (card["name"], card["count"], card["tags"], card["reason"]) == ("Lightning Bolt", 4, ["last"], "burn")
+    finally:
+        client.close()
+
+
+def test_a_paste_where_nothing_resolves_leaves_the_deck_untouched(tmp_path):
+    client = JacTestClient.from_file("main.jac", base_path=str(tmp_path))
+    try:
+        deck_id = _new_deck(client)
+        client.post("/walker/AddCard", json={"deck_id": deck_id, "oracle_id": _oracle_id("Goblin Guide"), "count": 4})
+        for text, unresolved in [
+            ("this is not a deck\nneither is this\n", ["this is not a deck", "neither is this"]),
+            ("4 Flargle the Unreal\n", ["Flargle the Unreal"]),
+        ]:
+            result = _reports(client.post("/walker/DeckImport", json={"deck_id": deck_id, "format": "text", "text": text}))[0]
+            assert result["unresolved"] == unresolved
+            assert [(c["name"], c["count"]) for c in result["deck"]["cards"]] == [("Goblin Guide", 4)]
+        view = _reports(client.post("/walker/GetDeck", json={"deck_id": deck_id}))[0]
+        assert [(c["name"], c["count"]) for c in view["cards"]] == [("Goblin Guide", 4)]
+    finally:
+        client.close()
+
+
+def test_a_stale_oracle_id_falls_back_to_the_card_name(tmp_path):
+    client = JacTestClient.from_file("main.jac", base_path=str(tmp_path))
+    try:
+        deck_id = _new_deck(client)
+        text = json.dumps({
+            "schema": "mtgdeck/1", "name": "stale", "format": "modern",
+            "zones": {"main": [
+                {"name": "Lightning Bolt", "oracleId": "00000000-0000-0000-0000-000000000000", "count": 4},
+                {"name": "Flargle the Unreal", "oracleId": "00000000-0000-0000-0000-000000000001", "count": 1},
+            ]},
+        })
+        result = _reports(client.post("/walker/DeckImport", json={"deck_id": deck_id, "format": "mtgdeck1", "text": text}))[0]
+        assert result["unresolved"] == ["Flargle the Unreal"]
+        assert [(c["name"], c["count"]) for c in result["deck"]["cards"]] == [("Lightning Bolt", 4)]
     finally:
         client.close()

@@ -90,3 +90,79 @@ def test_a_line_that_is_not_count_and_name_is_unparsed_not_dropped():
     parsed = get_format("text").parse("4 Lightning Bolt\nthis is not a deck line\n")
     assert parsed.unparsed == ["this is not a deck line"]
     assert len(parsed.entries) == 1
+
+
+# --- mtgdeck1 parse: malformed documents and invalid entries ---
+
+
+@pytest.mark.parametrize("text", [
+    "4 Lightning Bolt",
+    "not json at all {",
+    json.dumps(["a", "list"]),
+    json.dumps({"schema": "mtgdeck/1", "zones": ["main"]}),
+    json.dumps({"schema": "mtgdeck/1", "zones": {"main": {"name": "Mountain", "count": 1}}}),
+])
+def test_mtgdeck1_rejects_a_malformed_document_with_a_value_error(text):
+    with pytest.raises(ValueError):
+        get_format("mtgdeck1").parse(text)
+
+
+def _mtgdeck1(*main_entries) -> str:
+    return json.dumps({"schema": "mtgdeck/1", "name": "d", "format": "modern", "zones": {"main": list(main_entries)}})
+
+
+@pytest.mark.parametrize("bad_entry, label", [
+    ({"name": "Mountain", "count": -5}, "Mountain (invalid count)"),
+    ({"name": "Mountain", "count": 0}, "Mountain (invalid count)"),
+    ({"name": "Mountain", "count": "4"}, "Mountain (invalid count)"),
+    ({"name": "Mountain", "count": 1.5}, "Mountain (invalid count)"),
+    ({"name": "Mountain", "count": True}, "Mountain (invalid count)"),
+    ({"name": "Mountain"}, "Mountain (invalid count)"),
+    ({"count": 4}, "<unnamed> (invalid name)"),
+    ({"name": "Mountain", "count": 1, "roles": "commander"}, "Mountain (invalid roles)"),
+    ({"name": "Mountain", "count": 1, "roles": [1]}, "Mountain (invalid roles)"),
+    ({"name": "Mountain", "count": 1, "tags": "burn"}, "Mountain (invalid tags)"),
+    ({"name": "Mountain", "count": 1, "tags": ["ok", None]}, "Mountain (invalid tags)"),
+    ("Mountain", "<unnamed> (invalid entry)"),
+])
+def test_mtgdeck1_skips_an_invalid_entry_but_keeps_the_rest(bad_entry, label):
+    parsed = get_format("mtgdeck1").parse(_mtgdeck1(bad_entry, {"name": "Lightning Bolt", "count": 4}))
+    assert [(e.raw_name, e.count) for e in parsed.entries] == [("Lightning Bolt", 4)]
+    assert parsed.unparsed == [label]
+
+
+# --- line lists: real-world headers ---
+
+
+@pytest.mark.parametrize("name", ["text", "arena", "moxfield"])
+def test_a_header_with_a_trailing_colon_is_recognized(name):
+    parsed = get_format(name).parse("4 Lightning Bolt\n\nSideboard:\n2 Negate\n")
+    assert parsed.unparsed == []
+    assert {(e.raw_name, e.zone) for e in parsed.entries} == {("Lightning Bolt", "main"), ("Negate", "sideboard")}
+
+
+def test_arena_deck_header_with_a_trailing_colon_is_recognized():
+    parsed = get_format("arena").parse("Deck:\n4 Lightning Bolt\n")
+    assert parsed.unparsed == []
+    assert [(e.raw_name, e.zone) for e in parsed.entries] == [("Lightning Bolt", "main")]
+
+
+@pytest.mark.parametrize("name", ["text", "arena", "moxfield"])
+@pytest.mark.parametrize("commander_header, companion_header", [("Commander", "Companion"), ("commander:", "COMPANION:")])
+def test_commander_and_companion_headers_route_to_their_zones(name, commander_header, companion_header):
+    # Arena's "Deck" header switches back to main; text/moxfield have no main
+    # header, so their main cards come first.
+    special = f"{commander_header}\n1 Atraxa, Grand Unifier\n\n{companion_header}\n1 Lurrus of the Dream-Den\n"
+    text = f"{special}\nDeck\n4 Lightning Bolt\n" if name == "arena" else f"4 Lightning Bolt\n\n{special}"
+    parsed = get_format(name).parse(text)
+    assert parsed.unparsed == []
+    assert sorted((e.raw_name, e.zone) for e in parsed.entries) == [
+        ("Atraxa, Grand Unifier", "commander"),
+        ("Lightning Bolt", "main"),
+        ("Lurrus of the Dream-Den", "companion"),
+    ]
+
+
+def test_moxfield_strips_the_set_and_collector_number_suffix():
+    parsed = get_format("moxfield").parse("4 Lightning Bolt (2XM) 123\n")
+    assert [(e.raw_name, e.count) for e in parsed.entries] == [("Lightning Bolt", 4)]

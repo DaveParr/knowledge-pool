@@ -29,3 +29,15 @@ test "deck_view does not crash on a commander-zone holding" {
     assert len(commander_lines) == 1;
     assert commander_lines[0].roles == ["commander"];
 }
+
+test "set_card_entry refuses an unknown zone and writes nothing" {
+    created = root spawn CreateDeck(name="Bad zone guard test deck");
+    deck = created.reports[0];
+    oid = "decks-io-test-fixture-card";
+    cat = catalog_node(root);
+    if not [cat-->[?:Card, oracle_id == oid]] {
+        cat ++> Card(oracle_id=oid, name="Fixture Commander");
+    }
+    assert set_card_entry(deck, oid, "bogus_zone", 1) is None;
+    assert deck_view(deck).cards == [];
+}

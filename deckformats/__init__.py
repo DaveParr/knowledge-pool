@@ -10,7 +10,7 @@ FORMATS: dict[str, DeckFormat] = {
     "mtgjson": MtgjsonFormat(),
     "text": LineListFormat(),
     "arena": LineListFormat(deck_header="Deck", strip_set_suffix=True),
-    "moxfield": LineListFormat(),
+    "moxfield": LineListFormat(strip_set_suffix=True),
 }
 
 

@@ -284,8 +284,11 @@ def set_card_count(deck: Deck, oid: str, zone: str, count: int) -> int | None {
 """Set a card's full entry (count plus roles, tags, locked and reason) in one
 zone. Like set_card_count, but also carries the mtgdeck/1 entry metadata;
 used by DeckImport. Always overwrites, never accumulates. Returns the count
-before the change, or None if the card id is unknown."""
+before the change, or None if the zone or card id is unknown."""
 def set_card_entry(deck: Deck, oid: str, zone: str, count: int, roles: list[str] = [], tags: list[str] = [], locked: bool = False, reason: str = "") -> int | None {
+    if zone not in DECK_ZONES {
+        return None;
+    }
     existing = holds_edge(deck, oid, zone);
     if existing is None {
         card = card_node(root, oid);

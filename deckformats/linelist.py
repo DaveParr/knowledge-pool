@@ -30,18 +30,20 @@ class LineListFormat:
         return "\n".join(lines) + "\n"
 
     def parse(self, text: str) -> ParsedDeck:
-        header_zones = {
-            header.casefold(): zone
+        # Built-in commander/companion headers, plus this instance's own.
+        header_zones = {"commander": "commander", "companion": "companion"}
+        header_zones.update({
+            _header_key(header): zone
             for header, zone in {self.deck_header: "main", self.sideboard_header: "sideboard"}.items()
             if header is not None
-        }
+        })
 
         parsed = ParsedDeck()
         current_zone = "main"
         for line in text.splitlines():
             if not line.strip():
                 continue
-            zone = header_zones.get(line.strip().casefold())
+            zone = header_zones.get(_header_key(line))
             if zone is not None:
                 current_zone = zone
                 continue
@@ -58,3 +60,8 @@ class LineListFormat:
             parsed.entries.append(ParsedEntry(raw_name=name, count=int(match.group(1)), zone=current_zone))
 
         return parsed
+
+
+def _header_key(line: str) -> str:
+    """Normalize a possible header line: "Sideboard:" and "sideboard" match."""
+    return line.strip().removesuffix(":").strip().casefold()
