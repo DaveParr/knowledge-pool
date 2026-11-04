@@ -3,9 +3,9 @@
 import from decks { Holds, DECK_ZONES, CreateDeck, set_card_entry, deck_view }
 import from cards { Card, catalog_node }
 
-test "Holds defaults carry no role, tags, lock or reason" {
+test "Holds defaults carry no roles, tags, lock or reason" {
     h = Holds();
-    assert h.role == "";
+    assert h.roles == [];
     assert h.tags == [];
     assert h.locked == False;
     assert h.reason == "";
@@ -23,9 +23,9 @@ test "deck_view does not crash on a commander-zone holding" {
     if not [cat-->[?:Card, oracle_id == oid]] {
         cat ++> Card(oracle_id=oid, name="Fixture Commander");
     }
-    set_card_entry(deck, oid, "commander", 1, role="commander");
+    set_card_entry(deck, oid, "commander", 1, roles=["commander"]);
     view = deck_view(deck);
     commander_lines = [c for c in view.cards if c.zone == "commander"];
     assert len(commander_lines) == 1;
-    assert commander_lines[0].role == "commander";
+    assert commander_lines[0].roles == ["commander"];
 }

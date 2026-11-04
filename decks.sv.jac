@@ -66,12 +66,12 @@ walker:pub ListDecks {
 }
 
 """A deck holds `count` copies of a card in one zone (main or sideboard, or,
-via set_card_entry, one of the other mtgdeck/1 zones). role/tags/locked/reason
+via set_card_entry, one of the other mtgdeck/1 zones). roles/tags/locked/reason
 are mtgdeck/1 entry metadata, unused by the 60-card-format gameplay walkers."""
 edge Holds: Deck --> Card {
     has count: int = 1,
         zone: str = "main",
-        role: str = "",
+        roles: list[str] = [],
         tags: list[str] = [],
         locked: bool = False,
         reason: str = "";
@@ -85,7 +85,7 @@ obj DeckCard {
         zone: str,
         mana_cost: str,
         type_line: str,
-        role: str = "",
+        roles: list[str] = [],
         tags: list[str] = [],
         locked: bool = False,
         reason: str = "";
@@ -164,7 +164,7 @@ def deck_view(deck: Deck) -> DeckView {
                 zone=e.zone,
                 mana_cost=c.mana_cost,
                 type_line=c.type_line,
-                role=e.role,
+                roles=e.roles,
                 tags=e.tags,
                 locked=e.locked,
                 reason=e.reason
@@ -281,23 +281,23 @@ def set_card_count(deck: Deck, oid: str, zone: str, count: int) -> int | None {
     return before;
 }
 
-"""Set a card's full entry (count plus role, tags, locked and reason) in one
+"""Set a card's full entry (count plus roles, tags, locked and reason) in one
 zone. Like set_card_count, but also carries the mtgdeck/1 entry metadata;
 used by DeckImport. Always overwrites, never accumulates. Returns the count
 before the change, or None if the card id is unknown."""
-def set_card_entry(deck: Deck, oid: str, zone: str, count: int, role: str = "", tags: list[str] = [], locked: bool = False, reason: str = "") -> int | None {
+def set_card_entry(deck: Deck, oid: str, zone: str, count: int, roles: list[str] = [], tags: list[str] = [], locked: bool = False, reason: str = "") -> int | None {
     existing = holds_edge(deck, oid, zone);
     if existing is None {
         card = card_node(root, oid);
         if card is None {
             return None;
         }
-        deck +>:Holds(count=count, zone=zone, role=role, tags=tags, locked=locked, reason=reason):+> card;
+        deck +>:Holds(count=count, zone=zone, roles=roles, tags=tags, locked=locked, reason=reason):+> card;
         return 0;
     }
     before = existing.count;
     existing.count = count;
-    existing.role = role;
+    existing.roles = roles;
     existing.tags = tags;
     existing.locked = locked;
     existing.reason = reason;

@@ -53,7 +53,7 @@
         "name": { "type": "string" },
         "oracleId": { "type": "string" },
         "count": { "type": "integer", "minimum": 1 },
-        "role": { "type": "string" },
+        "roles": { "type": "array", "items": { "type": "string" } },
         "tags": { "type": "array", "items": { "type": "string" } },
         "locked": { "type": "boolean" },
         "reason": { "type": "string" }

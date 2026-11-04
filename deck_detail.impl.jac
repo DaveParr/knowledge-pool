@@ -56,19 +56,14 @@ impl DeckDetail.setFormat(value: str) -> None {
 
 impl DeckDetail.runExport -> None {
     result = root spawn DeckExport(deck_id=deckId, format=exportFormat);
-    # DeckExport inherits DeckAction's `reports: list[DeckView]` but actually
-    # reports ExportResult; cast through `any` at this use site rather than
-    # widening deck_io.sv.jac's declared report type (out of scope here).
-    exportText = ((result.reports[0] as any).content as str) if result.reports else "";
+    exportText = result.reports[0].content if result.reports else "";
 }
 
 impl DeckDetail.runImport -> None {
     result = root spawn DeckImport(deck_id=deckId, format=importFormat, text=importText);
-    # Same inherited-reports mismatch as runExport: DeckImport actually
-    # reports ImportResult, not DeckView.
     if result.reports {
-        outcome = result.reports[0] as any;
-        deck = outcome.deck as DeckView;
-        unresolved = outcome.unresolved as list[str];
+        outcome = result.reports[0];
+        deck = outcome.deck;
+        unresolved = outcome.unresolved;
     }
 }

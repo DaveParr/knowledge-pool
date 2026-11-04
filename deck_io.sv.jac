@@ -21,7 +21,8 @@ obj ImportResult {
 moxfield). Reports nothing for an unknown format or one that does not
 support export."""
 walker:pub DeckExport(DeckAction) {
-    has format: str = "mtgdeck1";
+    has format: str = "mtgdeck1",
+        reports: list[ExportResult] = [];
 
     can export with Deck entry {
         try {
@@ -35,7 +36,7 @@ walker:pub DeckExport(DeckAction) {
             entries=[
                 ExportEntry(
                     oracle_id=c.oracle_id, name=c.name, count=e.count, zone=e.zone,
-                    role=e.role, tags=e.tags, locked=e.locked, reason=e.reason
+                    roles=e.roles, tags=e.tags, locked=e.locked, reason=e.reason
                 )
                 for (e, c) in holdings(here)
             ]
@@ -54,7 +55,8 @@ Lines or entries that don't resolve to a known card are listed in
 `unresolved` and never added."""
 walker:pub DeckImport(DeckAction) {
     has format: str = "mtgdeck1",
-        text: str = "";
+        text: str = "",
+        reports: list[ImportResult] = [];
 
     can do_import with Deck entry {
         try {
@@ -91,7 +93,7 @@ walker:pub DeckImport(DeckAction) {
                 unresolved.append(entry.raw_name);
                 continue;
             }
-            set_card_entry(here, oid, entry.zone, entry.count, entry.role, entry.tags, entry.locked, entry.reason);
+            set_card_entry(here, oid, entry.zone, entry.count, entry.roles, entry.tags, entry.locked, entry.reason);
         }
         report ImportResult(deck=deck_view(here), unresolved=unresolved);
     }

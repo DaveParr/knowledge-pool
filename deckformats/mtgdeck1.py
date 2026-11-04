@@ -8,8 +8,8 @@ class Mtgdeck1Format:
         zones: dict[str, list[dict]] = {}
         for e in deck.entries:
             entry: dict = {"name": e.name, "oracleId": e.oracle_id, "count": e.count}
-            if e.role:
-                entry["role"] = e.role
+            if e.roles:
+                entry["roles"] = e.roles
             if e.tags:
                 entry["tags"] = e.tags
             if e.locked:
@@ -37,7 +37,7 @@ class Mtgdeck1Format:
                         count=entry["count"],
                         zone=zone,
                         oracle_id=entry.get("oracleId", ""),
-                        role=entry.get("role", ""),
+                        roles=entry.get("roles", []),
                         tags=entry.get("tags", []),
                         locked=entry.get("locked", False),
                         reason=entry.get("reason", ""),

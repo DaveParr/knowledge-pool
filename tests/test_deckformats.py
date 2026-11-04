@@ -18,7 +18,7 @@ def _sample_deck() -> ExportDeck:
         name="Izzet Spells",
         format="pioneer",
         entries=[
-            ExportEntry(oracle_id="o1", name="Ledger Shredder", count=4, zone="main", role="threat", tags=["spells-matter"], locked=True),
+            ExportEntry(oracle_id="o1", name="Ledger Shredder", count=4, zone="main", roles=["threat"], tags=["spells-matter"], locked=True),
             ExportEntry(oracle_id="o2", name="Consider", count=4, zone="main", reason="cantrip"),
             ExportEntry(oracle_id="o3", name="Unlicensed Hearse", count=2, zone="sideboard"),
             ExportEntry(oracle_id="o4", name="Atraxa, Grand Unifier", count=1, zone="commander"),
@@ -41,7 +41,7 @@ def test_parse_mtgdeck1_round_trips_every_field():
     by_name = {e.raw_name: e for e in parsed.entries}
     assert by_name["Ledger Shredder"].count == 4
     assert by_name["Ledger Shredder"].zone == "main"
-    assert by_name["Ledger Shredder"].role == "threat"
+    assert by_name["Ledger Shredder"].roles == ["threat"]
     assert by_name["Ledger Shredder"].tags == ["spells-matter"]
     assert by_name["Ledger Shredder"].locked is True
     assert by_name["Ledger Shredder"].oracle_id == "o1"

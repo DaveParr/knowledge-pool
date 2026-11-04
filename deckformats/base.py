@@ -8,7 +8,7 @@ class ParsedEntry:
     count: int
     zone: str = "main"
     oracle_id: str = ""
-    role: str = ""
+    roles: list[str] = field(default_factory=list)
     tags: list[str] = field(default_factory=list)
     locked: bool = False
     reason: str = ""
@@ -28,7 +28,7 @@ class ExportEntry:
     name: str
     count: int
     zone: str
-    role: str = ""
+    roles: list[str] = field(default_factory=list)
     tags: list[str] = field(default_factory=list)
     locked: bool = False
     reason: str = ""
