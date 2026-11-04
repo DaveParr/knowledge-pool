@@ -71,7 +71,10 @@ uv run pytest tests    # ingest, search, REST, legality and MCP tests
 - `main.jac` entry point, joins server and client
 - `catalog/` Python ingest (`ingest.py`) and search (`store.py`) over `data/catalog.sqlite`
 - `cards.sv.jac` the `Card` node and the `search_cards` endpoint
+- schemas/mtgdeck-1.schema.json the published mtgdeck/1 deck document schema
+- `deckformats/` the deck import/export format strategies (mtgdeck/1, MTGJSON Deck JSON, plain/Arena/Moxfield text)
 - `decks.sv.jac` the `Deck` node, the `Holds` edge, the deck walkers and `ValidateDeck`
+- `deck_io.sv.jac` the `DeckExport`/`DeckImport` walkers
 - `legality.sv.jac` `Format` nodes and the deck-construction rules
 - `mcp_server.jac` the MCP server (and the web app, in the same process)
 - `scripts/mcp_smoke.py` an MCP client session that checks the tools end to end
