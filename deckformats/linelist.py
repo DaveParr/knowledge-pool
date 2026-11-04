@@ -30,8 +30,14 @@ class LineListFormat:
         return "\n".join(lines) + "\n"
 
     def parse(self, text: str) -> ParsedDeck:
-        # Built-in commander/companion headers, plus this instance's own.
-        header_zones = {"commander": "commander", "companion": "companion"}
+        # Built-in commander/companion/main headers, plus this instance's own.
+        header_zones = {
+            "commander": "commander",
+            "companion": "companion",
+            "deck": "main",
+            "main": "main",
+            "mainboard": "main",
+        }
         header_zones.update({
             _header_key(header): zone
             for header, zone in {self.deck_header: "main", self.sideboard_header: "sideboard"}.items()

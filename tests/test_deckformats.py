@@ -166,3 +166,36 @@ def test_commander_and_companion_headers_route_to_their_zones(name, commander_he
 def test_moxfield_strips_the_set_and_collector_number_suffix():
     parsed = get_format("moxfield").parse("4 Lightning Bolt (2XM) 123\n")
     assert [(e.raw_name, e.count) for e in parsed.entries] == [("Lightning Bolt", 4)]
+
+
+@pytest.mark.parametrize("name", ["text", "moxfield"])
+@pytest.mark.parametrize("main_header", ["Deck", "Main", "Mainboard"])
+def test_commander_first_paste_recognizes_a_built_in_main_header(name, main_header):
+    # Regression: text/moxfield have no configured deck_header, so a
+    # Commander-first paste (common in real Moxfield exports) used to have
+    # no way back to "main" and silently re-zoned the whole main deck as
+    # "commander".
+    text = f"Commander\n1 Atraxa, Grand Unifier\n\n{main_header}\n4 Lightning Bolt\n20 Mountain\n"
+    parsed = get_format(name).parse(text)
+    assert parsed.unparsed == []
+    assert sorted((e.raw_name, e.zone) for e in parsed.entries) == [
+        ("Atraxa, Grand Unifier", "commander"),
+        ("Lightning Bolt", "main"),
+        ("Mountain", "main"),
+    ]
+
+
+@pytest.mark.parametrize("name", ["text", "moxfield"])
+def test_commander_first_paste_with_no_main_header_still_mis_zones_main_deck(name):
+    # Documented remaining gap (accepted out of scope for this fix round):
+    # when the paste has NO explicit main-deck header at all between the
+    # commander line and the main-deck lines, there is still no header to
+    # switch back to "main" on, so the main deck is mis-zoned as "commander".
+    text = "Commander\n1 Atraxa, Grand Unifier\n\n4 Lightning Bolt\n20 Mountain\n"
+    parsed = get_format(name).parse(text)
+    assert parsed.unparsed == []
+    assert sorted((e.raw_name, e.zone) for e in parsed.entries) == [
+        ("Atraxa, Grand Unifier", "commander"),
+        ("Lightning Bolt", "commander"),
+        ("Mountain", "commander"),
+    ]
