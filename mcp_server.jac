@@ -25,6 +25,8 @@ import anyio;
 import from dataclasses { asdict, is_dataclass }
 import from datetime { datetime, timezone }
 import from mcp.server.mcpserver { MCPServer }
+import from mcp.server.apps { Apps }
+import from mcp_types { CallToolResult, TextContent }
 import from mcp.server.stdio { stdio_server }
 import from jaclang { JacRuntime as Jac }
 import from jaclang.runtimelib.context { ExecutionContext }
@@ -37,7 +39,47 @@ import from legality { FORMAT_LABELS, GetFormatRules }
 
 glob APP_DIR: str = os.path.dirname(os.path.abspath(__file__)),
      LOCK: threading.Lock = threading.Lock(),
-     GUEST_ROOT: list[str] = [];
+     GUEST_ROOT: list[str] = [],
+     DECK_UI: str = "ui://knowledge-pool/deck-table.html";
+
+"""Show a deck to the user as a table in the chat: cards by zone, totals and legality.
+Clients that support MCP Apps (Claude Desktop and claude.ai) render it as an HTML table;
+others get the same list as Markdown. Use deck_get when you only need the data."""
+def deck_show(deck_id: str) -> CallToolResult {
+    view = deck_or_error(run_walker(GetDeck(deck_id=deck_id)), deck_id);
+    if "error" in view {
+        return CallToolResult(content=[TextContent(text=view["error"])], is_error=True);
+    }
+    return CallToolResult(content=[TextContent(text=deck_markdown(view))], structured_content=view);
+}
+
+"""The deck as a Markdown table, for clients that do not render MCP Apps."""
+def deck_markdown(view: dict) -> str {
+    lines = [
+        f"## {view['name']}",
+        f"{view['format']}, {view['main_total']} main, {view['sideboard_total']} sideboard. "
+        + ("Legal." if view["legal"] else "Not legal: " + "; ".join(v["message"] for v in view["violations"]))
+    ];
+    for (zone, title) in [("main", "Main deck"), ("sideboard", "Sideboard")] {
+        rows = [c for c in view["cards"] if c["zone"] == zone];
+        if rows {
+            lines += ["", f"### {title}", "", "| # | Card | Cost | Type |", "|--:|---|---|---|"];
+            lines += [f"| {c['count']} | {c['name']} | {c['mana_cost']} | {c['type_line']} |" for c in rows];
+        }
+    }
+    return "\n".join(lines);
+}
+
+"""MCP Apps: deck_show is bound to a self-contained HTML view (ui/deck_table.html)
+that the host renders in a sandboxed iframe and fills from the tool result."""
+def make_apps -> Apps {
+    apps = Apps();
+    apps.tool(resource_uri=DECK_UI)(deck_show);
+    with open(os.path.join(APP_DIR, "ui", "deck_table.html"), encoding="utf-8") as f {
+        apps.add_html_resource(DECK_UI, f.read(), title="Deck table", prefers_border=True);
+    }
+    return apps;
+}
 
 glob server: MCPServer = MCPServer(
     "knowledge-pool",
@@ -45,8 +87,10 @@ glob server: MCPServer = MCPServer(
         "Build and edit Magic: The Gathering decks in the user's local Knowledge Pool app. "
         + "Card data comes only from the MTGJSON catalogue: turn card names into oracle ids with "
         + "resolve_names (or search_cards) before adding them, and never add a card that was not "
-        + "resolved. Give a short reason for every deck change. Finish with deck_validate."
-    )
+        + "resolved. Give a short reason for every deck change. Finish with deck_validate. "
+        + "When the user wants to see a deck, call deck_show."
+    ),
+    extensions=[make_apps()]
 );
 
 """The root id of the app's shared (guest) graph, which the web app's `:pub` walkers use."""
