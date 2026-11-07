@@ -99,3 +99,34 @@ def test_cards_in_a_deck_survive_restart(tmp_path):
         assert _lines(view) == {"Goblin Guide": 4}
     finally:
         second.close()
+
+
+def test_mana_analysis_in_deck_view_and_analyze_deck(tmp_path):
+    client = JacTestClient.from_file("main.jac", base_path=str(tmp_path))
+    try:
+        deck_id = _new_deck(client)
+        mountain = _oracle_id("Mountain")
+        bolt = _oracle_id("Lightning Bolt")
+        elves = _oracle_id("Llanowar Elves")
+        forest = _oracle_id("Forest")
+
+        client.post("/walker/AddCard", json={"deck_id": deck_id, "oracle_id": mountain, "count": 4})
+        client.post("/walker/AddCard", json={"deck_id": deck_id, "oracle_id": bolt, "count": 2})
+        client.post("/walker/AddCard", json={"deck_id": deck_id, "oracle_id": elves, "count": 1})
+        # sideboard cards must not count towards lands, pips or sources
+        client.post(
+            "/walker/AddCard", json={"deck_id": deck_id, "oracle_id": forest, "count": 3, "zone": "sideboard"}
+        )
+
+        view = _reports(client.post("/walker/GetDeck", json={"deck_id": deck_id}))[0]
+        mana = view["mana"]
+        assert mana["land_count"] == 4
+        assert mana["pips"] == {"W": 0, "U": 0, "B": 0, "R": 2, "G": 1}
+        assert mana["sources"] == {"W": 0, "U": 0, "B": 0, "R": 4, "G": 1}
+
+        analysis = _reports(client.post("/walker/AnalyzeDeck", json={"deck_id": deck_id}))[0]
+        assert analysis["mana"]["land_count"] == mana["land_count"]
+        assert analysis["mana"]["pips"] == mana["pips"]
+        assert analysis["mana"]["sources"] == mana["sources"]
+    finally:
+        client.close()
