@@ -6,7 +6,7 @@ caller shares one graph and nobody has to log in.
 """
 
 import from datetime { datetime, timezone }
-import from cards { Card, card_node }
+import from cards { Card, card_node, is_land }
 import from legality { Format, Violation, Entry, FORMAT_LABELS, format_node, check_entries }
 import from mana { ManaLine, ManaProfile, mana_profile }
 
@@ -208,6 +208,41 @@ def deck_view(deck: Deck) -> DeckView {
     );
 }
 
+glob CURVE_BUCKETS: list[str] = ["0", "1", "2", "3", "4", "5", "6", "7+"];
+
+"""Non-land mana-value buckets (0..6, 7+) over a deck's main deck, by card count,
+plus the average non-land mana value."""
+obj ManaCurve {
+    has buckets: dict[str, int] = {},
+        average_mv: float = 0.0;
+}
+
+def bucket_for(mv: float) -> str {
+    n = int(mv);
+    return "7+" if n >= 7 else str(max(n, 0));
+}
+
+def mana_curve(deck: Deck) -> ManaCurve {
+    buckets: dict[str, int] = {b: 0 for b in CURVE_BUCKETS};
+    total_mv = 0.0;
+    total_count = 0;
+    for (e, c) in holdings(deck) {
+        if e.zone != "main" or is_land(c) {
+            continue;
+        }
+        buckets[bucket_for(c.mana_value)] += e.count;
+        total_mv += c.mana_value * e.count;
+        total_count += e.count;
+    }
+    avg: float = 0.0;
+    if total_count > 0 {
+        raw: float = total_mv / total_count;
+        scaled: float = round(raw * 100);
+        avg = scaled / 100.0;
+    }
+    return ManaCurve(buckets=buckets, average_mv=avg);
+}
+
 """The Holds edge for this card in this zone, if any."""
 def holds_edge(deck: Deck, oid: str, zone: str) -> Holds | None {
     for (e, c) in holdings(deck) {
@@ -242,15 +277,18 @@ walker:pub GetDeck(DeckAction) {
     }
 }
 
-"""A deck's analysis: mana today, curve and card roles once #41/#42 land."""
-obj AnalysisView {
-    has mana: ManaProfile;
+"""Analysis of one deck: mana profile and curve. #41 adds card roles here as
+it lands."""
+obj DeckAnalysis {
+    has id: str,
+        mana: ManaProfile,
+        curve: ManaCurve;
 }
 
 """Report a deck's mana analysis. Reports nothing if the deck id is unknown."""
 walker:pub AnalyzeDeck {
     has deck_id: str,
-        reports: list[AnalysisView] = [];
+        reports: list[DeckAnalysis] = [];
 
     can locate with Root entry {
         try {
@@ -264,7 +302,11 @@ walker:pub AnalyzeDeck {
     }
 
     can analyze with Deck entry {
-        report AnalysisView(mana=mana_profile(main_deck_mana_lines(here)));
+        report DeckAnalysis(
+            id=jid(here),
+            mana=mana_profile(main_deck_mana_lines(here)),
+            curve=mana_curve(here)
+        );
     }
 }
 
