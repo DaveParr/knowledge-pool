@@ -134,6 +134,16 @@ async def main() -> None:
         shown = await session.call_tool("deck_show", {"deck_id": deck["id"]})
         check("deck_show gives the view the deck data", shown.structured_content["main_total"] == 60, shown.structured_content)
         check("deck_show gives other clients a Markdown table", "| 52 | Mountain |" in shown.content[0].text, shown.content[0].text)
+        # Real Scryfall tags vary by card and change over time, so this checks
+        # the plumbing (a tagged card's actual tags land in both outputs),
+        # not fixed tag names.
+        bolt_card = next(c for c in shown.structured_content["cards"] if c["name"] == "Lightning Bolt")
+        check("deck_show's structured content carries oracle tags per card", len(bolt_card["oracle_tags"]) > 0, bolt_card)
+        check(
+            "deck_show's Markdown table includes oracle tags",
+            all(tag in shown.content[0].text for tag in bolt_card["oracle_tags"]),
+            (bolt_card["oracle_tags"], shown.content[0].text),
+        )
 
         wait_for_web()
         web_decks = web("/walker/ListDecks")["data"]["reports"][0]

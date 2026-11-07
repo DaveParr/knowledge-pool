@@ -73,8 +73,11 @@ def deck_markdown(view: dict) -> str {
     for (zone, title) in [("main", "Main deck"), ("sideboard", "Sideboard")] {
         rows = [c for c in view["cards"] if c["zone"] == zone];
         if rows {
-            lines += ["", f"### {title}", "", "| # | Card | Cost | Type |", "|--:|---|---|---|"];
-            lines += [f"| {c['count']} | {c['name']} | {c['mana_cost']} | {c['type_line']} |" for c in rows];
+            lines += ["", f"### {title}", "", "| # | Card | Cost | Type | Tags |", "|--:|---|---|---|---|"];
+            lines += [
+                f"| {c['count']} | {c['name']} | {c['mana_cost']} | {c['type_line']} | {', '.join(t for t in c['oracle_tags'])} |"
+                for c in rows
+            ];
         }
     }
     return "\n".join(lines);
