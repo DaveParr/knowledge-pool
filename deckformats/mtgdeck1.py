@@ -29,8 +29,8 @@ class Mtgdeck1Format:
     def parse(self, text: str) -> ParsedDeck:
         """Parse an mtgdeck/1 document.
 
-        A structurally broken document (not JSON, not an object, `zones` not
-        an object, a zone not a list) raises ValueError. A single bad entry
+        A structurally broken document (not JSON, not an object, `schema` not
+        "mtgdeck/1", `zones` not an object, a zone not a list) raises ValueError. A single bad entry
         is skipped and described in `unparsed`, so the rest still imports.
         """
         try:
@@ -39,6 +39,8 @@ class Mtgdeck1Format:
             raise ValueError("Not a valid mtgdeck/1 document: the text is not JSON.") from None
         if not isinstance(doc, dict):
             raise ValueError("Not a valid mtgdeck/1 document: expected a JSON object.")
+        if doc.get("schema") != "mtgdeck/1":
+            raise ValueError('Not a valid mtgdeck/1 document: `schema` must be "mtgdeck/1".')
         zones = doc.get("zones", {})
         if not isinstance(zones, dict):
             raise ValueError("Not a valid mtgdeck/1 document: `zones` must be an object.")

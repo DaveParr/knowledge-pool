@@ -101,6 +101,9 @@ def test_a_line_that_is_not_count_and_name_is_unparsed_not_dropped():
     json.dumps(["a", "list"]),
     json.dumps({"schema": "mtgdeck/1", "zones": ["main"]}),
     json.dumps({"schema": "mtgdeck/1", "zones": {"main": {"name": "Mountain", "count": 1}}}),
+    json.dumps({}),
+    json.dumps({"schema": "mtgdeck/2", "name": "x", "zones": {}}),
+    json.dumps({"name": "x", "mainBoard": [{"count": 4, "name": "Lightning Bolt"}]}),
 ])
 def test_mtgdeck1_rejects_a_malformed_document_with_a_value_error(text):
     with pytest.raises(ValueError):

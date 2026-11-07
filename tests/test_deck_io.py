@@ -1,5 +1,7 @@
 import json
 
+import pytest
+
 from jaclang.runtimelib.testing import JacTestClient
 
 from catalog import store
@@ -244,5 +246,24 @@ def test_a_stale_oracle_id_falls_back_to_the_card_name(tmp_path):
         result = _reports(client.post("/walker/DeckImport", json={"deck_id": deck_id, "format": "mtgdeck1", "text": text}))[0]
         assert result["unresolved"] == ["Flargle the Unreal"]
         assert [(c["name"], c["count"]) for c in result["deck"]["cards"]] == [("Lightning Bolt", 4)]
+    finally:
+        client.close()
+
+
+@pytest.mark.parametrize("fmt, text", [
+    ("text", ""),
+    ("arena", "   \n\n"),
+    ("mtgdeck1", json.dumps({"schema": "mtgdeck/1", "name": "empty", "zones": {}})),
+    ("mtgdeck1", json.dumps({"name": "x", "mainBoard": [{"count": 4, "name": "Lightning Bolt"}]})),
+])
+def test_an_import_with_no_cards_leaves_the_deck_untouched(tmp_path, fmt, text):
+    client = JacTestClient.from_file("main.jac", base_path=str(tmp_path))
+    try:
+        deck_id = _new_deck(client)
+        client.post("/walker/AddCard", json={"deck_id": deck_id, "oracle_id": _oracle_id("Goblin Guide"), "count": 4})
+        result = _reports(client.post("/walker/DeckImport", json={"deck_id": deck_id, "format": fmt, "text": text}))[0]
+        assert len(result["unresolved"]) == 1
+        view = _reports(client.post("/walker/GetDeck", json={"deck_id": deck_id}))[0]
+        assert [(c["name"], c["count"]) for c in view["cards"]] == [("Goblin Guide", 4)]
     finally:
         client.close()

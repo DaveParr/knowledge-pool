@@ -54,8 +54,8 @@ walker:pub DeckExport(DeckAction) {
 Lines or entries that don't resolve to a known card are listed in
 `unresolved` and never added; an entry in an unknown zone is listed as
 "<name> (invalid zone: <zone>)". The same card listed more than once in a
-zone (e.g. two printings) is summed. If the text can't be parsed at all, or
-nothing in it resolves, the deck is left exactly as it was."""
+zone (e.g. two printings) is summed. If the text can't be parsed at all, has
+no cards in it, or nothing in it resolves, the deck is left exactly as it was."""
 walker:pub DeckImport(DeckAction) {
     has format: str = "mtgdeck1",
         text: str = "",
@@ -73,6 +73,11 @@ walker:pub DeckImport(DeckAction) {
             disengage;
         } except ValueError as err {
             report ImportResult(deck=deck_view(here), unresolved=[str(err)]);
+            disengage;
+        }
+
+        if not (parsed.entries or parsed.unparsed) {
+            report ImportResult(deck=deck_view(here), unresolved=["Nothing to import: no cards found."]);
             disengage;
         }
 
@@ -115,9 +120,9 @@ walker:pub DeckImport(DeckAction) {
             groups[key] = entry;
         }
 
-        # Write pass: never empty a deck when the input had content but none
-        # of it resolved (a bad paste or the wrong format selected).
-        if groups or not (parsed.entries or parsed.unparsed) {
+        # Write pass: never empty a deck when none of the input resolved
+        # (a bad paste or the wrong format selected).
+        if groups {
             for (e, c) in holdings(here) {
                 del e;
             }
