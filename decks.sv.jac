@@ -46,14 +46,15 @@ walker:pub CreateDeck {
         if not name or self.format not in FORMAT_LABELS {
             disengage;
         }
-        deck = Deck(
-            name=name,
-            created_at=datetime.now(timezone.utc).isoformat(),
-            format=self.format
-        );
-        here ++> deck;
-        report deck;
+        report new_deck(here, name, self.format);
     }
+}
+
+"""Create a deck under `owner` (the root) and return it. Callers check the name and format."""
+def new_deck(owner: Root, name: str, format: str) -> Deck {
+    deck = Deck(name=name, created_at=datetime.now(timezone.utc).isoformat(), format=format);
+    owner ++> deck;
+    return deck;
 }
 
 """Report every deck, oldest first."""

@@ -1,26 +1,22 @@
 """One deck: search real cards, add them, change counts, remove them."""
 
+import from .export_menu { ExportMenu }
+
 sv import from decks {
     DeckView, DeckCard, FormatInfo, DeckAnalysis, GetDeck, SetDeckFormat, AddCard, SetCardCount, RemoveCard,
     AnalyzeDeck, list_formats
 }
-sv import from deck_io { DeckExport, DeckImport }
 sv import from legality { Violation }
 sv import from mana { ManaProfile }
 sv import from cards { CardHit, search_cards }
 
-def:pub DeckDetail(deckId: str, onBack: Callable[[], None]) -> JsxElement {
+def:pub DeckDetail(deckId: str, importNotes: list[str], onBack: Callable[[], None]) -> JsxElement {
     has deck: DeckView | None = None,
         analysis: DeckAnalysis | None = None,
         query: str = "",
         hits: list[CardHit] = [],
         searched: bool = False,
-        formats: list[FormatInfo] = [],
-        exportFormat: str = "mtgdeck1",
-        exportText: str = "",
-        importFormat: str = "mtgdeck1",
-        importText: str = "",
-        unresolved: list[str] = [];
+        formats: list[FormatInfo] = [];
 
     can with entry {
         loadDeck();
@@ -33,8 +29,6 @@ def:pub DeckDetail(deckId: str, onBack: Callable[[], None]) -> JsxElement {
     async def setCount(oracleId: str, zone: str, value: str) -> None;
     async def removeCard(oracleId: str, zone: str) -> None;
     async def setFormat(value: str) -> None;
-    async def runExport -> None;
-    async def runImport -> None;
 
     def back(_e: MouseEvent) {
         onBack();
@@ -58,7 +52,16 @@ def:pub DeckDetail(deckId: str, onBack: Callable[[], None]) -> JsxElement {
     return
         <section>
             <button onClick={back} style={{"marginBottom": "1rem"}}>Back to decks</button>
-            <h1>{deck.name}</h1>
+            <div style={{"display": "flex", "justifyContent": "space-between", "alignItems": "center"}}>
+                <h1>{deck.name}</h1>
+                <ExportMenu deckId={deckId} deckName={deck.name}/>
+            </div>
+            {<div role="status" style={{"padding": "0.75rem 1rem", "marginBottom": "1rem", "borderRadius": "6px", "backgroundColor": "#fff8e1"}}>
+                <strong>Lines that didn't resolve</strong>
+                <ul style={{"margin": "0.25rem 0 0", "paddingLeft": "1.25rem"}}>
+                    {[<li key={str(i)}>{line}</li> for (i, line) in enumerate(importNotes)]}
+                </ul>
+            </div> if importNotes else None}
             <p>
                 <label>
                     {"Format "}
@@ -217,38 +220,5 @@ def:pub DeckDetail(deckId: str, onBack: Callable[[], None]) -> JsxElement {
                     for hit in hits
                 ]}
             </ul>
-            <h2>Export</h2>
-            <p>
-                <select aria-label="Export format" value={exportFormat} onChange={lambda e: ChangeEvent { exportFormat = e.target.value; }}>
-                    <option value="mtgdeck1">mtgdeck/1</option>
-                    <option value="mtgjson">MTGJSON Deck JSON</option>
-                    <option value="text">Plain text</option>
-                    <option value="arena">MTGA/MTGO</option>
-                    <option value="moxfield">Moxfield</option>
-                </select>
-                <button onClick={lambda _e: MouseEvent { runExport(); }}>Export</button>
-            </p>
-            <textarea readOnly={True} aria-label="Exported deck" value={exportText} style={{"width": "100%", "height": "8rem"}} />
-
-            <h2>Import</h2>
-            <p>
-                <select aria-label="Import format" value={importFormat} onChange={lambda e: ChangeEvent { importFormat = e.target.value; }}>
-                    <option value="mtgdeck1">mtgdeck/1</option>
-                    <option value="text">Plain text</option>
-                    <option value="arena">MTGA/MTGO</option>
-                    <option value="moxfield">Moxfield</option>
-                </select>
-            </p>
-            <textarea
-                aria-label="Deck list to import"
-                value={importText}
-                onChange={lambda e: ChangeEvent { importText = e.target.value; }}
-                style={{"width": "100%", "height": "8rem"}}
-            />
-            <button onClick={lambda _e: MouseEvent { runImport(); }}>Import</button>
-            {<div role="status">
-                <strong>Lines that didn't resolve</strong>
-                <ul>{[<li key={line}>{line}</li> for line in unresolved]}</ul>
-            </div> if unresolved else None}
         </section>;
 }

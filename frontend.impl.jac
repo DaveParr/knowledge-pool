@@ -1,12 +1,19 @@
 """Handlers for the Decks view."""
 
 impl app.loadDecks -> None {
+    if not formats {
+        formats = await list_formats();
+    }
     result = root spawn ListDecks();
     decks = result.reports[0] if result.reports else [];
 }
 
 impl app.createDeck(e: FormEvent) -> None {
     e.preventDefault();
+    if importOpen {
+        await createFromList();
+        return;
+    }
     if not name.strip() {
         error = "A deck needs a name.";
         return;
@@ -15,4 +22,31 @@ impl app.createDeck(e: FormEvent) -> None {
     root spawn CreateDeck(name=name);
     name = "";
     await loadDecks();
+}
+
+impl app.createFromList -> None {
+    if not importText.strip() {
+        error = "Paste a deck list to import.";
+        return;
+    }
+    result = root spawn CreateDeckFromList(name=name, format=importFormat, text=importText, play_format=importPlayFormat);
+    if not result.reports {
+        error = "That import format isn't supported.";
+        return;
+    }
+    outcome = result.reports[0];
+    if not outcome.deck_id {
+        missing = "";
+        for line in outcome.unresolved {
+            missing = line if missing == "" else missing + "; " + line;
+        }
+        error = "Nothing imported, so no deck was created. Didn't resolve: " + missing;
+        return;
+    }
+    error = "";
+    name = "";
+    importText = "";
+    importOpen = False;
+    importNotes = outcome.unresolved;
+    openDeckId = outcome.deck_id;
 }
