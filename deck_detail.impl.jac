@@ -77,4 +77,5 @@ impl DeckDetail.runImport -> None {
         deck = outcome.deck;
         unresolved = outcome.unresolved;
     }
+    await refreshAnalysis();
 }
