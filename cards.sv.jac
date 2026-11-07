@@ -19,7 +19,14 @@ node Card {
         types: list[str] = [],
         type_line: str = "",
         text: str = "",
-        legal: dict[str, str] = {};
+        legal: dict[str, str] = {},
+        oracle_tags: list[str] = [],
+        produced_mana: list[str] = [];
+}
+
+"""True for a card that is only ever a land -- no face/type gives it a non-land role."""
+def:pub is_land(card: Card) -> bool {
+    return len(card.types) > 0 and all([t == "Land" for t in card.types]);
 }
 
 """One search result."""
@@ -93,8 +100,30 @@ def card_node(home: Root, oid: str) -> Card | None {
         types=c["types"] as list[str],
         type_line=c["type_line"] as str,
         text=c["text"] as str,
-        legal=c["legal"] as dict[str, str]
+        legal=c["legal"] as dict[str, str],
+        oracle_tags=c["oracle_tags"] as list[str],
+        produced_mana=c["produced_mana"] as list[str]
     );
     cat ++> card;
     return card;
+}
+
+"""Re-read every Card node's `oracle_tags` from SQLite. `card_node()` never
+refreshes a Card once it's materialized, so this is the explicit step an
+operator runs after `catalog/ingest.py` rebuilds the catalogue."""
+walker:pub SyncCardTags {
+    has reports: list[int] = [];
+
+    can sync with Root entry {
+        cat = catalog_node(here);
+        updated = 0;
+        for card in [cat-->[?:Card]] {
+            c = catalog_get(card.oracle_id);
+            if c is not None {
+                card.oracle_tags = c["oracle_tags"] as list[str];
+                updated += 1;
+            }
+        }
+        report updated;
+    }
 }

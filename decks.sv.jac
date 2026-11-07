@@ -6,8 +6,9 @@ caller shares one graph and nobody has to log in.
 """
 
 import from datetime { datetime, timezone }
-import from cards { Card, card_node }
+import from cards { Card, card_node, is_land }
 import from legality { Format, Violation, Entry, FORMAT_LABELS, format_node, check_entries }
+import from mana { ManaLine, ManaProfile, mana_profile }
 
 """One change made to a deck through MCP, with the reason given for it."""
 obj ChangeNote {
@@ -87,6 +88,7 @@ obj DeckCard {
         mana_cost: str,
         type_line: str,
         text: str = "",
+        oracle_tags: list[str] = [],
         roles: list[str] = [],
         tags: list[str] = [],
         locked: bool = False,
@@ -98,6 +100,7 @@ obj DeckView {
     has id: str,
         name: str,
         format: str,
+        mana: ManaProfile,
         cards: list[DeckCard] = [],
         main_total: int = 0,
         sideboard_total: int = 0,
@@ -121,6 +124,21 @@ def holdings(deck: Deck) -> list[tuple[Holds, Card]] {
         }
     }
     return pairs;
+}
+
+"""The deck's main-deck lines, as the mana analyser sees them. The sideboard
+is not part of the mana base."""
+def main_deck_mana_lines(deck: Deck) -> list[ManaLine] {
+    lines: list[ManaLine] = [];
+    for (e, c) in holdings(deck) {
+        if e.zone != "main" {
+            continue;
+        }
+        lines.append(
+            ManaLine(count=e.count, is_land="Land" in c.types, mana_cost=c.mana_cost, produced_mana=c.produced_mana)
+        );
+    }
+    return lines;
 }
 
 """Check a deck against its format's rules. Runs after every edit."""
@@ -167,6 +185,7 @@ def deck_view(deck: Deck) -> DeckView {
                 mana_cost=c.mana_cost,
                 type_line=c.type_line,
                 text=c.text,
+                oracle_tags=c.oracle_tags,
                 roles=e.roles,
                 tags=e.tags,
                 locked=e.locked,
@@ -180,6 +199,7 @@ def deck_view(deck: Deck) -> DeckView {
         id=jid(deck),
         name=deck.name,
         format=deck.format,
+        mana=mana_profile(main_deck_mana_lines(deck)),
         cards=lines,
         main_total=sum([l.count for l in lines if l.zone == "main"]),
         sideboard_total=sum([l.count for l in lines if l.zone == "sideboard"]),
@@ -187,6 +207,41 @@ def deck_view(deck: Deck) -> DeckView {
         violations=check.violations,
         history=deck.history[-20:]
     );
+}
+
+glob CURVE_BUCKETS: list[str] = ["0", "1", "2", "3", "4", "5", "6", "7+"];
+
+"""Non-land mana-value buckets (0..6, 7+) over a deck's main deck, by card count,
+plus the average non-land mana value."""
+obj ManaCurve {
+    has buckets: dict[str, int] = {},
+        average_mv: float = 0.0;
+}
+
+def bucket_for(mv: float) -> str {
+    n = int(mv);
+    return "7+" if n >= 7 else str(max(n, 0));
+}
+
+def mana_curve(deck: Deck) -> ManaCurve {
+    buckets: dict[str, int] = {b: 0 for b in CURVE_BUCKETS};
+    total_mv = 0.0;
+    total_count = 0;
+    for (e, c) in holdings(deck) {
+        if e.zone != "main" or is_land(c) {
+            continue;
+        }
+        buckets[bucket_for(c.mana_value)] += e.count;
+        total_mv += c.mana_value * e.count;
+        total_count += e.count;
+    }
+    avg: float = 0.0;
+    if total_count > 0 {
+        raw: float = total_mv / total_count;
+        scaled: float = round(raw * 100);
+        avg = scaled / 100.0;
+    }
+    return ManaCurve(buckets=buckets, average_mv=avg);
 }
 
 """The Holds edge for this card in this zone, if any."""
@@ -220,6 +275,39 @@ walker DeckAction {
 walker:pub GetDeck(DeckAction) {
     can show with Deck entry {
         report deck_view(here);
+    }
+}
+
+"""Analysis of one deck: mana profile and curve. #41 adds card roles here as
+it lands."""
+obj DeckAnalysis {
+    has id: str,
+        mana: ManaProfile,
+        curve: ManaCurve;
+}
+
+"""Report a deck's mana analysis. Reports nothing if the deck id is unknown."""
+walker:pub AnalyzeDeck {
+    has deck_id: str,
+        reports: list[DeckAnalysis] = [];
+
+    can locate with Root entry {
+        try {
+            target = jobj(self.deck_id);
+        } except ValueError {
+            disengage;
+        }
+        if isinstance(target, Deck) {
+            visit [target];
+        }
+    }
+
+    can analyze with Deck entry {
+        report DeckAnalysis(
+            id=jid(here),
+            mana=mana_profile(main_deck_mana_lines(here)),
+            curve=mana_curve(here)
+        );
     }
 }
 

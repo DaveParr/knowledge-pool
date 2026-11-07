@@ -3,13 +3,16 @@
 import from .export_menu { ExportMenu }
 
 sv import from decks {
-    DeckView, DeckCard, FormatInfo, GetDeck, SetDeckFormat, AddCard, SetCardCount, RemoveCard, list_formats
+    DeckView, DeckCard, FormatInfo, DeckAnalysis, GetDeck, SetDeckFormat, AddCard, SetCardCount, RemoveCard,
+    AnalyzeDeck, list_formats
 }
 sv import from legality { Violation }
+sv import from mana { ManaProfile }
 sv import from cards { CardHit, search_cards }
 
 def:pub DeckDetail(deckId: str, importNotes: list[str], onBack: Callable[[], None]) -> JsxElement {
     has deck: DeckView | None = None,
+        analysis: DeckAnalysis | None = None,
         query: str = "",
         hits: list[CardHit] = [],
         searched: bool = False,
@@ -20,6 +23,7 @@ def:pub DeckDetail(deckId: str, importNotes: list[str], onBack: Callable[[], Non
     }
 
     async def loadDeck -> None;
+    async def refreshAnalysis -> None;
     async def runSearch(e: FormEvent) -> None;
     async def addCard(oracleId: str, zone: str) -> None;
     async def setCount(oracleId: str, zone: str, value: str) -> None;
@@ -30,9 +34,20 @@ def:pub DeckDetail(deckId: str, importNotes: list[str], onBack: Callable[[], Non
         onBack();
     }
 
+    def curveBarWidth(count: int, max_count: int) -> str {
+        pct = round(100 * count / max_count) if max_count > 0 else 0;
+        return str(pct) + "%";
+    }
+
     if deck is None {
         return <p>Loading deck...</p>;
     }
+
+    curveBuckets = analysis.curve.buckets if analysis is not None else None;
+    maxBucketCount = max(
+        curveBuckets["0"], curveBuckets["1"], curveBuckets["2"], curveBuckets["3"],
+        curveBuckets["4"], curveBuckets["5"], curveBuckets["6"], curveBuckets["7+"], 1
+    ) if curveBuckets is not None else 1;
 
     return
         <section>
@@ -75,6 +90,45 @@ def:pub DeckDetail(deckId: str, importNotes: list[str], onBack: Callable[[], Non
                     {[<li key={str(i)}>{v.message}</li> for (i, v) in enumerate(deck.violations)]}
                 </ul>
             </div>
+            <div style={{"marginBottom": "1rem"}}>
+                <strong>{"Lands: " + str(deck.mana.land_count)}</strong>
+                <ul style={{"margin": "0.25rem 0 0", "paddingLeft": "1.25rem"}}>
+                    {[
+                        <li key={colour}>
+                            {
+                                colour + ": " + str(deck.mana.pips[colour]) + " pips, "
+                                + str(deck.mana.sources[colour]) + " sources"
+                            }
+                        </li>
+                        for colour in ["W", "U", "B", "R", "G"]
+                    ]}
+                </ul>
+            </div>
+            {
+                <section style={{"marginBottom": "2rem"}}>
+                    <h2>Mana curve</h2>
+                    <p>{"Average mana value (non-land): " + f"{analysis.curve.average_mv:.2f}"}</p>
+                    <div>
+                        {[
+                            <div
+                                key={label}
+                                style={{"display": "flex", "alignItems": "center", "gap": "0.5rem", "marginBottom": "0.15rem"}}
+                            >
+                                <span style={{"width": "2rem"}}>{label}</span>
+                                <div style={{
+                                    "backgroundColor": "#1976d2",
+                                    "height": "1rem",
+                                    "width": curveBarWidth(count, maxBucketCount)
+                                }}/>
+                                <span>{str(count)}</span>
+                            </div>
+                            # CURVE_BUCKETS order from the server (0..6, 7+) is what drives display order here.
+                            for (label, count) in analysis.curve.buckets.items()
+                        ]}
+                    </div>
+                </section>
+                if analysis is not None else None
+            }
             <table style={{"width": "100%", "borderCollapse": "collapse", "marginBottom": "2rem"}}>
                 <tbody>
                     {[
@@ -93,6 +147,26 @@ def:pub DeckDetail(deckId: str, importNotes: list[str], onBack: Callable[[], Non
                             <td style={{"color": "#666"}}>{"Sideboard" if line.zone == "sideboard" else ""}</td>
                             <td style={{"color": "#666"}}>{line.mana_cost}</td>
                             <td style={{"color": "#666"}}>{line.type_line}</td>
+                            <td>
+                                {[
+                                    <span
+                                        key={tag}
+                                        style={{
+                                            "display": "inline-block",
+                                            "padding": "0.1rem 0.5rem",
+                                            "marginRight": "0.25rem",
+                                            "marginBottom": "0.15rem",
+                                            "borderRadius": "999px",
+                                            "backgroundColor": "#eee",
+                                            "color": "#444",
+                                            "fontSize": "0.8rem"
+                                        }}
+                                    >
+                                        {tag}
+                                    </span>
+                                    for tag in line.oracle_tags
+                                ]}
+                            </td>
                             <td>
                                 <button
                                     aria-label={"Remove " + line.name + " from " + line.zone}

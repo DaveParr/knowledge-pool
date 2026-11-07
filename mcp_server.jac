@@ -42,7 +42,7 @@ import from jaclang.runtimelib.context { ExecutionContext }
 import from jaclang.jac0core.constant { Constants as Con }
 import from catalog { store }
 import from decks {
-    Deck, DeckView, CreateDeck, ListDecks, GetDeck, SetDeckFormat, EditDeck
+    Deck, DeckView, CreateDeck, ListDecks, GetDeck, SetDeckFormat, EditDeck, AnalyzeDeck
 }
 import from deck_io { DeckExport, DeckImport }
 import from legality { FORMAT_LABELS, GetFormatRules }
@@ -73,8 +73,11 @@ def deck_markdown(view: dict) -> str {
     for (zone, title) in [("main", "Main deck"), ("sideboard", "Sideboard")] {
         rows = [c for c in view["cards"] if c["zone"] == zone];
         if rows {
-            lines += ["", f"### {title}", "", "| # | Card | Cost | Type |", "|--:|---|---|---|"];
-            lines += [f"| {c['count']} | {c['name']} | {c['mana_cost']} | {c['type_line']} |" for c in rows];
+            lines += ["", f"### {title}", "", "| # | Card | Cost | Type | Tags |", "|--:|---|---|---|---|"];
+            lines += [
+                f"| {c['count']} | {c['name']} | {c['mana_cost']} | {c['type_line']} | {', '.join(t for t in c['oracle_tags'])} |"
+                for c in rows
+            ];
         }
     }
     return "\n".join(lines);
@@ -264,6 +267,16 @@ def deck_validate(deck_id: str) -> dict {
         "legal": view["legal"],
         "violations": view["violations"]
     };
+}
+
+"""Mana analysis for a deck: land count, coloured pips (spell demand) and
+coloured sources (lands and other cards that produce that colour), plus the
+non-land mana curve (card count by mana value, 0-6 and 7+) and its average.
+Main deck only - the sideboard is excluded. Card roles will join this tool
+once #41 lands."""
+@server.tool()
+def deck_analyze(deck_id: str) -> dict {
+    return deck_or_error(run_walker(AnalyzeDeck(deck_id=deck_id)), deck_id);
 }
 
 """Export a deck: mtgdeck1 (lossless), mtgjson (lossless, export only), or text/arena/moxfield (lossy)."""
