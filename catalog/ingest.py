@@ -32,7 +32,9 @@ USER_AGENT = "knowledge-pool-ingest/0.1 (+https://github.com/DaveParr/knowledge-
 DEFAULT_DB = Path("data/catalog.sqlite")
 DEFAULT_DOWNLOAD = Path("data/mtgjson/AtomicCards.json.xz")
 
-# Scryfall, like MTGJSON, answers 403 to a default urllib user agent.
+# Scryfall, like MTGJSON, answers 403 to a default urllib user agent, and
+# api.scryfall.com (unlike its data.scryfall.io CDN) also 400s without an
+# Accept header: https://scryfall.com/docs/api
 SCRYFALL_BULK_DATA_URL = "https://api.scryfall.com/bulk-data"
 DEFAULT_TAGS_DOWNLOAD = Path("data/scryfall/oracle-tags.jsonl.gz")
 
@@ -188,7 +190,10 @@ def download(dest: Path) -> Path:
 
 def oracle_tags_uri() -> str:
     """The current download URL for Scryfall's oracle_tags bulk file."""
-    req = urllib.request.Request(SCRYFALL_BULK_DATA_URL, headers={"User-Agent": USER_AGENT})
+    req = urllib.request.Request(
+        SCRYFALL_BULK_DATA_URL,
+        headers={"User-Agent": USER_AGENT, "Accept": "application/json"},
+    )
     with urllib.request.urlopen(req, timeout=60) as resp:
         index = json.load(resp)
     for entry in index["data"]:
