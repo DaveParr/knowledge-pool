@@ -114,7 +114,7 @@
     ],
     "supertypes": [],
     "text": "Haste\nWhenever this creature attacks, defending player reveals the top card of their library. If it's a land card, that player puts it into their hand.",
-    "type": "Creature — Goblin Scout",
+    "type": "Creature \u2014 Goblin Scout",
     "types": [
      "Creature"
     ]
@@ -154,7 +154,7 @@
     ],
     "supertypes": [],
     "text": "Haste\nProwess (Whenever you cast a noncreature spell, this creature gets +1/+1 until end of turn.)",
-    "type": "Creature — Human Monk",
+    "type": "Creature \u2014 Human Monk",
     "types": [
      "Creature"
     ]
@@ -202,7 +202,7 @@
      "Basic"
     ],
     "text": "({T}: Add {R}.)",
-    "type": "Basic Land — Mountain",
+    "type": "Basic Land \u2014 Mountain",
     "types": [
      "Land"
     ]
@@ -250,7 +250,7 @@
      "Basic"
     ],
     "text": "({T}: Add {G}.)",
-    "type": "Basic Land — Forest",
+    "type": "Basic Land \u2014 Forest",
     "types": [
      "Land"
     ]
@@ -298,7 +298,7 @@
      "Basic"
     ],
     "text": "({T}: Add {U}.)",
-    "type": "Basic Land — Island",
+    "type": "Basic Land \u2014 Island",
     "types": [
      "Land"
     ]
@@ -345,7 +345,7 @@
     ],
     "supertypes": [],
     "text": "{T}: Add {G}.",
-    "type": "Creature — Elf Druid",
+    "type": "Creature \u2014 Elf Druid",
     "types": [
      "Creature"
     ]
@@ -386,7 +386,7 @@
      "Bear"
     ],
     "supertypes": [],
-    "type": "Creature — Bear",
+    "type": "Creature \u2014 Bear",
     "types": [
      "Creature"
     ]
@@ -537,7 +537,7 @@
     ],
     "supertypes": [],
     "text": "At the beginning of your upkeep, look at the top card of your library. You may reveal that card. If an instant or sorcery card is revealed this way, transform this creature.",
-    "type": "Creature — Human Wizard",
+    "type": "Creature \u2014 Human Wizard",
     "types": [
      "Creature"
     ]
@@ -576,7 +576,7 @@
     ],
     "supertypes": [],
     "text": "Flying",
-    "type": "Creature — Human Insect",
+    "type": "Creature \u2014 Human Insect",
     "types": [
      "Creature"
     ]
@@ -616,7 +616,7 @@
     ],
     "supertypes": [],
     "text": "This creature gets +1/+1 for each other creature on the battlefield named Relentless Rats.\nA deck can have any number of cards named Relentless Rats.",
-    "type": "Creature — Rat",
+    "type": "Creature \u2014 Rat",
     "types": [
      "Creature"
     ]
@@ -723,7 +723,7 @@
      "Snow"
     ],
     "text": "({T}: Add {R}.)",
-    "type": "Basic Snow Land — Mountain",
+    "type": "Basic Snow Land \u2014 Mountain",
     "types": [
      "Land"
     ]
@@ -765,7 +765,7 @@
     ],
     "supertypes": [],
     "text": "Whenever a player casts a spell, if it's not their turn, this creature deals 4 damage to them.\nWhenever you activate an exhaust ability, put a +1/+1 counter on this creature.",
-    "type": "Creature — Minotaur Pilot",
+    "type": "Creature \u2014 Minotaur Pilot",
     "types": [
      "Creature"
     ]
@@ -809,7 +809,7 @@
     ],
     "supertypes": [],
     "text": "Trample\nWhenever you cast a spell with mana value 4 or greater, this creature deals 1 damage to each opponent.\n{5}{R}: Put two +1/+1 counters on this creature. Activate only as a sorcery.",
-    "type": "Creature — Human Citizen",
+    "type": "Creature \u2014 Human Citizen",
     "types": [
      "Creature"
     ]
@@ -853,7 +853,7 @@
     ],
     "supertypes": [],
     "text": "{T}: Target creature gains haste until end of turn. (It can attack and {T} this turn.)",
-    "type": "Creature — Dwarf Berserker",
+    "type": "Creature \u2014 Dwarf Berserker",
     "types": [
      "Creature"
     ]
@@ -898,7 +898,7 @@
     ],
     "supertypes": [],
     "text": "Trample (This creature can deal excess combat damage to the player or planeswalker it's attacking.)\nHaste (This creature can attack and {T} as soon as it comes under your control.)\nAt the beginning of the end step, sacrifice this creature.",
-    "type": "Creature — Elemental",
+    "type": "Creature \u2014 Elemental",
     "types": [
      "Creature"
     ]
@@ -942,7 +942,7 @@
     ],
     "supertypes": [],
     "text": "When this creature enters, create a number of 1/1 white Rabbit creature tokens equal to the number of other creatures you control named Hare Apparent.\nA deck can have any number of cards named Hare Apparent.",
-    "type": "Creature — Rabbit Noble",
+    "type": "Creature \u2014 Rabbit Noble",
     "types": [
      "Creature"
     ]
@@ -983,8 +983,8 @@
      "Soldier"
     ],
     "supertypes": [],
-    "text": "Valiant — Whenever this creature becomes the target of a spell or ability you control for the first time each turn, put a +1/+1 counter on it.\nWhen this creature dies, it deals damage equal to its power to each opponent.",
-    "type": "Creature — Mouse Soldier",
+    "text": "Valiant \u2014 Whenever this creature becomes the target of a spell or ability you control for the first time each turn, put a +1/+1 counter on it.\nWhen this creature dies, it deals damage equal to its power to each opponent.",
+    "type": "Creature \u2014 Mouse Soldier",
     "types": [
      "Creature"
     ]
@@ -1061,7 +1061,7 @@
     ],
     "supertypes": [],
     "text": "Prowess (Whenever you cast a noncreature spell, this creature gets +1/+1 until end of turn.)\nWhen this creature enters, exile the top card of your library. Until end of turn, you may play that card.",
-    "type": "Creature — Human Monk",
+    "type": "Creature \u2014 Human Monk",
     "types": [
      "Creature"
     ]
@@ -1100,7 +1100,7 @@
     ],
     "supertypes": [],
     "text": "This creature gets +1/+1 for each other creature named Seven Dwarves you control.\nA deck can have up to seven cards named Seven Dwarves.",
-    "type": "Creature — Dwarf",
+    "type": "Creature \u2014 Dwarf",
     "types": [
      "Creature"
     ]
@@ -1176,7 +1176,7 @@
     ]
    }
   ],
-  "Nazgûl": [
+  "Nazg\u00fbl": [
    {
     "colorIdentity": [
      "B"
@@ -1200,14 +1200,14 @@
     },
     "manaCost": "{2}{B}",
     "manaValue": 3.0,
-    "name": "Nazgûl",
+    "name": "Nazg\u00fbl",
     "subtypes": [
      "Wraith",
      "Knight"
     ],
     "supertypes": [],
-    "text": "Deathtouch\nWhen this creature enters, the Ring tempts you.\nWhenever the Ring tempts you, put a +1/+1 counter on each Wraith you control.\nA deck can have up to nine cards named Nazgûl.",
-    "type": "Creature — Wraith Knight",
+    "text": "Deathtouch\nWhen this creature enters, the Ring tempts you.\nWhenever the Ring tempts you, put a +1/+1 counter on each Wraith you control.\nA deck can have up to nine cards named Nazg\u00fbl.",
+    "type": "Creature \u2014 Wraith Knight",
     "types": [
      "Creature"
     ]
@@ -1239,7 +1239,7 @@
     "name": "Chrome Mox",
     "subtypes": [],
     "supertypes": [],
-    "text": "Imprint — When this artifact enters, you may exile a nonartifact, nonland card from your hand.\n{T}: Add one mana of any of the exiled card's colors.",
+    "text": "Imprint \u2014 When this artifact enters, you may exile a nonartifact, nonland card from your hand.\n{T}: Add one mana of any of the exiled card's colors.",
     "type": "Artifact",
     "types": [
      "Artifact"
@@ -1328,7 +1328,89 @@
      "Basic"
     ],
     "text": "({T}: Add {W}.)",
-    "type": "Basic Land — Plains",
+    "type": "Basic Land \u2014 Plains",
+    "types": [
+     "Land"
+    ]
+   }
+  ],
+  "Fireball": [
+   {
+    "colorIdentity": [
+     "R"
+    ],
+    "identifiers": {
+     "scryfallOracleId": "fixture-fireball"
+    },
+    "layout": "normal",
+    "legalities": {
+     "modern": "Legal",
+     "pioneer": "Legal",
+     "standard": "Legal"
+    },
+    "manaCost": "{X}{R}",
+    "manaValue": 0.0,
+    "name": "Fireball",
+    "subtypes": [],
+    "supertypes": [],
+    "text": "This spell costs {1} more to cast for each target beyond the first.\nFireball deals X damage divided evenly, rounded down, among any number of target creatures and/or planeswalkers. Fireball deals X damage to that player or planeswalker if unsplit.",
+    "type": "Sorcery",
+    "types": [
+     "Sorcery"
+    ]
+   }
+  ],
+  "Valakut Awakening // Valakut Stoneforge": [
+   {
+    "colorIdentity": [
+     "R"
+    ],
+    "faceName": "Valakut Awakening",
+    "identifiers": {
+     "scryfallOracleId": "fixture-valakut-awakening"
+    },
+    "layout": "modal_dfc",
+    "legalities": {
+     "modern": "Legal",
+     "pioneer": "Legal",
+     "standard": "Legal"
+    },
+    "manaCost": "{2}{R}",
+    "manaValue": 3.0,
+    "name": "Valakut Awakening // Valakut Stoneforge",
+    "side": "a",
+    "subtypes": [],
+    "supertypes": [],
+    "text": "Destroy target artifact or enchantment. Scry 2.",
+    "type": "Sorcery",
+    "types": [
+     "Sorcery"
+    ]
+   },
+   {
+    "colorIdentity": [
+     "R"
+    ],
+    "faceName": "Valakut Stoneforge",
+    "identifiers": {
+     "scryfallOracleId": "fixture-valakut-awakening"
+    },
+    "layout": "modal_dfc",
+    "legalities": {
+     "modern": "Legal",
+     "pioneer": "Legal",
+     "standard": "Legal"
+    },
+    "name": "Valakut Awakening // Valakut Stoneforge",
+    "side": "b",
+    "subtypes": [
+     "Mountain"
+    ],
+    "supertypes": [
+     "Basic"
+    ],
+    "text": "({T}: Add {R}.)",
+    "type": "Basic Land \u2014 Mountain",
     "types": [
      "Land"
     ]

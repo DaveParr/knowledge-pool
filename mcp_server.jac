@@ -42,7 +42,7 @@ import from jaclang.runtimelib.context { ExecutionContext }
 import from jaclang.jac0core.constant { Constants as Con }
 import from catalog { store }
 import from decks {
-    Deck, DeckView, CreateDeck, ListDecks, GetDeck, SetDeckFormat, EditDeck
+    Deck, DeckView, CreateDeck, ListDecks, GetDeck, SetDeckFormat, EditDeck, AnalyzeDeck
 }
 import from deck_io { DeckExport, DeckImport }
 import from legality { FORMAT_LABELS, GetFormatRules }
@@ -286,6 +286,12 @@ def deck_import(deck_id: str, format: str, text: str) -> dict {
         return {"error": f"No deck with id {deck_id}, unknown format {format}, or {format} does not support import."};
     }
     return result as dict;
+}
+
+"""A deck's analysis: mana curve today, with roles and mana/lands to follow."""
+@server.tool()
+def deck_analyze(deck_id: str) -> dict {
+    return deck_or_error(run_walker(AnalyzeDeck(deck_id=deck_id)), deck_id);
 }
 
 """True when something already listens on this local port."""

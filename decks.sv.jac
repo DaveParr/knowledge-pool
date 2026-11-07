@@ -6,7 +6,7 @@ caller shares one graph and nobody has to log in.
 """
 
 import from datetime { datetime, timezone }
-import from cards { Card, card_node }
+import from cards { Card, card_node, is_land }
 import from legality { Format, Violation, Entry, FORMAT_LABELS, format_node, check_entries }
 
 """One change made to a deck through MCP, with the reason given for it."""
@@ -188,6 +188,41 @@ def deck_view(deck: Deck) -> DeckView {
     );
 }
 
+glob CURVE_BUCKETS: list[str] = ["0", "1", "2", "3", "4", "5", "6", "7+"];
+
+"""Non-land mana-value buckets (0..6, 7+) over a deck's main deck, by card count,
+plus the average non-land mana value."""
+obj ManaCurve {
+    has buckets: dict[str, int] = {},
+        average_mv: float = 0.0;
+}
+
+def bucket_for(mv: float) -> str {
+    n = int(mv);
+    return "7+" if n >= 7 else str(max(n, 0));
+}
+
+def mana_curve(deck: Deck) -> ManaCurve {
+    buckets: dict[str, int] = {b: 0 for b in CURVE_BUCKETS};
+    total_mv = 0.0;
+    total_count = 0;
+    for (e, c) in holdings(deck) {
+        if e.zone != "main" or is_land(c) {
+            continue;
+        }
+        buckets[bucket_for(c.mana_value)] += e.count;
+        total_mv += c.mana_value * e.count;
+        total_count += e.count;
+    }
+    avg: float = 0.0;
+    if total_count > 0 {
+        raw: float = total_mv / total_count;
+        scaled: float = round(raw * 100);
+        avg = scaled / 100.0;
+    }
+    return ManaCurve(buckets=buckets, average_mv=avg);
+}
+
 """The Holds edge for this card in this zone, if any."""
 def holds_edge(deck: Deck, oid: str, zone: str) -> Holds | None {
     for (e, c) in holdings(deck) {
@@ -219,6 +254,34 @@ walker DeckAction {
 walker:pub GetDeck(DeckAction) {
     can show with Deck entry {
         report deck_view(here);
+    }
+}
+
+"""Analysis of one deck: so far just its mana curve. #41 and #43 add roles and
+mana/lands fields here as they land."""
+obj DeckAnalysis {
+    has id: str,
+        curve: ManaCurve;
+}
+
+"""Report a deck's analysis (mana curve today; roles/mana-lands join later)."""
+walker:pub AnalyzeDeck {
+    has deck_id: str,
+        reports: list[DeckAnalysis] = [];
+
+    can locate with Root entry {
+        try {
+            target = jobj(self.deck_id);
+        } except ValueError {
+            disengage;
+        }
+        if isinstance(target, Deck) {
+            visit [target];
+        }
+    }
+
+    can analyze with Deck entry {
+        report DeckAnalysis(id=jid(here), curve=mana_curve(here));
     }
 }
 

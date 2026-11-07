@@ -67,9 +67,9 @@ async def main() -> None:
         await session.initialize()
         tools = sorted(t.name for t in (await session.list_tools()).tools)
         print("tools:", ", ".join(tools))
-        check("all ten tools from the issue are listed", {
+        check("all eleven tools from the issue are listed", {
             "search_cards", "get_card", "resolve_names", "get_format_rules",
-            "deck_create", "deck_get", "deck_edit", "deck_validate",
+            "deck_create", "deck_get", "deck_edit", "deck_validate", "deck_analyze",
             "deck_export", "deck_import",
         } <= set(tools))
 
@@ -103,6 +103,10 @@ async def main() -> None:
 
         verdict = await call(session, "deck_validate", deck_id=deck["id"])
         check("deck_validate says legal", verdict["legal"] is True and verdict["violations"] == [], verdict)
+
+        analysis = await call(session, "deck_analyze", deck_id=deck["id"])
+        check("deck_analyze buckets the 4x Bolt and 4x Goblin Guide at mv 1", analysis["curve"]["buckets"]["1"] == 8, analysis)
+        check("deck_analyze excludes the 52 Mountain from the curve", analysis["curve"]["average_mv"] == 1.0, analysis)
 
         deck = await call(session, "deck_edit", deck_id=deck["id"], format="standard")
         verdict = await call(session, "deck_validate", deck_id=deck["id"])

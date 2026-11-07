@@ -22,6 +22,11 @@ node Card {
         legal: dict[str, str] = {};
 }
 
+"""True for a card that is only ever a land -- no face/type gives it a non-land role."""
+def:pub is_land(card: Card) -> bool {
+    return len(card.types) > 0 and all([t == "Land" for t in card.types]);
+}
+
 """One search result."""
 obj CardHit {
     has oracle_id: str,
