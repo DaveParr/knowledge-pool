@@ -1,9 +1,10 @@
 """Ingest of the MTGJSON fixture, and search over the result."""
 
+import json
 import time
 
 from catalog import store
-from catalog.ingest import main
+from catalog.ingest import load_oracle_tags, main
 
 
 def test_meta_records_mtgjson_version_and_date():
@@ -22,6 +23,32 @@ def test_one_row_per_oracle_card_with_its_fields():
     assert bolt["types"] == ["Instant"]
     assert bolt["legal"]["modern"] == "Legal"
     assert store.get_card(bolt["oracle_id"])["name"] == "Lightning Bolt"
+
+
+def test_oracle_tags_present_after_ingest_on_lookup_and_search():
+    bolt = store.get_card("4457ed35-7c10-48c8-9776-456485fdf070")
+    assert sorted(bolt["oracle_tags"]) == ["burn", "removal"]
+
+    hit = store.search("lightning bolt")[0]
+    assert sorted(hit["oracle_tags"]) == ["burn", "removal"]
+
+    # A card with no taggings in the fixture gets an empty list, not an error.
+    mountain = store.find_by_name("Mountain")
+    assert mountain["oracle_tags"] == []
+
+
+def test_load_oracle_tags_resolves_parent_ids_to_parent_slugs():
+    from tests.conftest import TAGS_FIXTURE
+
+    tag_rows, card_tag_rows = load_oracle_tags(TAGS_FIXTURE)
+    by_slug = {slug: (description, json.loads(parents)) for slug, description, parents in tag_rows}
+
+    assert by_slug["removal"] == ("Cards that remove a permanent.", [])
+    # A null description becomes "", not None (the tags table is NOT NULL).
+    assert by_slug["removal-creature"] == ("", ["removal"])
+
+    assert ("4457ed35-7c10-48c8-9776-456485fdf070", "removal") in card_tag_rows
+    assert ("51d9564b-44fc-4de1-9119-09d7b4089378", "removal-creature") in card_tag_rows
 
 
 def test_split_card_keeps_both_faces():
@@ -51,11 +78,11 @@ def test_search_is_fast():
 
 
 def test_ingest_command_builds_from_a_local_file(tmp_path, capsys):
-    from tests.conftest import FIXTURE
+    from tests.conftest import FIXTURE, TAGS_FIXTURE
 
     out = tmp_path / "cli.sqlite"
-    assert main(["--source", str(FIXTURE), "--out", str(out)]) == 0
-    assert "31 cards from MTGJSON 5.3.0+fixture (2026-01-01)" in capsys.readouterr().out
+    assert main(["--source", str(FIXTURE), "--tags-source", str(TAGS_FIXTURE), "--out", str(out)]) == 0
+    assert "31 cards from MTGJSON 5.3.0+fixture (2026-01-01) and 3 Scryfall oracle tags" in capsys.readouterr().out
     assert out.exists()
 
 
@@ -76,3 +103,32 @@ def test_download_sends_a_user_agent(tmp_path, monkeypatch):
     dest = ingest.download(tmp_path / "AtomicCards.json.xz")
     assert dest.read_bytes() == b"data"
     assert seen["ua"] == ingest.USER_AGENT
+
+
+def test_download_oracle_tags_sends_a_user_agent_and_follows_the_bulk_index(tmp_path, monkeypatch):
+    """Scryfall, like MTGJSON, returns 403 to Python's default user agent."""
+    import io
+    import json
+    import urllib.request
+
+    from catalog import ingest
+
+    seen = {"ua": []}
+    index = {
+        "data": [
+            {"type": "oracle_cards", "download_uri": "https://data.scryfall.io/oracle-cards.json"},
+            {"type": "oracle_tags", "jsonl_download_uri": "https://data.scryfall.io/oracle-tags.jsonl.gz"},
+        ]
+    }
+
+    def fake_urlopen(req, timeout=None):
+        seen["ua"].append(req.get_header("User-agent"))
+        if req.full_url == ingest.SCRYFALL_BULK_DATA_URL:
+            return io.BytesIO(json.dumps(index).encode())
+        assert req.full_url == "https://data.scryfall.io/oracle-tags.jsonl.gz"
+        return io.BytesIO(b"tags-data")
+
+    monkeypatch.setattr(urllib.request, "urlopen", fake_urlopen)
+    dest = ingest.download_oracle_tags(tmp_path / "oracle-tags.jsonl.gz")
+    assert dest.read_bytes() == b"tags-data"
+    assert seen["ua"] == [ingest.USER_AGENT, ingest.USER_AGENT]

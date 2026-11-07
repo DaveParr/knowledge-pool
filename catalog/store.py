@@ -32,7 +32,11 @@ def reset() -> None:
     _connect.cache_clear()
 
 
-def _card(row: sqlite3.Row) -> dict:
+def _tags_for(con: sqlite3.Connection, oracle_id: str) -> list[str]:
+    return [r[0] for r in con.execute("SELECT tag FROM card_tags WHERE oracle_id = ? ORDER BY tag", (oracle_id,))]
+
+
+def _card(row: sqlite3.Row, con: sqlite3.Connection) -> dict:
     return {
         "oracle_id": row["oracle_id"],
         "name": row["name"],
@@ -43,6 +47,7 @@ def _card(row: sqlite3.Row) -> dict:
         "type_line": row["type_line"],
         "text": row["text"],
         "legal": json.loads(row["legalities"]),
+        "oracle_tags": _tags_for(con, row["oracle_id"]),
     }
 
 
@@ -57,17 +62,19 @@ def search(text: str, limit: int = 25) -> list[dict]:
     query = fts_query(text)
     if not query:
         return []
-    rows = connection().execute(
+    con = connection()
+    rows = con.execute(
         f"SELECT {_COLUMNS} FROM cards_fts f JOIN cards c ON c.rowid = f.rowid "
         "WHERE cards_fts MATCH ? ORDER BY bm25(cards_fts, 10.0, 2.0, 1.0) LIMIT ?",
         (query, limit),
     )
-    return [_card(r) for r in rows]
+    return [_card(r, con) for r in rows]
 
 
 def get_card(oracle_id: str) -> dict | None:
-    row = connection().execute(f"SELECT {_COLUMNS} FROM cards c WHERE oracle_id = ?", (oracle_id,)).fetchone()
-    return _card(row) if row else None
+    con = connection()
+    row = con.execute(f"SELECT {_COLUMNS} FROM cards c WHERE oracle_id = ?", (oracle_id,)).fetchone()
+    return _card(row, con) if row else None
 
 
 def meta() -> dict[str, str]:
@@ -89,7 +96,7 @@ def find_by_name(name: str) -> dict | None:
             f"SELECT {_COLUMNS} FROM cards c WHERE c.name LIKE ? OR c.name LIKE ? LIMIT 1",
             (f"{cleaned} // %", f"% // {cleaned}"),
         ).fetchone()
-    return _card(row) if row else None
+    return _card(row, con) if row else None
 
 
 def close_names(name: str, limit: int = 5) -> list[str]:
