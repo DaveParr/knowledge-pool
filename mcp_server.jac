@@ -267,16 +267,13 @@ def deck_validate(deck_id: str) -> dict {
 }
 
 """Mana analysis for a deck: land count, coloured pips (spell demand) and
-coloured sources (lands and other cards that produce that colour). Main deck
-only - the sideboard is excluded. Curve and card roles will join this tool
-once they land."""
+coloured sources (lands and other cards that produce that colour), plus the
+non-land mana curve (card count by mana value, 0-6 and 7+) and its average.
+Main deck only - the sideboard is excluded. Card roles will join this tool
+once #41 lands."""
 @server.tool()
 def deck_analyze(deck_id: str) -> dict {
-    view = first_report(run_walker(AnalyzeDeck(deck_id=deck_id)));
-    if view is None {
-        return {"error": f"No deck with id {deck_id}."};
-    }
-    return view as dict;
+    return deck_or_error(run_walker(AnalyzeDeck(deck_id=deck_id)), deck_id);
 }
 
 """Export a deck: mtgdeck1 (lossless), mtgjson (lossless, export only), or text/arena/moxfield (lossy)."""
