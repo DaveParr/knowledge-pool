@@ -38,7 +38,8 @@ CREATE TABLE cards (
     types TEXT NOT NULL,            -- JSON list, e.g. ["Creature"]
     type_line TEXT NOT NULL,
     text TEXT NOT NULL,
-    legalities TEXT NOT NULL        -- JSON object, format -> "Legal" / "Banned" / "Restricted"
+    legalities TEXT NOT NULL,       -- JSON object, format -> "Legal" / "Banned" / "Restricted"
+    produced_mana TEXT NOT NULL     -- JSON list, e.g. ["W", "U"]
 );
 CREATE UNIQUE INDEX cards_name ON cards(name COLLATE NOCASE);
 CREATE VIRTUAL TABLE cards_fts USING fts5(
@@ -66,10 +67,14 @@ def card_row(name: str, faces: list[dict]) -> tuple:
     first = faces[0]
     oracle_id = first.get("identifiers", {}).get("scryfallOracleId") or name
     types: list[str] = []
+    produced_mana: list[str] = []
     for face in faces:
         for t in face.get("types", []):
             if t not in types:
                 types.append(t)
+        for m in face.get("producedMana", []):
+            if m not in produced_mana:
+                produced_mana.append(m)
     return (
         oracle_id,
         name,
@@ -80,6 +85,7 @@ def card_row(name: str, faces: list[dict]) -> tuple:
         " // ".join(f.get("type", "") for f in faces),
         "\n//\n".join(f.get("text", "") for f in faces if f.get("text")),
         json.dumps(first.get("legalities", {})),
+        json.dumps(produced_mana),
     )
 
 
@@ -95,7 +101,7 @@ def build(atomic: dict, out: Path) -> dict:
         for name, faces in atomic["data"].items():
             row = card_row(name, faces)
             rows.setdefault(row[0], row)  # same oracle id twice: keep the first
-        con.executemany("INSERT INTO cards VALUES (?,?,?,?,?,?,?,?,?)", rows.values())
+        con.executemany("INSERT INTO cards VALUES (?,?,?,?,?,?,?,?,?,?)", rows.values())
         con.execute("INSERT INTO cards_fts(cards_fts) VALUES ('rebuild')")
         meta = {
             "mtgjson_version": atomic["meta"]["version"],

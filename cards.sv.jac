@@ -19,7 +19,8 @@ node Card {
         types: list[str] = [],
         type_line: str = "",
         text: str = "",
-        legal: dict[str, str] = {};
+        legal: dict[str, str] = {},
+        produced_mana: list[str] = [];
 }
 
 """True for a card that is only ever a land -- no face/type gives it a non-land role."""
@@ -98,7 +99,8 @@ def card_node(home: Root, oid: str) -> Card | None {
         types=c["types"] as list[str],
         type_line=c["type_line"] as str,
         text=c["text"] as str,
-        legal=c["legal"] as dict[str, str]
+        legal=c["legal"] as dict[str, str],
+        produced_mana=c["produced_mana"] as list[str]
     );
     cat ++> card;
     return card;

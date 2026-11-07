@@ -8,6 +8,7 @@ caller shares one graph and nobody has to log in.
 import from datetime { datetime, timezone }
 import from cards { Card, card_node, is_land }
 import from legality { Format, Violation, Entry, FORMAT_LABELS, format_node, check_entries }
+import from mana { ManaLine, ManaProfile, mana_profile }
 
 """One change made to a deck through MCP, with the reason given for it."""
 obj ChangeNote {
@@ -97,6 +98,7 @@ obj DeckView {
     has id: str,
         name: str,
         format: str,
+        mana: ManaProfile,
         cards: list[DeckCard] = [],
         main_total: int = 0,
         sideboard_total: int = 0,
@@ -120,6 +122,21 @@ def holdings(deck: Deck) -> list[tuple[Holds, Card]] {
         }
     }
     return pairs;
+}
+
+"""The deck's main-deck lines, as the mana analyser sees them. The sideboard
+is not part of the mana base."""
+def main_deck_mana_lines(deck: Deck) -> list[ManaLine] {
+    lines: list[ManaLine] = [];
+    for (e, c) in holdings(deck) {
+        if e.zone != "main" {
+            continue;
+        }
+        lines.append(
+            ManaLine(count=e.count, is_land="Land" in c.types, mana_cost=c.mana_cost, produced_mana=c.produced_mana)
+        );
+    }
+    return lines;
 }
 
 """Check a deck against its format's rules. Runs after every edit."""
@@ -179,6 +196,7 @@ def deck_view(deck: Deck) -> DeckView {
         id=jid(deck),
         name=deck.name,
         format=deck.format,
+        mana=mana_profile(main_deck_mana_lines(deck)),
         cards=lines,
         main_total=sum([l.count for l in lines if l.zone == "main"]),
         sideboard_total=sum([l.count for l in lines if l.zone == "sideboard"]),
@@ -257,14 +275,15 @@ walker:pub GetDeck(DeckAction) {
     }
 }
 
-"""Analysis of one deck: so far just its mana curve. #41 and #43 add roles and
-mana/lands fields here as they land."""
+"""Analysis of one deck: mana profile and curve. #41 adds card roles here as
+it lands."""
 obj DeckAnalysis {
     has id: str,
+        mana: ManaProfile,
         curve: ManaCurve;
 }
 
-"""Report a deck's analysis (mana curve today; roles/mana-lands join later)."""
+"""Report a deck's mana analysis. Reports nothing if the deck id is unknown."""
 walker:pub AnalyzeDeck {
     has deck_id: str,
         reports: list[DeckAnalysis] = [];
@@ -281,7 +300,11 @@ walker:pub AnalyzeDeck {
     }
 
     can analyze with Deck entry {
-        report DeckAnalysis(id=jid(here), curve=mana_curve(here));
+        report DeckAnalysis(
+            id=jid(here),
+            mana=mana_profile(main_deck_mana_lines(here)),
+            curve=mana_curve(here)
+        );
     }
 }
 

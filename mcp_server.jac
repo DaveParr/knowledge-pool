@@ -266,6 +266,16 @@ def deck_validate(deck_id: str) -> dict {
     };
 }
 
+"""Mana analysis for a deck: land count, coloured pips (spell demand) and
+coloured sources (lands and other cards that produce that colour), plus the
+non-land mana curve (card count by mana value, 0-6 and 7+) and its average.
+Main deck only - the sideboard is excluded. Card roles will join this tool
+once #41 lands."""
+@server.tool()
+def deck_analyze(deck_id: str) -> dict {
+    return deck_or_error(run_walker(AnalyzeDeck(deck_id=deck_id)), deck_id);
+}
+
 """Export a deck: mtgdeck1 (lossless), mtgjson (lossless, export only), or text/arena/moxfield (lossy)."""
 @server.tool()
 def deck_export(deck_id: str, format: str = "mtgdeck1") -> dict {
@@ -286,12 +296,6 @@ def deck_import(deck_id: str, format: str, text: str) -> dict {
         return {"error": f"No deck with id {deck_id}, unknown format {format}, or {format} does not support import."};
     }
     return result as dict;
-}
-
-"""A deck's analysis: mana curve today, with roles and mana/lands to follow."""
-@server.tool()
-def deck_analyze(deck_id: str) -> dict {
-    return deck_or_error(run_walker(AnalyzeDeck(deck_id=deck_id)), deck_id);
 }
 
 """True when something already listens on this local port."""

@@ -9,7 +9,10 @@ from functools import lru_cache
 
 from catalog.ingest import db_path
 
-_COLUMNS = "c.oracle_id, c.name, c.mana_cost, c.mana_value, c.colour_identity, c.types, c.type_line, c.text, c.legalities"
+_COLUMNS = (
+    "c.oracle_id, c.name, c.mana_cost, c.mana_value, c.colour_identity, c.types, "
+    "c.type_line, c.text, c.legalities, c.produced_mana"
+)
 _WORD = re.compile(r"[\w']+", re.UNICODE)
 
 
@@ -43,6 +46,7 @@ def _card(row: sqlite3.Row) -> dict:
         "type_line": row["type_line"],
         "text": row["text"],
         "legal": json.loads(row["legalities"]),
+        "produced_mana": json.loads(row["produced_mana"]),
     }
 
 

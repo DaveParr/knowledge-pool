@@ -6,6 +6,7 @@ sv import from decks {
 }
 sv import from deck_io { DeckExport, DeckImport }
 sv import from legality { Violation }
+sv import from mana { ManaProfile }
 sv import from cards { CardHit, search_cards }
 
 def:pub DeckDetail(deckId: str, onBack: Callable[[], None]) -> JsxElement {
@@ -84,6 +85,20 @@ def:pub DeckDetail(deckId: str, onBack: Callable[[], None]) -> JsxElement {
                 <strong>{"Legal" if deck.legal else "Not legal"}</strong>
                 <ul style={{"margin": "0.25rem 0 0", "paddingLeft": "1.25rem"}}>
                     {[<li key={str(i)}>{v.message}</li> for (i, v) in enumerate(deck.violations)]}
+                </ul>
+            </div>
+            <div style={{"marginBottom": "1rem"}}>
+                <strong>{"Lands: " + str(deck.mana.land_count)}</strong>
+                <ul style={{"margin": "0.25rem 0 0", "paddingLeft": "1.25rem"}}>
+                    {[
+                        <li key={colour}>
+                            {
+                                colour + ": " + str(deck.mana.pips[colour]) + " pips, "
+                                + str(deck.mana.sources[colour]) + " sources"
+                            }
+                        </li>
+                        for colour in ["W", "U", "B", "R", "G"]
+                    ]}
                 </ul>
             </div>
             {

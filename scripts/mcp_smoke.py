@@ -107,6 +107,13 @@ async def main() -> None:
         analysis = await call(session, "deck_analyze", deck_id=deck["id"])
         check("deck_analyze buckets the 4x Bolt and 4x Goblin Guide at mv 1", analysis["curve"]["buckets"]["1"] == 8, analysis)
         check("deck_analyze excludes the 52 Mountain from the curve", analysis["curve"]["average_mv"] == 1.0, analysis)
+        check(
+            "deck_analyze reports the mana base",
+            analysis["mana"]["land_count"] == 52
+            and analysis["mana"]["pips"]["R"] == 8
+            and analysis["mana"]["sources"]["R"] == 52,
+            analysis,
+        )
 
         deck = await call(session, "deck_edit", deck_id=deck["id"], format="standard")
         verdict = await call(session, "deck_validate", deck_id=deck["id"])
