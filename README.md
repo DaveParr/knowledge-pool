@@ -47,7 +47,7 @@ The full catalogue stays in SQLite. A `Card` node is added to the graph the firs
 claude mcp add knowledge-pool -- uv run --directory "$PWD" jac run mcp_server.jac
 ```
 
-Then ask Claude to build or change a deck, for example "build a Modern mono-red burn deck around Lightning Bolt and Goblin Guide". The tools are `search_cards`, `get_card`, `resolve_names`, `get_format_rules`, `deck_list`, `deck_create`, `deck_get`, `deck_edit` and `deck_validate`. Card names have to go through `resolve_names`, which splits them into exact, fuzzy and unknown, so an invented card can't get into a deck. Every `deck_edit` change needs a reason, and the reasons are kept in the deck's history. No tool calls a model.
+Then ask Claude to build or change a deck, for example "build a Modern mono-red burn deck around Lightning Bolt and Goblin Guide". The tools are `search_cards`, `get_card`, `resolve_names`, `get_format_rules`, `deck_list`, `deck_create`, `deck_get`, `deck_edit`, `deck_validate`, `deck_export` and `deck_import`. Card names have to go through `resolve_names`, which splits them into exact, fuzzy and unknown, so an invented card can't get into a deck. Every `deck_edit` change needs a reason, and the reasons are kept in the deck's history. No tool calls a model.
 
 The MCP server also serves the web app at http://localhost:8000 while Claude is connected, so decks made in either place show up in the other straight away. Stop `jac start` first: two Jac processes writing the same saved graph overwrite each other's decks, so the MCP server refuses to start while the port is taken. Set `KP_PORT` to use a different port, or `KP_WEB=0` to skip the web app.
 
@@ -55,7 +55,7 @@ The MCP server also serves the web app at http://localhost:8000 while Claude is 
 
 ### QA
 
-[docs/qa-mvp.md](docs/qa-mvp.md) walks through running the MVP locally and checking each P0 issue by hand.
+[docs/qa-mvp.md](docs/qa-mvp.md) walks through running the MVP locally and checking each P0 issue by hand. [docs/qa-deck-import-export.md](docs/qa-deck-import-export.md) does the same for deck import and export (#37).
 
 ### Test
 
@@ -71,7 +71,10 @@ uv run pytest tests    # ingest, search, REST, legality and MCP tests
 - `main.jac` entry point, joins server and client
 - `catalog/` Python ingest (`ingest.py`) and search (`store.py`) over `data/catalog.sqlite`
 - `cards.sv.jac` the `Card` node and the `search_cards` endpoint
+- schemas/mtgdeck-1.schema.json the published mtgdeck/1 deck document schema
+- `deckformats/` the deck import/export format strategies (mtgdeck/1, MTGJSON Deck JSON, plain/Arena/Moxfield text)
 - `decks.sv.jac` the `Deck` node, the `Holds` edge, the deck walkers and `ValidateDeck`
+- `deck_io.sv.jac` the `DeckExport`/`DeckImport` walkers
 - `legality.sv.jac` `Format` nodes and the deck-construction rules
 - `mcp_server.jac` the MCP server (and the web app, in the same process)
 - `scripts/mcp_smoke.py` an MCP client session that checks the tools end to end

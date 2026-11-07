@@ -67,9 +67,10 @@ async def main() -> None:
         await session.initialize()
         tools = sorted(t.name for t in (await session.list_tools()).tools)
         print("tools:", ", ".join(tools))
-        check("all eight tools from the issue are listed", {
+        check("all ten tools from the issue are listed", {
             "search_cards", "get_card", "resolve_names", "get_format_rules",
             "deck_create", "deck_get", "deck_edit", "deck_validate",
+            "deck_export", "deck_import",
         } <= set(tools))
 
         resolved = await call(session, "resolve_names", names=["Lightning Bolt", "Goblin Guide", "Lightening Bolt", "Flargle the Unreal", "Mountain"])
@@ -115,6 +116,22 @@ async def main() -> None:
         deck = await call(session, "deck_edit", deck_id=deck["id"], format="standard")
         verdict = await call(session, "deck_validate", deck_id=deck["id"])
         check("switching to Standard makes it illegal, with reasons", not verdict["legal"] and {v["rule"] for v in verdict["violations"]} == {"not-legal"}, verdict)
+
+        exported = await call(session, "deck_export", deck_id=deck["id"], format="mtgdeck1")
+        check("export produces an mtgdeck/1 document", json.loads(exported["content"])["schema"] == "mtgdeck/1", exported)
+
+        reimported = await call(session, "deck_import", deck_id=deck["id"], format="mtgdeck1", text=exported["content"])
+        check("round-trip import resolves every entry", reimported["unresolved"] == [], reimported)
+        check("round-trip import keeps the same main total", reimported["deck"]["main_total"] == deck["main_total"], reimported)
+
+        listed_tools = {t.name: t for t in (await session.list_tools()).tools}
+        ui_uri = ((listed_tools["deck_show"].meta or {}).get("ui") or {}).get("resourceUri")
+        check("deck_show points at a ui:// resource", ui_uri == "ui://knowledge-pool/deck-table.html", listed_tools["deck_show"].meta)
+        page = (await session.read_resource(ui_uri)).contents[0]
+        check("the deck view is served as an MCP App", page.mime_type == "text/html;profile=mcp-app" and "ui/initialize" in page.text, page.mime_type)
+        shown = await session.call_tool("deck_show", {"deck_id": deck["id"]})
+        check("deck_show gives the view the deck data", shown.structured_content["main_total"] == 60, shown.structured_content)
+        check("deck_show gives other clients a Markdown table", "| 52 | Mountain |" in shown.content[0].text, shown.content[0].text)
 
         wait_for_web()
         web_decks = web("/walker/ListDecks")["data"]["reports"][0]

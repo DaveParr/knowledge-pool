@@ -53,3 +53,17 @@ impl DeckDetail.setFormat(value: str) -> None {
         deck = result.reports[0];
     }
 }
+
+impl DeckDetail.runExport -> None {
+    result = root spawn DeckExport(deck_id=deckId, format=exportFormat);
+    exportText = result.reports[0].content if result.reports else "";
+}
+
+impl DeckDetail.runImport -> None {
+    result = root spawn DeckImport(deck_id=deckId, format=importFormat, text=importText);
+    if result.reports {
+        outcome = result.reports[0];
+        deck = outcome.deck;
+        unresolved = outcome.unresolved;
+    }
+}
