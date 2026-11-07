@@ -1,4 +1,4 @@
-"""MCP server for Claude Code and Claude Desktop (local stdio).
+"""MCP server for Claude Code and Claude Desktop (local stdio or HTTP).
 
 The MCP SDK's MCPServer (FastMCP before mcp 2.0) runs in the same process as
 the Jac graph. Deck and format tools each spawn a walker against the app's
@@ -14,6 +14,14 @@ is at http://localhost:8000 as usual.
     claude mcp add knowledge-pool -- uv run --directory <repo> jac run mcp_server.jac
 
 Environment: KP_PORT (default 8000) for the web app, KP_WEB=0 to skip it.
+KP_TRANSPORT=http switches the MCP endpoint itself from stdio to streamable
+HTTP (KP_HTTP_HOST, default 127.0.0.1; KP_HTTP_PORT, default 8020), for
+clients (e.g. a remote/custom connector) that need a URL instead of a local
+command. That endpoint is plain HTTP: it has no TLS of its own, so putting it
+behind something that terminates HTTPS (a tunnel like `cloudflared` or
+`ngrok`, or a reverse proxy) is up to whoever needs a public https:// URL for
+it — localhost is not reachable from a connector that calls in from outside
+this machine.
 """
 
 import io;
@@ -28,6 +36,7 @@ import from mcp.server.mcpserver { MCPServer }
 import from mcp.server.apps { Apps }
 import from mcp_types { CallToolResult, TextContent }
 import from mcp.server.stdio { stdio_server }
+import from mcp.server.streamable_http { TransportSecuritySettings }
 import from jaclang { JacRuntime as Jac }
 import from jaclang.runtimelib.context { ExecutionContext }
 import from jaclang.jac0core.constant { Constants as Con }
@@ -281,13 +290,22 @@ async def serve_stdio(mcp_out: io.TextIOWrapper) {
     }
 }
 
-with entry:__main__ {
-    # stdout carries the MCP protocol, so keep a handle to it and send all other
-    # output (walker reports, server logs) to stderr.
-    mcp_out = io.TextIOWrapper(os.fdopen(os.dup(1), "wb"), encoding="utf-8", line_buffering=True);
-    os.dup2(2, 1);
-    sys.stdout = sys.stderr;
+"""Run MCP over streamable HTTP instead of stdio, for clients that need a URL.
 
+The transport rejects any Host/Origin it doesn't recognize (DNS-rebinding
+protection), so a host sitting in front of this (e.g. a tunnel) must be
+listed in KP_HTTP_ALLOWED_HOSTS, a comma-separated list of hostnames
+(with port, if any) such as "my-tunnel.trycloudflare.com".
+"""
+async def serve_http(host: str, port: int) {
+    extra_hosts = [h.strip() for h in os.environ.get("KP_HTTP_ALLOWED_HOSTS", "").split(",") if h.strip()];
+    hosts = [f"127.0.0.1:{port}", f"localhost:{port}"] + extra_hosts;
+    origins = [f"https://{h}" for h in extra_hosts] + [f"http://{h}" for h in extra_hosts];
+    security = TransportSecuritySettings(allowed_hosts=hosts, allowed_origins=origins);
+    await server.run_streamable_http_async(host=host, port=port, transport_security=security);  # jac:ignore[E1053]
+}
+
+with entry:__main__ {
     os.chdir(APP_DIR);
     if os.environ.get("KP_WEB", "1") != "0" {
         port = int(os.environ.get("KP_PORT", "8000"));
@@ -300,5 +318,17 @@ with entry:__main__ {
         }
         start_web(port);
     }
-    anyio.run(serve_stdio, mcp_out);  # jac:ignore[E1053]
+
+    if os.environ.get("KP_TRANSPORT", "stdio") == "http" {
+        http_host = os.environ.get("KP_HTTP_HOST", "127.0.0.1");
+        http_port = int(os.environ.get("KP_HTTP_PORT", "8020"));
+        anyio.run(serve_http, http_host, http_port);  # jac:ignore[E1053]
+    } else {
+        # stdout carries the MCP protocol, so keep a handle to it and send all
+        # other output (walker reports, server logs) to stderr.
+        mcp_out = io.TextIOWrapper(os.fdopen(os.dup(1), "wb"), encoding="utf-8", line_buffering=True);
+        os.dup2(2, 1);
+        sys.stdout = sys.stderr;
+        anyio.run(serve_stdio, mcp_out);  # jac:ignore[E1053]
+    }
 }

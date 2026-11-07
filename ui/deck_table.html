@@ -35,6 +35,19 @@
   td.cost { white-space: nowrap; font-family: var(--font-mono, ui-monospace, monospace); font-size: 12px; }
   td.type { color: var(--muted); }
   .empty { color: var(--muted); }
+  td.card summary {
+    cursor: pointer; list-style: none; display: flex; align-items: center; gap: 5px;
+  }
+  td.card summary::-webkit-details-marker { display: none; }
+  td.card summary::before {
+    content: "▸"; display: inline-block; font-size: 10px; color: var(--muted);
+    transition: transform .12s ease;
+  }
+  td.card details[open] summary::before { transform: rotate(90deg); }
+  td.card .tip {
+    margin: 6px 0 2px; padding: 6px 8px; border-radius: 6px;
+    background: var(--line); font-size: 12px; line-height: 1.4; white-space: pre-line;
+  }
 </style>
 </head>
 <body>
@@ -68,7 +81,9 @@
     const total = rows.reduce((a, r) => a + r.count, 0);
     return `<h2>${esc(title)} (${total})</h2>
       <table><colgroup><col class="n"><col><col class="cost"><col class="type"></colgroup><thead><tr><th></th><th>Card</th><th>Cost</th><th>Type</th></tr></thead><tbody>
-      ${rows.map((r) => `<tr><td class="n">${r.count}</td><td>${esc(r.name)}</td>
+      ${rows.map((r) => `<tr><td class="n">${r.count}</td><td class="card">${r.text
+          ? `<details><summary>${esc(r.name)}</summary><div class="tip">${esc(r.text)}</div></details>`
+          : esc(r.name)}</td>
         <td class="cost">${esc(r.mana_cost)}</td><td class="type">${esc(r.type_line)}</td></tr>`).join("")}
       </tbody></table>`;
   }
