@@ -267,3 +267,70 @@ def test_an_import_with_no_cards_leaves_the_deck_untouched(tmp_path, fmt, text):
         assert [(c["name"], c["count"]) for c in view["cards"]] == [("Goblin Guide", 4)]
     finally:
         client.close()
+
+
+def test_create_deck_from_list_makes_a_filled_deck_and_flags_unresolved_lines(tmp_path):
+    client = JacTestClient.from_file("main.jac", base_path=str(tmp_path))
+    try:
+        result = _reports(client.post("/walker/CreateDeckFromList", json={
+            "name": "Burn", "format": "moxfield",
+            "text": "4 Lightning Bolt (2X2) 117\n2 Flargle the Unreal\n\nSideboard\n3 Goblin Guide\n",
+        }))[0]
+        assert result["unresolved"] == ["Flargle the Unreal"]
+        view = _reports(client.post("/walker/GetDeck", json={"deck_id": result["deck_id"]}))[0]
+        assert view["name"] == "Burn"
+        assert view["format"] == "standard"
+        assert sorted((c["name"], c["count"], c["zone"]) for c in view["cards"]) == [
+            ("Goblin Guide", 3, "sideboard"), ("Lightning Bolt", 4, "main"),
+        ]
+    finally:
+        client.close()
+
+
+def test_create_deck_from_mtgdeck1_takes_its_name_and_format_when_none_is_given(tmp_path):
+    client = JacTestClient.from_file("main.jac", base_path=str(tmp_path))
+    try:
+        text = json.dumps({
+            "schema": "mtgdeck/1", "name": "Shared Burn", "format": "modern",
+            "zones": {"main": [{"name": "Lightning Bolt", "count": 4}]},
+        })
+        result = _reports(client.post("/walker/CreateDeckFromList", json={"name": " ", "format": "mtgdeck1", "text": text}))[0]
+        view = _reports(client.post("/walker/GetDeck", json={"deck_id": result["deck_id"]}))[0]
+        assert (view["name"], view["format"]) == ("Shared Burn", "modern")
+    finally:
+        client.close()
+
+
+@pytest.mark.parametrize("fmt, text", [
+    ("text", ""),
+    ("text", "4 Flargle the Unreal\n"),
+    ("mtgdeck1", "4 Lightning Bolt\n"),
+])
+def test_create_deck_from_a_list_with_nothing_usable_creates_no_deck(tmp_path, fmt, text):
+    client = JacTestClient.from_file("main.jac", base_path=str(tmp_path))
+    try:
+        result = _reports(client.post("/walker/CreateDeckFromList", json={"name": "Nope", "format": fmt, "text": text}))[0]
+        assert result["deck_id"] == ""
+        assert len(result["unresolved"]) >= 1
+        assert _reports(client.post("/walker/ListDecks"))[0] == []
+    finally:
+        client.close()
+
+
+@pytest.mark.parametrize("fmt, text", [
+    ("moxfield", "4 Lightning Bolt\n"),
+    ("mtgdeck1", json.dumps({"schema": "mtgdeck/1", "name": "x", "format": "standard",
+                             "zones": {"main": [{"name": "Lightning Bolt", "count": 4}]}})),
+])
+def test_create_deck_from_list_uses_the_chosen_play_format(tmp_path, fmt, text):
+    client = JacTestClient.from_file("main.jac", base_path=str(tmp_path))
+    try:
+        result = _reports(client.post("/walker/CreateDeckFromList", json={
+            "name": "Burn", "format": fmt, "text": text, "play_format": "modern",
+        }))[0]
+        view = _reports(client.post("/walker/GetDeck", json={"deck_id": result["deck_id"]}))[0]
+        assert view["format"] == "modern"
+        assert view["legal"] is False
+        assert all("not legal in" not in v["message"] for v in view["violations"])
+    finally:
+        client.close()

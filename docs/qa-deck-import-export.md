@@ -15,7 +15,7 @@ To put your own decks back afterwards, run `rm -rf .jac/data && mv .jac/data.bef
 ## 2. Automated checks
 
 ```bash
-uv run pytest tests                  # expect 116 passed
+uv run pytest tests                  # expect 123 passed
 uv run jac test                      # expect all passed
 uv run jac check *.jac               # expect no errors (warnings are fine)
 uv run python scripts/mcp_smoke.py   # expect "all checks passed", including the 3 export/import lines
@@ -23,11 +23,13 @@ uv run python scripts/mcp_smoke.py   # expect "all checks passed", including the
 
 ## 3. Manual QA in the app
 
-Start the app with `uv run jac start main.jac` and open http://localhost:8000. Create a deck called **QA Burn**, set it to **Modern** and open it. The Export and Import sections are below the card search.
+Start the app with `uv run jac start main.jac` and open http://localhost:8000.
+
+Import isn't a section of its own. It's an expander on the deck list: press **Import list ▾** next to **Create deck**, pick a format, paste a list and press **Create from list**. Every import makes a new deck. Replacing an existing deck's cards from a list is only available over MCP (`deck_import`). Export is the small **Export ▾** button on each deck row and in each deck's header. Picking a format copies the export to the clipboard and shows "Copied <format>".
 
 ### Import a pasted list (Moxfield or Arena)
 
-Choose **Moxfield** in the Import dropdown, paste this, then press **Import**:
+Type **QA Burn** as the deck name, open **Import list ▾**, choose **Moxfield**, paste this and press **Create from list**:
 
 ```
 4 Lightning Bolt (2X2) 117
@@ -42,11 +44,15 @@ Sideboard
 2 Roiling Vortex
 ```
 
-- [ ] The deck now holds Lightning Bolt 4, Goblin Guide 4, Monastery Swiftspear 4 and Mountain 40 in the main deck, plus Smash to Smithereens 3 and Roiling Vortex 2 marked **Sideboard**. The set code `(2X2) 117` is ignored.
-- [ ] **Lines that didn't resolve** lists `Lightening Bolt` and `Flargle the Unreal`. Neither is added. The misspelling is not quietly fixed.
-- [ ] The legality box updates (52 main-deck cards, so Modern says it needs 60).
+- [ ] The new deck opens, called QA Burn. It holds Lightning Bolt 4, Goblin Guide 4, Monastery Swiftspear 4 and Mountain 40 in the main deck, plus Smash to Smithereens 3 and Roiling Vortex 2 marked **Sideboard**. The set code `(2X2) 117` is ignored.
+- [ ] **Lines that didn't resolve** at the top of the deck lists `Lightening Bolt` and `Flargle the Unreal`. Neither is added. The misspelling is not quietly fixed. The box goes away when you go back to the deck list.
+- [ ] The deck is set to Standard, because **Play format** was left on its default and text lists don't name a format.
 
-Now try the Arena style. Choose **MTGA/MTGO** and paste:
+Import the same list again, this time with **Play format** set to **Modern**.
+
+- [ ] The new deck opens set to Modern, and the legality box only complains about the card count (52 main-deck cards), not about cards being illegal in Standard.
+
+Now try the Arena style. Go back, leave the name blank, choose **MTGA/MTGO** and paste:
 
 ```
 Deck
@@ -57,24 +63,33 @@ Sideboard
 4 Smash to Smithereens
 ```
 
-- [ ] The import **replaces** the deck rather than adding to it: Goblin Guide and the others are gone, and the main deck is now 60 cards.
+- [ ] A deck called **Imported deck** opens with 60 main-deck cards and 4 in the sideboard.
 - [ ] `Deck` is read as a header, not as a card.
+- [ ] With the expander closed, **Create deck** with a blank name still says "A deck needs a name."
 
-### Round trip: mtgdeck/1 export, then import
+### Export copies to the clipboard
 
-1. Choose **mtgdeck/1** under Export and press **Export**. Copy the JSON from the read-only box.
-2. Change the deck: set Lightning Bolt to 1 and remove the sideboard card.
-3. Choose **mtgdeck/1** under Import, paste the copied JSON and press **Import**.
+On the deck list, press **Export ▾** on QA Burn and choose **Moxfield**.
 
-- [ ] The deck is back exactly as it was at step 1: same cards, counts and zones.
-- [ ] Nothing is listed under **Lines that didn't resolve**.
+- [ ] "Copied Moxfield" appears next to the button, and pasting into a text editor gives the list.
+- [ ] Do the same from inside the deck (the button by the deck name).
+- [ ] If the browser refuses clipboard access, a box titled "Couldn't copy automatically" shows the text to copy by hand instead.
 
-Export the deck in the other formats too:
+Check each format's shape:
 
+- [ ] **mtgdeck/1**: JSON with `"schema": "mtgdeck/1"`, a `name`, `format` and `zones`.
 - [ ] **MTGJSON Deck JSON**: JSON with `mainBoard` and `sideBoard` arrays.
 - [ ] **Plain text**: `4 Lightning Bolt` lines, with the sideboard after a blank line and a `Sideboard` header.
 - [ ] **MTGA/MTGO**: as plain text, but starting with a `Deck` header.
 - [ ] **Moxfield**: as plain text.
+
+### Round trip: mtgdeck/1 export, then import
+
+1. Open QA Burn, set it to **Modern**, and export it as **mtgdeck/1**.
+2. Back on the deck list, leave the name blank, open **Import list ▾**, choose **mtgdeck/1**, paste and press **Create from list**.
+
+- [ ] With **Play format** on "From the list (mtgdeck/1), else Standard", a new deck called QA Burn opens, set to Modern, with the same cards, counts and zones as the original.
+- [ ] Nothing is listed under **Lines that didn't resolve**.
 
 ### Exports validate against the published schema
 
@@ -86,20 +101,20 @@ uv run python -c "import json, jsonschema; jsonschema.validate(json.load(open('/
 
 - [ ] It prints `valid`.
 
-### Bad input never wipes the deck
+### Bad input never makes a deck
 
-Before each paste, note what the deck holds. After each one, the deck should be unchanged.
+Count the decks on the list first. After each paste below, an error starting "Nothing imported, so no deck was created" shows, and the deck count doesn't change.
 
-- [ ] Choose **mtgdeck/1** and paste `not json at all`. Nothing changes, and a parse error is shown under **Lines that didn't resolve**.
-- [ ] Choose **mtgdeck/1** and paste `{"schema": "mtgdeck/2", "name": "x", "zones": {}}`. Nothing changes, and the error names the schema.
-- [ ] Choose **Plain text** and paste `hello world`. Nothing changes, and `hello world` is listed as unresolved.
-- [ ] Choose **Plain text** and paste `3 Flargle the Unreal`. Nothing changes, because nothing resolved.
-- [ ] Clear the Import box and press **Import**. Nothing changes, and you see "Nothing to import: no cards found."
-- [ ] Export as **MTGJSON Deck JSON**, then paste that into Import with **mtgdeck/1** selected. Nothing changes, and the error says `schema` must be "mtgdeck/1".
+- [ ] Choose **mtgdeck/1** and paste `not json at all`. The error includes the parse error.
+- [ ] Choose **mtgdeck/1** and paste `{"schema": "mtgdeck/2", "name": "x", "zones": {}}`. The error names the schema.
+- [ ] Choose **Plain text** and paste `hello world`. The error lists `hello world`.
+- [ ] Choose **Plain text** and paste `3 Flargle the Unreal`. The error lists `Flargle the Unreal`.
+- [ ] Clear the box and press **Create from list**. You see "Paste a deck list to import."
+- [ ] Paste a **MTGJSON Deck JSON** export with **mtgdeck/1** selected. The error says `schema` must be "mtgdeck/1".
 
 ### Duplicates are summed
 
-Choose **Plain text** and paste:
+Import this as **Plain text**:
 
 ```
 2 Lightning Bolt
@@ -111,7 +126,7 @@ Choose **Plain text** and paste:
 
 ### Commander, companion and maybeboard zones
 
-Choose **mtgdeck/1** and paste:
+Import this as **mtgdeck/1**:
 
 ```json
 {
@@ -125,11 +140,11 @@ Choose **mtgdeck/1** and paste:
 }
 ```
 
-- [ ] The import works, with nothing unresolved.
-- [ ] Export as **mtgdeck/1**. Krenko is under `commander` with its role and reason, Goblin Guide keeps `tags` and `locked: true`, and Lightning Bolt is under `maybeboard`.
+- [ ] A deck called Zones test opens, with nothing unresolved.
+- [ ] Export it as **mtgdeck/1**. Krenko is under `commander` with its role and reason, Goblin Guide keeps `tags` and `locked: true`, and Lightning Bolt is under `maybeboard`.
 - [ ] Look at the deck table. **Known gap:** only sideboard cards are labelled, so Krenko and the maybeboard Lightning Bolt look like main-deck cards in the table. Decide whether this needs fixing before merging or in S06 (Commander support).
 
-Text headers work too. Choose **Plain text** and paste:
+Text headers work too. Import this as **Plain text**:
 
 ```
 Commander
@@ -154,4 +169,5 @@ In a new Claude Code session:
 
 - [ ] Ask: "Using knowledge-pool, export my QA Burn deck as mtgdeck/1." Claude calls `deck_export` and shows the JSON.
 - [ ] Ask Claude to import an Arena list containing one misspelt card into a new deck. Claude calls `deck_import`, and the result lists the misspelt line as unresolved.
+- [ ] Ask Claude to import a different list into that same deck. The cards are **replaced**, not added to.
 - [ ] Open http://localhost:8000. The imported deck is there with the same cards.
