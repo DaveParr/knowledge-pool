@@ -1,0 +1,146 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Deck</title>
+<style>
+  :root {
+    color-scheme: light dark;
+    --bg: var(--color-background-primary, light-dark(#ffffff, #1f1e1d));
+    --fg: var(--color-text-primary, light-dark(#1f1e1d, #f5f4ef));
+    --muted: var(--color-text-secondary, light-dark(#6b6a65, #a6a49c));
+    --line: var(--color-border-tertiary, light-dark(#e6e4dc, #3a3935));
+    --ok-bg: var(--color-background-success, light-dark(#e8f5e9, #16301b));
+    --ok-fg: var(--color-text-success, light-dark(#1b5e20, #9fd8a6));
+    --bad-bg: var(--color-background-danger, light-dark(#fdecea, #3a1714));
+    --bad-fg: var(--color-text-danger, light-dark(#8a1c13, #f2a59c));
+  }
+  html, body { margin: 0; background: var(--bg); color: var(--fg);
+    font: 14px/1.45 var(--font-sans, system-ui, sans-serif); }
+  main { padding: 12px 16px 16px; }
+  h1 { font-size: 17px; margin: 0 0 2px; }
+  .meta { color: var(--muted); margin: 0 0 10px; }
+  .status { padding: 8px 12px; border-radius: 6px; margin-bottom: 12px; }
+  .status.ok { background: var(--ok-bg); color: var(--ok-fg); }
+  .status.bad { background: var(--bad-bg); color: var(--bad-fg); }
+  .status ul { margin: 4px 0 0; padding-left: 18px; }
+  h2 { font-size: 13px; text-transform: uppercase; letter-spacing: .04em;
+    color: var(--muted); margin: 14px 0 4px; }
+  table { width: 100%; border-collapse: collapse; table-layout: fixed; }
+  col.n { width: 3em; } col.cost { width: 7em; } col.type { width: 40%; }
+  th, td { text-align: left; padding: 5px 8px; border-bottom: 1px solid var(--line); vertical-align: top; }
+  th { font-weight: 600; color: var(--muted); font-size: 12px; }
+  td.n { text-align: right; font-variant-numeric: tabular-nums; }
+  td.cost { white-space: nowrap; font-family: var(--font-mono, ui-monospace, monospace); font-size: 12px; }
+  td.type { color: var(--muted); }
+  .empty { color: var(--muted); }
+  td.card summary {
+    cursor: pointer; list-style: none; display: flex; align-items: center; gap: 5px;
+  }
+  td.card summary::-webkit-details-marker { display: none; }
+  td.card summary::before {
+    content: "▸"; display: inline-block; font-size: 10px; color: var(--muted);
+    transition: transform .12s ease;
+  }
+  td.card details[open] summary::before { transform: rotate(90deg); }
+  td.card .tip {
+    margin: 6px 0 2px; padding: 6px 8px; border-radius: 6px;
+    background: var(--line); font-size: 12px; line-height: 1.4; white-space: pre-line;
+  }
+</style>
+</head>
+<body>
+<main id="app"><p class="empty">Loading deck…</p></main>
+<script>
+// Minimal MCP Apps view (spec 2026-01-26) with no SDK: JSON-RPC over postMessage.
+(() => {
+  const app = document.getElementById("app");
+  let nextId = 1;
+  const pending = new Map();
+  const send = (msg) => window.parent.postMessage({ jsonrpc: "2.0", ...msg }, "*");
+  const request = (method, params) => new Promise((resolve, reject) => {
+    const id = nextId++;
+    pending.set(id, { resolve, reject });
+    send({ id, method, params });
+  });
+  const notify = (method, params) => send({ method, params });
+
+  const esc = (s) => String(s ?? "").replace(/[&<>"']/g, (c) =>
+    ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[c]);
+
+  function applyHost(ctx) {
+    if (!ctx) return;
+    const vars = ctx.styles && ctx.styles.variables;
+    if (vars) for (const [k, v] of Object.entries(vars)) if (v) document.documentElement.style.setProperty(k, v);
+    if (ctx.theme) document.documentElement.style.colorScheme = ctx.theme;
+  }
+
+  function zoneTable(title, rows) {
+    if (!rows.length) return "";
+    const total = rows.reduce((a, r) => a + r.count, 0);
+    return `<h2>${esc(title)} (${total})</h2>
+      <table><colgroup><col class="n"><col><col class="cost"><col class="type"></colgroup><thead><tr><th></th><th>Card</th><th>Cost</th><th>Type</th></tr></thead><tbody>
+      ${rows.map((r) => `<tr><td class="n">${r.count}</td><td class="card">${r.text
+          ? `<details><summary>${esc(r.name)}</summary><div class="tip">${esc(r.text)}</div></details>`
+          : esc(r.name)}</td>
+        <td class="cost">${esc(r.mana_cost)}</td><td class="type">${esc(r.type_line)}</td></tr>`).join("")}
+      </tbody></table>`;
+  }
+
+  function render(deck) {
+    if (!deck || deck.error) {
+      app.innerHTML = `<p class="empty">${esc(deck ? deck.error : "No deck.")}</p>`;
+      return;
+    }
+    const cards = deck.cards || [];
+    const violations = deck.violations || [];
+    app.innerHTML = `
+      <h1>${esc(deck.name)}</h1>
+      <p class="meta">${esc(deck.format)} · ${deck.main_total} main · ${deck.sideboard_total} sideboard</p>
+      <div class="status ${deck.legal ? "ok" : "bad"}" role="status">
+        <strong>${deck.legal ? "Legal" : "Not legal"}</strong>
+        ${violations.length ? `<ul>${violations.map((v) => `<li>${esc(v.message)}</li>`).join("")}</ul>` : ""}
+      </div>
+      ${zoneTable("Main deck", cards.filter((c) => c.zone === "main"))}
+      ${zoneTable("Sideboard", cards.filter((c) => c.zone === "sideboard"))}
+      ${cards.length ? "" : `<p class="empty">This deck has no cards yet.</p>`}`;
+  }
+
+  window.addEventListener("message", (event) => {
+    const msg = event.data;
+    if (!msg || msg.jsonrpc !== "2.0") return;
+    if (msg.id !== undefined && pending.has(msg.id) && !msg.method) {
+      const p = pending.get(msg.id);
+      pending.delete(msg.id);
+      msg.error ? p.reject(msg.error) : p.resolve(msg.result);
+      return;
+    }
+    if (msg.method === "ui/notifications/tool-result") {
+      render(msg.params && msg.params.structuredContent);
+    } else if (msg.method === "ui/notifications/host-context-changed") {
+      applyHost(msg.params);
+    } else if (msg.method === "ui/resource-teardown" && msg.id !== undefined) {
+      send({ id: msg.id, result: {} });
+    } else if (msg.method === "ping" && msg.id !== undefined) {
+      send({ id: msg.id, result: {} });
+    }
+  });
+
+  new ResizeObserver(() => {
+    const r = document.documentElement.getBoundingClientRect();
+    notify("ui/notifications/size-changed", { width: Math.ceil(r.width), height: Math.ceil(r.height) });
+  }).observe(document.documentElement);
+
+  request("ui/initialize", {
+    protocolVersion: "2026-01-26",
+    appInfo: { name: "knowledge-pool-deck", version: "0.1.0" },
+    appCapabilities: { availableDisplayModes: ["inline"] },
+  }).then((result) => {
+    applyHost(result && result.hostContext);
+    notify("ui/notifications/initialized", {});
+  });
+})();
+</script>
+</body>
+</html>

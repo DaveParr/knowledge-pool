@@ -73,7 +73,8 @@ obj DeckCard {
         count: int,
         zone: str,
         mana_cost: str,
-        type_line: str;
+        type_line: str,
+        text: str = "";
 }
 
 """A deck, its cards (sorted by zone then name) and whether it is legal in its format."""
@@ -145,7 +146,8 @@ def deck_view(deck: Deck) -> DeckView {
                 count=e.count,
                 zone=e.zone,
                 mana_cost=c.mana_cost,
-                type_line=c.type_line
+                type_line=c.type_line,
+                text=c.text
             )
         );
     }
