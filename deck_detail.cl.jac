@@ -83,6 +83,26 @@ def:pub DeckDetail(deckId: str, onBack: Callable[[], None]) -> JsxElement {
                             <td style={{"color": "#666"}}>{line.mana_cost}</td>
                             <td style={{"color": "#666"}}>{line.type_line}</td>
                             <td>
+                                {[
+                                    <span
+                                        key={tag}
+                                        style={{
+                                            "display": "inline-block",
+                                            "padding": "0.1rem 0.5rem",
+                                            "marginRight": "0.25rem",
+                                            "marginBottom": "0.15rem",
+                                            "borderRadius": "999px",
+                                            "backgroundColor": "#eee",
+                                            "color": "#444",
+                                            "fontSize": "0.8rem"
+                                        }}
+                                    >
+                                        {tag}
+                                    </span>
+                                    for tag in line.oracle_tags
+                                ]}
+                            </td>
+                            <td>
                                 <button
                                     aria-label={"Remove " + line.name + " from " + line.zone}
                                     onClick={lambda _e: MouseEvent { removeCard(line.oracle_id, line.zone); }}

@@ -74,7 +74,8 @@ obj DeckCard {
         zone: str,
         mana_cost: str,
         type_line: str,
-        text: str = "";
+        text: str = "",
+        oracle_tags: list[str] = [];
 }
 
 """A deck, its cards (sorted by zone then name) and whether it is legal in its format."""
@@ -147,7 +148,8 @@ def deck_view(deck: Deck) -> DeckView {
                 zone=e.zone,
                 mana_cost=c.mana_cost,
                 type_line=c.type_line,
-                text=c.text
+                text=c.text,
+                oracle_tags=c.oracle_tags
             )
         );
     }

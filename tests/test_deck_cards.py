@@ -74,6 +74,22 @@ def test_unknown_card_or_bad_count_changes_nothing(tmp_path):
         client.close()
 
 
+def test_deck_view_carries_each_cards_oracle_tags(tmp_path):
+    client = JacTestClient.from_file("main.jac", base_path=str(tmp_path))
+    try:
+        deck_id = _new_deck(client)
+        bolt, mountain = _oracle_id("Lightning Bolt"), _oracle_id("Mountain")
+        client.post("/walker/AddCard", json={"deck_id": deck_id, "oracle_id": bolt})
+        view = _reports(client.post("/walker/AddCard", json={"deck_id": deck_id, "oracle_id": mountain}))[0]
+
+        by_name = {c["name"]: c["oracle_tags"] for c in view["cards"]}
+        assert sorted(by_name["Lightning Bolt"]) == ["burn", "removal"]
+        # A card with no taggings in the fixture gets an empty list, not an error.
+        assert by_name["Mountain"] == []
+    finally:
+        client.close()
+
+
 def test_two_decks_share_one_card_node(tmp_path):
     client = JacTestClient.from_file("main.jac", base_path=str(tmp_path))
     try:

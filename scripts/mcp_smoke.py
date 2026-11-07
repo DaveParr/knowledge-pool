@@ -115,6 +115,9 @@ async def main() -> None:
         shown = await session.call_tool("deck_show", {"deck_id": deck["id"]})
         check("deck_show gives the view the deck data", shown.structured_content["main_total"] == 60, shown.structured_content)
         check("deck_show gives other clients a Markdown table", "| 52 | Mountain |" in shown.content[0].text, shown.content[0].text)
+        check("deck_show's Markdown table includes oracle tags", "burn" in shown.content[0].text and "removal" in shown.content[0].text, shown.content[0].text)
+        bolt_card = next(c for c in shown.structured_content["cards"] if c["name"] == "Lightning Bolt")
+        check("deck_show's structured content carries oracle tags per card", sorted(bolt_card["oracle_tags"]) == ["burn", "removal"], bolt_card)
 
         wait_for_web()
         web_decks = web("/walker/ListDecks")["data"]["reports"][0]
