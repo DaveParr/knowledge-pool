@@ -42,7 +42,7 @@ import from jaclang.runtimelib.context { ExecutionContext }
 import from jaclang.jac0core.constant { Constants as Con }
 import from catalog { store }
 import from decks {
-    Deck, DeckView, CreateDeck, ListDecks, GetDeck, SetDeckFormat, EditDeck
+    Deck, DeckView, CreateDeck, ListDecks, GetDeck, SetDeckFormat, EditDeck, AnalyzeDeck
 }
 import from deck_io { DeckExport, DeckImport }
 import from legality { FORMAT_LABELS, GetFormatRules }
@@ -264,6 +264,19 @@ def deck_validate(deck_id: str) -> dict {
         "legal": view["legal"],
         "violations": view["violations"]
     };
+}
+
+"""Mana analysis for a deck: land count, coloured pips (spell demand) and
+coloured sources (lands and other cards that produce that colour). Main deck
+only - the sideboard is excluded. Curve and card roles will join this tool
+once they land."""
+@server.tool()
+def deck_analyze(deck_id: str) -> dict {
+    view = first_report(run_walker(AnalyzeDeck(deck_id=deck_id)));
+    if view is None {
+        return {"error": f"No deck with id {deck_id}."};
+    }
+    return view as dict;
 }
 
 """Export a deck: mtgdeck1 (lossless), mtgjson (lossless, export only), or text/arena/moxfield (lossy)."""

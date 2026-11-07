@@ -104,6 +104,15 @@ async def main() -> None:
         verdict = await call(session, "deck_validate", deck_id=deck["id"])
         check("deck_validate says legal", verdict["legal"] is True and verdict["violations"] == [], verdict)
 
+        analysis = await call(session, "deck_analyze", deck_id=deck["id"])
+        check(
+            "deck_analyze reports the mana base",
+            analysis["mana"]["land_count"] == 52
+            and analysis["mana"]["pips"]["R"] == 8
+            and analysis["mana"]["sources"]["R"] == 52,
+            analysis,
+        )
+
         deck = await call(session, "deck_edit", deck_id=deck["id"], format="standard")
         verdict = await call(session, "deck_validate", deck_id=deck["id"])
         check("switching to Standard makes it illegal, with reasons", not verdict["legal"] and {v["rule"] for v in verdict["violations"]} == {"not-legal"}, verdict)
