@@ -195,6 +195,9 @@
     },
     "manaValue": 0.0,
     "name": "Mountain",
+    "producedMana": [
+     "R"
+    ],
     "subtypes": [
      "Mountain"
     ],
@@ -243,6 +246,9 @@
     },
     "manaValue": 0.0,
     "name": "Forest",
+    "producedMana": [
+     "G"
+    ],
     "subtypes": [
      "Forest"
     ],
@@ -291,6 +297,9 @@
     },
     "manaValue": 0.0,
     "name": "Island",
+    "producedMana": [
+     "U"
+    ],
     "subtypes": [
      "Island"
     ],
@@ -339,6 +348,9 @@
     "manaCost": "{G}",
     "manaValue": 1.0,
     "name": "Llanowar Elves",
+    "producedMana": [
+     "G"
+    ],
     "subtypes": [
      "Elf",
      "Druid"
@@ -677,6 +689,13 @@
     "manaCost": "{0}",
     "manaValue": 0.0,
     "name": "Black Lotus",
+    "producedMana": [
+     "W",
+     "U",
+     "B",
+     "R",
+     "G"
+    ],
     "subtypes": [],
     "supertypes": [],
     "text": "{T}, Sacrifice this artifact: Add three mana of any one color.",
@@ -715,6 +734,9 @@
     },
     "manaValue": 0.0,
     "name": "Snow-Covered Mountain",
+    "producedMana": [
+     "R"
+    ],
     "subtypes": [
      "Mountain"
     ],
@@ -1237,6 +1259,13 @@
     "manaCost": "{0}",
     "manaValue": 0.0,
     "name": "Chrome Mox",
+    "producedMana": [
+     "W",
+     "U",
+     "B",
+     "R",
+     "G"
+    ],
     "subtypes": [],
     "supertypes": [],
     "text": "Imprint — When this artifact enters, you may exile a nonartifact, nonland card from your hand.\n{T}: Add one mana of any of the exiled card's colors.",
@@ -1275,6 +1304,9 @@
     },
     "manaValue": 0.0,
     "name": "Wastes",
+    "producedMana": [
+     "C"
+    ],
     "subtypes": [],
     "supertypes": [
      "Basic"
@@ -1321,6 +1353,9 @@
     },
     "manaValue": 0.0,
     "name": "Plains",
+    "producedMana": [
+     "W"
+    ],
     "subtypes": [
      "Plains"
     ],

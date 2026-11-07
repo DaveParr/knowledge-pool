@@ -42,8 +42,9 @@ import from jaclang.runtimelib.context { ExecutionContext }
 import from jaclang.jac0core.constant { Constants as Con }
 import from catalog { store }
 import from decks {
-    Deck, DeckView, CreateDeck, ListDecks, GetDeck, SetDeckFormat, EditDeck
+    Deck, DeckView, CreateDeck, ListDecks, GetDeck, SetDeckFormat, EditDeck, AnalyzeDeck
 }
+import from deck_io { DeckExport, DeckImport }
 import from legality { FORMAT_LABELS, GetFormatRules }
 
 glob APP_DIR: str = os.path.dirname(os.path.abspath(__file__)),
@@ -266,6 +267,41 @@ def deck_validate(deck_id: str) -> dict {
         "legal": view["legal"],
         "violations": view["violations"]
     };
+}
+
+"""Mana analysis for a deck: land count, coloured pips (spell demand) and
+coloured sources (lands and other cards that produce that colour). Main deck
+only - the sideboard is excluded. Curve and card roles will join this tool
+once they land."""
+@server.tool()
+def deck_analyze(deck_id: str) -> dict {
+    view = first_report(run_walker(AnalyzeDeck(deck_id=deck_id)));
+    if view is None {
+        return {"error": f"No deck with id {deck_id}."};
+    }
+    return view as dict;
+}
+
+"""Export a deck: mtgdeck1 (lossless), mtgjson (lossless, export only), or text/arena/moxfield (lossy)."""
+@server.tool()
+def deck_export(deck_id: str, format: str = "mtgdeck1") -> dict {
+    result = first_report(run_walker(DeckExport(deck_id=deck_id, format=format)));
+    if result is None {
+        return {"error": f"No deck with id {deck_id}, unknown format {format}, or {format} does not support export."};
+    }
+    return result as dict;
+}
+
+"""Import a deck list, replacing the deck's current cards. Accepts mtgdeck1,
+text, arena or moxfield. Lines that don't resolve to a known card are listed
+under "unresolved" and never added."""
+@server.tool()
+def deck_import(deck_id: str, format: str, text: str) -> dict {
+    result = first_report(run_walker(DeckImport(deck_id=deck_id, format=format, text=text)));
+    if result is None {
+        return {"error": f"No deck with id {deck_id}, unknown format {format}, or {format} does not support import."};
+    }
+    return result as dict;
 }
 
 """True when something already listens on this local port."""

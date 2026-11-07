@@ -8,6 +8,7 @@ caller shares one graph and nobody has to log in.
 import from datetime { datetime, timezone }
 import from cards { Card, card_node }
 import from legality { Format, Violation, Entry, FORMAT_LABELS, format_node, check_entries }
+import from mana { ManaLine, ManaProfile, mana_profile }
 
 """One change made to a deck through MCP, with the reason given for it."""
 obj ChangeNote {
@@ -28,6 +29,11 @@ node Deck {
 }
 
 glob ZONES: list[str] = ["main", "sideboard"];
+
+"""All five mtgdeck/1 zones. Additive to ZONES: used by set_card_entry and
+later import/export walkers, not by AddCard/SetCardCount/RemoveCard, which
+keep governing only the 60-card-format gameplay zones via ZONES."""
+glob DECK_ZONES: list[str] = ["commander", "companion", "main", "sideboard", "maybeboard"];
 
 """Create a deck and report it. A blank name creates nothing and reports nothing."""
 walker:pub CreateDeck {
@@ -60,10 +66,16 @@ walker:pub ListDecks {
     }
 }
 
-"""A deck holds `count` copies of a card in one zone (main or sideboard)."""
+"""A deck holds `count` copies of a card in one zone (main or sideboard, or,
+via set_card_entry, one of the other mtgdeck/1 zones). roles/tags/locked/reason
+are mtgdeck/1 entry metadata, unused by the 60-card-format gameplay walkers."""
 edge Holds: Deck --> Card {
     has count: int = 1,
-        zone: str = "main";
+        zone: str = "main",
+        roles: list[str] = [],
+        tags: list[str] = [],
+        locked: bool = False,
+        reason: str = "";
 }
 
 """One line of a deck's card list."""
@@ -75,7 +87,11 @@ obj DeckCard {
         mana_cost: str,
         type_line: str,
         text: str = "",
-        oracle_tags: list[str] = [];
+        oracle_tags: list[str] = [],
+        roles: list[str] = [],
+        tags: list[str] = [],
+        locked: bool = False,
+        reason: str = "";
 }
 
 """A deck, its cards (sorted by zone then name) and whether it is legal in its format."""
@@ -83,6 +99,7 @@ obj DeckView {
     has id: str,
         name: str,
         format: str,
+        mana: ManaProfile,
         cards: list[DeckCard] = [],
         main_total: int = 0,
         sideboard_total: int = 0,
@@ -108,6 +125,21 @@ def holdings(deck: Deck) -> list[tuple[Holds, Card]] {
     return pairs;
 }
 
+"""The deck's main-deck lines, as the mana analyser sees them. The sideboard
+is not part of the mana base."""
+def main_deck_mana_lines(deck: Deck) -> list[ManaLine] {
+    lines: list[ManaLine] = [];
+    for (e, c) in holdings(deck) {
+        if e.zone != "main" {
+            continue;
+        }
+        lines.append(
+            ManaLine(count=e.count, is_land="Land" in c.types, mana_cost=c.mana_cost, produced_mana=c.produced_mana)
+        );
+    }
+    return lines;
+}
+
 """Check a deck against its format's rules. Runs after every edit."""
 walker ValidateDeck {
     has violations: list[Violation] = [];
@@ -122,6 +154,9 @@ walker ValidateDeck {
         }
         entries: list[Entry] = [];
         for (e, c) in holdings(here) {
+            if e.zone not in ["main", "sideboard"] {
+                continue;
+            }
             entries.append(
                 Entry(
                     name=c.name,
@@ -149,16 +184,21 @@ def deck_view(deck: Deck) -> DeckView {
                 mana_cost=c.mana_cost,
                 type_line=c.type_line,
                 text=c.text,
-                oracle_tags=c.oracle_tags
+                oracle_tags=c.oracle_tags,
+                roles=e.roles,
+                tags=e.tags,
+                locked=e.locked,
+                reason=e.reason
             )
         );
     }
-    lines.sort(key=lambda l: DeckCard : (ZONES.index(l.zone), l.name));
+    lines.sort(key=lambda l: DeckCard : (DECK_ZONES.index(l.zone), l.name));
     check = deck spawn ValidateDeck();
     return DeckView(
         id=jid(deck),
         name=deck.name,
         format=deck.format,
+        mana=mana_profile(main_deck_mana_lines(deck)),
         cards=lines,
         main_total=sum([l.count for l in lines if l.zone == "main"]),
         sideboard_total=sum([l.count for l in lines if l.zone == "sideboard"]),
@@ -199,6 +239,32 @@ walker DeckAction {
 walker:pub GetDeck(DeckAction) {
     can show with Deck entry {
         report deck_view(here);
+    }
+}
+
+"""A deck's analysis: mana today, curve and card roles once #41/#42 land."""
+obj AnalysisView {
+    has mana: ManaProfile;
+}
+
+"""Report a deck's mana analysis. Reports nothing if the deck id is unknown."""
+walker:pub AnalyzeDeck {
+    has deck_id: str,
+        reports: list[AnalysisView] = [];
+
+    can locate with Root entry {
+        try {
+            target = jobj(self.deck_id);
+        } except ValueError {
+            disengage;
+        }
+        if isinstance(target, Deck) {
+            visit [target];
+        }
+    }
+
+    can analyze with Deck entry {
+        report AnalysisView(mana=mana_profile(main_deck_mana_lines(here)));
     }
 }
 
@@ -260,6 +326,32 @@ def set_card_count(deck: Deck, oid: str, zone: str, count: int) -> int | None {
     } else {
         existing.count = count;
     }
+    return before;
+}
+
+"""Set a card's full entry (count plus roles, tags, locked and reason) in one
+zone. Like set_card_count, but also carries the mtgdeck/1 entry metadata;
+used by DeckImport. Always overwrites, never accumulates. Returns the count
+before the change, or None if the zone or card id is unknown."""
+def set_card_entry(deck: Deck, oid: str, zone: str, count: int, roles: list[str] = [], tags: list[str] = [], locked: bool = False, reason: str = "") -> int | None {
+    if zone not in DECK_ZONES {
+        return None;
+    }
+    existing = holds_edge(deck, oid, zone);
+    if existing is None {
+        card = card_node(root, oid);
+        if card is None {
+            return None;
+        }
+        deck +>:Holds(count=count, zone=zone, roles=roles, tags=tags, locked=locked, reason=reason):+> card;
+        return 0;
+    }
+    before = existing.count;
+    existing.count = count;
+    existing.roles = roles;
+    existing.tags = tags;
+    existing.locked = locked;
+    existing.reason = reason;
     return before;
 }
 

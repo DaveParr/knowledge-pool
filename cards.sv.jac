@@ -20,7 +20,8 @@ node Card {
         type_line: str = "",
         text: str = "",
         legal: dict[str, str] = {},
-        oracle_tags: list[str] = [];
+        oracle_tags: list[str] = [],
+        produced_mana: list[str] = [];
 }
 
 """One search result."""
@@ -95,7 +96,8 @@ def card_node(home: Root, oid: str) -> Card | None {
         type_line=c["type_line"] as str,
         text=c["text"] as str,
         legal=c["legal"] as dict[str, str],
-        oracle_tags=c["oracle_tags"] as list[str]
+        oracle_tags=c["oracle_tags"] as list[str],
+        produced_mana=c["produced_mana"] as list[str]
     );
     cat ++> card;
     return card;

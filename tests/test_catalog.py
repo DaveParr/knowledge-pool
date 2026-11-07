@@ -22,6 +22,7 @@ def test_one_row_per_oracle_card_with_its_fields():
     assert bolt["colour_identity"] == ["R"]
     assert bolt["types"] == ["Instant"]
     assert bolt["legal"]["modern"] == "Legal"
+    assert bolt["produced_mana"] == []
     assert store.get_card(bolt["oracle_id"])["name"] == "Lightning Bolt"
 
 
@@ -49,6 +50,15 @@ def test_load_oracle_tags_resolves_parent_ids_to_parent_slugs():
 
     assert ("4457ed35-7c10-48c8-9776-456485fdf070", "removal") in card_tag_rows
     assert ("51d9564b-44fc-4de1-9119-09d7b4089378", "removal-creature") in card_tag_rows
+
+
+def test_produced_mana_is_stored_from_mtgjson():
+    mountain = store.find_by_name("Mountain")
+    assert mountain["produced_mana"] == ["R"]
+    chrome_mox = store.find_by_name("Chrome Mox")
+    assert chrome_mox["produced_mana"] == ["W", "U", "B", "R", "G"]
+    fetchland = store.find_by_name("Bloodstained Mire")
+    assert fetchland["produced_mana"] == []
 
 
 def test_split_card_keeps_both_faces():
