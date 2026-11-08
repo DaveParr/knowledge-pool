@@ -42,7 +42,7 @@ import from jaclang.runtimelib.context { ExecutionContext }
 import from jaclang.jac0core.constant { Constants as Con }
 import from cards { search_cards as catalog_search, find_card, resolve_names as catalog_resolve_names }
 import from decks {
-    Deck, DeckView, CreateDeck, ListDecks, GetDeck, SetDeckFormat, EditDeck, AnalyzeDeck
+    Deck, DeckView, CreateDeck, ListDecks, GetDeck, SetDeckFormat, EditDeck
 }
 import from deck_io { DeckExport, DeckImport }
 import from legality { FORMAT_LABELS, GetFormatRules }
@@ -263,11 +263,15 @@ def deck_validate(deck_id: str) -> dict {
 """Mana analysis for a deck: land count, coloured pips (spell demand) and
 coloured sources (lands and other cards that produce that colour), plus the
 non-land mana curve (card count by mana value, 0-6 and 7+) and its average.
-Main deck only - the sideboard is excluded. Card roles will join this tool
-once #41 lands."""
+Main deck only - the sideboard is excluded. deck_get and deck_edit return the
+same analysis with the whole deck; this tool returns only the analysis."""
 @server.tool()
 def deck_analyze(deck_id: str) -> dict {
-    return deck_or_error(run_walker(AnalyzeDeck(deck_id=deck_id)), deck_id);
+    view = deck_or_error(run_walker(GetDeck(deck_id=deck_id)), deck_id);
+    if "error" in view {
+        return view;
+    }
+    return {"id": view["id"], "mana": view["mana"], "curve": view["curve"]};
 }
 
 """Export a deck: mtgdeck1 (lossless), mtgjson (lossless, export only), or text/arena/moxfield (lossy)."""

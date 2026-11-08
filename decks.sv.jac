@@ -94,12 +94,51 @@ obj DeckCard {
         reason: str = "";
 }
 
-"""A deck, its cards (sorted by zone then name) and whether it is legal in its format."""
+glob CURVE_BUCKETS: list[str] = ["0", "1", "2", "3", "4", "5", "6", "7+"];
+
+"""Non-land mana-value buckets (0..6, 7+) over a deck's main deck, by card count,
+plus the average non-land mana value."""
+obj ManaCurve {
+    has buckets: dict[str, int] = {},
+        average_mv: float = 0.0;
+}
+
+def bucket_for(mv: float) -> str {
+    n = int(mv);
+    return "7+" if n >= 7 else str(max(n, 0));
+}
+
+def mana_curve(deck: Deck) -> ManaCurve {
+    buckets: dict[str, int] = {b: 0 for b in CURVE_BUCKETS};
+    total_mv = 0.0;
+    total_count = 0;
+    for (e, c) in holdings(deck) {
+        if e.zone != "main" or is_land(c) {
+            continue;
+        }
+        buckets[bucket_for(c.mana_value)] += e.count;
+        total_mv += c.mana_value * e.count;
+        total_count += e.count;
+    }
+    avg: float = 0.0;
+    if total_count > 0 {
+        raw: float = total_mv / total_count;
+        scaled: float = round(raw * 100);
+        avg = scaled / 100.0;
+    }
+    return ManaCurve(buckets=buckets, average_mv=avg);
+}
+
+"""A deck, its cards (sorted by zone then name), whether it is legal in its
+format, and its main-deck mana analysis (mana profile and curve). Every walker
+that reports a deck reports this whole view, so one request per edit gives a
+client the full picture."""
 obj DeckView {
     has id: str,
         name: str,
         format: str,
         mana: ManaProfile,
+        curve: ManaCurve,
         cards: list[DeckCard] = [],
         main_total: int = 0,
         sideboard_total: int = 0,
@@ -199,6 +238,7 @@ def deck_view(deck: Deck) -> DeckView {
         name=deck.name,
         format=deck.format,
         mana=mana_profile(main_deck_mana_lines(deck)),
+        curve=mana_curve(deck),
         cards=lines,
         main_total=sum([l.count for l in lines if l.zone == "main"]),
         sideboard_total=sum([l.count for l in lines if l.zone == "sideboard"]),
@@ -206,41 +246,6 @@ def deck_view(deck: Deck) -> DeckView {
         violations=check.violations,
         history=deck.history[-20:]
     );
-}
-
-glob CURVE_BUCKETS: list[str] = ["0", "1", "2", "3", "4", "5", "6", "7+"];
-
-"""Non-land mana-value buckets (0..6, 7+) over a deck's main deck, by card count,
-plus the average non-land mana value."""
-obj ManaCurve {
-    has buckets: dict[str, int] = {},
-        average_mv: float = 0.0;
-}
-
-def bucket_for(mv: float) -> str {
-    n = int(mv);
-    return "7+" if n >= 7 else str(max(n, 0));
-}
-
-def mana_curve(deck: Deck) -> ManaCurve {
-    buckets: dict[str, int] = {b: 0 for b in CURVE_BUCKETS};
-    total_mv = 0.0;
-    total_count = 0;
-    for (e, c) in holdings(deck) {
-        if e.zone != "main" or is_land(c) {
-            continue;
-        }
-        buckets[bucket_for(c.mana_value)] += e.count;
-        total_mv += c.mana_value * e.count;
-        total_count += e.count;
-    }
-    avg: float = 0.0;
-    if total_count > 0 {
-        raw: float = total_mv / total_count;
-        scaled: float = round(raw * 100);
-        avg = scaled / 100.0;
-    }
-    return ManaCurve(buckets=buckets, average_mv=avg);
 }
 
 # ---- Deck holdings -------------------------------------------------------
@@ -399,39 +404,6 @@ walker DeckAction {
 walker:pub GetDeck(DeckAction) {
     can show with Deck entry {
         report deck_view(here);
-    }
-}
-
-"""Analysis of one deck: mana profile and curve. #41 adds card roles here as
-it lands."""
-obj DeckAnalysis {
-    has id: str,
-        mana: ManaProfile,
-        curve: ManaCurve;
-}
-
-"""Report a deck's mana analysis. Reports nothing if the deck id is unknown."""
-walker:pub AnalyzeDeck {
-    has deck_id: str,
-        reports: list[DeckAnalysis] = [];
-
-    can locate with Root entry {
-        try {
-            target = jobj(self.deck_id);
-        } except ValueError {
-            disengage;
-        }
-        if isinstance(target, Deck) {
-            visit [target];
-        }
-    }
-
-    can analyze with Deck entry {
-        report DeckAnalysis(
-            id=jid(here),
-            mana=mana_profile(main_deck_mana_lines(here)),
-            curve=mana_curve(here)
-        );
     }
 }
 

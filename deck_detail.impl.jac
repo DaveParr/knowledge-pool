@@ -6,14 +6,6 @@ impl DeckDetail.loadDeck -> None {
     if result.reports {
         deck = result.reports[0];
     }
-    await refreshAnalysis();
-}
-
-impl DeckDetail.refreshAnalysis -> None {
-    result = root spawn AnalyzeDeck(deck_id=deckId);
-    if result.reports {
-        analysis = result.reports[0];
-    }
 }
 
 impl DeckDetail.runSearch(e: FormEvent) -> None {
@@ -32,7 +24,6 @@ impl DeckDetail.addCard(oracleId: str, zone: str) -> None {
     if result.reports {
         deck = result.reports[0];
     }
-    await refreshAnalysis();
 }
 
 impl DeckDetail.setCount(oracleId: str, zone: str, value: str) -> None {
@@ -47,7 +38,6 @@ impl DeckDetail.setCount(oracleId: str, zone: str, value: str) -> None {
     if result.reports {
         deck = result.reports[0];
     }
-    await refreshAnalysis();
 }
 
 impl DeckDetail.removeCard(oracleId: str, zone: str) -> None {
@@ -55,7 +45,6 @@ impl DeckDetail.removeCard(oracleId: str, zone: str) -> None {
     if result.reports {
         deck = result.reports[0];
     }
-    await refreshAnalysis();
 }
 
 impl DeckDetail.setFormat(value: str) -> None {

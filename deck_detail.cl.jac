@@ -3,8 +3,7 @@
 import from .export_menu { ExportMenu }
 
 sv import from decks {
-    DeckView, DeckCard, FormatInfo, DeckAnalysis, GetDeck, SetDeckFormat, AddCard, SetCardCount, RemoveCard,
-    AnalyzeDeck, list_formats
+    DeckView, DeckCard, FormatInfo, GetDeck, SetDeckFormat, AddCard, SetCardCount, RemoveCard, list_formats
 }
 sv import from legality { Violation }
 sv import from mana { ManaProfile }
@@ -12,7 +11,6 @@ sv import from cards { CardHit, search_cards }
 
 def:pub DeckDetail(deckId: str, importNotes: list[str], onBack: Callable[[], None]) -> JsxElement {
     has deck: DeckView | None = None,
-        analysis: DeckAnalysis | None = None,
         query: str = "",
         hits: list[CardHit] = [],
         searched: bool = False,
@@ -23,7 +21,6 @@ def:pub DeckDetail(deckId: str, importNotes: list[str], onBack: Callable[[], Non
     }
 
     async def loadDeck -> None;
-    async def refreshAnalysis -> None;
     async def runSearch(e: FormEvent) -> None;
     async def addCard(oracleId: str, zone: str) -> None;
     async def setCount(oracleId: str, zone: str, value: str) -> None;
@@ -43,11 +40,11 @@ def:pub DeckDetail(deckId: str, importNotes: list[str], onBack: Callable[[], Non
         return <p>Loading deck...</p>;
     }
 
-    curveBuckets = analysis.curve.buckets if analysis is not None else None;
+    curveBuckets = deck.curve.buckets;
     maxBucketCount = max(
         curveBuckets["0"], curveBuckets["1"], curveBuckets["2"], curveBuckets["3"],
         curveBuckets["4"], curveBuckets["5"], curveBuckets["6"], curveBuckets["7+"], 1
-    ) if curveBuckets is not None else 1;
+    );
 
     return
         <section>
@@ -104,31 +101,28 @@ def:pub DeckDetail(deckId: str, importNotes: list[str], onBack: Callable[[], Non
                     ]}
                 </ul>
             </div>
-            {
-                <section style={{"marginBottom": "2rem"}}>
-                    <h2>Mana curve</h2>
-                    <p>{"Average mana value (non-land): " + f"{analysis.curve.average_mv:.2f}"}</p>
-                    <div>
-                        {[
-                            <div
-                                key={label}
-                                style={{"display": "flex", "alignItems": "center", "gap": "0.5rem", "marginBottom": "0.15rem"}}
-                            >
-                                <span style={{"width": "2rem"}}>{label}</span>
-                                <div style={{
-                                    "backgroundColor": "#1976d2",
-                                    "height": "1rem",
-                                    "width": curveBarWidth(count, maxBucketCount)
-                                }}/>
-                                <span>{str(count)}</span>
-                            </div>
-                            # CURVE_BUCKETS order from the server (0..6, 7+) is what drives display order here.
-                            for (label, count) in analysis.curve.buckets.items()
-                        ]}
-                    </div>
-                </section>
-                if analysis is not None else None
-            }
+            <section style={{"marginBottom": "2rem"}}>
+                <h2>Mana curve</h2>
+                <p>{"Average mana value (non-land): " + f"{deck.curve.average_mv:.2f}"}</p>
+                <div>
+                    {[
+                        <div
+                            key={label}
+                            style={{"display": "flex", "alignItems": "center", "gap": "0.5rem", "marginBottom": "0.15rem"}}
+                        >
+                            <span style={{"width": "2rem"}}>{label}</span>
+                            <div style={{
+                                "backgroundColor": "#1976d2",
+                                "height": "1rem",
+                                "width": curveBarWidth(count, maxBucketCount)
+                            }}/>
+                            <span>{str(count)}</span>
+                        </div>
+                        # CURVE_BUCKETS order from the server (0..6, 7+) is what drives display order here.
+                        for (label, count) in deck.curve.buckets.items()
+                    ]}
+                </div>
+            </section>
             <table style={{"width": "100%", "borderCollapse": "collapse", "marginBottom": "2rem"}}>
                 <tbody>
                     {[

@@ -114,8 +114,11 @@ async def main() -> None:
             and analysis["mana"]["sources"]["R"] == 52,
             analysis,
         )
+        check("deck_analyze is the deck's analysis only, not its cards", set(analysis) == {"id", "mana", "curve"}, analysis)
+        check("deck_edit already carried the same curve", deck["curve"] == analysis["curve"], deck)
 
         deck = await call(session, "deck_edit", deck_id=deck["id"], format="standard")
+        check("a format change still reports the curve", deck["curve"] == analysis["curve"], deck)
         verdict = await call(session, "deck_validate", deck_id=deck["id"])
         check("switching to Standard makes it illegal, with reasons", not verdict["legal"] and {v["rule"] for v in verdict["violations"]} == {"not-legal"}, verdict)
 
