@@ -2,9 +2,9 @@
 
 The MCP SDK's MCPServer (FastMCP before mcp 2.0) runs in the same process as
 the Jac graph. Deck and format tools each spawn a walker against the app's
-shared root, the same root the web app's `:pub` walkers use. Card search and
-lookup read the SQLite catalogue directly, as in the design. No tool calls a
-model.
+shared root, the same root the web app's `:pub` walkers use. Card search,
+lookup and name resolution go through the card catalogue module (`cards`).
+No tool calls a model.
 
 This process also serves the web app (UI and REST) on port 8000, because two
 Jac processes writing the same saved graph overwrite each other's changes. So
@@ -40,7 +40,7 @@ import from mcp.server.streamable_http { TransportSecuritySettings }
 import from jaclang { JacRuntime as Jac }
 import from jaclang.runtimelib.context { ExecutionContext }
 import from jaclang.jac0core.constant { Constants as Con }
-import from catalog { store }
+import from cards { search_cards as catalog_search, find_card, resolve_names as catalog_resolve_names }
 import from decks {
     Deck, DeckView, CreateDeck, ListDecks, GetDeck, SetDeckFormat, EditDeck, AnalyzeDeck
 }
@@ -168,22 +168,13 @@ def deck_or_error(w: any, deck_id: str) -> dict {
 """Search card names, type lines and rules text. Every word must match, as a prefix."""
 @server.tool()
 def search_cards(query: str, limit: int = 20) -> list[dict] {
-    return [
-        {
-            "oracle_id": c["oracle_id"],
-            "name": c["name"],
-            "mana_cost": c["mana_cost"],
-            "type_line": c["type_line"],
-            "text": c["text"]
-        }
-        for c in store.search(query, limit)
-    ];
+    return [plain(hit) for hit in catalog_search(query, limit)];
 }
 
 """Full card details, by oracle id or exact card name, including format legalities."""
 @server.tool()
 def get_card(oracle_id_or_name: str) -> dict {
-    card = store.get_card(oracle_id_or_name) or store.find_by_name(oracle_id_or_name);
+    card = find_card(oracle_id_or_name);
     if card is None {
         return {"error": f"No card matches {oracle_id_or_name}. Try resolve_names or search_cards."};
     }
@@ -195,7 +186,7 @@ candidates to choose from, and `unknown` names. Only exact matches (or a candida
 the user confirms) should go into a deck."""
 @server.tool()
 def resolve_names(names: list[str]) -> dict {
-    return store.resolve_names(names);
+    return catalog_resolve_names(names);
 }
 
 """Deck-construction rules for a format: standard, pioneer or modern."""
