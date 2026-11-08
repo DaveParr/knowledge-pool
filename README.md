@@ -75,7 +75,9 @@ uv run pytest tests    # ingest, search, REST, legality and MCP tests
 - `deckformats/` the deck import/export format strategies (mtgdeck/1, MTGJSON Deck JSON, plain/Arena/Moxfield text)
 - `decks.sv.jac` the `Deck` node, the `Holds` edge, the deck walkers and `ValidateDeck`
 - `deck_io.sv.jac` the `DeckExport`, `DeckImport` and `CreateDeckFromList` walkers
-- `export_menu.cl.jac` the per-deck Export button that copies to the clipboard
+- `export_panel.cl.jac` the per-deck Export panel (format, preview, copy, download)
+- `mana_panel.cl.jac`, `card_search.cl.jac` the deck page's mana and search sections
+- `global.css` app-wide style tokens, shared with the MCP Apps views in `ui/`
 - `legality.sv.jac` `Format` nodes and the deck-construction rules
 - `mcp_server.jac` the MCP server (and the web app, in the same process)
 - `scripts/mcp_smoke.py` an MCP client session that checks the tools end to end

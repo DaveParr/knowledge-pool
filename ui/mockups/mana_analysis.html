@@ -6,7 +6,7 @@
 <title>Mana Analysis Mockup</title>
 <!--
   STATIC MOCKUP for sign-off. Not wired to the server.
-  The real view would be bound to deck_analyze (ui://knowledge-pool/mana-analysis.html)
+  Bound to deck_analyze (decided on #67) as ui://knowledge-pool/mana-analysis.html
   and fill itself from the structuredContent of ui/notifications/tool-result,
   same handshake as ui/deck_table.html. Sample data is the SAMPLE const below.
 -->
@@ -65,8 +65,6 @@
   .track { height: 10px; }
   .hbar { height: 10px; border-radius: 0 4px 4px 0; }
   .hrow .v { font-size: 12px; font-variant-numeric: tabular-nums; text-align: right; }
-  .flag { margin-top: 10px; padding: 8px 12px; border-radius: 6px; background: var(--warn-bg); color: var(--warn-fg); }
-  .flag strong::before { content: "⚠ "; }
   details.table { margin-top: 12px; }
   details.table summary { cursor: pointer; color: var(--muted); font-size: 12px; }
   table { width: 100%; border-collapse: collapse; margin-top: 6px; font-size: 13px; }
@@ -115,8 +113,6 @@ function render(d) {
   const maxN = Math.max(1, ...buckets.map(([, n]) => n));
   const used = Object.keys(COLOURS).filter((c) => d.pips[c] || d.sources[c]);
   const maxPS = Math.max(1, ...used.flatMap((c) => [d.pips[c], d.sources[c]]));
-  // Mockup heuristic for the flag only; the real rule would come from the server.
-  const thin = used.filter((c) => d.pips[c] > 0 && d.sources[c] < 14);
 
   document.getElementById("app").innerHTML = `
     <h1>${esc(d.name)}: mana</h1>
@@ -153,7 +149,6 @@ function render(d) {
           <div class="hrow"><div class="track"><div class="hbar" style="width:${(d.sources[c] / maxPS) * 100}%;background:var(--series-2)"></div></div><span class="v">${d.sources[c]}</span></div>
         </div>
       </div>`).join("")}
-    ${thin.length ? `<div class="flag"><strong>Few sources</strong> ${thin.map((c) => `${COLOURS[c]} has ${d.sources[c]} sources for ${d.pips[c]} pips.`).join(" ")}</div>` : ""}
 
     <details class="table">
       <summary>Show as table</summary>

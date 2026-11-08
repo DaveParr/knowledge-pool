@@ -1,0 +1,35 @@
+/* Card tables follow ui/deck_table.html. */
+
+.dd-back { margin: 0 0 8px -10px; }
+.dd-head { display: flex; flex-wrap: wrap; justify-content: space-between; align-items: center; gap: 8px; }
+.dd-head h1 { margin: 0; }
+
+.dd-cards { width: 100%; border-collapse: collapse; table-layout: fixed; }
+.dd-c-n { width: 4.5em; }
+.dd-c-cost { width: 7em; }
+.dd-c-type { width: 26%; }
+.dd-c-tags { width: 28%; }
+.dd-c-x { width: 2.5em; }
+.dd-cards th, .dd-cards td {
+  text-align: left; padding: 5px 8px; border-bottom: 1px solid var(--line); vertical-align: top;
+}
+.dd-cards th { font-weight: 600; color: var(--muted); font-size: 12px; }
+.dd-count { width: 3.2em; padding: 2px 4px; font-variant-numeric: tabular-nums; }
+.dd-cost { white-space: nowrap; font-family: var(--font-mono); font-size: 12px; }
+.dd-type { color: var(--muted); }
+.dd-tags { display: flex; flex-wrap: wrap; gap: 4px; }
+.dd-remove { padding: 0 6px; }
+
+.dd-card summary {
+  cursor: pointer; list-style: none; display: flex; align-items: center; gap: 5px;
+}
+.dd-card summary::-webkit-details-marker { display: none; }
+.dd-card summary::before {
+  content: "▸"; display: inline-block; font-size: 10px; color: var(--muted);
+  transition: transform .12s ease;
+}
+.dd-card details[open] summary::before { transform: rotate(90deg); }
+.dd-tip {
+  margin: 6px 0 2px; padding: 6px 8px; border-radius: 6px;
+  background: var(--line); font-size: 12px; line-height: 1.4; white-space: pre-line;
+}

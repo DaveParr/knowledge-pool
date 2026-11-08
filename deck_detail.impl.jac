@@ -16,25 +16,6 @@ impl DeckDetail.refreshAnalysis -> None {
     }
 }
 
-impl DeckDetail.runSearch(e: FormEvent) -> None {
-    e.preventDefault();
-    if not query.strip() {
-        hits = [];
-        searched = False;
-        return;
-    }
-    hits = await search_cards(query);
-    searched = True;
-}
-
-impl DeckDetail.addCard(oracleId: str, zone: str) -> None {
-    result = root spawn AddCard(deck_id=deckId, oracle_id=oracleId, count=1, zone=zone);
-    if result.reports {
-        deck = result.reports[0];
-    }
-    await refreshAnalysis();
-}
-
 impl DeckDetail.setCount(oracleId: str, zone: str, value: str) -> None {
     if value == "" {
         return;

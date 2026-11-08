@@ -1,7 +1,9 @@
 """Decks view: list your decks and create a new one."""
 
+import "./global.css";
+import "./frontend.css";
 import from .deck_detail { DeckDetail }
-import from .export_menu { ExportMenu }
+import from .export_panel { ExportPanel }
 
 sv import from decks { Deck, FormatInfo, CreateDeck, ListDecks, list_formats }
 sv import from deck_io { CreateDeckFromList }
@@ -26,6 +28,15 @@ def:pub app -> JsxElement {
     async def createDeck(e: FormEvent) -> None;
     async def createFromList -> None;
 
+    def formatLabel(name: str) -> str {
+        for f in formats {
+            if f.name == name {
+                return f.label;
+            }
+        }
+        return name;
+    }
+
     def closeDeck {
         openDeckId = "";
         importNotes = [];
@@ -34,39 +45,24 @@ def:pub app -> JsxElement {
 
     if openDeckId {
         return
-            <main
-                style={{
-                    "maxWidth": "860px",
-                    "margin": "2rem auto",
-                    "padding": "0 1rem",
-                    "fontFamily": "system-ui, -apple-system, sans-serif"
-                }}
-            >
+            <main className="page">
                 <DeckDetail key={openDeckId} deckId={openDeckId} importNotes={importNotes} onBack={closeDeck}/>
             </main>;
     }
 
     return
-        <main
-            style={{
-                "maxWidth": "640px",
-                "margin": "2rem auto",
-                "padding": "0 1rem",
-                "fontFamily": "system-ui, -apple-system, sans-serif"
-            }}
-        >
+        <main className="page narrow">
             <h1>Decks</h1>
-            <form onSubmit={createDeck} style={{"marginBottom": "1.5rem"}}>
-                <div style={{"display": "flex", "gap": "0.5rem"}}>
+            <form onSubmit={createDeck} className="fe-create">
+                <div className="fe-row">
                     <input
                         type="text"
                         aria-label="Deck name"
                         value={name}
                         onChange={lambda e: ChangeEvent { name = e.target.value; }}
                         placeholder={"Deck name (optional for mtgdeck/1)" if importOpen else "New deck name"}
-                        style={{"flex": "1", "padding": "0.5rem"}}
                     />
-                    <button type="submit" style={{"padding": "0.5rem 1rem"}}>
+                    <button type="submit" className="primary">
                         {"Create from list" if importOpen else "Create deck"}
                     </button>
                     <button
@@ -74,13 +70,12 @@ def:pub app -> JsxElement {
                         aria-expanded={importOpen}
                         aria-controls="import-list"
                         onClick={lambda _e: MouseEvent { importOpen = not importOpen; error = ""; }}
-                        style={{"padding": "0.5rem 0.75rem"}}
                     >
                         {"Import list ▴" if importOpen else "Import list ▾"}
                     </button>
                 </div>
-                {<div id="import-list" style={{"marginTop": "0.5rem"}}>
-                    <div style={{"display": "flex", "gap": "1rem", "marginBottom": "0.5rem"}}>
+                {<div id="import-list" className="fe-import">
+                    <div className="fe-row fe-options">
                         <label>
                             {"List type "}
                             <select
@@ -111,28 +106,23 @@ def:pub app -> JsxElement {
                         placeholder="Paste a deck list"
                         value={importText}
                         onChange={lambda e: ChangeEvent { importText = e.target.value; }}
-                        style={{"width": "100%", "height": "8rem", "boxSizing": "border-box"}}
+                        rows={8}
                     />
                 </div> if importOpen else None}
             </form>
-            {<p role="alert" style={{"color": "#b00020"}}>{error}</p> if error else None}
-            {<p>No decks yet.</p> if len(decks) == 0 else None}
-            <ul style={{"listStyle": "none", "padding": "0"}}>
+            {<p role="alert" className="error">{error}</p> if error else None}
+            {<p className="empty">No decks yet.</p> if len(decks) == 0 else None}
+            <ul className="fe-decks">
                 {[
-                    <li
-                        key={jid(deck)}
-                        style={{
-                            "padding": "0.5rem 0", "borderBottom": "1px solid #ddd",
-                            "display": "flex", "justifyContent": "space-between", "alignItems": "center"
-                        }}
-                    >
+                    <li key={jid(deck)} className="fe-deck">
                         <a
                             href="#"
                             onClick={lambda e: MouseEvent { e.preventDefault(); openDeckId = jid(deck); }}
                         >
                             {deck.name}
                         </a>
-                        <ExportMenu deckId={jid(deck)} deckName={deck.name}/>
+                        <span className="pill">{formatLabel(deck.format)}</span>
+                        <ExportPanel deckId={jid(deck)} deckName={deck.name}/>
                     </li>
                     for deck in decks
                 ]}

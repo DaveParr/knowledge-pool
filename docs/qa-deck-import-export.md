@@ -25,7 +25,7 @@ uv run python scripts/mcp_smoke.py   # expect "all checks passed", including the
 
 Start the app with `uv run jac start main.jac` and open http://localhost:8000.
 
-Import isn't a section of its own. It's an expander on the deck list: press **Import list ▾** next to **Create deck**, pick a format, paste a list and press **Create from list**. Every import makes a new deck. Replacing an existing deck's cards from a list is only available over MCP (`deck_import`). Export is the small **Export ▾** button on each deck row and in each deck's header. Picking a format copies the export to the clipboard and shows "Copied <format>".
+Import isn't a section of its own. It's an expander on the deck list: press **Import list ▾** next to **Create deck**, pick a format, paste a list and press **Create from list**. Every import makes a new deck. Replacing an existing deck's cards from a list is only available over MCP (`deck_import`). Export is the small **Export ▾** button on each deck row and in each deck's header. It opens a panel showing the export as MTGA/MTGO, with buttons to switch format, **Copy** and **Download**.
 
 ### Import a pasted list (Moxfield or Arena)
 
@@ -67,18 +67,20 @@ Sideboard
 - [ ] `Deck` is read as a header, not as a card.
 - [ ] With the expander closed, **Create deck** with a blank name still says "A deck needs a name."
 
-### Export copies to the clipboard
+### Export panel
 
-On the deck list, press **Export ▾** on QA Burn and choose **Moxfield**.
+On the deck list, press **Export ▾** on QA Burn.
 
-- [ ] "Copied Moxfield" appears next to the button, and pasting into a text editor gives the list.
+- [ ] A panel opens under the row showing the deck as **MTGA/MTGO**, with a yellow note that the format is lossy.
+- [ ] Press **Moxfield**: the text changes. Press **mtgdeck/1**: the note turns green ("Lossless") and the download button says **Download .json**.
+- [ ] **Copy** shows "Copied", and pasting into a text editor gives the list. If the browser refuses clipboard access, the text is selected instead with "Press Ctrl+C (Cmd+C) to copy".
+- [ ] **Download** saves `qa-burn.txt` (or `.json`).
 - [ ] Do the same from inside the deck (the button by the deck name).
-- [ ] If the browser refuses clipboard access, a box titled "Couldn't copy automatically" shows the text to copy by hand instead.
 
 Check each format's shape:
 
 - [ ] **mtgdeck/1**: JSON with `"schema": "mtgdeck/1"`, a `name`, `format` and `zones`.
-- [ ] **MTGJSON Deck JSON**: JSON with `mainBoard` and `sideBoard` arrays.
+- [ ] **MTGJSON**: JSON with `mainBoard` and `sideBoard` arrays.
 - [ ] **Plain text**: `4 Lightning Bolt` lines, with the sideboard after a blank line and a `Sideboard` header.
 - [ ] **MTGA/MTGO**: as plain text, but starting with a `Deck` header.
 - [ ] **Moxfield**: as plain text.

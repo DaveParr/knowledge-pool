@@ -1,0 +1,22 @@
+/* Matches ui/mockups/card_search.html. */
+
+.cs-search { display: flex; gap: 6px; margin-bottom: 8px; }
+.cs-search input { flex: 1; min-width: 0; }
+.cs-count { color: var(--muted); font-size: 12px; margin: 0 0 4px; }
+.cs-hits { list-style: none; margin: 0; padding: 0; }
+.cs-hit {
+  display: grid; grid-template-columns: 1fr auto; gap: 4px 10px;
+  padding: 8px 0; border-bottom: 1px solid var(--line);
+}
+.cs-title { display: flex; flex-wrap: wrap; gap: 4px 8px; align-items: baseline; }
+.cs-name { font-weight: 600; }
+.cs-cost { font-family: var(--font-mono); font-size: 12px; color: var(--muted); }
+.cs-type { color: var(--muted); font-size: 12px; }
+.cs-text { grid-column: 1 / 2; font-size: 12px; color: var(--muted); white-space: pre-line; }
+.cs-actions {
+  grid-row: 1 / 3; grid-column: 2; display: flex; flex-direction: column; gap: 4px; align-items: stretch;
+}
+@media (max-width: 480px) {
+  .cs-hit { grid-template-columns: 1fr; }
+  .cs-actions { grid-row: auto; grid-column: 1 / -1; flex-direction: row; }
+}
