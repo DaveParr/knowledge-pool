@@ -10,6 +10,7 @@
   --fg: light-dark(#1f1e1d, #f5f4ef);
   --muted: light-dark(#6b6a65, #a6a49c);
   --line: light-dark(#e6e4dc, #3a3935);
+  --soft: light-dark(#f6f5f1, #282725);
   --ok-bg: light-dark(#e8f5e9, #16301b);
   --ok-fg: light-dark(#1b5e20, #9fd8a6);
   --bad-bg: light-dark(#fdecea, #3a1714);

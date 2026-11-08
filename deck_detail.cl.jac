@@ -1,6 +1,6 @@
 """One deck: legality, mana, its cards by zone, card search and export.
 
-Laid out like the MCP Apps views Claude shows in chat: the card tables follow
+Laid out like the MCP Apps views Claude shows in chat: the card lists follow
 ui/deck_table.html, and ManaPanel, CardSearch and ExportPanel are the web twins
 of the mana, search and export apps (#67, #68, #69).
 """
@@ -29,10 +29,90 @@ glob ZONES: list[tuple[str, str]] = [
     ("maybeboard", "Maybeboard")
 ];
 
+"""One card line's key: a card can be in more than one zone."""
+def rowKey(line: CardLine) -> str {
+    return line.zone + ":" + line.oracle_id;
+}
+
+"""Power/toughness as "2/2", or "" for a card or face without them."""
+def powerToughness(power: str, toughness: str) -> str {
+    return power + "/" + toughness if power or toughness else "";
+}
+
+"""A face's stat badges: loyalty and defence, and P/T when `withPT` (the
+card's row already shows the front face's P/T)."""
+def FaceStats(power: str, toughness: str, loyalty: str, defense: str, withPT: bool) -> JsxElement {
+    pt = powerToughness(power, toughness) if withPT else "";
+    if not (pt or loyalty or defense) {
+        return <></>;
+    }
+    return
+        <div>
+            {<span className="dd-stats" title="Power/toughness">{pt}</span> if pt else None}
+            {<span className="dd-stats">{"Loyalty " + loyalty}</span> if loyalty else None}
+            {<span className="dd-stats">{"Defence " + defense}</span> if defense else None}
+        </div>;
+}
+
+"""A card's expanded details: rules text per face (with each face's name, cost,
+type and stats), keywords, this deck's notes for the card, then Scryfall tags
+last, in quieter text. Follows the expanded rows of ui/deck_table.html."""
+def:pub CardDetails(line: CardLine) -> JsxElement {
+    notes = len(line.roles) > 0 or line.locked or line.reason != "";
+    return
+        <div className="dd-body">
+            {if len(line.faces) > 0 {
+                for (i, face) in enumerate(line.faces) {
+                    <div key={str(i)} className="dd-face">
+                        <h3>
+                            {face.name}
+                            <span className="dd-ft">
+                                {<ManaCost cost={face.mana_cost}/> if face.mana_cost else None}
+                                {(" · " if face.mana_cost else "") + face.type_line}
+                            </span>
+                        </h3>
+                        {<p className="dd-rules">{face.text}</p> if face.text else None}
+                        <FaceStats
+                            power={face.power}
+                            toughness={face.toughness}
+                            loyalty={face.loyalty}
+                            defense={face.defense}
+                            withPT={i > 0}
+                        />
+                    </div>
+                }
+            } elif line.text or line.loyalty or line.defense {
+                <div key="rules" className="dd-face">
+                    {<p className="dd-rules">{line.text}</p> if line.text else None}
+                    <FaceStats power="" toughness="" loyalty={line.loyalty} defense={line.defense} withPT={False}/>
+                </div>
+            }}
+            {<dl>
+                {if len(line.keywords) > 0 {
+                    <dt key="kw">Keywords</dt>
+                    <dd key="kw-v" className="dd-pills">{[<span key={k} className="pill dd-kw">{k}</span> for k in line.keywords]}</dd>
+                }}
+                {if notes {
+                    <dt key="deck">In this deck</dt>
+                    <dd key="deck-v" className="dd-pills">
+                        {[<span key={r} className="pill">{r}</span> for r in line.roles]}
+                        {<span className="pill">locked</span> if line.locked else None}
+                        {<span>{"“" + line.reason + "”"}</span> if line.reason else None}
+                    </dd>
+                }}
+                {if len(line.oracle_tags) > 0 {
+                    <dt key="tags" className="dd-quiet">Scryfall tags</dt>
+                    <dd key="tags-v" className="dd-tags">{[<span key={t}>{(" · " if i > 0 else "") + t}</span> for (i, t) in enumerate(line.oracle_tags)]}</dd>
+                }}
+            </dl> if len(line.keywords) > 0 or notes or len(line.oracle_tags) > 0 else None}
+        </div>;
+}
+
 def:pub DeckDetail(deckId: str, importNotes: list[str], onBack: Callable[[], None]) -> JsxElement {
     has deck: DeckView | None = None,
         error: str = "",
-        formats: list[FormatInfo] = [];
+        formats: list[FormatInfo] = [],
+        opened: dict[str, bool] = {};
 
     can with entry {
         loadDeck();
@@ -51,6 +131,24 @@ def:pub DeckDetail(deckId: str, importNotes: list[str], onBack: Callable[[], Non
 
     def changed(view: DeckView) {
         deck = view;
+    }
+
+    """Remember whether one card's details are open (the user toggled them)."""
+    def setOpen(key: str, isOpen: bool) {
+        if bool(opened.get(key, False)) != isOpen {
+            now: dict[str, bool] = opened.copy();
+            now[key] = isOpen;
+            opened = now;
+        }
+    }
+
+    """Expand all / Collapse all for one zone's cards."""
+    def openAll(rows: list[CardLine], isOpen: bool) {
+        now: dict[str, bool] = opened.copy();
+        for line in rows {
+            now[rowKey(line)] = isOpen;
+        }
+        opened = now;
     }
 
     alert = <p role="alert" className="error">{error}</p> if error else None;
@@ -98,50 +196,52 @@ def:pub DeckDetail(deckId: str, importNotes: list[str], onBack: Callable[[], Non
                 rows = [c for c in deck.cards if c.zone == zone];
                 if len(rows) > 0 {
                     <div key={zone}>
-                        <h2>{title + " (" + str(sum([c.count for c in rows])) + ")"}</h2>
-                        <table className="dd-cards">
-                            <colgroup>
-                                <col className="dd-c-n"/><col/><col className="dd-c-cost"/><col className="dd-c-type"/><col className="dd-c-tags"/><col className="dd-c-x"/>
-                            </colgroup>
-                            <thead>
-                                <tr><th>#</th><th>Card</th><th>Cost</th><th>Type</th><th>Tags</th><th/></tr>
-                            </thead>
-                            <tbody>
-                                {for line in rows {
-                                    <tr key={line.zone + line.oracle_id}>
-                                        <td>
-                                            <input
-                                                type="number"
-                                                min="0"
-                                                className="dd-count"
-                                                aria-label={"Count of " + line.name + " in " + line.zone}
-                                                value={str(line.count)}
-                                                onChange={lambda e: ChangeEvent { setCount(line.oracle_id, line.zone, e.target.value); }}
-                                            />
-                                        </td>
-                                        <td className="dd-card">
-                                            {<details>
-                                                <summary>{line.name}</summary>
-                                                <div className="dd-tip">{line.text}</div>
-                                            </details> if line.text else line.name}
-                                        </td>
-                                        <td className="dd-cost"><ManaCost cost={line.mana_cost}/></td>
-                                        <td className="dd-type">{line.type_line}</td>
-                                        <td><div className="dd-tags">{[<span key={t} className="pill">{t}</span> for t in line.oracle_tags]}</div></td>
-                                        <td>
-                                            <button
-                                                className="quiet dd-remove"
-                                                aria-label={"Remove " + line.name + " from " + line.zone}
-                                                title="Remove"
-                                                onClick={lambda _e: MouseEvent { removeCard(line.oracle_id, line.zone); }}
-                                            >
-                                                ✕
-                                            </button>
-                                        </td>
-                                    </tr>
-                                }}
-                            </tbody>
-                        </table>
+                        <div className="dd-zonehead">
+                            <h2>{title + " (" + str(sum([c.count for c in rows])) + ")"}</h2>
+                            <span>
+                                <button className="quiet dd-all" onClick={lambda _e: MouseEvent { openAll(rows, True); }}>Expand all</button>
+                                <button className="quiet dd-all" onClick={lambda _e: MouseEvent { openAll(rows, False); }}>Collapse all</button>
+                            </span>
+                        </div>
+                        <div className="dd-row dd-colhead" aria-hidden="true">
+                            <span>#</span>
+                            <div className="dd-line"><span/><span>Card</span><span>Cost</span><span className="dd-type">Type</span><span className="dd-pt">P/T</span></div>
+                            <span/>
+                        </div>
+                        <ul className="dd-cards">
+                            {for line in rows {
+                                <li key={rowKey(line)} className="dd-row">
+                                    <input
+                                        type="number"
+                                        min="0"
+                                        className="dd-count"
+                                        aria-label={"Count of " + line.name + " in " + line.zone}
+                                        value={str(line.count)}
+                                        onChange={lambda e: ChangeEvent { setCount(line.oracle_id, line.zone, e.target.value); }}
+                                    />
+                                    <details
+                                        open={bool(opened.get(rowKey(line), False))}
+                                        onToggle={lambda e: Event { setOpen(rowKey(line), e.target.hasAttribute("open")); }}
+                                    >
+                                        <summary className="dd-line">
+                                            <span className="dd-name">{line.name}</span>
+                                            <span className="dd-cost"><ManaCost cost={line.mana_cost}/></span>
+                                            <span className="dd-type" title={line.type_line}>{line.type_line}</span>
+                                            <span className="dd-pt">{powerToughness(line.power, line.toughness)}</span>
+                                        </summary>
+                                        <CardDetails line={line}/>
+                                    </details>
+                                    <button
+                                        className="quiet dd-remove"
+                                        aria-label={"Remove " + line.name + " from " + line.zone}
+                                        title="Remove"
+                                        onClick={lambda _e: MouseEvent { removeCard(line.oracle_id, line.zone); }}
+                                    >
+                                        ✕
+                                    </button>
+                                </li>
+                            }}
+                        </ul>
                     </div>
                 }
             }}
