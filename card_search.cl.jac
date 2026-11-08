@@ -6,6 +6,8 @@ reports the change back (here to the deck page, there to Claude).
 """
 
 import "./card_search.css";
+import from .mana_cost { ManaCost }
+
 sv import from decks { DeckView, DeckCard, AddCard }
 sv import from cards { CardHit, search_cards }
 
@@ -56,7 +58,7 @@ def:pub CardSearch(deckId: str, cards: list[DeckCard], onChanged: Callable[[Deck
                     <li key={hit.oracle_id} className="cs-hit">
                         <div className="cs-title">
                             <span className="cs-name">{hit.name}</span>
-                            <span className="cs-cost">{hit.mana_cost}</span>
+                            <span className="cs-cost"><ManaCost cost={hit.mana_cost}/></span>
                             <span className="cs-type">{hit.type_line}</span>
                             {for zone in ["main", "sideboard"] {
                                 if heldIn(hit.oracle_id, zone) > 0 {

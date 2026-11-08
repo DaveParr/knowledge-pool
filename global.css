@@ -19,6 +19,13 @@
   --accent: light-dark(#2a78d6, #3987e5);
   --series-1: light-dark(#2a78d6, #3987e5);
   --series-2: light-dark(#eb6834, #d95926);
+  /* Mana symbol fills: light in both themes, with dark text, like printed symbols. */
+  --mana-w: #f8f3d6;
+  --mana-u: #b4d7f0;
+  --mana-b: #c8c1bd;
+  --mana-r: #f0a68c;
+  --mana-g: #9fd0ae;
+  --mana-c: #d8d4cc;
   --font-sans: system-ui, -apple-system, sans-serif;
   --font-mono: ui-monospace, SFMono-Regular, Menlo, monospace;
 }

@@ -83,6 +83,13 @@
     :root { --cols: 14px 2em 1fr 6em 3.5em; }
     .type, .colhead span:nth-child(5) { display: none; }
   }
+  /* Mana symbol pills (same as mana_cost.css in the web app). */
+  :root { --mana-w: #f8f3d6; --mana-u: #b4d7f0; --mana-b: #c8c1bd; --mana-r: #f0a68c; --mana-g: #9fd0ae; --mana-c: #d8d4cc; }
+  .mc-cost { display: inline-flex; flex-wrap: wrap; gap: 2px; align-items: center; vertical-align: middle; }
+  .mc-sym { display: inline-flex; align-items: center; justify-content: center; min-width: 18px; height: 18px;
+    padding: 0 4px; box-sizing: border-box; border-radius: 999px; border: 1px solid rgba(0, 0, 0, .18);
+    color: #1f1e1d; font: 600 11px/1 var(--font-sans, system-ui, sans-serif); font-variant-numeric: tabular-nums; }
+  .mc-sep { color: var(--muted); font-size: 11px; margin: 0 2px; }
 </style>
 </head>
 <body>
@@ -121,17 +128,35 @@ const CARDS = [
     faces: [{ text: "({T}: Add {U}.)" }], keywords: [], oracle_tags: [], deck: { roles: ["land"], reason: "", locked: false } },
   { zone: "sideboard", count: 2, name: "Negate", mana_cost: "{1}{U}", type_line: "Instant",
     faces: [{ text: "Counter target noncreature spell." }], keywords: [], oracle_tags: ["counterspell-noncreature"],
-    deck: { roles: ["counter"], reason: "against control", locked: false } }
+    deck: { roles: ["counter"], reason: "against control", locked: false } },
+  { zone: "sideboard", count: 2, name: "Kitchen Finks", mana_cost: "{1}{G/W}{G/W}", type_line: "Creature — Ouphe", pt: "3/2",
+    faces: [{ text: "When this creature enters, you gain 2 life.\nPersist (When this creature dies, if it had no -1/-1 counters on it, return it to the battlefield under its owner's control with a -1/-1 counter on it.)" }],
+    keywords: ["Persist"], oracle_tags: ["lifegain"], deck: { roles: [], reason: "hybrid cost sample", locked: false } },
+  { zone: "sideboard", count: 1, name: "Gut Shot", mana_cost: "{R/P}", type_line: "Instant",
+    faces: [{ text: "({R/P} can be paid with either {R} or 2 life.)\nGut Shot deals 1 damage to any target." }],
+    keywords: [], oracle_tags: ["burn-any"], deck: { roles: [], reason: "Phyrexian cost sample", locked: false } }
 ];
 
 const esc = (s) => String(s ?? "").replace(/[&<>"']/g, (c) =>
   ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[c]);
 const NEW = `<span class="new">NEW</span>`;
 
+  // "{1}{R} // {U}" -> symbol pills; hybrids like {W/U} are split diagonally.
+  const manaColour = (p) => "WUBRG".includes(p) && p.length === 1 ? `var(--mana-${p.toLowerCase()})` : "var(--mana-c)";
+  function manaPills(cost) {
+    if (!cost) return "";
+    const faces = String(cost).split("//").map((face) => (face.match(/\{[^}]+\}/g) || []).map((m) => {
+      const sym = m.slice(1, -1), parts = sym.split("/").filter((p) => p !== "P");
+      const bg = parts.length > 1 ? `linear-gradient(135deg, ${manaColour(parts[0])} 50%, ${manaColour(parts[1])} 50%)` : manaColour(parts[0] || sym);
+      return `<span class="mc-sym" style="background:${bg}">${esc(sym)}</span>`;
+    }).join(""));
+    return `<span class="mc-cost" role="img" aria-label="Mana cost ${esc(cost)}">${faces.join('<span class="mc-sep">//</span>')}</span>`;
+  }
+
 function body(c) {
   const faces = c.faces.map((f) => `
     <div class="face">
-      ${f.name ? `<h3>${esc(f.name)} <span class="ft">${esc(f.cost)} · ${esc(f.type)}</span></h3>` : ""}
+      ${f.name ? `<h3>${esc(f.name)} <span class="ft">${manaPills(f.cost)} · ${esc(f.type)}</span></h3>` : ""}
       <p class="rules">${esc(f.text)}</p>
       ${f.stats ? `<span class="stats" title="Power/toughness">${esc(f.stats)}</span>` : ""}
     </div>`).join("");
@@ -158,7 +183,7 @@ function zone(title, key) {
       <span><button data-all="open" data-zone="${key}">Expand all</button><button data-all="close" data-zone="${key}">Collapse all</button></span></div>
     <div class="colhead"><span></span><span>#</span><span>Card</span><span>Cost</span><span>Type</span><span>P/T ${NEW}</span></div>
     <ul class="cards" data-zone="${key}">${rows.map((c) => `<li class="card"><details${c.open ? " open" : ""}>
-      <summary><span class="n">${c.count}</span><span class="name">${esc(c.name)}</span><span class="cost">${esc(c.mana_cost)}</span><span class="type">${esc(c.type_line)}</span><span class="pt">${esc(c.pt || "")}</span></summary>
+      <summary><span class="n">${c.count}</span><span class="name">${esc(c.name)}</span><span class="cost">${manaPills(c.mana_cost)}</span><span class="type">${esc(c.type_line)}</span><span class="pt">${esc(c.pt || "")}</span></summary>
       ${body(c)}</details></li>`).join("")}</ul>`;
 }
 

@@ -77,6 +77,7 @@ uv run pytest tests    # ingest, search, REST, legality and MCP tests
 - `deck_io.sv.jac` the `DeckExport`, `DeckImport` and `CreateDeckFromList` walkers
 - `export_panel.cl.jac` the per-deck Export panel (format, preview, copy, download)
 - `mana_panel.cl.jac`, `card_search.cl.jac` the deck page's mana and search sections
+- `mana_cost.cl.jac` mana costs as symbol pills (the MCP views draw the same)
 - `global.css` app-wide style tokens, shared with the MCP Apps views in `ui/`
 - `legality.sv.jac` `Format` nodes and the deck-construction rules
 - `mcp_server.jac` the MCP server (and the web app, in the same process)

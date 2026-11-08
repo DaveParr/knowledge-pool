@@ -9,6 +9,7 @@ import "./deck_detail.css";
 import from .export_panel { ExportPanel }
 import from .mana_panel { ManaPanel }
 import from .card_search { CardSearch }
+import from .mana_cost { ManaCost }
 
 sv import from decks {
     DeckView, DeckCard, FormatInfo, DeckAnalysis, GetDeck, SetDeckFormat, SetCardCount, RemoveCard,
@@ -120,7 +121,7 @@ def:pub DeckDetail(deckId: str, importNotes: list[str], onBack: Callable[[], Non
                                                 <div className="dd-tip">{line.text}</div>
                                             </details> if line.text else line.name}
                                         </td>
-                                        <td className="dd-cost">{line.mana_cost}</td>
+                                        <td className="dd-cost"><ManaCost cost={line.mana_cost}/></td>
                                         <td className="dd-type">{line.type_line}</td>
                                         <td><div className="dd-tags">{[<span key={t} className="pill">{t}</span> for t in line.oracle_tags]}</div></td>
                                         <td>
