@@ -56,17 +56,23 @@ def test_add_change_remove(tmp_path):
 
         view = _reports(client.post("/walker/RemoveCard", json={"deck_id": deck_id, "oracle_id": mountain}))[0]
         assert view["cards"] == [] and view["main_total"] == 0
+        # Web edits are logged like any other holdings change.
+        assert [(h["name"], h["before"], h["after"]) for h in view["history"]][-2:] == [
+            ("Lightning Bolt", 2, 0), ("Mountain", 21, 0),
+        ]
+        assert {h["reason"] for h in view["history"]} == {"Edited in the app"}
     finally:
         client.close()
 
 
-def test_unknown_card_or_bad_count_changes_nothing(tmp_path):
+def test_a_refused_change_reports_nothing(tmp_path):
+    # Which changes are refused is tested on change_holding (tests/holdings_tests.jac);
+    # this only checks the walkers pass a refusal on as an empty report.
     client = JacTestClient.from_file("main.jac", base_path=str(tmp_path))
     try:
         deck_id = _new_deck(client)
         assert _reports(client.post("/walker/AddCard", json={"deck_id": deck_id, "oracle_id": "not-a-card"})) == []
         bolt = _oracle_id("Lightning Bolt")
-        assert _reports(client.post("/walker/AddCard", json={"deck_id": deck_id, "oracle_id": bolt, "count": 0})) == []
         assert _reports(client.post("/walker/SetCardCount", json={"deck_id": deck_id, "oracle_id": bolt, "count": -1})) == []
         assert _reports(client.post("/walker/GetDeck", json={"deck_id": deck_id}))[0]["cards"] == []
         assert _reports(client.post("/walker/GetDeck", json={"deck_id": "nope"})) == []

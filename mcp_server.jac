@@ -216,7 +216,7 @@ def deck_list() -> list[dict] {
 }
 
 """Create a deck, optionally with seed cards. Each card is
-{"oracle_id": ..., "count": n, "zone": "main" | "sideboard", "reason": ...};
+{"oracle_id": ..., "count": n, "zone": "main" | "sideboard" | "commander" | "companion" | "maybeboard", "reason": ...};
 get oracle ids from resolve_names first. Returns the deck with its legality."""
 @server.tool()
 def deck_create(name: str, format: str = "standard", cards: list[dict] = []) -> dict {
@@ -239,7 +239,7 @@ def deck_get(deck_id: str) -> dict {
 }
 
 """Change a deck. Each change is
-{"oracle_id": ..., "count": n, "zone": "main" | "sideboard", "reason": "why"}
+{"oracle_id": ..., "count": n, "zone": "main" | "sideboard" | "commander" | "companion" | "maybeboard", "reason": "why"}
 and sets that card's count in that zone (0 removes it). Every change needs a reason.
 Pass "format" to change the deck's format. Changes with an unknown oracle id or no
 reason are rejected and listed under "rejected"; the rest are applied."""

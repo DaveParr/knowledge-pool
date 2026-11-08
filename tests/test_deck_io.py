@@ -61,6 +61,8 @@ def test_export_mtgdeck1_then_import_round_trips(tmp_path):
         assert imported["unresolved"] == []
         cards = {(c["name"], c["zone"]): c["count"] for c in imported["deck"]["cards"]}
         assert cards == {("Lightning Bolt", "main"): 4, ("Mountain", "sideboard"): 20}
+        # Re-importing the same list changes no counts, so it logs nothing new.
+        assert all(h["reason"] == "Edited in the app" for h in imported["deck"]["history"])
     finally:
         client.close()
 
@@ -283,6 +285,7 @@ def test_create_deck_from_list_makes_a_filled_deck_and_flags_unresolved_lines(tm
         assert sorted((c["name"], c["count"], c["zone"]) for c in view["cards"]) == [
             ("Goblin Guide", 3, "sideboard"), ("Lightning Bolt", 4, "main"),
         ]
+        assert {h["reason"] for h in view["history"]} == {"Created from a moxfield list"}
     finally:
         client.close()
 

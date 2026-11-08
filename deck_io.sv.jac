@@ -5,7 +5,7 @@ protocol, never on a specific format's parsing or rendering code.
 
 import from deckformats { get_format, ExportEntry, ExportDeck, ParsedEntry }
 import from catalog.store { find_by_name, get_card as catalog_get_card }
-import from decks { Deck, DeckAction, DeckView, DECK_ZONES, new_deck, holdings, deck_view, set_card_entry }
+import from decks { Deck, DeckAction, DeckView, HoldingEntry, ZONES, new_deck, holdings, deck_view, replace_holdings }
 import from legality { FORMAT_LABELS }
 
 obj ExportResult {
@@ -88,7 +88,7 @@ def resolve_list(format: str, text: str) -> ResolvedList | None {
     unresolved: list[str] = [*parsed.unparsed];
     groups: dict[tuple[str, str], ParsedEntry] = {};
     for entry in parsed.entries {
-        if entry.zone not in DECK_ZONES {
+        if entry.zone not in ZONES {
             unresolved.append(f"{entry.raw_name} (invalid zone: {entry.zone})");
             continue;
         }
@@ -121,10 +121,22 @@ def resolve_list(format: str, text: str) -> ResolvedList | None {
     );
 }
 
+"""A resolved list's entries as the deck holdings they become."""
+def holding_entries(rl: ResolvedList) -> list[HoldingEntry] {
+    return [
+        HoldingEntry(
+            oracle_id=g.oracle_id, zone=g.zone, count=g.count,
+            roles=g.roles, tags=g.tags, locked=g.locked, reason=g.reason
+        )
+        for g in rl.entries
+    ];
+}
+
 """Import a deck list, replacing the deck's current holdings entirely.
 Lines or entries that don't resolve are listed in `unresolved` and never
 added (see resolve_list). If the text can't be parsed at all, has no cards
-in it, or nothing in it resolves, the deck is left exactly as it was."""
+in it, or nothing in it resolves, the deck is left exactly as it was.
+Every count that changes is logged in the deck's history."""
 walker:pub DeckImport(DeckAction) {
     has format: str = "mtgdeck1",
         text: str = "",
@@ -137,15 +149,11 @@ walker:pub DeckImport(DeckAction) {
         }
         # Never empty a deck when none of the input resolved (a bad paste or
         # the wrong format selected).
+        unresolved = rl.unresolved;
         if rl.entries {
-            for (e, c) in holdings(here) {
-                del e;
-            }
-            for g in rl.entries {
-                set_card_entry(here, g.oracle_id, g.zone, g.count, g.roles, g.tags, g.locked, g.reason);
-            }
+            unresolved = unresolved + replace_holdings(here, holding_entries(rl), f"Imported from a {self.format} list");
         }
-        report ImportResult(deck=deck_view(here), unresolved=rl.unresolved);
+        report ImportResult(deck=deck_view(here), unresolved=unresolved);
     }
 }
 
@@ -184,9 +192,7 @@ walker:pub CreateDeckFromList {
             play_format = rl.format;
         }
         deck = new_deck(here, name, play_format);
-        for g in rl.entries {
-            set_card_entry(deck, g.oracle_id, g.zone, g.count, g.roles, g.tags, g.locked, g.reason);
-        }
-        report NewDeckResult(deck_id=jid(deck), unresolved=rl.unresolved);
+        refused = replace_holdings(deck, holding_entries(rl), f"Created from a {self.format} list");
+        report NewDeckResult(deck_id=jid(deck), unresolved=rl.unresolved + refused);
     }
 }

@@ -10,7 +10,8 @@ import from cards { Card, card_node, is_land }
 import from legality { Format, Violation, Entry, FORMAT_LABELS, format_node, check_entries }
 import from mana { ManaLine, ManaProfile, mana_profile }
 
-"""One change made to a deck through MCP, with the reason given for it."""
+"""One change to how many copies of a card a zone of a deck holds, with the
+reason given for it. Every holdings change writes one (see change_holding)."""
 obj ChangeNote {
     has at: str,
         oracle_id: str,
@@ -28,12 +29,10 @@ node Deck {
         history: list[ChangeNote] = [];
 }
 
-glob ZONES: list[str] = ["main", "sideboard"];
-
-"""All five mtgdeck/1 zones. Additive to ZONES: used by set_card_entry and
-later import/export walkers, not by AddCard/SetCardCount/RemoveCard, which
-keep governing only the 60-card-format gameplay zones via ZONES."""
-glob DECK_ZONES: list[str] = ["commander", "companion", "main", "sideboard", "maybeboard"];
+"""Every zone a deck can hold cards in (the mtgdeck/1 zones), in display
+order. The one list of zones: every holdings change and every import checks
+against it. Legality looks only at main and sideboard (see ValidateDeck)."""
+glob ZONES: list[str] = ["commander", "companion", "main", "sideboard", "maybeboard"];
 
 """Create a deck and report it. A blank name creates nothing and reports nothing."""
 walker:pub CreateDeck {
@@ -67,9 +66,9 @@ walker:pub ListDecks {
     }
 }
 
-"""A deck holds `count` copies of a card in one zone (main or sideboard, or,
-via set_card_entry, one of the other mtgdeck/1 zones). roles/tags/locked/reason
-are mtgdeck/1 entry metadata, unused by the 60-card-format gameplay walkers."""
+"""A deck holds `count` copies of a card in one zone (one of ZONES).
+roles/tags/locked/reason are mtgdeck/1 entry metadata. Change these edges only
+through change_holding / replace_holdings."""
 edge Holds: Deck --> Card {
     has count: int = 1,
         zone: str = "main",
@@ -193,7 +192,7 @@ def deck_view(deck: Deck) -> DeckView {
             )
         );
     }
-    lines.sort(key=lambda l: DeckCard : (DECK_ZONES.index(l.zone), l.name));
+    lines.sort(key=lambda l: DeckCard : (ZONES.index(l.zone), l.name));
     check = deck spawn ValidateDeck();
     return DeckView(
         id=jid(deck),
@@ -244,14 +243,139 @@ def mana_curve(deck: Deck) -> ManaCurve {
     return ManaCurve(buckets=buckets, average_mv=avg);
 }
 
-"""The Holds edge for this card in this zone, if any."""
-def holds_edge(deck: Deck, oid: str, zone: str) -> Holds | None {
+# ---- Deck holdings -------------------------------------------------------
+# The one way a deck's cards change. change_holding (one card, one zone) and
+# replace_holdings (the whole list) share one edit rule, apply_holding: it
+# checks the zone, count and reason, materialises the Card node, writes the
+# Holds edge and its entry metadata, and logs a ChangeNote. Walkers never
+# touch Holds edges themselves.
+
+"""One card line for replace_holdings: `count` copies in `zone`, plus the
+mtgdeck/1 entry metadata. `reason` is why the card is in the deck, not why
+the deck changed."""
+obj HoldingEntry {
+    has oracle_id: str,
+        zone: str,
+        count: int,
+        roles: list[str] = [],
+        tags: list[str] = [],
+        locked: bool = False,
+        reason: str = "";
+}
+
+"""The Holds edge for this card in this zone, and the card, if the deck holds it."""
+def held(deck: Deck, oid: str, zone: str) -> tuple[Holds, Card] | None {
     for (e, c) in holdings(deck) {
         if c.oracle_id == oid and e.zone == zone {
-            return e;
+            return (e, c);
         }
     }
     return None;
+}
+
+"""Why a change would be refused before looking at the card, or "" if it is allowed."""
+def holding_refusal(zone: str, count: int, reason: str, add: bool) -> str {
+    if not reason.strip() {
+        return "every change needs a reason.";
+    }
+    if zone not in ZONES {
+        return f"zone must be one of: {', '.join(ZONES)}.";
+    }
+    least = 1 if add else 0;
+    if not isinstance(count, int) or isinstance(count, bool) or count < least {
+        return f"count must be a whole number, {least} or more.";
+    }
+    return "";
+}
+
+"""The edit rule. Sets (or with `add`, raises) the count of `oid` in `zone`;
+0 removes it. With `line`, the entry metadata is overwritten from it; without,
+existing metadata is kept. Logs a ChangeNote when the count changes. Returns ""
+when applied, else why it was refused (and nothing is written)."""
+def apply_holding(deck: Deck, oid: str, zone: str, count: int, reason: str, add: bool, line: HoldingEntry | None) -> str {
+    refusal = holding_refusal(zone, count, reason, add);
+    if refusal {
+        return refusal;
+    }
+    found = held(deck, oid, zone);
+    before = found[0].count if found is not None else 0;
+    after = before + count if add else count;
+    name = oid;
+    if found is None {
+        if after == 0 {
+            return "";
+        }
+        card = card_node(root, oid);
+        if card is None {
+            return f"{oid} is not a known oracle id.";
+        }
+        meta = line if line is not None else HoldingEntry(oracle_id=oid, zone=zone, count=after);
+        deck +>:Holds(
+            count=after, zone=zone, roles=meta.roles, tags=meta.tags, locked=meta.locked, reason=meta.reason
+        ):+> card;
+        name = card.name;
+    } else {
+        (hold, held_card) = found;
+        name = held_card.name;
+        if after == 0 {
+            del hold;
+        } else {
+            hold.count = after;
+            if line is not None {
+                hold.roles = line.roles;
+                hold.tags = line.tags;
+                hold.locked = line.locked;
+                hold.reason = line.reason;
+            }
+        }
+    }
+    if after != before {
+        deck.history.append(
+            ChangeNote(
+                at=datetime.now(timezone.utc).isoformat(),
+                oracle_id=oid,
+                name=name,
+                zone=zone,
+                before=before,
+                after=after,
+                reason=reason.strip()
+            )
+        );
+    }
+    return "";
+}
+
+"""Set how many copies of a card one zone of a deck holds (with `add`, add
+that many on top), and log the change with `reason` in the deck's history.
+0 removes the card from the zone. The entry's roles, tags, lock and reason
+are kept. A change that leaves the count as it was is applied but not logged.
+Returns "" when applied, else why it was refused; a refused change writes
+nothing."""
+def change_holding(deck: Deck, oracle_id: str, zone: str, count: int, reason: str, add: bool = False) -> str {
+    return apply_holding(deck, oracle_id, zone, count, reason, add, None);
+}
+
+"""Make the deck hold exactly `entries`, with their entry metadata, and
+nothing else. Each count that changes is logged with `reason`. Returns one
+message per refused entry ("<oracle_id> (<zone>): <why>"); refused entries
+are not held, and the rest of the list still replaces the deck's holdings."""
+def replace_holdings(deck: Deck, entries: list[HoldingEntry], reason: str) -> list[str] {
+    refused: list[str] = [];
+    kept: set[tuple[str, str]] = set();
+    for en in entries {
+        why = apply_holding(deck, en.oracle_id, en.zone, en.count, reason, False, en);
+        if why {
+            refused.append(f"{en.oracle_id} ({en.zone}): {why}");
+        } else {
+            kept.add((en.oracle_id, en.zone));
+        }
+    }
+    for (e, c) in holdings(deck) {
+        if (c.oracle_id, e.zone) not in kept {
+            apply_holding(deck, c.oracle_id, e.zone, 0, reason, False, None);
+        }
+    }
+    return refused;
 }
 
 """Base for walkers that act on one deck. Reports nothing if the deck id is unknown."""
@@ -324,78 +448,22 @@ walker:pub SetDeckFormat(DeckAction) {
     }
 }
 
-"""Add copies of a card to a zone of a deck (on top of any already there)."""
+"""The reason logged for a change made in the web app, which asks for none."""
+glob WEB_EDIT_REASON: str = "Edited in the app";
+
+"""Add copies of a card to a zone of a deck (on top of any already there).
+Reports nothing if the change is refused (see change_holding)."""
 walker:pub AddCard(DeckAction) {
     has oracle_id: str,
         count: int = 1,
         zone: str = "main";
 
     can add with Deck entry {
-        if self.count < 1 or self.zone not in ZONES {
+        if change_holding(here, self.oracle_id, self.zone, self.count, WEB_EDIT_REASON, add=True) {
             disengage;
-        }
-        existing = holds_edge(here, self.oracle_id, self.zone);
-        if existing is not None {
-            existing.count += self.count;
-        } else {
-            card = card_node(root, self.oracle_id);
-            if card is None {
-                disengage;
-            }
-            here +>:Holds(count=self.count, zone=self.zone):+> card;
         }
         report deck_view(here);
     }
-}
-
-"""Set a card's count in one zone of a deck (0 removes it). Returns the count
-before the change, or None if the card id is unknown."""
-def set_card_count(deck: Deck, oid: str, zone: str, count: int) -> int | None {
-    existing = holds_edge(deck, oid, zone);
-    if existing is None {
-        if count == 0 {
-            return 0;
-        }
-        card = card_node(root, oid);
-        if card is None {
-            return None;
-        }
-        deck +>:Holds(count=count, zone=zone):+> card;
-        return 0;
-    }
-    before = existing.count;
-    if count == 0 {
-        del existing;
-    } else {
-        existing.count = count;
-    }
-    return before;
-}
-
-"""Set a card's full entry (count plus roles, tags, locked and reason) in one
-zone. Like set_card_count, but also carries the mtgdeck/1 entry metadata;
-used by DeckImport. Always overwrites, never accumulates. Returns the count
-before the change, or None if the zone or card id is unknown."""
-def set_card_entry(deck: Deck, oid: str, zone: str, count: int, roles: list[str] = [], tags: list[str] = [], locked: bool = False, reason: str = "") -> int | None {
-    if zone not in DECK_ZONES {
-        return None;
-    }
-    existing = holds_edge(deck, oid, zone);
-    if existing is None {
-        card = card_node(root, oid);
-        if card is None {
-            return None;
-        }
-        deck +>:Holds(count=count, zone=zone, roles=roles, tags=tags, locked=locked, reason=reason):+> card;
-        return 0;
-    }
-    before = existing.count;
-    existing.count = count;
-    existing.roles = roles;
-    existing.tags = tags;
-    existing.locked = locked;
-    existing.reason = reason;
-    return before;
 }
 
 """Apply a batch of changes, each with a reason, and log each one on the deck.
@@ -408,42 +476,14 @@ walker EditDeck(DeckAction) {
 
     can edit with Deck entry {
         rejected: list[str] = [];
-        now = datetime.now(timezone.utc).isoformat();
         for (i, ch) in enumerate(self.changes) {
             oid = str(ch.get("oracle_id", ""));
-            zone = str(ch.get("zone", "main"));
-            reason = str(ch.get("reason", "")).strip();
-            raw_count = ch.get("count");
-            if not reason {
-                rejected.append(f"Change {i + 1} ({oid}): every change needs a reason.");
-                continue;
-            }
-            if zone not in ZONES {
-                rejected.append(f"Change {i + 1} ({oid}): zone must be main or sideboard.");
-                continue;
-            }
-            if not isinstance(raw_count, int) or isinstance(raw_count, bool) or raw_count < 0 {
-                rejected.append(f"Change {i + 1} ({oid}): count must be a whole number, 0 or more.");
-                continue;
-            }
-            count = raw_count as int;
-            before = set_card_count(here, oid, zone, count);
-            if before is None {
-                rejected.append(f"Change {i + 1}: {oid} is not a known oracle id. Use resolve_names.");
-                continue;
-            }
-            card = card_node(root, oid);
-            here.history.append(
-                ChangeNote(
-                    at=now,
-                    oracle_id=oid,
-                    name=card.name if card is not None else oid,
-                    zone=zone,
-                    before=before,
-                    after=count,
-                    reason=reason
-                )
+            why = change_holding(
+                here, oid, str(ch.get("zone", "main")), ch.get("count") as int, str(ch.get("reason", ""))
             );
+            if why {
+                rejected.append(f"Change {i + 1} ({oid}): {why}");
+            }
         }
         view = deck_view(here);
         view.rejected = rejected;
@@ -451,45 +491,29 @@ walker EditDeck(DeckAction) {
     }
 }
 
-"""Set how many copies of a card a zone holds. Zero removes the card from that zone."""
+"""Set how many copies of a card a zone holds. Zero removes the card from that
+zone. Reports nothing if the change is refused (see change_holding)."""
 walker:pub SetCardCount(DeckAction) {
     has oracle_id: str,
         count: int,
         zone: str = "main";
 
     can set_count with Deck entry {
-        if self.count < 0 or self.zone not in ZONES {
+        if change_holding(here, self.oracle_id, self.zone, self.count, WEB_EDIT_REASON) {
             disengage;
-        }
-        existing = holds_edge(here, self.oracle_id, self.zone);
-        if existing is None {
-            if self.count == 0 {
-                report deck_view(here);
-                disengage;
-            }
-            card = card_node(root, self.oracle_id);
-            if card is None {
-                disengage;
-            }
-            here +>:Holds(count=self.count, zone=self.zone):+> card;
-        } elif self.count == 0 {
-            del existing;
-        } else {
-            existing.count = self.count;
         }
         report deck_view(here);
     }
 }
 
-"""Take a card out of one zone of a deck."""
+"""Take a card out of one zone of a deck. Reports nothing for an unknown zone."""
 walker:pub RemoveCard(DeckAction) {
     has oracle_id: str,
         zone: str = "main";
 
     can remove with Deck entry {
-        existing = holds_edge(here, self.oracle_id, self.zone);
-        if existing is not None {
-            del existing;
+        if change_holding(here, self.oracle_id, self.zone, 0, WEB_EDIT_REASON) {
+            disengage;
         }
         report deck_view(here);
     }
