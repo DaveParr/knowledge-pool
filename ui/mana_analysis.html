@@ -1,0 +1,225 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Mana analysis</title>
+<!--
+  MCP Apps view for deck_analyze (ui://knowledge-pool/mana-analysis.html).
+  Same handshake as ui/deck_table.html; fills itself from the structuredContent
+  of ui/notifications/tool-result: {id, name, format, main_total, mana, curve}.
+  The web twin is mana_panel.cl.jac. Signed-off mockup: ui/mockups/mana_analysis.html.
+-->
+<style>
+  :root {
+    color-scheme: light dark;
+    --bg: var(--color-background-primary, light-dark(#ffffff, #1f1e1d));
+    --fg: var(--color-text-primary, light-dark(#1f1e1d, #f5f4ef));
+    --muted: var(--color-text-secondary, light-dark(#6b6a65, #a6a49c));
+    --line: var(--color-border-tertiary, light-dark(#e6e4dc, #3a3935));
+    /* dataviz reference palette: slot 1 (blue) and slot 2 (orange), as global.css */
+    --series-1: light-dark(#2a78d6, #3987e5);
+    --series-2: light-dark(#eb6834, #d95926);
+  }
+  html, body { margin: 0; background: var(--bg); color: var(--fg);
+    font: 14px/1.45 var(--font-sans, system-ui, sans-serif); }
+  main { padding: 12px 16px 16px; max-width: 640px; }
+  h1 { font-size: 17px; margin: 0 0 2px; }
+  .meta { color: var(--muted); margin: 0 0 12px; }
+  .empty { color: var(--muted); }
+  h2 { font-size: 13px; text-transform: uppercase; letter-spacing: .04em;
+    color: var(--muted); margin: 18px 0 6px; }
+  .tiles { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; }
+  .tile { border: 1px solid var(--line); border-radius: 8px; padding: 8px 10px; }
+  .tile .k { color: var(--muted); font-size: 12px; }
+  .tile .v { font-size: 22px; font-weight: 600; font-variant-numeric: tabular-nums; }
+  .tile .s { color: var(--muted); font-size: 12px; }
+
+  /* Mana curve: one series, one hue, counts on the bars */
+  .curve { position: relative; display: grid; grid-template-columns: repeat(8, 1fr);
+    gap: 2px; align-items: end; height: 150px; border-bottom: 1px solid var(--line);
+    padding-top: 18px; }
+  .col { position: relative; height: 100%; display: flex; flex-direction: column;
+    justify-content: flex-end; align-items: center; cursor: default; outline: none; }
+  .bar { width: 70%; max-width: 34px; background: var(--series-1);
+    border-radius: 4px 4px 0 0; min-height: 0; }
+  .col .n { font-size: 12px; color: var(--fg); font-variant-numeric: tabular-nums; margin-bottom: 2px; }
+  .col:hover .bar, .col:focus-visible .bar { filter: brightness(1.12); }
+  .axis { display: grid; grid-template-columns: repeat(8, 1fr); gap: 2px;
+    color: var(--muted); font-size: 12px; text-align: center; margin-top: 4px; }
+  .axis-title { color: var(--muted); font-size: 12px; text-align: center; margin-top: 2px; }
+  .tip { position: absolute; pointer-events: none; background: var(--fg); color: var(--bg);
+    font-size: 12px; padding: 4px 8px; border-radius: 6px; white-space: nowrap;
+    transform: translateY(-110%); opacity: 0; transition: opacity .08s; z-index: 2; }
+
+  /* Pips vs sources: two series per colour, legend + direct values */
+  .legend { display: flex; flex-wrap: wrap; gap: 4px 14px; color: var(--muted); font-size: 12px; margin-bottom: 6px; }
+  .key { display: inline-block; width: 10px; height: 10px; border-radius: 2px; margin-right: 5px; vertical-align: -1px; }
+  .colour { display: grid; grid-template-columns: 74px 1fr; gap: 8px; align-items: center;
+    padding: 6px 0; border-bottom: 1px solid var(--line); }
+  .colour .name { font-weight: 600; }
+  .colour .name small { display: block; font-weight: 400; color: var(--muted); font-size: 11px; }
+  .pair { display: grid; gap: 2px; }
+  .hrow { display: grid; grid-template-columns: 1fr 34px; gap: 6px; align-items: center; }
+  .track { height: 10px; }
+  .hbar { height: 10px; border-radius: 0 4px 4px 0; }
+  .hrow .v { font-size: 12px; font-variant-numeric: tabular-nums; text-align: right; }
+  details.table { margin-top: 12px; }
+  details.table summary { cursor: pointer; color: var(--muted); font-size: 12px; }
+  table { width: 100%; border-collapse: collapse; margin-top: 6px; font-size: 13px; }
+  th, td { text-align: left; padding: 4px 8px; border-bottom: 1px solid var(--line); }
+  td.num, th.num { text-align: right; font-variant-numeric: tabular-nums; }
+  th { color: var(--muted); font-weight: 600; font-size: 12px; }
+</style>
+</head>
+<body>
+<main id="app"><p class="empty">Loading mana analysis…</p></main>
+<script>
+// Minimal MCP Apps view (spec 2026-01-26) with no SDK: JSON-RPC over postMessage.
+(() => {
+  const app = document.getElementById("app");
+  let nextId = 1;
+  const pending = new Map();
+  const send = (msg) => window.parent.postMessage({ jsonrpc: "2.0", ...msg }, "*");
+  const request = (method, params) => new Promise((resolve, reject) => {
+    const id = nextId++;
+    pending.set(id, { resolve, reject });
+    send({ id, method, params });
+  });
+  const notify = (method, params) => send({ method, params });
+
+  const COLOURS = { W: "White", U: "Blue", B: "Black", R: "Red", G: "Green" };
+  const esc = (s) => String(s ?? "").replace(/[&<>"']/g, (c) =>
+    ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[c]);
+  const pct = (n, top) => (top > 0 ? Math.round(100 * n / top) : 0) + "%";
+
+  function applyHost(ctx) {
+    if (!ctx) return;
+    const vars = ctx.styles && ctx.styles.variables;
+    if (vars) for (const [k, v] of Object.entries(vars)) if (v) document.documentElement.style.setProperty(k, v);
+    if (ctx.theme) document.documentElement.style.colorScheme = ctx.theme;
+  }
+
+  function render(d) {
+    if (!d || d.error) {
+      app.innerHTML = `<p class="empty">${esc(d ? d.error : "No deck.")}</p>`;
+      return;
+    }
+    const mana = d.mana || { land_count: 0, pips: {}, sources: {} };
+    const curve = d.curve || { buckets: {}, average_mv: 0 };
+    const pips = mana.pips || {}, sources = mana.sources || {};
+    const buckets = Object.entries(curve.buckets || {});
+    const nonLand = buckets.reduce((a, [, n]) => a + n, 0);
+    const maxN = Math.max(1, ...buckets.map(([, n]) => n));
+    const used = Object.keys(COLOURS).filter((c) => pips[c] || sources[c]);
+    const maxPS = Math.max(1, ...used.flatMap((c) => [pips[c] || 0, sources[c] || 0]));
+
+    app.innerHTML = `
+      <h1>${esc(d.name)}: mana</h1>
+      <p class="meta">${esc(d.format)} · main deck only (${d.main_total} cards), sideboard excluded</p>
+
+      <div class="tiles">
+        <div class="tile"><div class="k">Lands</div><div class="v">${mana.land_count}</div><div class="s">${pct(mana.land_count, d.main_total)} of main</div></div>
+        <div class="tile"><div class="k">Non-land spells</div><div class="v">${nonLand}</div><div class="s">in the curve below</div></div>
+        <div class="tile"><div class="k">Average mana value</div><div class="v">${Number(curve.average_mv || 0).toFixed(2)}</div><div class="s">non-land only</div></div>
+      </div>
+
+      <h2>Mana curve</h2>
+      <div class="curve" id="curve" role="img" aria-label="Mana curve: non-land cards by mana value">
+        ${buckets.map(([mv, n]) => `
+          <div class="col" tabindex="0" data-tip="Mana value ${esc(mv)}: ${n} card${n === 1 ? "" : "s"}">
+            ${n ? `<span class="n">${n}</span>` : ""}
+            <div class="bar" style="height:${(n / maxN) * 100}%"></div>
+          </div>`).join("")}
+        <div class="tip" id="tip" aria-hidden="true"></div>
+      </div>
+      <div class="axis">${buckets.map(([mv]) => `<span>${esc(mv)}</span>`).join("")}</div>
+      <div class="axis-title">Mana value</div>
+
+      <h2>Coloured pips vs sources</h2>
+      ${used.length ? `
+        <div class="legend">
+          <span><i class="key" style="background:var(--series-1)"></i>Pips (spell demand)</span>
+          <span><i class="key" style="background:var(--series-2)"></i>Sources (lands and mana producers)</span>
+        </div>
+        ${used.map((c) => `
+          <div class="colour">
+            <div class="name">${COLOURS[c]}<small>${c}</small></div>
+            <div class="pair">
+              <div class="hrow"><div class="track"><div class="hbar" style="width:${((pips[c] || 0) / maxPS) * 100}%;background:var(--series-1)"></div></div><span class="v">${pips[c] || 0}</span></div>
+              <div class="hrow"><div class="track"><div class="hbar" style="width:${((sources[c] || 0) / maxPS) * 100}%;background:var(--series-2)"></div></div><span class="v">${sources[c] || 0}</span></div>
+            </div>
+          </div>`).join("")}`
+        : `<p class="empty">No coloured mana in the main deck yet.</p>`}
+
+      <details class="table">
+        <summary>Show as table</summary>
+        <table>
+          <thead><tr><th>Mana value</th><th class="num">Cards</th></tr></thead>
+          <tbody>${buckets.map(([mv, n]) => `<tr><td>${esc(mv)}</td><td class="num">${n}</td></tr>`).join("")}</tbody>
+        </table>
+        ${used.length ? `<table>
+          <thead><tr><th>Colour</th><th class="num">Pips</th><th class="num">Sources</th></tr></thead>
+          <tbody>${used.map((c) => `<tr><td>${COLOURS[c]}</td><td class="num">${pips[c] || 0}</td><td class="num">${sources[c] || 0}</td></tr>`).join("")}</tbody>
+        </table>` : ""}
+      </details>`;
+
+    const tip = document.getElementById("tip");
+    const curveEl = document.getElementById("curve");
+    const show = (col) => {
+      tip.textContent = col.dataset.tip;
+      const r = col.getBoundingClientRect(), p = curveEl.getBoundingClientRect();
+      // Centre over the bar, but keep the tip inside the chart at the edges.
+      const left = r.left - p.left + r.width / 2 - tip.offsetWidth / 2;
+      tip.style.left = Math.max(0, Math.min(left, p.width - tip.offsetWidth)) + "px";
+      tip.style.top = (col.querySelector(".bar").getBoundingClientRect().top - p.top) + "px";
+      tip.style.opacity = 1;
+    };
+    const hide = () => { tip.style.opacity = 0; };
+    curveEl.querySelectorAll(".col").forEach((col) => {
+      col.addEventListener("mouseenter", () => show(col));
+      col.addEventListener("focus", () => show(col));
+      col.addEventListener("mouseleave", hide);
+      col.addEventListener("blur", hide);
+    });
+  }
+
+  window.addEventListener("message", (event) => {
+    const msg = event.data;
+    if (!msg || msg.jsonrpc !== "2.0") return;
+    if (msg.id !== undefined && pending.has(msg.id) && !msg.method) {
+      const p = pending.get(msg.id);
+      pending.delete(msg.id);
+      msg.error ? p.reject(msg.error) : p.resolve(msg.result);
+      return;
+    }
+    if (msg.method === "ui/notifications/tool-result") {
+      const params = msg.params || {};
+      const text = params.isError && params.content && params.content[0] && params.content[0].text;
+      render(text ? { error: text } : params.structuredContent);
+    } else if (msg.method === "ui/notifications/host-context-changed") {
+      applyHost(msg.params);
+    } else if (msg.method === "ui/resource-teardown" && msg.id !== undefined) {
+      send({ id: msg.id, result: {} });
+    } else if (msg.method === "ping" && msg.id !== undefined) {
+      send({ id: msg.id, result: {} });
+    }
+  });
+
+  new ResizeObserver(() => {
+    const r = document.documentElement.getBoundingClientRect();
+    notify("ui/notifications/size-changed", { width: Math.ceil(r.width), height: Math.ceil(r.height) });
+  }).observe(document.documentElement);
+
+  request("ui/initialize", {
+    protocolVersion: "2026-01-26",
+    appInfo: { name: "knowledge-pool-mana", version: "0.1.0" },
+    appCapabilities: { availableDisplayModes: ["inline"] },
+  }).then((result) => {
+    applyHost(result && result.hostContext);
+    notify("ui/notifications/initialized", {});
+  });
+})();
+</script>
+</body>
+</html>

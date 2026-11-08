@@ -47,7 +47,7 @@ The full catalogue stays in SQLite. A `Card` node is added to the graph the firs
 claude mcp add knowledge-pool -- uv run --directory "$PWD" jac run mcp_server.jac
 ```
 
-Then ask Claude to build or change a deck, for example "build a Modern mono-red burn deck around Lightning Bolt and Goblin Guide". The tools are `search_cards`, `get_card`, `resolve_names`, `get_format_rules`, `deck_list`, `deck_create`, `deck_get`, `deck_edit`, `deck_validate`, `deck_analyze`, `deck_export` and `deck_import`. `deck_analyze` reports a deck's mana base (land count, plus coloured pips and coloured sources for each colour) and its mana curve (non-land card count by mana value, plus the average), main deck only. `deck_get` and `deck_edit` return the same analysis alongside the cards. Card names have to go through `resolve_names`, which splits them into exact, fuzzy and unknown, so an invented card can't get into a deck. Every `deck_edit` change needs a reason, and the reasons are kept in the deck's history. No tool calls a model.
+Then ask Claude to build or change a deck, for example "build a Modern mono-red burn deck around Lightning Bolt and Goblin Guide". The tools are `search_cards`, `get_card`, `resolve_names`, `get_format_rules`, `deck_list`, `deck_create`, `deck_get`, `deck_edit`, `deck_validate`, `deck_analyze`, `deck_export` and `deck_import`. `deck_analyze` reports a deck's mana base (land count, plus coloured pips and coloured sources for each colour) and its mana curve (non-land card count by mana value, plus the average), main deck only. Clients that support MCP Apps (Claude Desktop, claude.ai) show `deck_show` as a deck table and `deck_analyze` as a mana curve and pips-vs-sources chart; others, such as Claude Code, get the same as Markdown. `deck_get` and `deck_edit` return the same analysis alongside the cards. Card names have to go through `resolve_names`, which splits them into exact, fuzzy and unknown, so an invented card can't get into a deck. Every `deck_edit` change needs a reason, and the reasons are kept in the deck's history. No tool calls a model.
 
 The MCP server also serves the web app at http://localhost:8000 while Claude is connected, so decks made in either place show up in the other straight away. Stop `jac start` first: two Jac processes writing the same saved graph overwrite each other's decks, so the MCP server refuses to start while the port is taken. Set `KP_PORT` to use a different port, or `KP_WEB=0` to skip the web app.
 
@@ -81,6 +81,7 @@ uv run pytest tests    # ingest, search, REST, legality and MCP tests
 - `global.css` app-wide style tokens, shared with the MCP Apps views in `ui/`
 - `legality.sv.jac` `Format` nodes and the deck-construction rules
 - `mcp_server.jac` the MCP server (and the web app, in the same process)
+- `ui/deck_table.html`, `ui/mana_analysis.html` the MCP Apps views for `deck_show` and `deck_analyze`
 - `scripts/mcp_smoke.py` an MCP client session that checks the tools end to end
 - `frontend.cl.jac`, `frontend.impl.jac` the Decks view
 - `deck_detail.cl.jac`, `deck_detail.impl.jac` one deck: search, add, change, remove
