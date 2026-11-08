@@ -25,7 +25,15 @@ jobs:
         run: uv run jac check main.jac decks.sv.jac frontend.cl.jac frontend.impl.jac
 
       - name: Run walker tests
-        run: uv run jac test
+        run: scripts/jac_test.sh
 
       - name: Run pytest suite
         run: uv run pytest tests
+
+      - name: Upload test output
+        if: failure()
+        uses: actions/upload-artifact@v7.0.2
+        with:
+          name: test-output
+          path: test-artifacts/
+          if-no-files-found: ignore
