@@ -11,7 +11,8 @@ import from walker_errors { WalkerError }
 
 obj ExportResult {
     has format: str,
-        content: str;
+        content: str,
+        name: str = "";
 }
 
 obj ImportResult {
@@ -58,7 +59,7 @@ walker:pub DeckExport(DeckAction) {
             report WalkerError(code="no-export", message=f"{self.format} lists can be imported but not exported.");
             disengage;
         }
-        report ExportResult(format=self.format, content=content);
+        report ExportResult(format=self.format, content=content, name=here.name);
     }
 }
 

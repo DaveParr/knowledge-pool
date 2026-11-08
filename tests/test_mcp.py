@@ -1,6 +1,7 @@
 """Run the MCP smoke check against the fixture catalogue and a throwaway graph."""
 
 import os
+import re
 import socket
 import subprocess
 import sys
@@ -27,6 +28,21 @@ def _save_log(outcome: str, stdout: str, stderr: str) -> None:
     tail, and the MCP server (and the web app it runs) logs to stderr."""
     LOG.parent.mkdir(exist_ok=True)
     LOG.write_text(f"{outcome}\n\n== stdout ==\n{stdout}\n== stderr ==\n{stderr}")
+
+
+# JSON-RPC methods a view may send to its host (MCP Apps spec 2026-01-26, plus
+# ui/download-file from the draft, used only when the host offers it).
+VIEW_METHODS = {
+    "ui/initialize", "ui/notifications/initialized", "ui/notifications/size-changed",
+    "tools/call", "ui/download-file",
+}
+
+
+def test_export_view_only_sends_mcp_apps_methods():
+    page = (ROOT / "ui" / "deck_export.html").read_text()
+    sent = set(re.findall(r'(?:request|notify)\("([^"]+)"', page))
+    assert sent == VIEW_METHODS, sent
+    assert "hostCaps.downloadFile" in page  # ui/download-file only when the host advertises it
 
 
 def test_mcp_over_stdio_shares_decks_with_the_web_app(fixture_catalog, tmp_path):

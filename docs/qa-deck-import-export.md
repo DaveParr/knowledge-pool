@@ -18,7 +18,7 @@ To put your own decks back afterwards, run `rm -rf .jac/data && mv .jac/data.bef
 uv run pytest tests                  # expect 123 passed
 uv run jac test                      # expect all passed
 uv run jac check *.jac               # expect no errors (warnings are fine)
-uv run python scripts/mcp_smoke.py   # expect "all checks passed", including the 3 export/import lines
+uv run python scripts/mcp_smoke.py   # expect "all checks passed", including the export/import lines
 ```
 
 ## 3. Manual QA in the app
@@ -169,7 +169,9 @@ claude mcp add knowledge-pool -- uv run --directory "$PWD" jac run mcp_server.ja
 
 In a new Claude Code session:
 
-- [ ] Ask: "Using knowledge-pool, export my QA Burn deck as mtgdeck/1." Claude calls `deck_export` and shows the JSON.
+- [ ] Ask: "Using knowledge-pool, export my QA Burn deck." Claude calls `deck_export` with no format and shows the MTGA/MTGO list in a code block, noting what it drops.
+- [ ] Ask: "Using knowledge-pool, export my QA Burn deck as mtgdeck/1." Claude calls `deck_export`, gets a short summary plus the full JSON, and shows or saves the JSON when asked.
+- [ ] Optional, in Claude Desktop: ask for the same export. It shows in the export view, defaulting to MTGA/MTGO. Switching to **mtgdeck/1** exports again; **Copy** copies (or selects the text if the clipboard is blocked) and **Download** saves the file.
 - [ ] Ask Claude to import an Arena list containing one misspelt card into a new deck. Claude calls `deck_import`, and the result lists the misspelt line as unresolved.
 - [ ] Ask Claude to import a different list into that same deck. The cards are **replaced**, not added to.
 - [ ] Open http://localhost:8000. The imported deck is there with the same cards.

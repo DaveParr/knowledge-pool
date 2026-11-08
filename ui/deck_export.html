@@ -1,0 +1,241 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Deck export</title>
+<!--
+  MCP Apps view for deck_export (built from ui/mockups/export.html).
+  Renders the export from the tool result's structuredContent
+  ({deck_id, name, format, content, formats, lossy_drops}). Changing format
+  calls deck_export again through the host (tools/call). Copy uses
+  navigator.clipboard and, when the sandbox blocks it, selects the text so the
+  user can press Ctrl/Cmd+C. Download uses ui/download-file when the host
+  offers it (hostCapabilities.downloadFile), else a Blob link.
+-->
+<style>
+  :root {
+    color-scheme: light dark;
+    --bg: var(--color-background-primary, light-dark(#ffffff, #1f1e1d));
+    --fg: var(--color-text-primary, light-dark(#1f1e1d, #f5f4ef));
+    --muted: var(--color-text-secondary, light-dark(#6b6a65, #a6a49c));
+    --line: var(--color-border-tertiary, light-dark(#e6e4dc, #3a3935));
+    --ok-bg: var(--color-background-success, light-dark(#e8f5e9, #16301b));
+    --ok-fg: var(--color-text-success, light-dark(#1b5e20, #9fd8a6));
+    --warn-bg: var(--color-background-warning, light-dark(#fff8e1, #33290f));
+    --warn-fg: var(--color-text-warning, light-dark(#7a5300, #f0c96a));
+    --bad-bg: var(--color-background-danger, light-dark(#fdecea, #3a1714));
+    --bad-fg: var(--color-text-danger, light-dark(#8a1c13, #f2a59c));
+    --accent: light-dark(#2a78d6, #3987e5);
+  }
+  html, body { margin: 0; background: var(--bg); color: var(--fg);
+    font: 14px/1.45 var(--font-sans, system-ui, sans-serif); }
+  main { padding: 12px 16px 16px; max-width: 640px; }
+  h1 { font-size: 17px; margin: 0 0 10px; }
+  .formats { display: flex; flex-wrap: wrap; gap: 4px; margin-bottom: 8px; }
+  .formats button { display: flex; flex-direction: column; align-items: flex-start; gap: 0; }
+  button { font: inherit; font-size: 13px; color: var(--fg); background: var(--bg);
+    border: 1px solid var(--line); border-radius: 6px; padding: 4px 10px; cursor: pointer; }
+  button:hover { border-color: var(--muted); }
+  button:disabled { cursor: progress; opacity: .6; }
+  button[aria-pressed=true] { border-color: var(--accent); box-shadow: inset 0 0 0 1px var(--accent); }
+  button .sub { font-size: 11px; color: var(--muted); }
+  button.primary { background: var(--accent); border-color: var(--accent); color: #fff; }
+  .note { padding: 6px 10px; border-radius: 6px; font-size: 13px; margin-bottom: 8px; }
+  .note.lossy { background: var(--warn-bg); color: var(--warn-fg); }
+  .note.lossless { background: var(--ok-bg); color: var(--ok-fg); }
+  .note.error { background: var(--bad-bg); color: var(--bad-fg); }
+  textarea { width: 100%; box-sizing: border-box; height: 220px; resize: vertical;
+    font: 12px/1.45 var(--font-mono, ui-monospace, monospace); color: var(--fg); background: var(--bg);
+    border: 1px solid var(--line); border-radius: 6px; padding: 8px; }
+  .bar { display: flex; gap: 6px; align-items: center; margin-top: 6px; flex-wrap: wrap; }
+  .size { color: var(--muted); font-size: 12px; margin-left: auto; }
+  .status { font-size: 13px; color: var(--ok-fg); }
+  .empty { color: var(--muted); }
+</style>
+</head>
+<body>
+<main id="app"><p class="empty">Exporting deck…</p></main>
+<script>
+// Minimal MCP Apps view (spec 2026-01-26) with no SDK: JSON-RPC over postMessage.
+(() => {
+  const app = document.getElementById("app");
+  let nextId = 1;
+  const pending = new Map();
+  const send = (msg) => window.parent.postMessage({ jsonrpc: "2.0", ...msg }, "*");
+  const request = (method, params, timeoutMs = 60000) => new Promise((resolve, reject) => {
+    const id = nextId++;
+    const timer = setTimeout(() => {
+      pending.delete(id);
+      reject({ message: "The host did not answer." });
+    }, timeoutMs);
+    pending.set(id, {
+      resolve: (v) => { clearTimeout(timer); resolve(v); },
+      reject: (e) => { clearTimeout(timer); reject(e); },
+    });
+    send({ id, method, params });
+  });
+  const notify = (method, params) => send({ method, params });
+
+  const esc = (s) => String(s ?? "").replace(/[&<>"']/g, (c) =>
+    ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[c]);
+
+  let hostCaps = {};
+  let state = null;      // last good export: {deck_id, name, format, content, formats, lossy_drops}
+  let error = "";        // why the last export failed, if it did
+  let busy = false;
+  let status = "";
+
+  function applyHost(ctx) {
+    if (!ctx) return;
+    const vars = ctx.styles && ctx.styles.variables;
+    if (vars) for (const [k, v] of Object.entries(vars)) if (v) document.documentElement.style.setProperty(k, v);
+    if (ctx.theme) document.documentElement.style.colorScheme = ctx.theme;
+  }
+
+  const currentFormat = () => state && (state.formats || []).find((f) => f.key === state.format);
+  const fileName = () => {
+    const stem = (state.name || "deck").trim().toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "") || "deck";
+    return `${stem}.${(currentFormat() || {}).ext || "txt"}`;
+  };
+
+  function render() {
+    if (!state) {
+      app.innerHTML = `<p class="note error" role="alert">${esc(error || "No export.")}</p>`;
+      return;
+    }
+    const f = currentFormat() || { key: state.format, label: state.format, lossless: false, ext: "txt" };
+    const text = state.content || "";
+    app.innerHTML = `
+      <h1>Export ${esc(state.name)}</h1>
+      <div class="formats" role="group" aria-label="Export format">
+        ${(state.formats || []).map((x) => `<button type="button" data-k="${esc(x.key)}" aria-pressed="${x.key === state.format}" ${busy ? "disabled" : ""}>${esc(x.label)}<span class="sub">${x.lossless ? "lossless" : "lossy"}</span></button>`).join("")}
+      </div>
+      ${f.lossless
+        ? `<div class="note lossless">Lossless: this re-imports with every zone, role, tag, lock and reason.</div>`
+        : `<div class="note lossy">Lossy: ${esc(f.label)} ${esc(state.lossy_drops || "keeps card names and counts only.")}</div>`}
+      ${error ? `<p class="note error" role="alert">${esc(error)}</p>` : ""}
+      <textarea id="out" readonly aria-label="Exported ${esc(state.name)}"></textarea>
+      <div class="bar">
+        <button type="button" class="primary" id="copy">Copy</button>
+        <button type="button" id="dl">Download .${esc(f.ext)}</button>
+        <span class="status" id="status" role="status">${esc(status)}</span>
+        <span class="size">${text.replace(/\n$/, "").split("\n").length} lines · ${text.length.toLocaleString()} characters</span>
+      </div>`;
+    document.getElementById("out").value = text;
+  }
+
+  // A deck_export CallToolResult, from the first tool-result or a re-call.
+  function takeResult(result) {
+    const sc = result && result.structuredContent;
+    if (!result || result.isError || !sc || sc.error) {
+      const text = result && (result.content || []).filter((c) => c.type === "text").map((c) => c.text).join(" ");
+      error = (sc && sc.error) || text || "The export failed.";
+    } else {
+      state = sc;
+      error = "";
+    }
+    render();
+  }
+
+  async function switchFormat(key) {
+    if (!state || busy || key === state.format) return;
+    busy = true; status = "Exporting…"; render();
+    try {
+      const result = await request("tools/call", { name: "deck_export", arguments: { deck_id: state.deck_id, format: key } });
+      status = "";
+      busy = false;
+      takeResult(result);
+    } catch (e) {
+      busy = false; status = "";
+      error = `Couldn't export again: ${(e && e.message) || "the host refused"}. Ask Claude for this format instead.`;
+      render();
+    }
+  }
+
+  async function copy() {
+    const out = document.getElementById("out");
+    try {
+      await navigator.clipboard.writeText(out.value);
+      status = "Copied";
+    } catch {
+      out.focus(); out.select();
+      status = "Selected. Press Ctrl+C (Cmd+C) to copy.";
+    }
+    document.getElementById("status").textContent = status;
+  }
+
+  async function download() {
+    const name = fileName();
+    const mimeType = name.endsWith(".json") ? "application/json" : "text/plain";
+    const show = (s) => { status = s; document.getElementById("status").textContent = s; };
+    if (hostCaps.downloadFile) {
+      try {
+        await request("ui/download-file", {
+          contents: [{ type: "resource", resource: { uri: `file:///${name}`, mimeType, text: state.content } }],
+        });
+        show(`Saved ${name}`);
+      } catch (e) {
+        show(`Not saved: ${(e && e.message) || "the host refused"}. Use Copy instead.`);
+      }
+      return;
+    }
+    const a = document.createElement("a");
+    a.href = URL.createObjectURL(new Blob([state.content], { type: mimeType }));
+    a.download = name;
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    setTimeout(() => URL.revokeObjectURL(a.href), 10000);
+    show(`Downloading ${name}. If nothing happens, use Copy.`);
+  }
+
+  app.addEventListener("click", (e) => {
+    const b = e.target.closest("button");
+    if (!b || b.disabled) return;
+    if (b.dataset.k) switchFormat(b.dataset.k);
+    else if (b.id === "copy") copy();
+    else if (b.id === "dl") download();
+  });
+
+  window.addEventListener("message", (event) => {
+    const msg = event.data;
+    if (!msg || msg.jsonrpc !== "2.0") return;
+    if (msg.id !== undefined && pending.has(msg.id) && !msg.method) {
+      const p = pending.get(msg.id);
+      pending.delete(msg.id);
+      msg.error ? p.reject(msg.error) : p.resolve(msg.result);
+      return;
+    }
+    if (msg.method === "ui/notifications/tool-result") {
+      status = "";
+      takeResult(msg.params);
+    } else if (msg.method === "ui/notifications/tool-cancelled") {
+      if (!state) { error = "The export was cancelled."; render(); }
+    } else if (msg.method === "ui/notifications/host-context-changed") {
+      applyHost(msg.params);
+    } else if (msg.method === "ui/resource-teardown" && msg.id !== undefined) {
+      send({ id: msg.id, result: {} });
+    } else if (msg.method === "ping" && msg.id !== undefined) {
+      send({ id: msg.id, result: {} });
+    }
+  });
+
+  new ResizeObserver(() => {
+    const r = document.documentElement.getBoundingClientRect();
+    notify("ui/notifications/size-changed", { width: Math.ceil(r.width), height: Math.ceil(r.height) });
+  }).observe(document.documentElement);
+
+  request("ui/initialize", {
+    protocolVersion: "2026-01-26",
+    appInfo: { name: "knowledge-pool-export", version: "0.1.0" },
+    appCapabilities: { availableDisplayModes: ["inline"] },
+  }).then((result) => {
+    hostCaps = (result && result.hostCapabilities) || {};
+    applyHost(result && result.hostContext);
+    notify("ui/notifications/initialized", {});
+  });
+})();
+</script>
+</body>
+</html>

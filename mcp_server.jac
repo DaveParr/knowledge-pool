@@ -33,7 +33,7 @@ import anyio;
 import from dataclasses { asdict, is_dataclass }
 import from datetime { datetime, timezone }
 import from mcp.server.mcpserver { MCPServer }
-import from mcp.server.apps { Apps }
+import from mcp.server.apps { Apps, ResourcePermissions }
 import from mcp_types { CallToolResult, TextContent }
 import from mcp.server.stdio { stdio_server }
 import from mcp.server.streamable_http { TransportSecuritySettings }
@@ -54,7 +54,18 @@ glob APP_DIR: str = os.path.dirname(os.path.abspath(__file__)),
      DECK_UI: str = "ui://knowledge-pool/deck-table.html",
      MANA_UI: str = "ui://knowledge-pool/mana-analysis.html",
      COLOUR_NAMES: dict[str, str] = {"W": "White", "U": "Blue", "B": "Black", "R": "Red", "G": "Green"},
-     SEARCH_UI: str = "ui://knowledge-pool/card-search.html";
+     SEARCH_UI: str = "ui://knowledge-pool/card-search.html",
+     EXPORT_UI: str = "ui://knowledge-pool/deck-export.html",
+     # The export view's format buttons, in order: key, label, lossless, file
+     # extension. Same list as the web app's export panel (export_panel.cl.jac).
+     EXPORT_FORMATS: list[dict] = [
+         {"key": "arena", "label": "MTGA/MTGO", "lossless": False, "ext": "txt"},
+         {"key": "moxfield", "label": "Moxfield", "lossless": False, "ext": "txt"},
+         {"key": "text", "label": "Plain text", "lossless": False, "ext": "txt"},
+         {"key": "mtgdeck1", "label": "mtgdeck/1", "lossless": True, "ext": "json"},
+         {"key": "mtgjson", "label": "MTGJSON", "lossless": True, "ext": "json"}
+     ],
+     LOSSY_DROPS: str = "keeps card names and counts for the main deck and sideboard only. It drops other zones, roles, tags, locks and reasons.";
 
 """Show a deck to the user as a table in the chat: cards by zone, totals and legality.
 Clients that support MCP Apps (Claude Desktop and claude.ai) render it as an HTML list
@@ -224,11 +235,59 @@ def search_markdown(result: dict) -> str {
     return "\n".join(lines);
 }
 
-"""MCP Apps: deck_show, deck_analyze and card_search are each bound to a
-self-contained HTML view (ui/deck_table.html, ui/mana_analysis.html,
-ui/card_search.html) that the host renders in a sandboxed iframe and fills from
-the tool result. The search view also calls card_search and deck_edit back
-through the host."""
+"""Export a deck as a deck list. Formats: arena (MTGA/MTGO, the default), moxfield
+and text are lossy (main deck and sideboard names and counts only); mtgdeck1 and
+mtgjson are lossless JSON (mtgjson is export only). Clients that support MCP Apps
+show the export in a view with format buttons, Copy and Download; the text result
+always carries the full export too. A lossless JSON export is long: the user sees
+it in the view, so offer to show it or save it to a file rather than pasting it."""
+def deck_export(deck_id: str, format: str = "arena") -> CallToolResult {
+    done = outcome(run_walker(DeckExport(deck_id=deck_id, format=format)));
+    if "error" in done {
+        return CallToolResult(content=[TextContent(text=done["error"])], structured_content=done, is_error=True);
+    }
+    result = {
+        "deck_id": deck_id,
+        "name": done["name"],
+        "format": done["format"],
+        "content": done["content"],
+        "formats": EXPORT_FORMATS,
+        "lossy_drops": LOSSY_DROPS
+    };
+    return CallToolResult(content=[TextContent(text=export_text(result))], structured_content=result);
+}
+
+"""The export as chat text, for the model and for clients that do not render MCP
+Apps. A lossy list goes in a code block with what it drops. A lossless JSON export
+leads with a short summary and a hint not to paste it unprompted, then the full
+JSON, so a client without the view (Claude Code) can still show or save it."""
+def export_text(result: dict) -> str {
+    label = result["format"];
+    lossless = False;
+    for f in EXPORT_FORMATS {
+        if f["key"] == result["format"] {
+            label = f["label"];
+            lossless = f["lossless"] as bool;
+        }
+    }
+    content = result["content"] as str;
+    if lossless {
+        size = f"{len(content.splitlines())} lines, {len(content):,} characters";
+        return (
+            f"Exported {result['name']} as {label} (lossless, {size}). "
+            + "The user can copy or download it from the export view. It is long: offer to show it "
+            + "or save it to a file instead of pasting it, unless the user asked to see it.\n\n"
+            + f"```json\n{content}\n```"
+        );
+    }
+    return f"Exported {result['name']} as {label}. It {LOSSY_DROPS}\n\n```\n{content}\n```";
+}
+
+"""MCP Apps: deck_show, deck_analyze, card_search and deck_export are each bound
+to a self-contained HTML view (ui/deck_table.html, ui/mana_analysis.html,
+ui/card_search.html, ui/deck_export.html) that the host renders in a sandboxed
+iframe and fills from the tool result. The search and export views also call
+their tools (and deck_edit) back through the host."""
 def make_apps -> Apps {
     apps = Apps();
     apps.tool(resource_uri=DECK_UI)(deck_show);
@@ -243,6 +302,14 @@ def make_apps -> Apps {
     with open(os.path.join(APP_DIR, "ui", "card_search.html"), encoding="utf-8") as f {
         apps.add_html_resource(SEARCH_UI, f.read(), title="Card search", prefers_border=True);
     }
+    apps.tool(resource_uri=EXPORT_UI)(deck_export);
+    with open(os.path.join(APP_DIR, "ui", "deck_export.html"), encoding="utf-8") as f {
+        apps.add_html_resource(
+            EXPORT_UI, f.read(), title="Deck export", prefers_border=True,
+            # Ask for the clipboard so Copy works; the view selects the text when the host says no.
+            permissions=ResourcePermissions(clipboard_write={})
+        );
+    }
     return apps;
 }
 
@@ -256,7 +323,7 @@ glob server: MCPServer = MCPServer(
         + "When the user wants to see a deck, call deck_show; for its mana curve and colours, call deck_analyze. "
         + "When the user wants to find cards to add to a deck, call card_search with that deck's id: it shows "
         + "how many copies the deck already holds, and lets the user add hits themselves; changes they make "
-        + "there are reported back to you."
+        + "there are reported back to you. To export a deck, call deck_export."
     ),
     extensions=[make_apps()]
 );
@@ -415,12 +482,6 @@ def deck_validate(deck_id: str) -> dict {
         "legal": view["legal"],
         "violations": view["violations"]
     };
-}
-
-"""Export a deck: mtgdeck1 (lossless), mtgjson (lossless, export only), or text/arena/moxfield (lossy)."""
-@server.tool()
-def deck_export(deck_id: str, format: str = "mtgdeck1") -> dict {
-    return outcome(run_walker(DeckExport(deck_id=deck_id, format=format)));
 }
 
 """Import a deck list, replacing the deck's current cards. Accepts mtgdeck1,
