@@ -67,10 +67,10 @@ async def main() -> None:
         await session.initialize()
         tools = sorted(t.name for t in (await session.list_tools()).tools)
         print("tools:", ", ".join(tools))
-        check("all eleven tools from the issue are listed", {
+        check("all the tools are listed", {
             "search_cards", "get_card", "resolve_names", "get_format_rules",
             "deck_create", "deck_get", "deck_edit", "deck_validate", "deck_analyze",
-            "deck_export", "deck_import",
+            "deck_export", "deck_import", "deck_show", "card_search",
         } <= set(tools))
 
         resolved = await call(session, "resolve_names", names=["Lightning Bolt", "Goblin Guide", "Lightening Bolt", "Flargle the Unreal", "Mountain"])
@@ -181,6 +181,33 @@ async def main() -> None:
         )
         jace = await call(session, "get_card", oracle_id_or_name="Jace, the Mind Sculptor")
         check("get_card gives a planeswalker's loyalty", jace["loyalty"] == "3", jace)
+
+        search_uri = ((listed_tools["card_search"].meta or {}).get("ui") or {}).get("resourceUri")
+        check("card_search points at a ui:// resource", search_uri == "ui://knowledge-pool/card-search.html", listed_tools["card_search"].meta)
+        search_page = (await session.read_resource(search_uri)).contents[0]
+        check(
+            "the card search view is served as an MCP App that calls tools back through the host",
+            search_page.mime_type == "text/html;profile=mcp-app"
+            and all(m in search_page.text for m in ("ui/initialize", "tools/call", "deck_edit", "ui/update-model-context")),
+            search_page.mime_type,
+        )
+        found = await session.call_tool("card_search", {"deck_id": deck["id"], "query": "lightning bolt", "limit": 5})
+        bolt_hit = next(h for h in found.structured_content["hits"] if h["name"] == "Lightning Bolt")
+        check("card_search says how many copies the deck holds", bolt_hit["in_deck"] == {"main": 4}, bolt_hit)
+        check("card_search hits carry what the view shows", {"oracle_id", "name", "mana_cost", "type_line", "text"} <= set(bolt_hit), bolt_hit)
+        check("card_search gives the view the deck's totals", found.structured_content["deck"]["main_total"] == 60, found.structured_content["deck"])
+        check(
+            "card_search gives other clients a Markdown table with an In deck column and a question",
+            "| In deck |" in found.content[0].text and "| Lightning Bolt |" in found.content[0].text and "| 4 main |" in found.content[0].text
+            and found.content[0].text.endswith("Which should I add, how many, and to main or sideboard?"),
+            found.content[0].text,
+        )
+        shock = next(h for h in (await session.call_tool("card_search", {"deck_id": deck["id"], "query": "shock"})).structured_content["hits"] if h["name"] == "Shock")
+        check("a card the deck does not hold has no in-deck counts", shock["in_deck"] == {}, shock)
+        none_found = await session.call_tool("card_search", {"deck_id": deck["id"], "query": "zzqxv"})
+        check("card_search with no matches says so", not none_found.is_error and none_found.structured_content["hits"] == [] and none_found.content[0].text.startswith("No cards match"), none_found.content)
+        search_missing = await session.call_tool("card_search", {"deck_id": "nope", "query": "bolt"})
+        check("card_search on an unknown deck is a tool error", search_missing.is_error and search_missing.content[0].text == "No deck with id nope.", search_missing.content)
 
         missing = await call(session, "deck_get", deck_id="nope")
         check("an unknown deck id says so", missing == {"error": "No deck with id nope.", "code": "no-such-deck"}, missing)

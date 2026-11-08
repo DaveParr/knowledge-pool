@@ -1,0 +1,324 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Card search</title>
+<style>
+  :root {
+    color-scheme: light dark;
+    --bg: var(--color-background-primary, light-dark(#ffffff, #1f1e1d));
+    --fg: var(--color-text-primary, light-dark(#1f1e1d, #f5f4ef));
+    --muted: var(--color-text-secondary, light-dark(#6b6a65, #a6a49c));
+    --line: var(--color-border-tertiary, light-dark(#e6e4dc, #3a3935));
+    --ok-bg: var(--color-background-success, light-dark(#e8f5e9, #16301b));
+    --ok-fg: var(--color-text-success, light-dark(#1b5e20, #9fd8a6));
+    --bad-bg: var(--color-background-danger, light-dark(#fdecea, #3a1714));
+    --bad-fg: var(--color-text-danger, light-dark(#8a1c13, #f2a59c));
+    --accent: light-dark(#2a78d6, #3987e5);
+  }
+  html, body { margin: 0; background: var(--bg); color: var(--fg);
+    font: 14px/1.45 var(--font-sans, system-ui, sans-serif); }
+  main { padding: 12px 16px 16px; max-width: 640px; }
+  h1 { font-size: 17px; margin: 0 0 2px; }
+  .meta { color: var(--muted); margin: 0 0 10px; }
+  form { display: flex; gap: 6px; margin-bottom: 8px; }
+  input[type=search] { flex: 1; min-width: 0; font: inherit; color: var(--fg); background: var(--bg);
+    border: 1px solid var(--line); border-radius: 6px; padding: 6px 10px; }
+  button { font: inherit; font-size: 13px; color: var(--fg); background: var(--bg);
+    border: 1px solid var(--line); border-radius: 6px; padding: 4px 10px; cursor: pointer; white-space: nowrap; }
+  button:hover:not(:disabled) { border-color: var(--muted); }
+  button:disabled { opacity: .55; cursor: default; }
+  button.primary { background: var(--accent); border-color: var(--accent); color: #fff; }
+  .count { color: var(--muted); font-size: 12px; margin: 0 0 4px; }
+  ul.hits { list-style: none; margin: 0; padding: 0; }
+  li.hit { display: grid; grid-template-columns: 1fr auto; gap: 4px 10px; padding: 8px 0; border-bottom: 1px solid var(--line); }
+  .hit .title { display: flex; flex-wrap: wrap; gap: 4px 8px; align-items: baseline; }
+  .hit .name { font-weight: 600; }
+  .hit .cost { font-size: 12px; color: var(--muted); }
+  .hit .type { color: var(--muted); font-size: 12px; }
+  .hit .text { grid-column: 1 / 2; font-size: 12px; color: var(--muted); white-space: pre-line; }
+  .hit .actions { grid-row: 1 / 3; grid-column: 2; display: flex; flex-direction: column; gap: 4px; align-items: stretch; }
+  .in-deck { display: inline-block; padding: 1px 8px; border-radius: 999px; font-size: 11px; background: var(--ok-bg); color: var(--ok-fg); }
+  .toast { padding: 6px 10px; border-radius: 6px; background: var(--ok-bg); color: var(--ok-fg); font-size: 13px; margin: 6px 0; }
+  .toast.bad { background: var(--bad-bg); color: var(--bad-fg); }
+  .empty { color: var(--muted); padding: 10px 0; margin: 0; }
+  .failed { color: var(--bad-fg); padding: 10px 0; margin: 0; }
+  @media (max-width: 420px) { .hit .actions { flex-direction: row; grid-row: auto; grid-column: 1 / -1; } li.hit { grid-template-columns: 1fr; } }
+  /* Mana symbol pills (same as mana_cost.css in the web app and ui/deck_table.html). */
+  :root { --mana-w: #f8f3d6; --mana-u: #b4d7f0; --mana-b: #c8c1bd; --mana-r: #f0a68c; --mana-g: #9fd0ae; --mana-c: #d8d4cc; }
+  .mc-cost { display: inline-flex; flex-wrap: wrap; gap: 2px; align-items: center; vertical-align: middle; }
+  .mc-sym { display: inline-flex; align-items: center; justify-content: center; min-width: 18px; height: 18px;
+    padding: 0 4px; box-sizing: border-box; border-radius: 999px; border: 1px solid rgba(0, 0, 0, .18);
+    color: #1f1e1d; font: 600 11px/1 var(--font-sans, system-ui, sans-serif); font-variant-numeric: tabular-nums; }
+  .mc-sep { color: var(--muted); font-size: 11px; margin: 0 2px; }
+</style>
+</head>
+<body>
+<main id="app">
+  <h1 id="title">Add cards</h1>
+  <p class="meta" id="deckmeta"></p>
+  <form id="f">
+    <input type="search" id="q" aria-label="Search cards" placeholder="Card name, type or rules text">
+    <button type="submit" class="primary" id="go">Search</button>
+  </form>
+  <div id="toast"></div>
+  <div id="results"><p class="empty">Loading search…</p></div>
+</main>
+<script>
+// MCP Apps view (spec 2026-01-26) with no SDK: JSON-RPC over postMessage.
+// Renders card_search results from ui/notifications/tool-result, re-runs the
+// search and adds cards with tools/call (card_search, deck_get, deck_edit)
+// through the host, and tells the model about each add with
+// ui/update-model-context (falling back to ui/message if the host refuses it).
+(() => {
+  const REASON = "added from card search";
+  const $ = (id) => document.getElementById(id);
+  let nextId = 1;
+  const pending = new Map();
+  const send = (msg) => window.parent.postMessage({ jsonrpc: "2.0", ...msg }, "*");
+  const request = (method, params) => new Promise((resolve, reject) => {
+    const id = nextId++;
+    pending.set(id, { resolve, reject });
+    send({ id, method, params });
+  });
+  const notify = (method, params) => send({ method, params });
+
+  const esc = (s) => String(s ?? "").replace(/[&<>"']/g, (c) =>
+    ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[c]);
+
+  // "{1}{R} // {U}" -> symbol pills; hybrids like {W/U} are split diagonally.
+  const manaColour = (p) => "WUBRG".includes(p) && p.length === 1 ? `var(--mana-${p.toLowerCase()})` : "var(--mana-c)";
+  function manaPills(cost) {
+    if (!cost) return "";
+    const faces = String(cost).split("//").map((face) => (face.match(/\{[^}]+\}/g) || []).map((m) => {
+      const sym = m.slice(1, -1), parts = sym.split("/").filter((p) => p !== "P");
+      const bg = parts.length > 1 ? `linear-gradient(135deg, ${manaColour(parts[0])} 50%, ${manaColour(parts[1])} 50%)` : manaColour(parts[0] || sym);
+      return `<span class="mc-sym" style="background:${bg}">${esc(sym)}</span>`;
+    }).join(""));
+    return `<span class="mc-cost" role="img" aria-label="Mana cost ${esc(cost)}">${faces.join('<span class="mc-sep">//</span>')}</span>`;
+  }
+
+  const state = {
+    deck: null,       // {id, name, format, main_total, sideboard_total}
+    query: "", limit: 20,
+    hits: null,       // null until the first result arrives
+    error: "",
+    busy: false,
+    canCallTools: true,
+    adds: [],         // every add made in this view, for the model context
+  };
+
+  function applyHost(ctx) {
+    if (!ctx) return;
+    const vars = ctx.styles && ctx.styles.variables;
+    if (vars) for (const [k, v] of Object.entries(vars)) if (v) document.documentElement.style.setProperty(k, v);
+    if (ctx.theme) document.documentElement.style.colorScheme = ctx.theme;
+  }
+
+  // A tools/call result as plain data: structuredContent (unwrapping the SDK's
+  // {"result": ...} wrapper) or else the first text block parsed as JSON.
+  function resultData(res) {
+    if (!res) return null;
+    const sc = res.structuredContent;
+    if (sc && typeof sc === "object") {
+      const keys = Object.keys(sc);
+      return keys.length === 1 && keys[0] === "result" ? sc.result : sc;
+    }
+    const text = ((res.content || []).find((c) => c.type === "text") || {}).text;
+    if (text === undefined) return null;
+    try { return JSON.parse(text); } catch { return { error: text }; }
+  }
+  const resultText = (res) => (((res && res.content) || []).find((c) => c.type === "text") || {}).text || "";
+
+  const where = (zone) => zone === "main" ? "main deck" : "sideboard";
+
+  function toast(text, bad) {
+    $("toast").innerHTML = text ? `<div class="toast${bad ? " bad" : ""}" role="${bad ? "alert" : "status"}">${esc(text)}</div>` : "";
+  }
+
+  function renderDeck() {
+    const d = state.deck;
+    $("title").textContent = d ? `Add cards to ${d.name}` : "Add cards";
+    $("deckmeta").textContent = d ? `${d.format} · ${d.main_total} main · ${d.sideboard_total} sideboard` : "";
+  }
+
+  function renderResults() {
+    const off = state.busy || !state.canCallTools || !state.deck;
+    $("go").disabled = off;
+    if (state.error) {
+      $("results").innerHTML = `<p class="failed" role="alert">${esc(state.error.replace(/\.?$/, "."))} The deck is unchanged.</p>`;
+      return;
+    }
+    if (state.hits === null) return;
+    if (!state.hits.length) {
+      $("results").innerHTML = `<p class="empty">No cards match “${esc(state.query)}”. Every word must match the start of a word in the name, type or rules text.</p>`;
+      return;
+    }
+    const n = state.hits.length;
+    $("results").innerHTML = `<p class="count">${n} ${n === 1 ? "card matches" : "cards match"} “${esc(state.query)}”</p>
+      <ul class="hits">${state.hits.map((h, i) => {
+        const held = Object.entries(h.in_deck || {}).filter(([, k]) => k)
+          .map(([z, k]) => `<span class="in-deck">${k} in ${esc(z)}</span>`).join(" ");
+        return `<li class="hit">
+          <div class="title"><span class="name">${esc(h.name)}</span><span class="cost">${manaPills(h.mana_cost)}</span><span class="type">${esc(h.type_line)}</span>${held}</div>
+          <div class="text">${esc(h.text)}</div>
+          <div class="actions">
+            <button data-i="${i}" data-zone="main" aria-label="Add ${esc(h.name)} to main deck"${off ? " disabled" : ""}>+ Main</button>
+            <button data-i="${i}" data-zone="sideboard" aria-label="Add ${esc(h.name)} to sideboard"${off ? " disabled" : ""}>+ Side</button>
+          </div></li>`;
+      }).join("")}</ul>`;
+  }
+
+  function render() { renderDeck(); renderResults(); }
+
+  // A card_search result (from the host's notification or our own tools/call).
+  function showSearch(res) {
+    const data = resultData(res);
+    if (data && data.deck) {
+      state.deck = data.deck;
+      state.query = data.query ?? state.query;
+      state.limit = data.limit || state.limit;
+      state.hits = data.hits || [];
+      state.error = data.error || "";
+      $("q").value = state.query;
+    } else {
+      // No deck (unknown deck id) or a result we can't read: say why.
+      state.hits = state.hits || [];
+      state.error = resultText(res) || (data && data.error) || "Card search failed.";
+    }
+    render();
+  }
+
+  // Copies per zone, from a deck view's cards.
+  function holdings(view) {
+    const held = {};
+    for (const c of view.cards || []) {
+      const z = (held[c.oracle_id] = held[c.oracle_id] || {});
+      z[c.zone] = (z[c.zone] || 0) + c.count;
+    }
+    return held;
+  }
+
+  function syncDeck(view) {
+    state.deck = { ...state.deck, name: view.name, format: view.format,
+      main_total: view.main_total, sideboard_total: view.sideboard_total };
+    const held = holdings(view);
+    for (const h of state.hits || []) h.in_deck = held[h.oracle_id] || {};
+  }
+
+  async function search(query) {
+    if (!state.deck || state.busy) return;
+    state.busy = true; toast(""); renderResults();
+    try {
+      const res = await request("tools/call", { name: "card_search",
+        arguments: { deck_id: state.deck.id, query, limit: state.limit } });
+      state.query = query;
+      showSearch(res);
+    } catch (e) {
+      state.query = query; state.hits = []; state.error = `Card search failed: ${(e && e.message) || "the host could not run it"}.`;
+    } finally {
+      state.busy = false; render();
+    }
+  }
+
+  // deck_edit sets a count, so read the deck's current count first and add one to it.
+  async function add(hit, zone) {
+    if (!state.deck || state.busy) return;
+    state.busy = true; renderResults();
+    try {
+      const current = resultData(await request("tools/call", { name: "deck_get", arguments: { deck_id: state.deck.id } }));
+      if (!current || current.error) throw new Error((current && current.error) || "Could not read the deck.");
+      const now = ((holdings(current)[hit.oracle_id] || {})[zone] || 0) + 1;
+      const res = await request("tools/call", { name: "deck_edit", arguments: { deck_id: state.deck.id,
+        changes: [{ oracle_id: hit.oracle_id, count: now, zone, reason: REASON }] } });
+      const view = resultData(res);
+      if (res.isError || !view || view.error) throw new Error((view && view.error) || resultText(res) || "The deck was not changed.");
+      if ((view.rejected || []).length) throw new Error(view.rejected.join("; "));
+      syncDeck(view);
+      toast(`Added 1 ${hit.name} to ${where(zone)} (now ${now}).`);
+      state.adds.push({ oracle_id: hit.oracle_id, name: hit.name, zone, count: now });
+      tellModel(hit, zone, now);
+    } catch (e) {
+      toast(`Could not add ${hit.name}: ${(e && e.message) || "the host could not run deck_edit"}`, true);
+    } finally {
+      state.busy = false; render();
+    }
+  }
+
+  // Each update overwrites the last, so it lists every add made in this view.
+  function modelContextText() {
+    const d = state.deck;
+    const list = state.adds.map((a) => `1 ${a.name} (${a.oracle_id}) to ${where(a.zone)}, now ${a.count}`).join("; ");
+    return `In the card search view, the user added cards to deck "${d.name}" (id ${d.id}) with deck_edit, `
+      + `reason "${REASON}": ${list}. The deck now has ${d.main_total} main and ${d.sideboard_total} sideboard cards.`;
+  }
+
+  function tellModel(hit, zone, now) {
+    const d = state.deck;
+    request("ui/update-model-context", {
+      content: [{ type: "text", text: modelContextText() }],
+      structuredContent: { deck_id: d.id, adds: state.adds, main_total: d.main_total, sideboard_total: d.sideboard_total },
+    }).catch(() => request("ui/message", { role: "user", content: { type: "text",
+      text: `I added 1 ${hit.name} to the ${where(zone)} of "${d.name}" from the card search (now ${now}).` } })
+    ).catch(() => {});
+  }
+
+  $("f").addEventListener("submit", (e) => {
+    e.preventDefault();
+    const q = $("q").value.trim();
+    if (q) search(q);
+  });
+  $("results").addEventListener("click", (e) => {
+    const b = e.target.closest("button[data-zone]");
+    if (!b || !state.hits) return;
+    add(state.hits[Number(b.dataset.i)], b.dataset.zone);
+  });
+
+  window.addEventListener("message", (event) => {
+    const msg = event.data;
+    if (!msg || msg.jsonrpc !== "2.0") return;
+    if (msg.id !== undefined && pending.has(msg.id) && !msg.method) {
+      const p = pending.get(msg.id);
+      pending.delete(msg.id);
+      msg.error ? p.reject(msg.error) : p.resolve(msg.result);
+      return;
+    }
+    if (msg.method === "ui/notifications/tool-input") {
+      const args = (msg.params && msg.params.arguments) || {};
+      if (args.query && !$("q").value) $("q").value = args.query;
+    } else if (msg.method === "ui/notifications/tool-result") {
+      showSearch(msg.params);
+    } else if (msg.method === "ui/notifications/host-context-changed") {
+      applyHost(msg.params);
+    } else if (msg.method === "ui/resource-teardown" && msg.id !== undefined) {
+      send({ id: msg.id, result: {} });
+    } else if (msg.method === "ping" && msg.id !== undefined) {
+      send({ id: msg.id, result: {} });
+    }
+  });
+
+  new ResizeObserver(() => {
+    const r = document.documentElement.getBoundingClientRect();
+    notify("ui/notifications/size-changed", { width: Math.ceil(r.width), height: Math.ceil(r.height) });
+  }).observe(document.documentElement);
+
+  request("ui/initialize", {
+    protocolVersion: "2026-01-26",
+    appInfo: { name: "knowledge-pool-card-search", version: "0.1.0" },
+    appCapabilities: { availableDisplayModes: ["inline"] },
+  }).then((result) => {
+    applyHost(result && result.hostContext);
+    // A host that lists its capabilities but not serverTools can't run tool calls for us.
+    const caps = result && result.hostCapabilities;
+    if (caps && !caps.serverTools) {
+      state.canCallTools = false;
+      toast("This chat app can't run searches or adds from here. Ask Claude to add cards instead.", true);
+    }
+    renderResults();
+    notify("ui/notifications/initialized", {});
+  });
+})();
+</script>
+</body>
+</html>

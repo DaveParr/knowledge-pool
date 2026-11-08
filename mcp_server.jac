@@ -53,7 +53,8 @@ glob APP_DIR: str = os.path.dirname(os.path.abspath(__file__)),
      GUEST_ROOT: list[str] = [],
      DECK_UI: str = "ui://knowledge-pool/deck-table.html",
      MANA_UI: str = "ui://knowledge-pool/mana-analysis.html",
-     COLOUR_NAMES: dict[str, str] = {"W": "White", "U": "Blue", "B": "Black", "R": "Red", "G": "Green"};
+     COLOUR_NAMES: dict[str, str] = {"W": "White", "U": "Blue", "B": "Black", "R": "Red", "G": "Green"},
+     SEARCH_UI: str = "ui://knowledge-pool/card-search.html";
 
 """Show a deck to the user as a table in the chat: cards by zone, totals and legality.
 Clients that support MCP Apps (Claude Desktop and claude.ai) render it as an HTML list
@@ -142,9 +143,92 @@ def mana_markdown(analysis: dict) -> str {
     return "\n".join(lines);
 }
 
-"""MCP Apps: deck_show and deck_analyze are each bound to a self-contained HTML
-view (ui/deck_table.html, ui/mana_analysis.html) that the host renders in a
-sandboxed iframe and fills from the tool result."""
+"""Search the catalogue for cards to add to a deck, showing how many copies the deck
+already holds in main and sideboard. Every word must match, as a prefix. Clients that
+support MCP Apps render a search panel where the user can add hits to the deck
+themselves; others get a Markdown table. Use search_cards when no deck is involved."""
+def card_search(deck_id: str, query: str, limit: int = 20) -> CallToolResult {
+    view = outcome(run_walker(GetDeck(deck_id=deck_id)));
+    if "error" in view {
+        return CallToolResult(content=[TextContent(text=view["error"])], is_error=True);
+    }
+    result = search_with_holdings(view, query, limit);
+    if result["error"] {
+        return CallToolResult(
+            content=[TextContent(text=(result["error"] as str).rstrip(".") + ". The deck is unchanged.")],
+            structured_content=result,
+            is_error=True
+        );
+    }
+    return CallToolResult(content=[TextContent(text=search_markdown(result))], structured_content=result);
+}
+
+"""Search hits for one deck, each with the copies that deck holds per zone
+(`in_deck`, e.g. {"main": 2}), plus a short summary of the deck. A catalogue
+failure comes back as `error` with no hits."""
+def search_with_holdings(view: dict, query: str, limit: int) -> dict {
+    held: dict[str, dict[str, int]] = {};
+    for c in view["cards"] as list[dict[str, any]] {
+        oid = c["oracle_id"] as str;
+        zone = c["zone"] as str;
+        zones: dict[str, int] = held.get(oid, {});
+        zones[zone] = zones.get(zone, 0) + (c["count"] as int);
+        held[oid] = zones;
+    }
+    found = catalog_search(query, limit);
+    hits = [{**plain(h), "in_deck": held.get(h.oracle_id, {})} for h in found.hits];
+    return {
+        "deck": {
+            "id": view["id"],
+            "name": view["name"],
+            "format": view["format"],
+            "main_total": view["main_total"],
+            "sideboard_total": view["sideboard_total"]
+        },
+        "query": query,
+        "limit": limit,
+        "hits": hits,
+        "error": found.error
+    };
+}
+
+"""One Markdown table cell: no pipes or line breaks."""
+def md_cell(value: str) -> str {
+    return value.replace("|", "\\|").replace("\n", " ");
+}
+
+"""Search hits as a Markdown table with an In deck column, for clients that do not
+render MCP Apps (and for the model). The oracle ids are there so the model can pass
+them straight to deck_edit."""
+def search_markdown(result: dict) -> str {
+    hits = result["hits"] as list[dict[str, any]];
+    query = result["query"] as str;
+    if not hits {
+        return f"No cards match \"{query}\". Every word must match the start of a word in the name, type or rules text.";
+    }
+    deck_name = (result["deck"] as dict[str, any])["name"] as str;
+    lines = [
+        f"{len(hits)} {'card matches' if len(hits) == 1 else 'cards match'} \"{query}\" (deck: {deck_name}):",
+        "",
+        "| Card | Cost | Type | In deck | Oracle id |",
+        "|---|---|---|---|---|"
+    ];
+    for h in hits {
+        in_deck = h["in_deck"] as dict[str, int];
+        held = ", ".join(f"{n} {z}" for (z, n) in in_deck.items() if n) or "-";
+        lines.append(
+            f"| {md_cell(h['name'] as str)} | {h['mana_cost']} | {md_cell(h['type_line'] as str)} | {held} | `{h['oracle_id']}` |"
+        );
+    }
+    lines += ["", "Which should I add, how many, and to main or sideboard?"];
+    return "\n".join(lines);
+}
+
+"""MCP Apps: deck_show, deck_analyze and card_search are each bound to a
+self-contained HTML view (ui/deck_table.html, ui/mana_analysis.html,
+ui/card_search.html) that the host renders in a sandboxed iframe and fills from
+the tool result. The search view also calls card_search and deck_edit back
+through the host."""
 def make_apps -> Apps {
     apps = Apps();
     apps.tool(resource_uri=DECK_UI)(deck_show);
@@ -154,6 +238,10 @@ def make_apps -> Apps {
     }
     with open(os.path.join(APP_DIR, "ui", "mana_analysis.html"), encoding="utf-8") as f {
         apps.add_html_resource(MANA_UI, f.read(), title="Mana analysis", prefers_border=True);
+    }
+    apps.tool(resource_uri=SEARCH_UI)(card_search);
+    with open(os.path.join(APP_DIR, "ui", "card_search.html"), encoding="utf-8") as f {
+        apps.add_html_resource(SEARCH_UI, f.read(), title="Card search", prefers_border=True);
     }
     return apps;
 }
@@ -165,7 +253,10 @@ glob server: MCPServer = MCPServer(
         + "Card data comes only from the MTGJSON catalogue: turn card names into oracle ids with "
         + "resolve_names (or search_cards) before adding them, and never add a card that was not "
         + "resolved. Give a short reason for every deck change. Finish with deck_validate. "
-        + "When the user wants to see a deck, call deck_show; for its mana curve and colours, call deck_analyze."
+        + "When the user wants to see a deck, call deck_show; for its mana curve and colours, call deck_analyze. "
+        + "When the user wants to find cards to add to a deck, call card_search with that deck's id: it shows "
+        + "how many copies the deck already holds, and lets the user add hits themselves; changes they make "
+        + "there are reported back to you."
     ),
     extensions=[make_apps()]
 );
