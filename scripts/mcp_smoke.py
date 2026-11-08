@@ -142,11 +142,29 @@ async def main() -> None:
         # not fixed tag names.
         bolt_card = next(c for c in shown.structured_content["cards"] if c["name"] == "Lightning Bolt")
         check("deck_show's structured content carries oracle tags per card", len(bolt_card["oracle_tags"]) > 0, bolt_card)
+        guide_card = next(c for c in shown.structured_content["cards"] if c["name"] == "Goblin Guide")
         check(
-            "deck_show's Markdown table includes oracle tags",
-            all(tag in shown.content[0].text for tag in bolt_card["oracle_tags"]),
-            (bolt_card["oracle_tags"], shown.content[0].text),
+            "deck_show's structured content carries stats and keywords per card",
+            (guide_card["power"], guide_card["toughness"], guide_card["keywords"]) == ("2", "2", ["Haste"]),
+            guide_card,
         )
+        check(
+            "deck_show's Markdown table has a P/T column and no tags",
+            "| 4 | Goblin Guide | {R} | Creature — Goblin Scout | 2/2 |" in shown.content[0].text
+            and not any(tag in shown.content[0].text for tag in bolt_card["oracle_tags"]),
+            shown.content[0].text,
+        )
+
+        delver = await call(session, "get_card", oracle_id_or_name="Delver of Secrets")
+        check(
+            "get_card gives each face of a double-faced card with its own stats",
+            [(f["name"], f["power"], f["toughness"]) for f in delver["faces"]]
+            == [("Delver of Secrets", "1", "1"), ("Insectile Aberration", "3", "2")]
+            and delver["keywords"] == ["Flying", "Transform"],
+            delver,
+        )
+        jace = await call(session, "get_card", oracle_id_or_name="Jace, the Mind Sculptor")
+        check("get_card gives a planeswalker's loyalty", jace["loyalty"] == "3", jace)
 
         missing = await call(session, "deck_get", deck_id="nope")
         check("an unknown deck id says so", missing == {"error": "No deck with id nope.", "code": "no-such-deck"}, missing)

@@ -54,8 +54,9 @@ glob APP_DIR: str = os.path.dirname(os.path.abspath(__file__)),
      DECK_UI: str = "ui://knowledge-pool/deck-table.html";
 
 """Show a deck to the user as a table in the chat: cards by zone, totals and legality.
-Clients that support MCP Apps (Claude Desktop and claude.ai) render it as an HTML table;
-others get the same list as Markdown. Use deck_get when you only need the data."""
+Clients that support MCP Apps (Claude Desktop and claude.ai) render it as an HTML list
+where each card expands to its rules text, stats, keywords, deck notes and tags; others
+get a compact Markdown table. Use deck_get when you only need the data."""
 def deck_show(deck_id: str) -> CallToolResult {
     view = outcome(run_walker(GetDeck(deck_id=deck_id)));
     if "error" in view {
@@ -64,7 +65,8 @@ def deck_show(deck_id: str) -> CallToolResult {
     return CallToolResult(content=[TextContent(text=deck_markdown(view))], structured_content=view);
 }
 
-"""The deck as a Markdown table, for clients that do not render MCP Apps."""
+"""The deck as a compact Markdown table, for clients that do not render MCP
+Apps: one row per card, without rules text or tags (get_card has those)."""
 def deck_markdown(view: dict) -> str {
     lines = [
         f"## {view['name']}",
@@ -74,14 +76,22 @@ def deck_markdown(view: dict) -> str {
     for (zone, title) in [("main", "Main deck"), ("sideboard", "Sideboard")] {
         rows = [c for c in view["cards"] if c["zone"] == zone];
         if rows {
-            lines += ["", f"### {title}", "", "| # | Card | Cost | Type | Tags |", "|--:|---|---|---|---|"];
+            lines += ["", f"### {title}", "", "| # | Card | Cost | Type | P/T |", "|--:|---|---|---|--:|"];
             lines += [
-                f"| {c['count']} | {c['name']} | {c['mana_cost']} | {c['type_line']} | {', '.join(t for t in c['oracle_tags'])} |"
+                f"| {c['count']} | {c['name']} | {c['mana_cost']} | {c['type_line']} | {power_toughness(c)} |"
                 for c in rows
             ];
         }
     }
     return "\n".join(lines);
+}
+
+"""A card line's front-face power/toughness ("2/2"), or "" when it has none."""
+def power_toughness(card: any) -> str {
+    if not card["power"] and not card["toughness"] {
+        return "";
+    }
+    return f"{card['power']}/{card['toughness']}";
 }
 
 """MCP Apps: deck_show is bound to a self-contained HTML view (ui/deck_table.html)
@@ -175,7 +185,10 @@ def search_cards(query: str, limit: int = 20) -> list[dict] {
     return [plain(hit) for hit in found.hits];
 }
 
-"""Full card details, by oracle id or exact card name, including format legalities."""
+"""Full card details, by oracle id or exact card name: cost, type line, rules text,
+power/toughness, loyalty and defence (front face), keywords, each face of a
+multi-face card (name, cost, type, text, stats), format legalities and Scryfall
+oracle tags."""
 @server.tool()
 def get_card(oracle_id_or_name: str) -> dict {
     card = find_card(oracle_id_or_name);

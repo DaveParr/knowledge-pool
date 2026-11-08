@@ -11,6 +11,7 @@ catalogue record: after `catalog/ingest.py` rebuilds the catalogue, one
 
 import sqlite3;
 import catalog.store as store;
+import from card_lines { CardFace }
 
 node Catalog {}
 
@@ -25,7 +26,13 @@ node Card {
         text: str = "",
         legal: dict[str, str] = {},
         oracle_tags: list[str] = [],
-        produced_mana: list[str] = [];
+        produced_mana: list[str] = [],
+        power: str = "",
+        toughness: str = "",
+        loyalty: str = "",
+        defense: str = "",
+        keywords: list[str] = [],
+        faces: list[CardFace] = [];
 }
 
 """One search result."""
@@ -125,6 +132,27 @@ def fill_card(card: Card, c: dict[str, any]) {
     card.legal = c["legal"] as dict[str, str];
     card.oracle_tags = c["oracle_tags"] as list[str];
     card.produced_mana = c["produced_mana"] as list[str];
+    card.power = c["power"] as str;
+    card.toughness = c["toughness"] as str;
+    card.loyalty = c["loyalty"] as str;
+    card.defense = c["defense"] as str;
+    card.keywords = c["keywords"] as list[str];
+    faces = c["faces"] as list[dict[str, str]];
+    card.faces = [card_face(f) for f in faces];
+}
+
+"""A catalogue face record as a CardFace."""
+def card_face(f: dict[str, str]) -> CardFace {
+    return CardFace(
+        name=f["name"],
+        mana_cost=f["mana_cost"],
+        type_line=f["type_line"],
+        text=f["text"],
+        power=f["power"],
+        toughness=f["toughness"],
+        loyalty=f["loyalty"],
+        defense=f["defense"]
+    );
 }
 
 """The Card node for an oracle id, created from the catalogue on first use. None if the id is unknown."""

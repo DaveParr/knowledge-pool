@@ -1,10 +1,12 @@
 """Add, change and remove cards on a deck over REST, and survive a restart."""
 
+import copy
 import sqlite3
 
 from jaclang.runtimelib.testing import JacTestClient
 
 from catalog import store
+from catalog.ingest import build, load_atomic, load_oracle_tags
 from tests.old_catalog import drop_produced_mana
 
 
@@ -143,6 +145,58 @@ def test_deck_view_carries_each_cards_oracle_tags(tmp_path):
         assert sorted(by_name["Lightning Bolt"]) == ["burn", "removal"]
         # A card with no taggings in the fixture gets an empty list, not an error.
         assert by_name["Mountain"] == []
+    finally:
+        client.close()
+
+
+def test_card_details_survive_a_restart_including_each_face(tmp_path):
+    first = JacTestClient.from_file("main.jac", base_path=str(tmp_path))
+    deck_id = _new_deck(first)
+    for name in ("Goblin Guide", "Delver of Secrets // Insectile Aberration", "Jace, the Mind Sculptor"):
+        _reports(first.post("/walker/AddCard", json={"deck_id": deck_id, "oracle_id": _oracle_id(name)}))
+    first.close()
+
+    second = JacTestClient.from_file("main.jac", base_path=str(tmp_path))
+    try:
+        view = _reports(second.post("/walker/GetDeck", json={"deck_id": deck_id}))[0]
+        by_name = {c["name"]: c for c in view["cards"]}
+        guide = by_name["Goblin Guide"]
+        assert (guide["power"], guide["toughness"], guide["keywords"], guide["faces"]) == ("2", "2", ["Haste"], [])
+        assert by_name["Jace, the Mind Sculptor"]["loyalty"] == "3"
+        delver = by_name["Delver of Secrets // Insectile Aberration"]
+        assert (delver["power"], delver["toughness"]) == ("1", "1")
+        assert [(f["name"], f["mana_cost"], f["power"], f["toughness"]) for f in delver["faces"]] == [
+            ("Delver of Secrets", "{U}", "1", "1"),
+            ("Insectile Aberration", "", "3", "2"),
+        ]
+    finally:
+        second.close()
+
+
+def test_refresh_cards_over_rest_brings_card_details_to_existing_cards(tmp_path, fixture_catalog):
+    """A deck made before the catalogue had card details gets them after a
+    re-ingest and one POST /walker/RefreshCards."""
+    from tests.conftest import FIXTURE, TAGS_FIXTURE
+
+    full = load_atomic(FIXTURE)
+    old = copy.deepcopy(full)
+    for face in old["data"]["Goblin Guide"]:
+        for key in ("power", "toughness", "keywords"):
+            face.pop(key, None)
+    build(old, fixture_catalog, tags=load_oracle_tags(TAGS_FIXTURE))
+    store.reset()
+
+    client = JacTestClient.from_file("main.jac", base_path=str(tmp_path))
+    try:
+        deck_id = _new_deck(client)
+        view = _reports(client.post("/walker/AddCard", json={"deck_id": deck_id, "oracle_id": _oracle_id("Goblin Guide")}))[0]
+        assert view["cards"][0]["power"] == ""
+
+        build(full, fixture_catalog, tags=load_oracle_tags(TAGS_FIXTURE))
+        assert _reports(client.post("/walker/RefreshCards"))[0] >= 1
+
+        guide = _reports(client.post("/walker/GetDeck", json={"deck_id": deck_id}))[0]["cards"][0]
+        assert (guide["power"], guide["toughness"], guide["keywords"]) == ("2", "2", ["Haste"])
     finally:
         client.close()
 

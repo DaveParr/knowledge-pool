@@ -95,6 +95,9 @@
     "identifiers": {
      "scryfallOracleId": "51d9564b-44fc-4de1-9119-09d7b4089378"
     },
+    "keywords": [
+     "Haste"
+    ],
     "layout": "normal",
     "legalities": {
      "commander": "Legal",
@@ -108,12 +111,14 @@
     "manaCost": "{R}",
     "manaValue": 1.0,
     "name": "Goblin Guide",
+    "power": "2",
     "subtypes": [
      "Goblin",
      "Scout"
     ],
     "supertypes": [],
     "text": "Haste\nWhenever this creature attacks, defending player reveals the top card of their library. If it's a land card, that player puts it into their hand.",
+    "toughness": "2",
     "type": "Creature \u2014 Goblin Scout",
     "types": [
      "Creature"
@@ -128,6 +133,10 @@
     "identifiers": {
      "scryfallOracleId": "dafd2713-d1bc-474b-b390-d2ff20b5375e"
     },
+    "keywords": [
+     "Haste",
+     "Prowess"
+    ],
     "layout": "normal",
     "legalities": {
      "brawl": "Legal",
@@ -148,12 +157,14 @@
     "manaCost": "{R}",
     "manaValue": 1.0,
     "name": "Monastery Swiftspear",
+    "power": "1",
     "subtypes": [
      "Human",
      "Monk"
     ],
     "supertypes": [],
     "text": "Haste\nProwess (Whenever you cast a noncreature spell, this creature gets +1/+1 until end of turn.)",
+    "toughness": "2",
     "type": "Creature \u2014 Human Monk",
     "types": [
      "Creature"
@@ -348,6 +359,7 @@
     "manaCost": "{G}",
     "manaValue": 1.0,
     "name": "Llanowar Elves",
+    "power": "1",
     "producedMana": [
      "G"
     ],
@@ -357,6 +369,7 @@
     ],
     "supertypes": [],
     "text": "{T}: Add {G}.",
+    "toughness": "1",
     "type": "Creature \u2014 Elf Druid",
     "types": [
      "Creature"
@@ -394,10 +407,12 @@
     "manaCost": "{1}{G}",
     "manaValue": 2.0,
     "name": "Grizzly Bears",
+    "power": "2",
     "subtypes": [
      "Bear"
     ],
     "supertypes": [],
+    "toughness": "2",
     "type": "Creature \u2014 Bear",
     "types": [
      "Creature"
@@ -522,6 +537,10 @@
     "identifiers": {
      "scryfallOracleId": "edd531b9-f615-4399-8c8c-1c5e18c4acbf"
     },
+    "keywords": [
+     "Flying",
+     "Transform"
+    ],
     "layout": "transform",
     "legalities": {
      "brawl": "Legal",
@@ -542,6 +561,7 @@
     "manaCost": "{U}",
     "manaValue": 1.0,
     "name": "Delver of Secrets // Insectile Aberration",
+    "power": "1",
     "side": "a",
     "subtypes": [
      "Human",
@@ -549,6 +569,7 @@
     ],
     "supertypes": [],
     "text": "At the beginning of your upkeep, look at the top card of your library. You may reveal that card. If an instant or sorcery card is revealed this way, transform this creature.",
+    "toughness": "1",
     "type": "Creature \u2014 Human Wizard",
     "types": [
      "Creature"
@@ -562,6 +583,10 @@
     "identifiers": {
      "scryfallOracleId": "edd531b9-f615-4399-8c8c-1c5e18c4acbf"
     },
+    "keywords": [
+     "Flying",
+     "Transform"
+    ],
     "layout": "transform",
     "legalities": {
      "brawl": "Legal",
@@ -581,6 +606,7 @@
     },
     "manaValue": 1.0,
     "name": "Delver of Secrets // Insectile Aberration",
+    "power": "3",
     "side": "b",
     "subtypes": [
      "Human",
@@ -588,6 +614,7 @@
     ],
     "supertypes": [],
     "text": "Flying",
+    "toughness": "2",
     "type": "Creature \u2014 Human Insect",
     "types": [
      "Creature"
@@ -623,11 +650,13 @@
     "manaCost": "{1}{B}{B}",
     "manaValue": 3.0,
     "name": "Relentless Rats",
+    "power": "2",
     "subtypes": [
      "Rat"
     ],
     "supertypes": [],
     "text": "This creature gets +1/+1 for each other creature on the battlefield named Relentless Rats.\nA deck can have any number of cards named Relentless Rats.",
+    "toughness": "2",
     "type": "Creature \u2014 Rat",
     "types": [
      "Creature"
@@ -781,12 +810,14 @@
     "manaCost": "{2}{R}",
     "manaValue": 3.0,
     "name": "Adrenaline Jockey",
+    "power": "3",
     "subtypes": [
      "Minotaur",
      "Pilot"
     ],
     "supertypes": [],
     "text": "Whenever a player casts a spell, if it's not their turn, this creature deals 4 damage to them.\nWhenever you activate an exhaust ability, put a +1/+1 counter on this creature.",
+    "toughness": "3",
     "type": "Creature \u2014 Minotaur Pilot",
     "types": [
      "Creature"
@@ -801,6 +832,9 @@
     "identifiers": {
      "scryfallOracleId": "cf6dc79e-840c-4d47-8f94-c8623528acd2"
     },
+    "keywords": [
+     "Trample"
+    ],
     "layout": "normal",
     "legalities": {
      "alchemy": "Legal",
@@ -825,12 +859,14 @@
     "manaCost": "{1}{R}",
     "manaValue": 2.0,
     "name": "Angry Rabble",
+    "power": "2",
     "subtypes": [
      "Human",
      "Citizen"
     ],
     "supertypes": [],
     "text": "Trample\nWhenever you cast a spell with mana value 4 or greater, this creature deals 1 damage to each opponent.\n{5}{R}: Put two +1/+1 counters on this creature. Activate only as a sorcery.",
+    "toughness": "2",
     "type": "Creature \u2014 Human Citizen",
     "types": [
      "Creature"
@@ -869,12 +905,14 @@
     "manaCost": "{1}{R}",
     "manaValue": 2.0,
     "name": "Axgard Cavalry",
+    "power": "2",
     "subtypes": [
      "Dwarf",
      "Berserker"
     ],
     "supertypes": [],
     "text": "{T}: Target creature gains haste until end of turn. (It can attack and {T} this turn.)",
+    "toughness": "2",
     "type": "Creature \u2014 Dwarf Berserker",
     "types": [
      "Creature"
@@ -889,6 +927,10 @@
     "identifiers": {
      "scryfallOracleId": "7485cf25-eb41-4397-be13-7f0b8c10c70a"
     },
+    "keywords": [
+     "Haste",
+     "Trample"
+    ],
     "layout": "normal",
     "legalities": {
      "alchemy": "Legal",
@@ -915,11 +957,13 @@
     "manaCost": "{R}{R}{R}",
     "manaValue": 3.0,
     "name": "Ball Lightning",
+    "power": "6",
     "subtypes": [
      "Elemental"
     ],
     "supertypes": [],
     "text": "Trample (This creature can deal excess combat damage to the player or planeswalker it's attacking.)\nHaste (This creature can attack and {T} as soon as it comes under your control.)\nAt the beginning of the end step, sacrifice this creature.",
+    "toughness": "1",
     "type": "Creature \u2014 Elemental",
     "types": [
      "Creature"
@@ -958,12 +1002,14 @@
     "manaCost": "{1}{W}",
     "manaValue": 2.0,
     "name": "Hare Apparent",
+    "power": "2",
     "subtypes": [
      "Rabbit",
      "Noble"
     ],
     "supertypes": [],
     "text": "When this creature enters, create a number of 1/1 white Rabbit creature tokens equal to the number of other creatures you control named Hare Apparent.\nA deck can have any number of cards named Hare Apparent.",
+    "toughness": "2",
     "type": "Creature \u2014 Rabbit Noble",
     "types": [
      "Creature"
@@ -978,6 +1024,9 @@
     "identifiers": {
      "scryfallOracleId": "49e1e202-37bf-46ed-93d1-1adb13726039"
     },
+    "keywords": [
+     "Valiant"
+    ],
     "layout": "normal",
     "legalities": {
      "alchemy": "Legal",
@@ -1000,12 +1049,14 @@
     "manaCost": "{R}",
     "manaValue": 1.0,
     "name": "Heartfire Hero",
+    "power": "1",
     "subtypes": [
      "Mouse",
      "Soldier"
     ],
     "supertypes": [],
     "text": "Valiant \u2014 Whenever this creature becomes the target of a spell or ability you control for the first time each turn, put a +1/+1 counter on it.\nWhen this creature dies, it deals damage equal to its power to each opponent.",
+    "toughness": "1",
     "type": "Creature \u2014 Mouse Soldier",
     "types": [
      "Creature"
@@ -1020,6 +1071,9 @@
     "identifiers": {
      "scryfallOracleId": "646a2371-54c0-4492-ac2f-20f109d6108c"
     },
+    "keywords": [
+     "Role token"
+    ],
     "layout": "normal",
     "legalities": {
      "brawl": "Legal",
@@ -1058,6 +1112,9 @@
     "identifiers": {
      "scryfallOracleId": "09be0f69-9c7f-491f-964d-bfbbc2d4251f"
     },
+    "keywords": [
+     "Prowess"
+    ],
     "layout": "normal",
     "legalities": {
      "brawl": "Legal",
@@ -1077,12 +1134,14 @@
     "manaCost": "{1}{R}",
     "manaValue": 2.0,
     "name": "Abbot of Keral Keep",
+    "power": "2",
     "subtypes": [
      "Human",
      "Monk"
     ],
     "supertypes": [],
     "text": "Prowess (Whenever you cast a noncreature spell, this creature gets +1/+1 until end of turn.)\nWhen this creature enters, exile the top card of your library. Until end of turn, you may play that card.",
+    "toughness": "1",
     "type": "Creature \u2014 Human Monk",
     "types": [
      "Creature"
@@ -1117,11 +1176,13 @@
     "manaCost": "{1}{R}",
     "manaValue": 2.0,
     "name": "Seven Dwarves",
+    "power": "2",
     "subtypes": [
      "Dwarf"
     ],
     "supertypes": [],
     "text": "This creature gets +1/+1 for each other creature named Seven Dwarves you control.\nA deck can have up to seven cards named Seven Dwarves.",
+    "toughness": "2",
     "type": "Creature \u2014 Dwarf",
     "types": [
      "Creature"
@@ -1206,6 +1267,9 @@
     "identifiers": {
      "scryfallOracleId": "48a62778-7c11-486f-a0e1-020c283a7ef9"
     },
+    "keywords": [
+     "Deathtouch"
+    ],
     "layout": "normal",
     "legalities": {
      "brawl": "Legal",
@@ -1223,12 +1287,14 @@
     "manaCost": "{2}{B}",
     "manaValue": 3.0,
     "name": "Nazg\u00fbl",
+    "power": "1",
     "subtypes": [
      "Wraith",
      "Knight"
     ],
     "supertypes": [],
     "text": "Deathtouch\nWhen this creature enters, the Ring tempts you.\nWhenever the Ring tempts you, put a +1/+1 counter on each Wraith you control.\nA deck can have up to nine cards named Nazg\u00fbl.",
+    "toughness": "2",
     "type": "Creature \u2014 Wraith Knight",
     "types": [
      "Creature"
@@ -1241,6 +1307,9 @@
     "identifiers": {
      "scryfallOracleId": "ec3d4466-547c-4e02-b1b5-a156ec4637e9"
     },
+    "keywords": [
+     "Imprint"
+    ],
     "layout": "normal",
     "legalities": {
      "brawl": "Banned",
@@ -1448,6 +1517,136 @@
     "type": "Basic Land \u2014 Mountain",
     "types": [
      "Land"
+    ]
+   }
+  ],
+  "Jace, the Mind Sculptor": [
+   {
+    "colorIdentity": [
+     "U"
+    ],
+    "identifiers": {
+     "scryfallOracleId": "7f77a84e-5a4b-4834-aefa-3cecc175ae8e"
+    },
+    "layout": "normal",
+    "legalities": {
+     "brawl": "Legal",
+     "commander": "Legal",
+     "competitivebrawl": "Legal",
+     "duel": "Legal",
+     "gladiator": "Legal",
+     "historic": "Legal",
+     "legacy": "Legal",
+     "modern": "Legal",
+     "oathbreaker": "Legal",
+     "predh": "Legal",
+     "timeless": "Legal",
+     "vintage": "Legal"
+    },
+    "loyalty": "3",
+    "manaCost": "{2}{U}{U}",
+    "manaValue": 4.0,
+    "name": "Jace, the Mind Sculptor",
+    "subtypes": [
+     "Jace"
+    ],
+    "supertypes": [
+     "Legendary"
+    ],
+    "text": "[+2]: Look at the top card of target player's library. You may put that card on the bottom of that player's library.\n[0]: Draw three cards, then put two cards from your hand on top of your library in any order.\n[\u22121]: Return target creature to its owner's hand.\n[\u221212]: Exile all cards from target player's library, then that player shuffles their hand into their library.",
+    "type": "Legendary Planeswalker \u2014 Jace",
+    "types": [
+     "Planeswalker"
+    ]
+   }
+  ],
+  "Invasion of Tarkir // Defiant Thundermaw": [
+   {
+    "colorIdentity": [
+     "R"
+    ],
+    "defense": "5",
+    "faceName": "Invasion of Tarkir",
+    "identifiers": {
+     "scryfallOracleId": "5c7f02ad-1daf-4d1a-bef0-0b2064f9b67e"
+    },
+    "keywords": [
+     "Flying",
+     "Trample",
+     "Transform"
+    ],
+    "layout": "transform",
+    "legalities": {
+     "brawl": "Legal",
+     "commander": "Legal",
+     "competitivebrawl": "Legal",
+     "duel": "Legal",
+     "gladiator": "Legal",
+     "historic": "Legal",
+     "legacy": "Legal",
+     "modern": "Legal",
+     "oathbreaker": "Legal",
+     "penny": "Legal",
+     "pioneer": "Legal",
+     "timeless": "Legal",
+     "vintage": "Legal"
+    },
+    "manaCost": "{1}{R}",
+    "manaValue": 2.0,
+    "name": "Invasion of Tarkir // Defiant Thundermaw",
+    "side": "a",
+    "subtypes": [
+     "Siege"
+    ],
+    "supertypes": [],
+    "text": "(As a Siege enters, choose an opponent to protect it. You and others can attack it. When it's defeated, exile it, then cast it transformed.)\nWhen this Siege enters, reveal any number of Dragon cards from your hand. When you do, this Siege deals X plus 2 damage to any other target, where X is the number of cards revealed this way. (X can be 0.)",
+    "type": "Battle \u2014 Siege",
+    "types": [
+     "Battle"
+    ]
+   },
+   {
+    "colorIdentity": [
+     "R"
+    ],
+    "faceName": "Defiant Thundermaw",
+    "identifiers": {
+     "scryfallOracleId": "5c7f02ad-1daf-4d1a-bef0-0b2064f9b67e"
+    },
+    "keywords": [
+     "Flying",
+     "Trample",
+     "Transform"
+    ],
+    "layout": "transform",
+    "legalities": {
+     "brawl": "Legal",
+     "commander": "Legal",
+     "competitivebrawl": "Legal",
+     "duel": "Legal",
+     "gladiator": "Legal",
+     "historic": "Legal",
+     "legacy": "Legal",
+     "modern": "Legal",
+     "oathbreaker": "Legal",
+     "penny": "Legal",
+     "pioneer": "Legal",
+     "timeless": "Legal",
+     "vintage": "Legal"
+    },
+    "manaValue": 2.0,
+    "name": "Invasion of Tarkir // Defiant Thundermaw",
+    "power": "4",
+    "side": "b",
+    "subtypes": [
+     "Dragon"
+    ],
+    "supertypes": [],
+    "text": "Flying, trample\nWhenever a Dragon you control attacks, it deals 2 damage to any target.",
+    "toughness": "4",
+    "type": "Creature \u2014 Dragon",
+    "types": [
+     "Creature"
     ]
    }
   ]

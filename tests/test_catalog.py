@@ -12,7 +12,7 @@ def test_meta_records_mtgjson_version_and_date():
     assert meta["mtgjson_version"] == "5.3.0+fixture"
     assert meta["mtgjson_date"] == "2026-01-01"
     assert meta["ingested_at"]
-    assert meta["card_count"] == "33"
+    assert meta["card_count"] == "35"
 
 
 def test_one_row_per_oracle_card_with_its_fields():
@@ -68,6 +68,43 @@ def test_split_card_keeps_both_faces():
     assert "Tap target permanent" in fire_ice["text"]
 
 
+def test_creature_stats_and_keywords_are_stored_from_mtgjson():
+    guide = store.find_by_name("Goblin Guide")
+    assert (guide["power"], guide["toughness"]) == ("2", "2")
+    assert guide["keywords"] == ["Haste"]
+    assert guide["loyalty"] == guide["defense"] == ""
+    assert guide["faces"] == []  # one face: the row holds it all
+    bolt = store.find_by_name("Lightning Bolt")
+    assert (bolt["power"], bolt["toughness"], bolt["keywords"]) == ("", "", [])
+
+
+def test_planeswalker_loyalty_and_battle_defence_are_stored():
+    jace = store.find_by_name("Jace, the Mind Sculptor")
+    assert jace["loyalty"] == "3"
+    assert jace["power"] == ""
+    invasion = store.find_by_name("Invasion of Tarkir")
+    assert invasion["defense"] == "5"
+    assert invasion["power"] == ""  # the front face is a battle; the back is the 4/4
+
+
+def test_multi_face_card_keeps_each_face_with_its_own_cost_type_text_and_stats():
+    delver = store.find_by_name("Delver of Secrets")
+    assert (delver["power"], delver["toughness"]) == ("1", "1")  # front face
+    assert delver["keywords"] == ["Flying", "Transform"]
+    front, back = delver["faces"]
+    assert front == {
+        "name": "Delver of Secrets", "mana_cost": "{U}", "type_line": "Creature \u2014 Human Wizard",
+        "text": front["text"], "power": "1", "toughness": "1", "loyalty": "", "defense": "",
+    }
+    assert front["text"].startswith("At the beginning of your upkeep")
+    assert back == {
+        "name": "Insectile Aberration", "mana_cost": "", "type_line": "Creature \u2014 Human Insect",
+        "text": "Flying", "power": "3", "toughness": "2", "loyalty": "", "defense": "",
+    }
+    fire, ice = store.find_by_name("Fire // Ice")["faces"]
+    assert (fire["name"], fire["mana_cost"], ice["name"], ice["mana_cost"]) == ("Fire", "{1}{R}", "Ice", "{1}{U}")
+
+
 def test_search_by_rules_text():
     names = {c["name"] for c in store.search("deals 3 damage")}
     assert "Lightning Bolt" in names
@@ -92,7 +129,7 @@ def test_ingest_command_builds_from_a_local_file(tmp_path, capsys):
 
     out = tmp_path / "cli.sqlite"
     assert main(["--source", str(FIXTURE), "--tags-source", str(TAGS_FIXTURE), "--out", str(out)]) == 0
-    assert "33 cards from MTGJSON 5.3.0+fixture (2026-01-01) and 3 Scryfall oracle tags" in capsys.readouterr().out
+    assert "35 cards from MTGJSON 5.3.0+fixture (2026-01-01) and 3 Scryfall oracle tags" in capsys.readouterr().out
     assert out.exists()
 
 
