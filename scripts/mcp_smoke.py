@@ -125,6 +125,40 @@ async def main() -> None:
         exported = await call(session, "deck_export", deck_id=deck["id"], format="mtgdeck1")
         check("export produces an mtgdeck/1 document", json.loads(exported["content"])["schema"] == "mtgdeck/1", exported)
 
+        arena = await session.call_tool("deck_export", {"deck_id": deck["id"]})
+        check("deck_export defaults to MTGA/MTGO (arena)", arena.structured_content["format"] == "arena" and arena.structured_content["content"].startswith("Deck\n"), arena.structured_content)
+        check("deck_export names the deck for the view", arena.structured_content["name"] == "MCP Burn" and arena.structured_content["deck_id"] == deck["id"], arena.structured_content)
+        check(
+            "deck_export lists every format with its lossless flag",
+            {f["key"]: f["lossless"] for f in arena.structured_content["formats"]}
+            == {"arena": False, "moxfield": False, "text": False, "mtgdeck1": True, "mtgjson": True},
+            arena.structured_content["formats"],
+        )
+        check(
+            "a lossy export's text gives the list in a code block and says what it drops",
+            "```\nDeck\n" in arena.content[0].text and "drops other zones, roles, tags, locks and reasons" in arena.content[0].text,
+            arena.content[0].text,
+        )
+        lossless = await session.call_tool("deck_export", {"deck_id": deck["id"], "format": "mtgdeck1"})
+        lossless_text = lossless.content[0].text
+        check("a lossless export's text starts with a short summary", lossless_text.startswith("Exported MCP Burn as mtgdeck/1 (lossless,"), lossless_text[:200])
+        check("a lossless export's text still carries the whole JSON", lossless.structured_content["content"] in lossless_text, lossless_text[:200])
+        export_tool = {t.name: t for t in (await session.list_tools()).tools}["deck_export"]
+        export_uri = ((export_tool.meta or {}).get("ui") or {}).get("resourceUri")
+        check("deck_export points at the export view", export_uri == "ui://knowledge-pool/deck-export.html", export_tool.meta)
+        export_page = (await session.read_resource(export_uri)).contents[0]
+        check("the export view is served as an MCP App", export_page.mime_type == "text/html;profile=mcp-app" and "tools/call" in export_page.text, export_page.mime_type)
+        check("the export view asks for clipboard access", ((export_page.meta or {}).get("ui") or {}).get("permissions") == {"clipboardWrite": {}}, export_page.meta)
+        export_missing = await session.call_tool("deck_export", {"deck_id": "nope"})
+        check(
+            "deck_export gives an unknown deck as a tool error with its code",
+            export_missing.is_error and export_missing.content[0].text == "No deck with id nope."
+            and export_missing.structured_content == {"error": "No deck with id nope.", "code": "no-such-deck"},
+            (export_missing.content, export_missing.structured_content),
+        )
+        export_bad = await session.call_tool("deck_export", {"deck_id": deck["id"], "format": "cockatrice"})
+        check("deck_export gives an unknown list format as a tool error", export_bad.is_error and export_bad.structured_content["code"] == "unknown-list-format", export_bad.structured_content)
+
         reimported = await call(session, "deck_import", deck_id=deck["id"], format="mtgdeck1", text=exported["content"])
         check("round-trip import resolves every entry", reimported["unresolved"] == [], reimported)
         check("round-trip import keeps the same main total", reimported["deck"]["main_total"] == deck["main_total"], reimported)
