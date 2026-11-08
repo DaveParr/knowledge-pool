@@ -38,11 +38,19 @@ def test_export_mtgdeck1_contains_every_card_in_the_right_zone(tmp_path):
         client.close()
 
 
-def test_export_with_an_unknown_format_reports_nothing(tmp_path):
+def _error(reports: list) -> dict:
+    [only] = reports
+    return {k: only[k] for k in ("code", "message")}
+
+
+def test_export_says_why_a_format_cannot_be_used(tmp_path):
     client = JacTestClient.from_file("main.jac", base_path=str(tmp_path))
     try:
         deck_id = _new_deck(client)
-        assert _reports(client.post("/walker/DeckExport", json={"deck_id": deck_id, "format": "nope"})) == []
+        assert _error(_reports(client.post("/walker/DeckExport", json={"deck_id": deck_id, "format": "nope"}))) == {
+            "code": "unknown-list-format",
+            "message": "Unknown deck format: nope. Use one of: arena, moxfield, mtgdeck1, mtgjson, text.",
+        }
     finally:
         client.close()
 
@@ -61,6 +69,8 @@ def test_export_mtgdeck1_then_import_round_trips(tmp_path):
         assert imported["unresolved"] == []
         cards = {(c["name"], c["zone"]): c["count"] for c in imported["deck"]["cards"]}
         assert cards == {("Lightning Bolt", "main"): 4, ("Mountain", "sideboard"): 20}
+        # Re-importing the same list changes no counts, so it logs nothing new.
+        assert all(h["reason"] == "Edited in the app" for h in imported["deck"]["history"])
     finally:
         client.close()
 
@@ -112,11 +122,16 @@ def test_commander_zone_entries_do_not_count_toward_main_deck_legality(tmp_path)
         client.close()
 
 
-def test_import_with_an_unknown_format_reports_nothing(tmp_path):
+def test_import_says_why_a_format_cannot_be_used(tmp_path):
     client = JacTestClient.from_file("main.jac", base_path=str(tmp_path))
     try:
         deck_id = _new_deck(client)
-        assert _reports(client.post("/walker/DeckImport", json={"deck_id": deck_id, "format": "nope", "text": ""})) == []
+        assert _error(_reports(client.post("/walker/DeckImport", json={"deck_id": deck_id, "format": "nope", "text": ""})))["code"] == "unknown-list-format"
+        assert _error(_reports(client.post("/walker/DeckImport", json={"deck_id": deck_id, "format": "mtgjson", "text": "{}"}))) == {
+            "code": "no-import", "message": "mtgjson lists can be exported but not imported.",
+        }
+        assert _error(_reports(client.post("/walker/CreateDeckFromList", json={"format": "mtgjson", "text": "{}"})))["code"] == "no-import"
+        assert [d["name"] for d in _reports(client.post("/walker/ListDecks"))[0]] == ["IO deck"]
     finally:
         client.close()
 
@@ -283,6 +298,7 @@ def test_create_deck_from_list_makes_a_filled_deck_and_flags_unresolved_lines(tm
         assert sorted((c["name"], c["count"], c["zone"]) for c in view["cards"]) == [
             ("Goblin Guide", 3, "sideboard"), ("Lightning Bolt", 4, "main"),
         ]
+        assert {h["reason"] for h in view["history"]} == {"Created from a moxfield list"}
     finally:
         client.close()
 

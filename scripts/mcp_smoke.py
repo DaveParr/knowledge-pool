@@ -114,8 +114,11 @@ async def main() -> None:
             and analysis["mana"]["sources"]["R"] == 52,
             analysis,
         )
+        check("deck_analyze is the deck's analysis only, not its cards", set(analysis) == {"id", "mana", "curve"}, analysis)
+        check("deck_edit already carried the same curve", deck["curve"] == analysis["curve"], deck)
 
         deck = await call(session, "deck_edit", deck_id=deck["id"], format="standard")
+        check("a format change still reports the curve", deck["curve"] == analysis["curve"], deck)
         verdict = await call(session, "deck_validate", deck_id=deck["id"])
         check("switching to Standard makes it illegal, with reasons", not verdict["legal"] and {v["rule"] for v in verdict["violations"]} == {"not-legal"}, verdict)
 
@@ -144,6 +147,15 @@ async def main() -> None:
             all(tag in shown.content[0].text for tag in bolt_card["oracle_tags"]),
             (bolt_card["oracle_tags"], shown.content[0].text),
         )
+
+        missing = await call(session, "deck_get", deck_id="nope")
+        check("an unknown deck id says so", missing == {"error": "No deck with id nope.", "code": "no-such-deck"}, missing)
+        no_import = await call(session, "deck_import", deck_id=deck["id"], format="mtgjson", text="{}")
+        check("an export-only format says it cannot be imported", no_import.get("code") == "no-import", no_import)
+        bad_format = await call(session, "deck_edit", deck_id=deck["id"], format="vintage")
+        check("an unknown play format says so", bad_format.get("code") == "unknown-format", bad_format)
+        shown_missing = await session.call_tool("deck_show", {"deck_id": "nope"})
+        check("deck_show gives the reason as a tool error", shown_missing.is_error and shown_missing.content[0].text == "No deck with id nope.", shown_missing.content)
 
         wait_for_web()
         web_decks = web("/walker/ListDecks")["data"]["reports"][0]

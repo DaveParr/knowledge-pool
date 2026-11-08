@@ -4,13 +4,13 @@ impl ExportPanel.load(fmt: str) -> None {
     format = fmt;
     status = "";
     result = root spawn DeckExport(deck_id=deckId, format=fmt);
-    if not result.reports {
+    why = failureMessage(result.reports);
+    error = why;
+    if why {
         content = "";
-        failed = True;
         return;
     }
-    failed = False;
-    content = result.reports[0].content;
+    content = (result.reports[0] as ExportResult).content;
 }
 
 impl ExportPanel.copy -> None {

@@ -3,8 +3,6 @@ from deckformats.linelist import LineListFormat
 from deckformats.mtgdeck1 import Mtgdeck1Format
 from deckformats.mtgjson import MtgjsonFormat
 
-DECK_ZONES = ("commander", "companion", "main", "sideboard", "maybeboard")
-
 FORMATS: dict[str, DeckFormat] = {
     "mtgdeck1": Mtgdeck1Format(),
     "mtgjson": MtgjsonFormat(),

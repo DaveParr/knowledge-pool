@@ -1,11 +1,12 @@
 """Mana for one deck: totals, the mana curve and coloured pips vs sources.
 
 The web twin of the mana analysis MCP app (#67, ui/mockups/mana_analysis.html):
-same layout, both fed by AnalyzeDeck. Main deck only.
+same layout, both fed by the deck's mana profile and curve (DeckView.mana and
+DeckView.curve; deck_analyze returns the same two). Main deck only.
 """
 
 import "./mana_panel.css";
-sv import from decks { DeckAnalysis }
+sv import from mana { ManaProfile, ManaCurve }
 
 glob COLOUR_NAMES: dict[str, str] = {
     "W": "White", "U": "Blue", "B": "Black", "R": "Red", "G": "Green"
@@ -15,21 +16,16 @@ def pct(n: int, top: int) -> str {
     return str(round(100 * n / top) if top > 0 else 0) + "%";
 }
 
-def:pub ManaPanel(analysis: DeckAnalysis | None, mainTotal: int) -> JsxElement {
+def:pub ManaPanel(mana: ManaProfile, curve: ManaCurve, mainTotal: int) -> JsxElement {
     has showTable: bool = False;
 
-    if analysis is None {
-        return <p className="empty">Loading mana...</p>;
-    }
-
-    buckets = analysis.curve.buckets;
+    buckets = curve.buckets;
     nonLand = 0;
     topCount = 1;
     for (_mv, n) in buckets.items() {
         nonLand += n;
         topCount = max(topCount, n);
     }
-    mana = analysis.mana;
     used = [c for c in ["W", "U", "B", "R", "G"] if mana.pips[c] > 0 or mana.sources[c] > 0];
     topPS = 1;
     for c in used {
@@ -41,7 +37,7 @@ def:pub ManaPanel(analysis: DeckAnalysis | None, mainTotal: int) -> JsxElement {
             <div className="mp-tiles">
                 <div className="mp-tile">
                     <div className="mp-k">Lands</div>
-                    <div className="mp-v">{analysis.mana.land_count}</div>
+                    <div className="mp-v">{mana.land_count}</div>
                     <div className="mp-s">{pct(mana.land_count, mainTotal) + " of main"}</div>
                 </div>
                 <div className="mp-tile">
@@ -51,7 +47,7 @@ def:pub ManaPanel(analysis: DeckAnalysis | None, mainTotal: int) -> JsxElement {
                 </div>
                 <div className="mp-tile">
                     <div className="mp-k">Average mana value</div>
-                    <div className="mp-v">{f"{analysis.curve.average_mv:.2f}"}</div>
+                    <div className="mp-v">{f"{curve.average_mv:.2f}"}</div>
                     <div className="mp-s">non-land only</div>
                 </div>
             </div>

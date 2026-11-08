@@ -3,17 +3,7 @@
 impl DeckDetail.loadDeck -> None {
     formats = await list_formats();
     result = root spawn GetDeck(deck_id=deckId);
-    if result.reports {
-        deck = result.reports[0];
-    }
-    await refreshAnalysis();
-}
-
-impl DeckDetail.refreshAnalysis -> None {
-    result = root spawn AnalyzeDeck(deck_id=deckId);
-    if result.reports {
-        analysis = result.reports[0];
-    }
+    show(result.reports);
 }
 
 impl DeckDetail.setCount(oracleId: str, zone: str, value: str) -> None {
@@ -25,23 +15,23 @@ impl DeckDetail.setCount(oracleId: str, zone: str, value: str) -> None {
         return;
     }
     result = root spawn SetCardCount(deck_id=deckId, oracle_id=oracleId, count=n, zone=zone);
-    if result.reports {
-        deck = result.reports[0];
-    }
-    await refreshAnalysis();
+    show(result.reports);
 }
 
 impl DeckDetail.removeCard(oracleId: str, zone: str) -> None {
     result = root spawn RemoveCard(deck_id=deckId, oracle_id=oracleId, zone=zone);
-    if result.reports {
-        deck = result.reports[0];
-    }
-    await refreshAnalysis();
+    show(result.reports);
 }
 
 impl DeckDetail.setFormat(value: str) -> None {
     result = root spawn SetDeckFormat(deck_id=deckId, format=value);
-    if result.reports {
-        deck = result.reports[0];
+    show(result.reports);
+}
+
+impl DeckDetail.show(reports: list[DeckView | WalkerError]) -> None {
+    why = failureMessage(reports);
+    error = why;
+    if not why {
+        deck = reports[0] as DeckView;
     }
 }

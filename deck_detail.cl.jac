@@ -8,15 +8,17 @@ of the mana, search and export apps (#67, #68, #69).
 import "./deck_detail.css";
 import from .export_panel { ExportPanel }
 import from .mana_panel { ManaPanel }
-import from .card_search { CardSearch }
+import from .card_search { AddCards }
 import from .mana_cost { ManaCost }
+import from .walker_failure { failureMessage }
 
 sv import from decks {
-    DeckView, DeckCard, FormatInfo, DeckAnalysis, GetDeck, SetDeckFormat, SetCardCount, RemoveCard,
-    AnalyzeDeck, list_formats
+    DeckView, FormatInfo, GetDeck, SetDeckFormat, SetCardCount, RemoveCard, list_formats
 }
 sv import from legality { Violation }
 sv import from mana { ManaProfile }
+sv import from card_lines { CardLine }
+sv import from walker_errors { WalkerError }
 
 """Zones in display order, with their headings."""
 glob ZONES: list[tuple[str, str]] = [
@@ -29,7 +31,7 @@ glob ZONES: list[tuple[str, str]] = [
 
 def:pub DeckDetail(deckId: str, importNotes: list[str], onBack: Callable[[], None]) -> JsxElement {
     has deck: DeckView | None = None,
-        analysis: DeckAnalysis | None = None,
+        error: str = "",
         formats: list[FormatInfo] = [];
 
     can with entry {
@@ -37,10 +39,11 @@ def:pub DeckDetail(deckId: str, importNotes: list[str], onBack: Callable[[], Non
     }
 
     async def loadDeck -> None;
-    async def refreshAnalysis -> None;
     async def setCount(oracleId: str, zone: str, value: str) -> None;
     async def removeCard(oracleId: str, zone: str) -> None;
     async def setFormat(value: str) -> None;
+    """Show a deck walker's view, or the reason it failed (the deck shown stays as it was)."""
+    def show(reports: list[DeckView | WalkerError]) -> None;
 
     def back(_e: MouseEvent) {
         onBack();
@@ -48,11 +51,11 @@ def:pub DeckDetail(deckId: str, importNotes: list[str], onBack: Callable[[], Non
 
     def changed(view: DeckView) {
         deck = view;
-        refreshAnalysis();
     }
 
+    alert = <p role="alert" className="error">{error}</p> if error else None;
     if deck is None {
-        return <p className="empty">Loading deck...</p>;
+        return <section>{alert if error else <p className="empty">Loading deck...</p>}</section>;
     }
 
     return
@@ -72,6 +75,7 @@ def:pub DeckDetail(deckId: str, importNotes: list[str], onBack: Callable[[], Non
                 </select>
                 {" · " + str(deck.main_total) + " main · " + str(deck.sideboard_total) + " sideboard"}
             </p>
+            {alert}
             {<div role="status" className="status warn">
                 <strong>Lines that didn't resolve</strong>
                 <ul>
@@ -85,7 +89,7 @@ def:pub DeckDetail(deckId: str, importNotes: list[str], onBack: Callable[[], Non
                 </ul> if deck.violations else None}
             </div>
 
-            <ManaPanel analysis={analysis} mainTotal={deck.main_total}/>
+            <ManaPanel mana={deck.mana} curve={deck.curve} mainTotal={deck.main_total}/>
 
             {if len(deck.cards) == 0 {
                 <p className="empty">This deck has no cards yet. Search below to add some.</p>
@@ -142,6 +146,6 @@ def:pub DeckDetail(deckId: str, importNotes: list[str], onBack: Callable[[], Non
                 }
             }}
 
-            <CardSearch deckId={deckId} cards={deck.cards} onChanged={changed}/>
+            <AddCards deckId={deckId} cards={deck.cards} onChanged={changed}/>
         </section>;
 }

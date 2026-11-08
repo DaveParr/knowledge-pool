@@ -27,7 +27,7 @@ uv sync --locked
 uv run python -m catalog.ingest
 ```
 
-The ingest downloads MTGJSON's `AtomicCards.json.xz` (about 26 MB) and builds `data/catalog.sqlite`: one row per oracle card plus an FTS5 search index, with the MTGJSON version and build date in its `meta` table. It takes a few seconds. Pass `--source FILE` to build from a file you already have. Run it again to pick up a newer MTGJSON build.
+The ingest downloads MTGJSON's `AtomicCards.json.xz` (about 26 MB) and builds `data/catalog.sqlite`: one row per oracle card plus an FTS5 search index, with the MTGJSON version and build date in its `meta` table. It takes a few seconds. Pass `--source FILE` to build from a file you already have. Run it again to pick up a newer MTGJSON build. Run it again after pulling new code, too: a code change can add columns or tables to the catalogue, and the server (`jac start` and the MCP server) refuses to start against a catalogue built by older code, with a message that names this command.
 
 ### Run
 
@@ -47,7 +47,7 @@ The full catalogue stays in SQLite. A `Card` node is added to the graph the firs
 claude mcp add knowledge-pool -- uv run --directory "$PWD" jac run mcp_server.jac
 ```
 
-Then ask Claude to build or change a deck, for example "build a Modern mono-red burn deck around Lightning Bolt and Goblin Guide". The tools are `search_cards`, `get_card`, `resolve_names`, `get_format_rules`, `deck_list`, `deck_create`, `deck_get`, `deck_edit`, `deck_validate`, `deck_analyze`, `deck_export` and `deck_import`. `deck_analyze` reports a deck's mana base (land count, plus coloured pips and coloured sources for each colour) and its mana curve (non-land card count by mana value, plus the average), main deck only. Card names have to go through `resolve_names`, which splits them into exact, fuzzy and unknown, so an invented card can't get into a deck. Every `deck_edit` change needs a reason, and the reasons are kept in the deck's history. No tool calls a model.
+Then ask Claude to build or change a deck, for example "build a Modern mono-red burn deck around Lightning Bolt and Goblin Guide". The tools are `search_cards`, `get_card`, `resolve_names`, `get_format_rules`, `deck_list`, `deck_create`, `deck_get`, `deck_edit`, `deck_validate`, `deck_analyze`, `deck_export` and `deck_import`. `deck_analyze` reports a deck's mana base (land count, plus coloured pips and coloured sources for each colour) and its mana curve (non-land card count by mana value, plus the average), main deck only. `deck_get` and `deck_edit` return the same analysis alongside the cards. Card names have to go through `resolve_names`, which splits them into exact, fuzzy and unknown, so an invented card can't get into a deck. Every `deck_edit` change needs a reason, and the reasons are kept in the deck's history. No tool calls a model.
 
 The MCP server also serves the web app at http://localhost:8000 while Claude is connected, so decks made in either place show up in the other straight away. Stop `jac start` first: two Jac processes writing the same saved graph overwrite each other's decks, so the MCP server refuses to start while the port is taken. Set `KP_PORT` to use a different port, or `KP_WEB=0` to skip the web app.
 
@@ -73,10 +73,10 @@ uv run pytest tests    # ingest, search, REST, legality and MCP tests
 - `cards.sv.jac` the `Card` node and the `search_cards` endpoint
 - schemas/mtgdeck-1.schema.json the published mtgdeck/1 deck document schema
 - `deckformats/` the deck import/export format strategies (mtgdeck/1, MTGJSON Deck JSON, plain/Arena/Moxfield text)
-- `decks.sv.jac` the `Deck` node, the `Holds` edge, the deck walkers and `ValidateDeck`
+- `decks.sv.jac` the `Deck` node, the `Holds` edge, the deck walkers, `card_lines` and `deck_view`
 - `deck_io.sv.jac` the `DeckExport`, `DeckImport` and `CreateDeckFromList` walkers
 - `export_panel.cl.jac` the per-deck Export panel (format, preview, copy, download)
-- `mana_panel.cl.jac`, `card_search.cl.jac` the deck page's mana and search sections
+- `mana_panel.cl.jac`, `card_search.cl.jac` (`AddCards`) the deck page's mana and search sections
 - `mana_cost.cl.jac` mana costs as symbol pills (the MCP views draw the same)
 - `global.css` app-wide style tokens, shared with the MCP Apps views in `ui/`
 - `legality.sv.jac` `Format` nodes and the deck-construction rules

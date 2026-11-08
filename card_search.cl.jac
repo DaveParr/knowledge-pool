@@ -7,16 +7,20 @@ reports the change back (here to the deck page, there to Claude).
 
 import "./card_search.css";
 import from .mana_cost { ManaCost }
+import from .walker_failure { failureMessage }
 
-sv import from decks { DeckView, DeckCard, AddCard }
-sv import from cards { CardHit, search_cards }
+sv import from decks { DeckView, AddCard }
+sv import from card_lines { CardLine }
+sv import from walker_errors { WalkerError }
+sv import from cards { CardHit, CardSearch, search_cards }
 
-def:pub CardSearch(deckId: str, cards: list[DeckCard], onChanged: Callable[[DeckView], None]) -> JsxElement {
+def:pub AddCards(deckId: str, cards: list[CardLine], onChanged: Callable[[DeckView], None]) -> JsxElement {
     has query: str = "",
         lastQuery: str = "",
         hits: list[CardHit] = [],
         searched: bool = False,
-        failed: bool = False,
+        searchError: str = "",
+        addError: str = "",
         toast: str = "";
 
     async def runSearch(e: FormEvent) -> None;
@@ -46,8 +50,9 @@ def:pub CardSearch(deckId: str, cards: list[DeckCard], onChanged: Callable[[Deck
                 <button type="submit" className="primary">Search</button>
             </form>
             {<div className="toast" role="status">{toast}</div> if toast else None}
-            {if failed {
-                <p className="empty" role="alert">Card search isn't available right now. The catalogue may need rebuilding. The deck is unchanged.</p>
+            {<p className="error" role="alert">{addError}</p> if addError else None}
+            {if searchError {
+                <p className="error" role="alert">{searchError + " The deck is unchanged."}</p>
             } elif searched and len(hits) == 0 {
                 <p className="empty">{"No cards match “" + lastQuery + "”. Every word must match the start of a word in the name, type or rules text."}</p>
             } elif searched {

@@ -1,33 +1,35 @@
 """Handlers for card search."""
 
-impl CardSearch.runSearch(e: FormEvent) -> None {
+impl AddCards.runSearch(e: FormEvent) -> None {
     e.preventDefault();
     toast = "";
+    addError = "";
     q = query.strip();
     if not q {
         hits = [];
         searched = False;
-        failed = False;
+        searchError = "";
         return;
     }
-    try {
-        hits = await search_cards(q);
-        failed = False;
-    } except Exception {
-        hits = [];
-        failed = True;
-    }
+    result: CardSearch | None = await search_cards(q);
+    # None means the call itself failed (the client stub found no result).
+    hits = result.hits if result is not None else [];
+    searchError = result.error if result is not None else "Card search failed.";
     lastQuery = q;
     searched = True;
 }
 
-impl CardSearch.addCard(hit: CardHit, zone: str) -> None {
+impl AddCards.addCard(hit: CardHit, zone: str) -> None {
     result = root spawn AddCard(deck_id=deckId, oracle_id=hit.oracle_id, count=1, zone=zone);
-    if not result.reports {
+    reports: list[DeckView | WalkerError] = result.reports;
+    why = failureMessage(reports);
+    if why {
         toast = "";
+        addError = why;
         return;
     }
-    view = result.reports[0];
+    addError = "";
+    view = reports[0] as DeckView;
     now = 0;
     for c in view.cards {
         if c.oracle_id == hit.oracle_id and c.zone == zone {

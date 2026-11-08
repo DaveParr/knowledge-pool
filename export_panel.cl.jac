@@ -6,7 +6,9 @@ which opens below the button's row.
 """
 
 import "./export_panel.css";
-sv import from deck_io { DeckExport }
+import from .walker_failure { failureMessage }
+
+sv import from deck_io { DeckExport, ExportResult }
 
 """Export formats: key, label, lossless, file extension."""
 glob EXPORT_FORMATS: list[tuple[str, str, bool, str]] = [
@@ -23,7 +25,7 @@ def:pub ExportPanel(deckId: str, deckName: str) -> JsxElement {
     has open: bool = False,
         format: str = DEFAULT_EXPORT,
         content: str = "",
-        failed: bool = False,
+        error: str = "",
         status: str = "";
 
     async def load(fmt: str) -> None;
@@ -77,7 +79,7 @@ def:pub ExportPanel(deckId: str, deckName: str) -> JsxElement {
                 {<div className="status ok ex-note">Lossless: this re-imports with every zone, role, tag, lock and reason.</div>
                     if lossless else
                 <div className="status warn ex-note">{"Lossy: " + label + " keeps card names and counts for the main deck and sideboard only. It drops other zones, roles, tags, locks and reasons."}</div>}
-                {<p className="error" role="alert">Export failed.</p> if failed else None}
+                {<p className="error" role="alert">{error}</p> if error else None}
                 <textarea readOnly={True} aria-label={"Exported " + deckName} value={content} rows={10}/>
                 <div className="ex-bar">
                     <button className="primary" onClick={lambda _e: MouseEvent { copy(); }}>Copy</button>
