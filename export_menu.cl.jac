@@ -1,7 +1,9 @@
 """Compact export button for one deck. Picking a format copies the export to
 the clipboard; when the browser refuses, the text is shown to copy by hand."""
 
-sv import from deck_io { DeckExport }
+import from .walker_failure { failureMessage }
+
+sv import from deck_io { DeckExport, ExportResult }
 
 glob EXPORT_FORMATS: list[tuple[str, str]] = [
     ("mtgdeck1", "mtgdeck/1"),
@@ -14,6 +16,7 @@ glob EXPORT_FORMATS: list[tuple[str, str]] = [
 def:pub ExportMenu(deckId: str, deckName: str) -> JsxElement {
     has open: bool = False,
         status: str = "",
+        error: str = "",
         manualText: str = "";
 
     async def exportAs(format: str, label: str) -> None;
@@ -24,12 +27,13 @@ def:pub ExportMenu(deckId: str, deckName: str) -> JsxElement {
                 aria-label={"Export " + deckName}
                 aria-haspopup="menu"
                 aria-expanded={open}
-                onClick={lambda _e: MouseEvent { open = not open; manualText = ""; status = ""; }}
+                onClick={lambda _e: MouseEvent { open = not open; manualText = ""; status = ""; error = ""; }}
                 style={{"fontSize": "0.85rem", "padding": "0.15rem 0.5rem"}}
             >
                 {"Export ▾"}
             </button>
             {<span role="status" style={{"marginLeft": "0.5rem", "fontSize": "0.85rem", "color": "#1b5e20"}}>{status}</span> if status else None}
+            {<span role="alert" style={{"marginLeft": "0.5rem", "fontSize": "0.85rem", "color": "#b00020"}}>{error}</span> if error else None}
             {<div
                 role="menu"
                 style={{

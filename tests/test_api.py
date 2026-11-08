@@ -19,11 +19,20 @@ def test_create_and_list_decks(tmp_path):
         client.close()
 
 
-def test_blank_name_creates_nothing(tmp_path):
+def _error(report: dict) -> dict:
+    return {k: report[k] for k in ("code", "message")}
+
+
+def test_blank_name_creates_nothing_and_says_why(tmp_path):
     client = JacTestClient.from_file("main.jac", base_path=str(tmp_path))
     try:
         resp = client.post("/walker/CreateDeck", json={"name": "   "})
-        assert resp.json()["data"]["reports"] == []
+        assert [_error(r) for r in resp.json()["data"]["reports"]] == [
+            {"code": "blank-name", "message": "A deck needs a name."}
+        ]
+        resp = client.post("/walker/CreateDeck", json={"name": "Vintage deck", "format": "vintage"})
+        [err] = resp.json()["data"]["reports"]
+        assert err["code"] == "unknown-format" and err["message"].startswith("Unknown format vintage. Use one of: standard")
         assert _deck_names(client) == []
     finally:
         client.close()

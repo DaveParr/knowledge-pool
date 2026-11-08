@@ -1,13 +1,16 @@
-"""Cards - search the catalogue and keep the cards that decks use.
+"""Cards - the card catalogue module. Every caller outside `catalog/` looks
+cards up, resolves names and gets graph copies through here.
 
 The full catalogue (about 35,000 oracle cards) stays in SQLite with an FTS5
 index; see `catalog/`. Saving every card as a graph node took over 15 minutes,
 so a `Card` node is created under the `Catalog` node the first time a deck
-uses that card, and reused after that.
+uses that card, and reused after that. A `Card` node is a cache of its
+catalogue record: after `catalog/ingest.py` rebuilds the catalogue, one
+`RefreshCards` brings every existing `Card` node up to date.
 """
 
 import sqlite3;
-import from catalog.store { search as catalog_search, get_card as catalog_get, meta as catalog_meta }
+import catalog.store as store;
 
 node Catalog {}
 
@@ -23,11 +26,6 @@ node Card {
         legal: dict[str, str] = {},
         oracle_tags: list[str] = [],
         produced_mana: list[str] = [];
-}
-
-"""True for a card that is only ever a land -- no face/type gives it a non-land role."""
-def:pub is_land(card: Card) -> bool {
-    return len(card.types) > 0 and all([t == "Land" for t in card.types]);
 }
 
 """One search result."""
@@ -56,7 +54,7 @@ obj CardSearch {
 A missing or out-of-date catalogue comes back as `error`, not an exception."""
 def:pub search_cards(query: str, limit: int = 25) -> CardSearch {
     try {
-        found = catalog_search(query, limit);
+        found = store.search(query, limit);
     } except (sqlite3.Error, FileNotFoundError) as e {
         return CardSearch(error=f"Card search failed: {e}");
     }
@@ -75,13 +73,34 @@ def:pub search_cards(query: str, limit: int = 25) -> CardSearch {
     return CardSearch(hits=hits);
 }
 
+"""Raise if the catalogue was built by older code; the error names the ingest
+command. Run at startup so the app refuses to serve a stale catalogue."""
+def check_catalogue() -> None {
+    store.check_current();
+}
+
 def:pub catalog_info() -> CatalogInfo {
-    m = catalog_meta();
+    m = store.meta();
     return CatalogInfo(
         mtgjson_version=m["mtgjson_version"] as str,
         mtgjson_date=m["mtgjson_date"] as str,
         card_count=int(m["card_count"])
     );
+}
+
+"""The full catalogue record for an oracle id or an exact card name (ignoring
+case; a double-faced card also matches by either face). None if nothing matches."""
+def:pub find_card(oracle_id_or_name: str) -> dict[str, any] | None {
+    key = oracle_id_or_name.strip();
+    if not key {
+        return None;
+    }
+    return store.get_card(key) or store.find_by_name(key);
+}
+
+"""Sort names into `exact` matches, `fuzzy` candidates and `unknown` names. Never guesses."""
+def:pub resolve_names(names: list[str]) -> dict[str, any] {
+    return store.resolve_names(names);
 }
 
 """The Catalog node under `home`, created on first use."""
@@ -93,47 +112,52 @@ def catalog_node(home: Root) -> Catalog {
     return (home ++> Catalog())[0] as Catalog;
 }
 
-"""The Card node for an oracle id, created from SQLite on first use. None if the id is unknown."""
+"""Copy every catalogue field of record `c` onto `card`. The one place that
+maps a catalogue record to a Card node, so a new field can't be missed by the refresh."""
+def fill_card(card: Card, c: dict[str, any]) {
+    card.name = c["name"] as str;
+    card.mana_cost = c["mana_cost"] as str;
+    card.mana_value = c["mana_value"] as float;
+    card.colour_identity = c["colour_identity"] as list[str];
+    card.types = c["types"] as list[str];
+    card.type_line = c["type_line"] as str;
+    card.text = c["text"] as str;
+    card.legal = c["legal"] as dict[str, str];
+    card.oracle_tags = c["oracle_tags"] as list[str];
+    card.produced_mana = c["produced_mana"] as list[str];
+}
+
+"""The Card node for an oracle id, created from the catalogue on first use. None if the id is unknown."""
 def card_node(home: Root, oid: str) -> Card | None {
     cat = catalog_node(home);
     found = [cat-->[?:Card, oracle_id == oid]];
     if found {
         return found[0];
     }
-    c = catalog_get(oid);
+    c = store.get_card(oid);
     if c is None {
         return None;
     }
-    card = Card(
-        oracle_id=c["oracle_id"] as str,
-        name=c["name"] as str,
-        mana_cost=c["mana_cost"] as str,
-        mana_value=c["mana_value"] as float,
-        colour_identity=c["colour_identity"] as list[str],
-        types=c["types"] as list[str],
-        type_line=c["type_line"] as str,
-        text=c["text"] as str,
-        legal=c["legal"] as dict[str, str],
-        oracle_tags=c["oracle_tags"] as list[str],
-        produced_mana=c["produced_mana"] as list[str]
-    );
+    card = Card(oracle_id=oid, name=c["name"] as str);
+    fill_card(card, c);
     cat ++> card;
     return card;
 }
 
-"""Re-read every Card node's `oracle_tags` from SQLite. `card_node()` never
-refreshes a Card once it's materialized, so this is the explicit step an
-operator runs after `catalog/ingest.py` rebuilds the catalogue."""
-walker:pub SyncCardTags {
+"""Refresh every Card node from the catalogue, after `catalog/ingest.py` has
+rebuilt it. Reopens the catalogue first (a rebuild replaces the file), then
+re-copies every field. A card the new catalogue no longer has is left as it
+was, so decks that hold it keep working. Reports how many cards were updated."""
+walker:pub RefreshCards {
     has reports: list[int] = [];
 
-    can sync with Root entry {
-        cat = catalog_node(here);
+    can refresh with Root entry {
+        store.reset();
         updated = 0;
-        for card in [cat-->[?:Card]] {
-            c = catalog_get(card.oracle_id);
+        for card in [catalog_node(here)-->[?:Card]] {
+            c = store.get_card(card.oracle_id);
             if c is not None {
-                card.oracle_tags = c["oracle_tags"] as list[str];
+                fill_card(card, c);
                 updated += 1;
             }
         }
