@@ -1,10 +1,31 @@
 """Tests for Deck holdings: change_holding and replace_holdings, the one way
-a deck's cards change."""
+a deck's cards change.
 
+Refusing an unknown card looks it up in the catalogue, so this file builds
+its own catalogue from the small fixture (as `cards_tests.jac` does) instead
+of relying on a local `data/catalog.sqlite`, which CI doesn't have.
+"""
+
+import os;
+import from pathlib { Path }
+import from catalog.ingest { build, load_atomic, load_oracle_tags }
+import catalog.store as store;
 import from decks {
     Deck, Holds, ZONES, HoldingEntry, CreateDeck, change_holding, replace_holdings, holdings, deck_view
 }
 import from cards { Card, catalog_node }
+
+glob CATALOG: Path = Path("data/test_holdings_catalog.sqlite");
+
+with entry {
+    build(
+        load_atomic(Path("tests/fixtures/atomic_small.json")),
+        CATALOG,
+        tags=load_oracle_tags(Path("tests/fixtures/oracle_tags_small.jsonl"))
+    );
+    os.environ["KP_CATALOG"] = str(CATALOG.resolve());
+    store.reset();
+}
 
 """A fresh deck with its own name."""
 def _deck(name: str) -> Deck {
