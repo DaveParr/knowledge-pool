@@ -9,7 +9,7 @@ import from cards { Card, catalog_node }
 """A fresh deck with its own name."""
 def _deck(name: str) -> Deck {
     created = root spawn CreateDeck(name=name);
-    return created.reports[0];
+    return created.reports[0] as Deck;
 }
 
 """Make sure a catalogue Card node exists for `oid`, and return the oid."""

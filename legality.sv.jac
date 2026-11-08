@@ -7,6 +7,7 @@ is legal is always worked out here, on demand; it is never stored.
 
 import re;
 import from card_lines { CardLine, main_deck }
+import from walker_errors { WalkerError }
 
 """Deck-construction rules for one format."""
 node Format {
@@ -148,6 +149,13 @@ def check_lines(lines: list[CardLine], fmt: Format) -> list[Violation] {
     return found;
 }
 
+"""The error for a play format that FORMAT_LABELS does not know."""
+def unknown_format(format: str) -> WalkerError {
+    return WalkerError(
+        code="unknown-format", message=f"Unknown format {format}. Use one of: {', '.join(FORMAT_LABELS)}."
+    );
+}
+
 """A format's deck-construction rules, as reported to MCP clients."""
 obj FormatRules {
     has name: str,
@@ -158,14 +166,16 @@ obj FormatRules {
         notes: list[str] = [];
 }
 
-"""Report the rules for one format (nothing if the format is unknown)."""
+"""Report the rules for one format. An unknown format reports an
+unknown-format WalkerError."""
 walker GetFormatRules {
     has format: str,
-        reports: list[FormatRules] = [];
+        reports: list[FormatRules | WalkerError] = [];
 
     can show with Root entry {
         fmt = format_node(here, self.format);
         if fmt is None {
+            report unknown_format(self.format);
             disengage;
         }
         report FormatRules(

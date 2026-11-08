@@ -45,7 +45,8 @@ import from decks {
     Deck, DeckView, CreateDeck, ListDecks, GetDeck, SetDeckFormat, EditDeck
 }
 import from deck_io { DeckExport, DeckImport }
-import from legality { FORMAT_LABELS, GetFormatRules }
+import from legality { GetFormatRules }
+import from walker_errors { WalkerError }
 
 glob APP_DIR: str = os.path.dirname(os.path.abspath(__file__)),
      LOCK: threading.Lock = threading.Lock(),
@@ -56,7 +57,7 @@ glob APP_DIR: str = os.path.dirname(os.path.abspath(__file__)),
 Clients that support MCP Apps (Claude Desktop and claude.ai) render it as an HTML table;
 others get the same list as Markdown. Use deck_get when you only need the data."""
 def deck_show(deck_id: str) -> CallToolResult {
-    view = deck_or_error(run_walker(GetDeck(deck_id=deck_id)), deck_id);
+    view = outcome(run_walker(GetDeck(deck_id=deck_id)));
     if "error" in view {
         return CallToolResult(content=[TextContent(text=view["error"])], is_error=True);
     }
@@ -153,16 +154,15 @@ def plain(value: any) -> any {
     return value;
 }
 
-def first_report(w: any) -> any {
-    return plain(w.reports[0]) if w.reports else None;
-}
-
-def deck_or_error(w: any, deck_id: str) -> dict {
-    view = first_report(w);
-    if view is None {
-        return {"error": f"No deck with id {deck_id}."};
+"""A finished walker's result as tool output: its first report as plain data,
+or {"error": message, "code": code} when it reported a WalkerError. The
+walker says why it failed, so no tool has to guess."""
+def outcome(w: any) -> dict {
+    first = w.reports[0];
+    if isinstance(first, WalkerError) {
+        return {"error": first.message, "code": first.code};
     }
-    return view as dict;
+    return plain(first) as dict;
 }
 
 """Search card names, type lines and rules text. Every word must match, as a prefix."""
@@ -192,17 +192,13 @@ def resolve_names(names: list[str]) -> dict {
 """Deck-construction rules for a format: standard, pioneer or modern."""
 @server.tool()
 def get_format_rules(format: str) -> dict {
-    rules = first_report(run_walker(GetFormatRules(format=format)));
-    if rules is None {
-        return {"error": f"Unknown format {format}. Use one of: {', '.join(FORMAT_LABELS)}."};
-    }
-    return rules as dict;
+    return outcome(run_walker(GetFormatRules(format=format)));
 }
 
 """List the user's decks (id, name, format)."""
 @server.tool()
 def deck_list() -> list[dict] {
-    decks = first_report(run_walker(ListDecks())) or [];
+    decks = plain(run_walker(ListDecks()).reports[0]);
     return [{"id": d["id"], "name": d["name"], "format": d["format"]} for d in decks];
 }
 
@@ -211,13 +207,13 @@ def deck_list() -> list[dict] {
 get oracle ids from resolve_names first. Returns the deck with its legality."""
 @server.tool()
 def deck_create(name: str, format: str = "standard", cards: list[dict] = []) -> dict {
-    made = run_walker(CreateDeck(name=name, format=format));
-    if not made.reports {
-        return {"error": f"Could not create the deck. The name must not be blank and the format must be one of: {', '.join(FORMAT_LABELS)}."};
+    made = outcome(run_walker(CreateDeck(name=name, format=format)));
+    if "error" in made {
+        return made;
     }
-    deck_id = jid(made.reports[0]);
+    deck_id = str(made["id"]);
     if not cards {
-        return deck_or_error(run_walker(GetDeck(deck_id=deck_id)), deck_id);
+        return deck_get(deck_id);
     }
     changes = [{**c, "reason": c.get("reason") or "seed card"} for c in cards];
     return deck_edit(deck_id, changes);
@@ -226,7 +222,7 @@ def deck_create(name: str, format: str = "standard", cards: list[dict] = []) -> 
 """A deck: its cards, totals, legality and recent change history."""
 @server.tool()
 def deck_get(deck_id: str) -> dict {
-    return deck_or_error(run_walker(GetDeck(deck_id=deck_id)), deck_id);
+    return outcome(run_walker(GetDeck(deck_id=deck_id)));
 }
 
 """Change a deck. Each change is
@@ -237,20 +233,20 @@ reason are rejected and listed under "rejected"; the rest are applied."""
 @server.tool()
 def deck_edit(deck_id: str, changes: list[dict] = [], format: str = "") -> dict {
     if format {
-        if not run_walker(SetDeckFormat(deck_id=deck_id, format=format)).reports {
-            return {"error": f"No deck with id {deck_id}, or unknown format {format}."};
+        reformatted = outcome(run_walker(SetDeckFormat(deck_id=deck_id, format=format)));
+        if "error" in reformatted {
+            return reformatted;
         }
     }
-    done = run_walker(EditDeck(deck_id=deck_id, changes=changes));
-    return deck_or_error(done, deck_id);
+    return outcome(run_walker(EditDeck(deck_id=deck_id, changes=changes)));
 }
 
 """Check a deck against its format. Returns legal (true or false) and each violation."""
 @server.tool()
 def deck_validate(deck_id: str) -> dict {
-    view = first_report(run_walker(GetDeck(deck_id=deck_id)));
-    if view is None {
-        return {"error": f"No deck with id {deck_id}."};
+    view = deck_get(deck_id);
+    if "error" in view {
+        return view;
     }
     return {
         "deck_id": deck_id,
@@ -267,7 +263,7 @@ Main deck only - the sideboard is excluded. deck_get and deck_edit return the
 same analysis with the whole deck; this tool returns only the analysis."""
 @server.tool()
 def deck_analyze(deck_id: str) -> dict {
-    view = deck_or_error(run_walker(GetDeck(deck_id=deck_id)), deck_id);
+    view = deck_get(deck_id);
     if "error" in view {
         return view;
     }
@@ -277,11 +273,7 @@ def deck_analyze(deck_id: str) -> dict {
 """Export a deck: mtgdeck1 (lossless), mtgjson (lossless, export only), or text/arena/moxfield (lossy)."""
 @server.tool()
 def deck_export(deck_id: str, format: str = "mtgdeck1") -> dict {
-    result = first_report(run_walker(DeckExport(deck_id=deck_id, format=format)));
-    if result is None {
-        return {"error": f"No deck with id {deck_id}, unknown format {format}, or {format} does not support export."};
-    }
-    return result as dict;
+    return outcome(run_walker(DeckExport(deck_id=deck_id, format=format)));
 }
 
 """Import a deck list, replacing the deck's current cards. Accepts mtgdeck1,
@@ -289,11 +281,7 @@ text, arena or moxfield. Lines that don't resolve to a known card are listed
 under "unresolved" and never added."""
 @server.tool()
 def deck_import(deck_id: str, format: str, text: str) -> dict {
-    result = first_report(run_walker(DeckImport(deck_id=deck_id, format=format, text=text)));
-    if result is None {
-        return {"error": f"No deck with id {deck_id}, unknown format {format}, or {format} does not support import."};
-    }
-    return result as dict;
+    return outcome(run_walker(DeckImport(deck_id=deck_id, format=format, text=text)));
 }
 
 """True when something already listens on this local port."""

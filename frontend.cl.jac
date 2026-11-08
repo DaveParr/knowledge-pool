@@ -2,9 +2,10 @@
 
 import from .deck_detail { DeckDetail }
 import from .export_menu { ExportMenu }
+import from .walker_failure { failureMessage }
 
 sv import from decks { Deck, FormatInfo, CreateDeck, ListDecks, list_formats }
-sv import from deck_io { CreateDeckFromList }
+sv import from deck_io { CreateDeckFromList, NewDeckResult }
 
 def:pub app -> JsxElement {
     has decks: list[Deck] = [],

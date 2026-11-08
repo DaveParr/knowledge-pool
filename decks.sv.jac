@@ -8,8 +8,9 @@ caller shares one graph and nobody has to log in.
 import from datetime { datetime, timezone }
 import from cards { Card, card_node }
 import from card_lines { CardLine, main_deck }
-import from legality { Violation, FORMAT_LABELS, format_node, check_lines }
+import from legality { Violation, FORMAT_LABELS, format_node, check_lines, unknown_format }
 import from mana { ManaProfile, ManaCurve, mana_profile, mana_curve }
+import from walker_errors { WalkerError }
 
 """One change to how many copies of a card a zone of a deck holds, with the
 reason given for it. Every holdings change writes one (see change_holding)."""
@@ -35,15 +36,21 @@ order. The one list of zones: every holdings change and every import checks
 against it. Legality looks only at main and sideboard (see legality.LEGALITY_ZONES)."""
 glob ZONES: list[str] = ["commander", "companion", "main", "sideboard", "maybeboard"];
 
-"""Create a deck and report it. A blank name creates nothing and reports nothing."""
+"""Create a deck and report it. A blank name or an unknown format creates
+nothing and reports a WalkerError (blank-name, unknown-format)."""
 walker:pub CreateDeck {
     has name: str,
         format: str = "standard",
-        reports: list[Deck] = [];
+        reports: list[Deck | WalkerError] = [];
 
     can create with Root entry {
         name = self.name.strip();
-        if not name or self.format not in FORMAT_LABELS {
+        if not name {
+            report WalkerError(code="blank-name", message="A deck needs a name.");
+            disengage;
+        }
+        if self.format not in FORMAT_LABELS {
+            report unknown_format(self.format);
             disengage;
         }
         report new_deck(here, name, self.format);
@@ -305,20 +312,30 @@ def replace_holdings(deck: Deck, entries: list[HoldingEntry], reason: str) -> li
     return refused;
 }
 
-"""Base for walkers that act on one deck. Reports nothing if the deck id is unknown."""
+"""The error for a holdings change that change_holding refused, with its reason."""
+def refused_change(why: str) -> WalkerError {
+    return WalkerError(code="refused-change", message=f"Change refused: {why}");
+}
+
+"""Base for walkers that act on one deck. An id that names no deck is handled
+here, once: the walker reports a no-such-deck WalkerError and stops."""
 walker DeckAction {
     has deck_id: str,
-        reports: list[DeckView] = [];
+        reports: list[DeckView | WalkerError] = [];
 
     can locate with Root entry {
+        deck: Deck | None = None;
         try {
             target = jobj(self.deck_id);
-        } except ValueError {
+            if isinstance(target, Deck) {
+                deck = target;
+            }
+        } except ValueError {}
+        if deck is None {
+            report WalkerError(code="no-such-deck", message=f"No deck with id {self.deck_id}.");
             disengage;
         }
-        if isinstance(target, Deck) {
-            visit [target];
-        }
+        visit [deck];
     }
 }
 
@@ -335,6 +352,7 @@ walker:pub SetDeckFormat(DeckAction) {
 
     can set_format with Deck entry {
         if self.format not in FORMAT_LABELS {
+            report unknown_format(self.format);
             disengage;
         }
         here.format = self.format;
@@ -346,14 +364,16 @@ walker:pub SetDeckFormat(DeckAction) {
 glob WEB_EDIT_REASON: str = "Edited in the app";
 
 """Add copies of a card to a zone of a deck (on top of any already there).
-Reports nothing if the change is refused (see change_holding)."""
+A refused change (see change_holding) reports a refused-change WalkerError."""
 walker:pub AddCard(DeckAction) {
     has oracle_id: str,
         count: int = 1,
         zone: str = "main";
 
     can add with Deck entry {
-        if change_holding(here, self.oracle_id, self.zone, self.count, WEB_EDIT_REASON, add=True) {
+        why = change_holding(here, self.oracle_id, self.zone, self.count, WEB_EDIT_REASON, add=True);
+        if why {
+            report refused_change(why);
             disengage;
         }
         report deck_view(here);
@@ -386,27 +406,31 @@ walker EditDeck(DeckAction) {
 }
 
 """Set how many copies of a card a zone holds. Zero removes the card from that
-zone. Reports nothing if the change is refused (see change_holding)."""
+zone. A refused change (see change_holding) reports a refused-change WalkerError."""
 walker:pub SetCardCount(DeckAction) {
     has oracle_id: str,
         count: int,
         zone: str = "main";
 
     can set_count with Deck entry {
-        if change_holding(here, self.oracle_id, self.zone, self.count, WEB_EDIT_REASON) {
+        why = change_holding(here, self.oracle_id, self.zone, self.count, WEB_EDIT_REASON);
+        if why {
+            report refused_change(why);
             disengage;
         }
         report deck_view(here);
     }
 }
 
-"""Take a card out of one zone of a deck. Reports nothing for an unknown zone."""
+"""Take a card out of one zone of a deck. An unknown zone reports a refused-change WalkerError."""
 walker:pub RemoveCard(DeckAction) {
     has oracle_id: str,
         zone: str = "main";
 
     can remove with Deck entry {
-        if change_holding(here, self.oracle_id, self.zone, 0, WEB_EDIT_REASON) {
+        why = change_holding(here, self.oracle_id, self.zone, 0, WEB_EDIT_REASON);
+        if why {
+            report refused_change(why);
             disengage;
         }
         report deck_view(here);

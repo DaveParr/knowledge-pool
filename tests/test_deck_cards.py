@@ -65,17 +65,46 @@ def test_add_change_remove(tmp_path):
         client.close()
 
 
-def test_a_refused_change_reports_nothing(tmp_path):
+def _error(reports: list) -> dict:
+    [only] = reports
+    return {k: only[k] for k in ("code", "message")}
+
+
+def test_a_refused_change_reports_why(tmp_path):
     # Which changes are refused is tested on change_holding (tests/holdings_tests.jac);
-    # this only checks the walkers pass a refusal on as an empty report.
+    # this only checks the walkers pass the refusal on as their one report.
     client = JacTestClient.from_file("main.jac", base_path=str(tmp_path))
     try:
         deck_id = _new_deck(client)
-        assert _reports(client.post("/walker/AddCard", json={"deck_id": deck_id, "oracle_id": "not-a-card"})) == []
+        assert _error(_reports(client.post("/walker/AddCard", json={"deck_id": deck_id, "oracle_id": "not-a-card"}))) == {
+            "code": "refused-change", "message": "Change refused: not-a-card is not a known oracle id.",
+        }
         bolt = _oracle_id("Lightning Bolt")
-        assert _reports(client.post("/walker/SetCardCount", json={"deck_id": deck_id, "oracle_id": bolt, "count": -1})) == []
+        assert _error(_reports(client.post("/walker/SetCardCount", json={"deck_id": deck_id, "oracle_id": bolt, "count": -1}))) == {
+            "code": "refused-change", "message": "Change refused: count must be a whole number, 0 or more.",
+        }
+        assert _error(_reports(client.post("/walker/RemoveCard", json={"deck_id": deck_id, "oracle_id": bolt, "zone": "attic"})))["code"] == "refused-change"
         assert _reports(client.post("/walker/GetDeck", json={"deck_id": deck_id}))[0]["cards"] == []
-        assert _reports(client.post("/walker/GetDeck", json={"deck_id": "nope"})) == []
+    finally:
+        client.close()
+
+
+def test_every_deck_walker_says_when_there_is_no_such_deck(tmp_path):
+    client = JacTestClient.from_file("main.jac", base_path=str(tmp_path))
+    try:
+        bolt = _oracle_id("Lightning Bolt")
+        for walker, body in [
+            ("GetDeck", {}),
+            ("AddCard", {"oracle_id": bolt}),
+            ("SetCardCount", {"oracle_id": bolt, "count": 2}),
+            ("RemoveCard", {"oracle_id": bolt}),
+            ("SetDeckFormat", {"format": "modern"}),
+            ("DeckExport", {"format": "text"}),
+            ("DeckImport", {"format": "text", "text": "4 Lightning Bolt"}),
+        ]:
+            for deck_id in ["nope", "0" * 32]:
+                reports = _reports(client.post(f"/walker/{walker}", json={"deck_id": deck_id, **body}))
+                assert _error(reports) == {"code": "no-such-deck", "message": f"No deck with id {deck_id}."}, walker
     finally:
         client.close()
 

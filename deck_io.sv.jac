@@ -3,10 +3,11 @@ deckformats.FORMATS: the walkers below depend only on the DeckFormat
 protocol, never on a specific format's parsing or rendering code.
 """
 
-import from deckformats { get_format, ExportEntry, ExportDeck, ParsedEntry }
+import from deckformats { DeckFormat, get_format, ExportEntry, ExportDeck, ParsedEntry }
 import from cards { find_card }
 import from decks { Deck, DeckAction, DeckView, HoldingEntry, ZONES, new_deck, card_lines, deck_view, replace_holdings }
 import from legality { FORMAT_LABELS }
+import from walker_errors { WalkerError }
 
 obj ExportResult {
     has format: str,
@@ -18,17 +19,26 @@ obj ImportResult {
         unresolved: list[str] = [];
 }
 
+"""The deck list format named `format`, or the unknown-list-format error."""
+def list_format(format: str) -> DeckFormat | WalkerError {
+    try {
+        return get_format(format);
+    } except ValueError as err {
+        return WalkerError(code="unknown-list-format", message=str(err));
+    }
+}
+
 """Export a deck in the given format (mtgdeck1, mtgjson, text, arena or
-moxfield). Reports nothing for an unknown format or one that does not
-support export."""
+moxfield). An unknown format reports an unknown-list-format WalkerError, and
+one that cannot be exported a no-export one."""
 walker:pub DeckExport(DeckAction) {
     has format: str = "mtgdeck1",
-        reports: list[ExportResult] = [];
+        reports: list[ExportResult | WalkerError] = [];
 
     can export with Deck entry {
-        try {
-            fmt = get_format(self.format);
-        } except ValueError {
+        fmt = list_format(self.format);
+        if isinstance(fmt, WalkerError) {
+            report fmt;
             disengage;
         }
         export_deck = ExportDeck(
@@ -45,6 +55,7 @@ walker:pub DeckExport(DeckAction) {
         try {
             content = fmt.render(export_deck);
         } except NotImplementedError {
+            report WalkerError(code="no-export", message=f"{self.format} lists can be imported but not exported.");
             disengage;
         }
         report ExportResult(format=self.format, content=content);
@@ -62,22 +73,21 @@ obj ResolvedList {
 }
 
 """Parse `text` in the named format and resolve each entry to a catalogue card,
-without touching any deck. Returns None for an unknown format or one that
-does not support import. A parse error or a list with no cards comes back as
+without touching any deck. Returns a WalkerError for an unknown format
+(unknown-list-format) or one that does not support import (no-import). A parse error or a list with no cards comes back as
 a single unresolved message. An entry in an unknown zone is listed as
 "<name> (invalid zone: <zone>)". The same card listed more than once in a
 zone (e.g. two printings) is summed; roles/tags/locked/reason come from the
 last occurrence."""
-def resolve_list(format: str, text: str) -> ResolvedList | None {
-    try {
-        fmt = get_format(format);
-    } except ValueError {
-        return None;
+def resolve_list(format: str, text: str) -> ResolvedList | WalkerError {
+    fmt = list_format(format);
+    if isinstance(fmt, WalkerError) {
+        return fmt;
     }
     try {
         parsed = fmt.parse(text);
     } except NotImplementedError {
-        return None;
+        return WalkerError(code="no-import", message=f"{format} lists can be exported but not imported.");
     } except ValueError as err {
         return ResolvedList(unresolved=[str(err)]);
     }
@@ -129,15 +139,17 @@ def holding_entries(rl: ResolvedList) -> list[HoldingEntry] {
 Lines or entries that don't resolve are listed in `unresolved` and never
 added (see resolve_list). If the text can't be parsed at all, has no cards
 in it, or nothing in it resolves, the deck is left exactly as it was.
-Every count that changes is logged in the deck's history."""
+Every count that changes is logged in the deck's history. A list format
+that cannot be imported reports a WalkerError (see resolve_list)."""
 walker:pub DeckImport(DeckAction) {
     has format: str = "mtgdeck1",
         text: str = "",
-        reports: list[ImportResult] = [];
+        reports: list[ImportResult | WalkerError] = [];
 
     can do_import with Deck entry {
         rl = resolve_list(self.format, self.text);
-        if rl is None {
+        if isinstance(rl, WalkerError) {
+            report rl;
             disengage;
         }
         # Never empty a deck when none of the input resolved (a bad paste or
@@ -159,18 +171,19 @@ obj NewDeckResult {
 list's own name (mtgdeck/1), then "Imported deck". The play format is
 `play_format` when it names a known format; otherwise the list's own format
 (mtgdeck/1) when known, else standard. When nothing in the list
-resolves, no deck is created and `deck_id` is empty. Reports nothing for an
-unknown or import-less list format."""
+resolves, no deck is created and `deck_id` is empty. An unknown or
+import-less list format reports a WalkerError (see resolve_list)."""
 walker:pub CreateDeckFromList {
     has name: str = "",
         format: str = "mtgdeck1",
         text: str = "",
         play_format: str = "",
-        reports: list[NewDeckResult] = [];
+        reports: list[NewDeckResult | WalkerError] = [];
 
     can create with Root entry {
         rl = resolve_list(self.format, self.text);
-        if rl is None {
+        if isinstance(rl, WalkerError) {
+            report rl;
             disengage;
         }
         if not rl.entries {

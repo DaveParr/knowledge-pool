@@ -1,6 +1,7 @@
 """One deck: search real cards, add them, change counts, remove them."""
 
 import from .export_menu { ExportMenu }
+import from .walker_failure { failureMessage }
 
 sv import from decks {
     DeckView, FormatInfo, GetDeck, SetDeckFormat, AddCard, SetCardCount, RemoveCard, list_formats
@@ -9,12 +10,14 @@ sv import from legality { Violation }
 sv import from mana { ManaProfile }
 sv import from card_lines { CardLine }
 sv import from cards { CardHit, search_cards }
+sv import from walker_errors { WalkerError }
 
 def:pub DeckDetail(deckId: str, importNotes: list[str], onBack: Callable[[], None]) -> JsxElement {
     has deck: DeckView | None = None,
         query: str = "",
         hits: list[CardHit] = [],
         searched: bool = False,
+        error: str = "",
         formats: list[FormatInfo] = [];
 
     can with entry {
@@ -27,6 +30,8 @@ def:pub DeckDetail(deckId: str, importNotes: list[str], onBack: Callable[[], Non
     async def setCount(oracleId: str, zone: str, value: str) -> None;
     async def removeCard(oracleId: str, zone: str) -> None;
     async def setFormat(value: str) -> None;
+    """Show a deck walker's view, or the reason it failed (the deck shown stays as it was)."""
+    def show(reports: list[DeckView | WalkerError]) -> None;
 
     def back(_e: MouseEvent) {
         onBack();
@@ -37,8 +42,9 @@ def:pub DeckDetail(deckId: str, importNotes: list[str], onBack: Callable[[], Non
         return str(pct) + "%";
     }
 
+    alert = <p role="alert" style={{"color": "#b00020"}}>{error}</p> if error else None;
     if deck is None {
-        return <p>Loading deck...</p>;
+        return <section>{alert if error else <p>Loading deck...</p>}</section>;
     }
 
     curveBuckets = deck.curve.buckets;
@@ -54,6 +60,7 @@ def:pub DeckDetail(deckId: str, importNotes: list[str], onBack: Callable[[], Non
                 <h1>{deck.name}</h1>
                 <ExportMenu deckId={deckId} deckName={deck.name}/>
             </div>
+            {alert}
             {<div role="status" style={{"padding": "0.75rem 1rem", "marginBottom": "1rem", "borderRadius": "6px", "backgroundColor": "#fff8e1"}}>
                 <strong>Lines that didn't resolve</strong>
                 <ul style={{"margin": "0.25rem 0 0", "paddingLeft": "1.25rem"}}>

@@ -30,11 +30,12 @@ impl app.createFromList -> None {
         return;
     }
     result = root spawn CreateDeckFromList(name=name, format=importFormat, text=importText, play_format=importPlayFormat);
-    if not result.reports {
-        error = "That import format isn't supported.";
+    why = failureMessage(result.reports);
+    if why {
+        error = why;
         return;
     }
-    outcome = result.reports[0];
+    outcome = result.reports[0] as NewDeckResult;
     if not outcome.deck_id {
         missing = "";
         for line in outcome.unresolved {

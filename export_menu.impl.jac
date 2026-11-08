@@ -4,11 +4,12 @@ impl ExportMenu.exportAs(format: str, label: str) -> None {
     open = False;
     status = "";
     result = root spawn DeckExport(deck_id=deckId, format=format);
-    if not result.reports {
-        status = "Export failed";
+    why = failureMessage(result.reports);
+    error = why;
+    if why {
         return;
     }
-    text = result.reports[0].content;
+    text = (result.reports[0] as ExportResult).content;
     copied = False;
     try {
         await navigator.clipboard.writeText(text);  # jac:ignore[E1032]

@@ -75,7 +75,9 @@ def test_changing_format_revalidates(client):
     assert not view["legal"]
     view = _reports(client.post("/walker/SetDeckFormat", json={"deck_id": view["id"], "format": "modern"}))[0]
     assert view["legal"] and view["format"] == "modern"
-    assert _reports(client.post("/walker/SetDeckFormat", json={"deck_id": view["id"], "format": "vintage"})) == []
+    [err] = _reports(client.post("/walker/SetDeckFormat", json={"deck_id": view["id"], "format": "vintage"}))
+    assert err["code"] == "unknown-format"
+    assert err["message"].startswith("Unknown format vintage. Use one of: standard")
 
 
 def test_legality_is_not_stored_on_the_deck_or_cards(client):
