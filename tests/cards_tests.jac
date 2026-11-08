@@ -63,7 +63,7 @@ test "re-ingest then one RefreshCards updates every field on existing Card nodes
     card = card_node(root, BOLT);
     assert isinstance(card, Card);
     changed: dict[str, any] = copy.deepcopy(ATOMIC);
-    face: dict[str, any] = changed["data"]["Lightning Bolt"][0];
+    face: dict[str, any] = changed["data"]["Lightning Bolt"][0] as dict[str, any];
     face["manaCost"] = "{1}{R}";
     face["manaValue"] = 2.0;
     face["colorIdentity"] = ["R", "G"];
