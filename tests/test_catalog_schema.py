@@ -9,6 +9,7 @@ from pathlib import Path
 import pytest
 
 from catalog import store
+from tests.old_catalog import drop_produced_mana
 
 ROOT = Path(__file__).resolve().parent.parent
 
@@ -16,7 +17,7 @@ ROOT = Path(__file__).resolve().parent.parent
 def _make_old_schema(path):
     """Turn a current catalogue into one built before produced_mana (#48) and oracle tags (#46)."""
     con = sqlite3.connect(path)
-    con.execute("ALTER TABLE cards DROP COLUMN produced_mana")
+    drop_produced_mana(con)
     con.execute("DROP TABLE card_tags")
     con.commit()
     con.close()

@@ -5,6 +5,7 @@ import sqlite3
 from jaclang.runtimelib.testing import JacTestClient
 
 from catalog import store
+from tests.old_catalog import drop_produced_mana
 
 
 def _reports(resp):
@@ -42,7 +43,7 @@ def test_search_endpoint_reports_a_catalogue_failure(tmp_path, fixture_catalog):
     try:
         # A catalogue built before `produced_mana` existed (#61).
         con = sqlite3.connect(fixture_catalog)
-        con.execute("ALTER TABLE cards DROP COLUMN produced_mana")
+        drop_produced_mana(con)
         con.commit()
         con.close()
         store.reset()
