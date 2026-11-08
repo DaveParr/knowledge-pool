@@ -343,6 +343,8 @@ async def serve_http(host: str, port: int) {
 
 with entry:__main__ {
     os.chdir(APP_DIR);
+    # Fail before MCP takes stdout: the message goes to stderr.
+    store.check_current();
     if os.environ.get("KP_WEB", "1") != "0" {
         port = int(os.environ.get("KP_PORT", "8000"));
         if port_in_use(port) {
