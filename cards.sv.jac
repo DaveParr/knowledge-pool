@@ -9,6 +9,7 @@ catalogue record: after `catalog/ingest.py` rebuilds the catalogue, one
 `RefreshCards` brings every existing `Card` node up to date.
 """
 
+import sqlite3;
 import catalog.store as store;
 
 node Catalog {}
@@ -43,10 +44,22 @@ obj CatalogInfo {
         card_count: int;
 }
 
-"""Search card names, type lines and rules text. Every word must match."""
-def:pub search_cards(query: str, limit: int = 25) -> list[CardHit] {
+"""Search results, or why the search failed. `error` is "" when it worked."""
+obj CardSearch {
+    has hits: list[CardHit] = [],
+        error: str = "";
+}
+
+"""Search card names, type lines and rules text. Every word must match.
+A missing or out-of-date catalogue comes back as `error`, not an exception."""
+def:pub search_cards(query: str, limit: int = 25) -> CardSearch {
+    try {
+        found = store.search(query, limit);
+    } except (sqlite3.Error, FileNotFoundError) as e {
+        return CardSearch(error=f"Card search failed: {e}");
+    }
     hits: list[CardHit] = [];
-    for c in store.search(query, limit) {
+    for c in found {
         hits.append(
             CardHit(
                 oracle_id=c["oracle_id"] as str,
@@ -57,7 +70,13 @@ def:pub search_cards(query: str, limit: int = 25) -> list[CardHit] {
             )
         );
     }
-    return hits;
+    return CardSearch(hits=hits);
+}
+
+"""Raise if the catalogue was built by older code; the error names the ingest
+command. Run at startup so the app refuses to serve a stale catalogue."""
+def check_catalogue() -> None {
+    store.check_current();
 }
 
 def:pub catalog_info() -> CatalogInfo {

@@ -40,7 +40,7 @@ import from mcp.server.streamable_http { TransportSecuritySettings }
 import from jaclang { JacRuntime as Jac }
 import from jaclang.runtimelib.context { ExecutionContext }
 import from jaclang.jac0core.constant { Constants as Con }
-import from cards { search_cards as catalog_search, find_card, resolve_names as catalog_resolve_names }
+import from cards { search_cards as catalog_search, find_card, resolve_names as catalog_resolve_names, check_catalogue }
 import from decks {
     Deck, DeckView, CreateDeck, ListDecks, GetDeck, SetDeckFormat, EditDeck
 }
@@ -168,7 +168,11 @@ def outcome(w: any) -> dict {
 """Search card names, type lines and rules text. Every word must match, as a prefix."""
 @server.tool()
 def search_cards(query: str, limit: int = 20) -> list[dict] {
-    return [plain(hit) for hit in catalog_search(query, limit)];
+    found = catalog_search(query, limit);
+    if found.error {
+        raise RuntimeError(found.error);
+    }
+    return [plain(hit) for hit in found.hits];
 }
 
 """Full card details, by oracle id or exact card name, including format legalities."""
@@ -326,6 +330,8 @@ async def serve_http(host: str, port: int) {
 
 with entry:__main__ {
     os.chdir(APP_DIR);
+    # Fail before MCP takes stdout: the message goes to stderr.
+    check_catalogue();
     if os.environ.get("KP_WEB", "1") != "0" {
         port = int(os.environ.get("KP_PORT", "8000"));
         if port_in_use(port) {

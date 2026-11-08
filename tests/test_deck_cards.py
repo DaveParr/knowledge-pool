@@ -1,8 +1,11 @@
 """Add, change and remove cards on a deck over REST, and survive a restart."""
 
+import sqlite3
+
 from jaclang.runtimelib.testing import JacTestClient
 
 from catalog import store
+from tests.old_catalog import drop_produced_mana
 
 
 def _reports(resp):
@@ -28,8 +31,27 @@ def test_search_endpoint_finds_real_cards(tmp_path):
     client = JacTestClient.from_file("main.jac", base_path=str(tmp_path))
     try:
         resp = client.post("/function/search_cards", json={"query": "deals 3 damage"})
-        names = [c["name"] for c in resp.json()["data"]["result"]]
-        assert "Lightning Bolt" in names
+        result = resp.json()["data"]["result"]
+        assert "Lightning Bolt" in [c["name"] for c in result["hits"]]
+        assert result["error"] == ""
+    finally:
+        client.close()
+
+
+def test_search_endpoint_reports_a_catalogue_failure(tmp_path, fixture_catalog):
+    client = JacTestClient.from_file("main.jac", base_path=str(tmp_path))
+    try:
+        # A catalogue built before `produced_mana` existed (#61).
+        con = sqlite3.connect(fixture_catalog)
+        drop_produced_mana(con)
+        con.commit()
+        con.close()
+        store.reset()
+
+        resp = client.post("/function/search_cards", json={"query": "bolt"})
+        result = resp.json()["data"]["result"]
+        assert result["hits"] == []
+        assert "no such column: c.produced_mana" in result["error"]
     finally:
         client.close()
 

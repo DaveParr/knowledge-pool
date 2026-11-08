@@ -52,7 +52,7 @@ test "find_card looks up by oracle id, exact name or either face" {
 }
 
 test "search_cards and resolve_names read the catalogue" {
-    assert search_cards("lightning bolt")[0].oracle_id == BOLT;
+    assert search_cards("lightning bolt").hits[0].oracle_id == BOLT;
     got = resolve_names(["Lightning Bolt", "Lightnig Bolt", "xyzzy"]);
     assert [e["oracle_id"] for e in got["exact"]] == [BOLT];
     assert got["fuzzy"][0]["candidates"][0]["name"] == "Lightning Bolt";
