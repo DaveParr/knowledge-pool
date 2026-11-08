@@ -4,7 +4,7 @@ protocol, never on a specific format's parsing or rendering code.
 """
 
 import from deckformats { get_format, ExportEntry, ExportDeck, ParsedEntry }
-import from catalog.store { find_by_name, get_card as catalog_get_card }
+import from cards { find_card }
 import from decks { Deck, DeckAction, DeckView, DECK_ZONES, new_deck, holdings, deck_view, set_card_entry }
 import from legality { FORMAT_LABELS }
 
@@ -92,19 +92,12 @@ def resolve_list(format: str, text: str) -> ResolvedList | None {
             unresolved.append(f"{entry.raw_name} (invalid zone: {entry.zone})");
             continue;
         }
-        oid = "";
-        if entry.oracle_id and catalog_get_card(entry.oracle_id) is not None {
-            oid = entry.oracle_id;
-        } else {
-            found = find_by_name(entry.raw_name);
-            if found is not None {
-                oid = found["oracle_id"] as str;
-            }
-        }
-        if not oid {
+        found = find_card(entry.oracle_id) or find_card(entry.raw_name);
+        if found is None {
             unresolved.append(entry.raw_name);
             continue;
         }
+        oid = found["oracle_id"] as str;
         resolved = ParsedEntry(
             raw_name=entry.raw_name, count=entry.count, zone=entry.zone, oracle_id=oid,
             roles=entry.roles, tags=entry.tags, locked=entry.locked, reason=entry.reason
