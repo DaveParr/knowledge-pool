@@ -20,10 +20,14 @@ impl DeckDetail.runSearch(e: FormEvent) -> None {
     e.preventDefault();
     if not query.strip() {
         hits = [];
+        searchError = "";
         searched = False;
         return;
     }
-    hits = await search_cards(query);
+    result: CardSearch | None = await search_cards(query);
+    # None means the call itself failed (the client stub found no result).
+    hits = result.hits if result is not None else [];
+    searchError = result.error if result is not None else "Card search failed.";
     searched = True;
 }
 

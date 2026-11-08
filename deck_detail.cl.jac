@@ -8,7 +8,7 @@ sv import from decks {
 }
 sv import from legality { Violation }
 sv import from mana { ManaProfile }
-sv import from cards { CardHit, search_cards }
+sv import from cards { CardHit, CardSearch, search_cards }
 
 def:pub DeckDetail(deckId: str, importNotes: list[str], onBack: Callable[[], None]) -> JsxElement {
     has deck: DeckView | None = None,
@@ -16,6 +16,7 @@ def:pub DeckDetail(deckId: str, importNotes: list[str], onBack: Callable[[], Non
         query: str = "",
         hits: list[CardHit] = [],
         searched: bool = False,
+        searchError: str = "",
         formats: list[FormatInfo] = [];
 
     can with entry {
@@ -192,7 +193,8 @@ def:pub DeckDetail(deckId: str, importNotes: list[str], onBack: Callable[[], Non
                 />
                 <button type="submit">Search</button>
             </form>
-            {<p>No cards found.</p> if searched and len(hits) == 0 else None}
+            {<p role="alert" style={{"color": "#8a1c13"}}>{searchError}</p> if searchError else None}
+            {<p>No cards found.</p> if searched and not searchError and len(hits) == 0 else None}
             <ul style={{"listStyle": "none", "padding": "0"}}>
                 {[
                     <li

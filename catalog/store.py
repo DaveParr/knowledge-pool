@@ -7,7 +7,7 @@ import re
 import sqlite3
 from functools import lru_cache
 
-from catalog.ingest import db_path
+from catalog.ingest import SCHEMA, db_path
 
 _COLUMNS = (
     "c.oracle_id, c.name, c.mana_cost, c.mana_value, c.colour_identity, c.types, "
@@ -28,6 +28,43 @@ def connection() -> sqlite3.Connection:
     if not path.exists():
         raise FileNotFoundError(f"No card catalogue at {path}. Run: uv run python -m catalog.ingest")
     return _connect(str(path.resolve()))
+
+
+class CatalogOutOfDate(RuntimeError):
+    """The catalogue was built by older code and lacks tables or columns this code reads."""
+
+
+def _columns(con: sqlite3.Connection) -> set[str]:
+    """Every table as "table" and every column as "table.column"."""
+    tables = [r[0] for r in con.execute("SELECT name FROM sqlite_master WHERE type = 'table'")]
+    found = set(tables)
+    for table in tables:
+        found |= {f"{table}.{r[1]}" for r in con.execute(f'PRAGMA table_info("{table}")')}
+    return found
+
+
+def check_current() -> None:
+    """Raise CatalogOutOfDate, naming the fix, if the catalogue lacks any table or
+    column that the ingest's SCHEMA creates. Entry points call this at startup so
+    a stale catalogue fails there, not at query time. A missing catalogue is left
+    to `connection()`, which already names the ingest command."""
+    path = db_path()
+    if not path.exists():
+        return
+    expected = sqlite3.connect(":memory:")
+    try:
+        expected.executescript(SCHEMA)
+        wanted = _columns(expected)
+    finally:
+        expected.close()
+    missing = wanted - _columns(connection())
+    # A missing table also misses its columns; name the table alone.
+    missing = sorted(m for m in missing if "." not in m or m.split(".")[0] not in missing)
+    if missing:
+        raise CatalogOutOfDate(
+            f"The card catalogue at {path} is out of date for this code (missing: {', '.join(missing)}). "
+            "Rebuild it with: uv run python -m catalog.ingest"
+        )
 
 
 def reset() -> None:

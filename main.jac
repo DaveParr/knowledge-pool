@@ -10,6 +10,12 @@ import from decks {
 import from legality { Violation }
 import from cards { CardHit, CatalogInfo, search_cards, catalog_info }
 import from deck_io { DeckExport, DeckImport, CreateDeckFromList }
+import from catalog { store }
+
+# Refuse to serve a catalogue built by older code: the error names the ingest command.
+with entry {
+    store.check_current();
+}
 
 cl {
     import from .frontend { app as ClientApp }

@@ -27,7 +27,7 @@ uv sync --locked
 uv run python -m catalog.ingest
 ```
 
-The ingest downloads MTGJSON's `AtomicCards.json.xz` (about 26 MB) and builds `data/catalog.sqlite`: one row per oracle card plus an FTS5 search index, with the MTGJSON version and build date in its `meta` table. It takes a few seconds. Pass `--source FILE` to build from a file you already have. Run it again to pick up a newer MTGJSON build.
+The ingest downloads MTGJSON's `AtomicCards.json.xz` (about 26 MB) and builds `data/catalog.sqlite`: one row per oracle card plus an FTS5 search index, with the MTGJSON version and build date in its `meta` table. It takes a few seconds. Pass `--source FILE` to build from a file you already have. Run it again to pick up a newer MTGJSON build. Run it again after pulling new code, too: a code change can add columns or tables to the catalogue, and the server (`jac start` and the MCP server) refuses to start against a catalogue built by older code, with a message that names this command.
 
 ### Run
 
