@@ -1,4 +1,4 @@
-"""ValidateDeck against a set of known legal and illegal 60-card decks.
+"""Deck legality (DeckView `legal`/`violations`) against a set of known legal and illegal 60-card decks.
 
 Card legalities come from the fixture (real MTGJSON data, 2 Nov 2026), so the
 expected results stay fixed when bans change.

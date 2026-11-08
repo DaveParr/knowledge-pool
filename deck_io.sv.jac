@@ -5,7 +5,7 @@ protocol, never on a specific format's parsing or rendering code.
 
 import from deckformats { get_format, ExportEntry, ExportDeck, ParsedEntry }
 import from cards { find_card }
-import from decks { Deck, DeckAction, DeckView, HoldingEntry, ZONES, new_deck, holdings, deck_view, replace_holdings }
+import from decks { Deck, DeckAction, DeckView, HoldingEntry, ZONES, new_deck, card_lines, deck_view, replace_holdings }
 import from legality { FORMAT_LABELS }
 
 obj ExportResult {
@@ -36,10 +36,10 @@ walker:pub DeckExport(DeckAction) {
             format=here.format,
             entries=[
                 ExportEntry(
-                    oracle_id=c.oracle_id, name=c.name, count=e.count, zone=e.zone,
-                    roles=e.roles, tags=e.tags, locked=e.locked, reason=e.reason
+                    oracle_id=l.oracle_id, name=l.name, count=l.count, zone=l.zone,
+                    roles=l.roles, tags=l.tags, locked=l.locked, reason=l.reason
                 )
-                for (e, c) in holdings(here)
+                for l in card_lines(here)
             ]
         );
         try {

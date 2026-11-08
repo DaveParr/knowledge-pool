@@ -6,6 +6,7 @@ is legal is always worked out here, on demand; it is never stored.
 """
 
 import re;
+import from card_lines { CardLine, main_deck }
 
 """Deck-construction rules for one format."""
 node Format {
@@ -30,15 +31,9 @@ obj Violation {
         card: str = "";
 }
 
-"""A card line as the validator sees it."""
-obj Entry {
-    has name: str,
-        zone: str,
-        count: int,
-        type_line: str,
-        text: str,
-        status: str;
-}
+"""The zones legality counts: the main deck and the sideboard. Commander,
+companion and maybeboard are not part of a 60-card constructed deck."""
+glob LEGALITY_ZONES: list[str] = ["main", "sideboard"];
 
 glob NUMBER_WORDS: dict[str, int] = {
     "two": 2, "three": 3, "four": 4, "five": 5, "six": 6, "seven": 7,
@@ -72,8 +67,13 @@ def format_node(home: Root, key: str) -> Format | None {
     return None;
 }
 
+"""A card's MTGJSON legality status in a format ("Legal", "Banned", ...)."""
+def status_in(line: CardLine, fmt: Format) -> str {
+    return line.legal.get(fmt.name, "Not legal");
+}
+
 """How many copies of this card a deck may hold, or None for no limit."""
-def copy_limit_for(line: Entry, fmt: Format) -> int | None {
+def copy_limit_for(line: CardLine, fmt: Format) -> int | None {
     if "Basic" in line.type_line and "Land" in line.type_line {
         return None;
     }
@@ -90,17 +90,18 @@ def copy_limit_for(line: Entry, fmt: Format) -> int | None {
             return int(word);
         }
     }
-    if line.status == "Restricted" {
+    if status_in(line, fmt) == "Restricted" {
         return 1;
     }
     return fmt.copy_limit;
 }
 
-"""Check a deck's card lines against a format. Pure function of its inputs."""
-def check_entries(entries: list[Entry], fmt: Format) -> list[Violation] {
+"""Check a deck's card lines against a format. Only LEGALITY_ZONES count."""
+def check_lines(lines: list[CardLine], fmt: Format) -> list[Violation] {
     found: list[Violation] = [];
-    main_total = sum([e.count for e in entries if e.zone == "main"]);
-    side_total = sum([e.count for e in entries if e.zone == "sideboard"]);
+    entries = [l for l in lines if l.zone in LEGALITY_ZONES];
+    main_total = sum([l.count for l in main_deck(entries)]);
+    side_total = sum([l.count for l in entries if l.zone == "sideboard"]);
     if main_total < fmt.min_main {
         found.append(
             Violation(
@@ -118,7 +119,7 @@ def check_entries(entries: list[Entry], fmt: Format) -> list[Violation] {
         );
     }
     totals: dict[str, int] = {};
-    first: dict[str, Entry] = {};
+    first: dict[str, CardLine] = {};
     for e in entries {
         totals[e.name] = totals.get(e.name, 0) + e.count;
         if e.name not in first {
@@ -127,9 +128,10 @@ def check_entries(entries: list[Entry], fmt: Format) -> list[Violation] {
     }
     for name in sorted(totals.keys()) {
         e = first[name];
-        if e.status == "Banned" {
+        status = status_in(e, fmt);
+        if status == "Banned" {
             found.append(Violation(rule="banned", message=f"{name} is banned in {fmt.label}.", card=name));
-        } elif e.status not in ["Legal", "Restricted"] {
+        } elif status not in ["Legal", "Restricted"] {
             found.append(Violation(rule="not-legal", message=f"{name} is not legal in {fmt.label}.", card=name));
         }
         limit = copy_limit_for(e, fmt);

@@ -6,22 +6,18 @@ Phyrexian symbol like {W/P} adds one pip to W. Generic numbers, {X}, {C} and
 {S} add no pips. A source is a card whose `produced_mana` lists that colour
 (from MTGJSON, stored at ingest; see `catalog/ingest.py`).
 
-Only the main deck counts towards any of this - the sideboard is not part of
-the game's starting mana base, matching how `legality.sv.jac` treats
-`min_main`/`sideboard_max` as a separate, main-deck-only concern.
+The curve buckets non-land cards by mana value (0..6, 7+).
+
+Every analysis here is a pure function of a deck's card lines (see
+`card_lines.sv.jac`) and counts only the main deck (`main_deck`): the
+sideboard is not part of the game's starting mana base. A land is
+`CardLine.is_land`, the same for the land count and the curve.
 """
 
 import re;
+import from card_lines { CardLine, main_deck }
 
 glob COLOURS: list[str] = ["W", "U", "B", "R", "G"];
-
-"""One main-deck card line, as the mana analyser sees it."""
-obj ManaLine {
-    has count: int,
-        is_land: bool,
-        mana_cost: str,
-        produced_mana: list[str];
-}
 
 """Lands, coloured pips (spell demand) and coloured sources (mana supply) for
 a deck. `pips` and `sources` always carry all five WUBRG keys, zero when
@@ -49,8 +45,8 @@ def count_pips(mana_cost: str) -> dict[str, int] {
     return found;
 }
 
-"""Lands, pips and sources across a deck's main-deck lines. Pure function of its input."""
-def mana_profile(lines: list[ManaLine]) -> ManaProfile {
+"""Lands, pips and sources across a deck's main deck."""
+def mana_profile(lines: list[CardLine]) -> ManaProfile {
     pips: dict[str, int] = {};
     sources: dict[str, int] = {};
     for c in COLOURS {
@@ -58,8 +54,8 @@ def mana_profile(lines: list[ManaLine]) -> ManaProfile {
         sources[c] = 0;
     }
     land_count = 0;
-    for line in lines {
-        if line.is_land {
+    for line in main_deck(lines) {
+        if line.is_land() {
             land_count += line.count;
         }
         for (colour, n) in count_pips(line.mana_cost).items() {
@@ -72,4 +68,40 @@ def mana_profile(lines: list[ManaLine]) -> ManaProfile {
         }
     }
     return ManaProfile(land_count=land_count, pips=pips, sources=sources);
+}
+
+glob CURVE_BUCKETS: list[str] = ["0", "1", "2", "3", "4", "5", "6", "7+"];
+
+"""Non-land mana-value buckets (0..6, 7+) over a deck's main deck, by card count,
+plus the average non-land mana value."""
+obj ManaCurve {
+    has buckets: dict[str, int] = {},
+        average_mv: float = 0.0;
+}
+
+def bucket_for(mv: float) -> str {
+    n = int(mv);
+    return "7+" if n >= 7 else str(max(n, 0));
+}
+
+"""The non-land curve of a deck's main deck."""
+def mana_curve(lines: list[CardLine]) -> ManaCurve {
+    buckets: dict[str, int] = {b: 0 for b in CURVE_BUCKETS};
+    total_mv = 0.0;
+    total_count = 0;
+    for line in main_deck(lines) {
+        if line.is_land() {
+            continue;
+        }
+        buckets[bucket_for(line.mana_value)] += line.count;
+        total_mv += line.mana_value * line.count;
+        total_count += line.count;
+    }
+    avg: float = 0.0;
+    if total_count > 0 {
+        raw: float = total_mv / total_count;
+        scaled: float = round(raw * 100);
+        avg = scaled / 100.0;
+    }
+    return ManaCurve(buckets=buckets, average_mv=avg);
 }

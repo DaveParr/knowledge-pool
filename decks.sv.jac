@@ -6,9 +6,10 @@ caller shares one graph and nobody has to log in.
 """
 
 import from datetime { datetime, timezone }
-import from cards { Card, card_node, is_land }
-import from legality { Format, Violation, Entry, FORMAT_LABELS, format_node, check_entries }
-import from mana { ManaLine, ManaProfile, mana_profile }
+import from cards { Card, card_node }
+import from card_lines { CardLine, main_deck }
+import from legality { Violation, FORMAT_LABELS, format_node, check_lines }
+import from mana { ManaProfile, ManaCurve, mana_profile, mana_curve }
 
 """One change to how many copies of a card a zone of a deck holds, with the
 reason given for it. Every holdings change writes one (see change_holding)."""
@@ -31,7 +32,7 @@ node Deck {
 
 """Every zone a deck can hold cards in (the mtgdeck/1 zones), in display
 order. The one list of zones: every holdings change and every import checks
-against it. Legality looks only at main and sideboard (see ValidateDeck)."""
+against it. Legality looks only at main and sideboard (see legality.LEGALITY_ZONES)."""
 glob ZONES: list[str] = ["commander", "companion", "main", "sideboard", "maybeboard"];
 
 """Create a deck and report it. A blank name creates nothing and reports nothing."""
@@ -78,57 +79,6 @@ edge Holds: Deck --> Card {
         reason: str = "";
 }
 
-"""One line of a deck's card list."""
-obj DeckCard {
-    has oracle_id: str,
-        name: str,
-        count: int,
-        zone: str,
-        mana_cost: str,
-        type_line: str,
-        text: str = "",
-        oracle_tags: list[str] = [],
-        roles: list[str] = [],
-        tags: list[str] = [],
-        locked: bool = False,
-        reason: str = "";
-}
-
-glob CURVE_BUCKETS: list[str] = ["0", "1", "2", "3", "4", "5", "6", "7+"];
-
-"""Non-land mana-value buckets (0..6, 7+) over a deck's main deck, by card count,
-plus the average non-land mana value."""
-obj ManaCurve {
-    has buckets: dict[str, int] = {},
-        average_mv: float = 0.0;
-}
-
-def bucket_for(mv: float) -> str {
-    n = int(mv);
-    return "7+" if n >= 7 else str(max(n, 0));
-}
-
-def mana_curve(deck: Deck) -> ManaCurve {
-    buckets: dict[str, int] = {b: 0 for b in CURVE_BUCKETS};
-    total_mv = 0.0;
-    total_count = 0;
-    for (e, c) in holdings(deck) {
-        if e.zone != "main" or is_land(c) {
-            continue;
-        }
-        buckets[bucket_for(c.mana_value)] += e.count;
-        total_mv += c.mana_value * e.count;
-        total_count += e.count;
-    }
-    avg: float = 0.0;
-    if total_count > 0 {
-        raw: float = total_mv / total_count;
-        scaled: float = round(raw * 100);
-        avg = scaled / 100.0;
-    }
-    return ManaCurve(buckets=buckets, average_mv=avg);
-}
-
 """A deck, its cards (sorted by zone then name), whether it is legal in its
 format, and its main-deck mana analysis (mana profile and curve). Every walker
 that reports a deck reports this whole view, so one request per edit gives a
@@ -139,7 +89,7 @@ obj DeckView {
         format: str,
         mana: ManaProfile,
         curve: ManaCurve,
-        cards: list[DeckCard] = [],
+        cards: list[CardLine] = [],
         main_total: int = 0,
         sideboard_total: int = 0,
         legal: bool = False,
@@ -164,66 +114,24 @@ def holdings(deck: Deck) -> list[tuple[Holds, Card]] {
     return pairs;
 }
 
-"""The deck's main-deck lines, as the mana analyser sees them. The sideboard
-is not part of the mana base."""
-def main_deck_mana_lines(deck: Deck) -> list[ManaLine] {
-    lines: list[ManaLine] = [];
-    for (e, c) in holdings(deck) {
-        if e.zone != "main" {
-            continue;
-        }
-        lines.append(
-            ManaLine(count=e.count, is_land="Land" in c.types, mana_cost=c.mana_cost, produced_mana=c.produced_mana)
-        );
-    }
-    return lines;
-}
-
-"""Check a deck against its format's rules. Runs after every edit."""
-walker ValidateDeck {
-    has violations: list[Violation] = [];
-
-    can check with Deck entry {
-        fmt = format_node(root, here.format);
-        if fmt is None {
-            self.violations = [
-                Violation(rule="unknown-format", message=f"Unknown format: {here.format}.")
-            ];
-            disengage;
-        }
-        entries: list[Entry] = [];
-        for (e, c) in holdings(here) {
-            if e.zone not in ["main", "sideboard"] {
-                continue;
-            }
-            entries.append(
-                Entry(
-                    name=c.name,
-                    zone=e.zone,
-                    count=e.count,
-                    type_line=c.type_line,
-                    text=c.text,
-                    status=c.legal.get(here.format, "Not legal")
-                )
-            );
-        }
-        self.violations = check_entries(entries, fmt);
-    }
-}
-
-def deck_view(deck: Deck) -> DeckView {
-    lines: list[DeckCard] = [];
+"""The deck's card lines, sorted by zone (ZONES order) then name: the one read
+model every analysis and export works from (see card_lines.sv.jac)."""
+def card_lines(deck: Deck) -> list[CardLine] {
+    lines: list[CardLine] = [];
     for (e, c) in holdings(deck) {
         lines.append(
-            DeckCard(
+            CardLine(
                 oracle_id=c.oracle_id,
                 name=c.name,
-                count=e.count,
                 zone=e.zone,
+                count=e.count,
                 mana_cost=c.mana_cost,
+                mana_value=c.mana_value,
                 type_line=c.type_line,
                 text=c.text,
+                legal=c.legal,
                 oracle_tags=c.oracle_tags,
+                produced_mana=c.produced_mana,
                 roles=e.roles,
                 tags=e.tags,
                 locked=e.locked,
@@ -231,19 +139,33 @@ def deck_view(deck: Deck) -> DeckView {
             )
         );
     }
-    lines.sort(key=lambda l: DeckCard : (ZONES.index(l.zone), l.name));
-    check = deck spawn ValidateDeck();
+    lines.sort(key=lambda l: CardLine : (ZONES.index(l.zone), l.name));
+    return lines;
+}
+
+"""What a deck's lines break in its format. An unknown format is itself a violation."""
+def deck_violations(deck: Deck, lines: list[CardLine]) -> list[Violation] {
+    fmt = format_node(root, deck.format);
+    if fmt is None {
+        return [Violation(rule="unknown-format", message=f"Unknown format: {deck.format}.")];
+    }
+    return check_lines(lines, fmt);
+}
+
+def deck_view(deck: Deck) -> DeckView {
+    lines = card_lines(deck);
+    violations = deck_violations(deck, lines);
     return DeckView(
         id=jid(deck),
         name=deck.name,
         format=deck.format,
-        mana=mana_profile(main_deck_mana_lines(deck)),
-        curve=mana_curve(deck),
+        mana=mana_profile(lines),
+        curve=mana_curve(lines),
         cards=lines,
-        main_total=sum([l.count for l in lines if l.zone == "main"]),
+        main_total=sum([l.count for l in main_deck(lines)]),
         sideboard_total=sum([l.count for l in lines if l.zone == "sideboard"]),
-        legal=len(check.violations) == 0,
-        violations=check.violations,
+        legal=len(violations) == 0,
+        violations=violations,
         history=deck.history[-20:]
     );
 }

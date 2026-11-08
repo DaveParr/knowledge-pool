@@ -73,7 +73,7 @@ uv run pytest tests    # ingest, search, REST, legality and MCP tests
 - `cards.sv.jac` the `Card` node and the `search_cards` endpoint
 - schemas/mtgdeck-1.schema.json the published mtgdeck/1 deck document schema
 - `deckformats/` the deck import/export format strategies (mtgdeck/1, MTGJSON Deck JSON, plain/Arena/Moxfield text)
-- `decks.sv.jac` the `Deck` node, the `Holds` edge, the deck walkers and `ValidateDeck`
+- `decks.sv.jac` the `Deck` node, the `Holds` edge, the deck walkers, `card_lines` and `deck_view`
 - `deck_io.sv.jac` the `DeckExport`, `DeckImport` and `CreateDeckFromList` walkers
 - `export_menu.cl.jac` the per-deck Export button that copies to the clipboard
 - `legality.sv.jac` `Format` nodes and the deck-construction rules

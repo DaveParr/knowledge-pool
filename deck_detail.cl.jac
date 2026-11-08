@@ -3,10 +3,11 @@
 import from .export_menu { ExportMenu }
 
 sv import from decks {
-    DeckView, DeckCard, FormatInfo, GetDeck, SetDeckFormat, AddCard, SetCardCount, RemoveCard, list_formats
+    DeckView, FormatInfo, GetDeck, SetDeckFormat, AddCard, SetCardCount, RemoveCard, list_formats
 }
 sv import from legality { Violation }
 sv import from mana { ManaProfile }
+sv import from card_lines { CardLine }
 sv import from cards { CardHit, search_cards }
 
 def:pub DeckDetail(deckId: str, importNotes: list[str], onBack: Callable[[], None]) -> JsxElement {
