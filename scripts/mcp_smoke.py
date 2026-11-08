@@ -114,7 +114,12 @@ async def main() -> None:
             and analysis["mana"]["sources"]["R"] == 52,
             analysis,
         )
-        check("deck_analyze is the deck's analysis only, not its cards", set(analysis) == {"id", "mana", "curve"}, analysis)
+        check(
+            "deck_analyze is the deck's analysis only, not its cards",
+            set(analysis) == {"id", "name", "format", "main_total", "mana", "curve"}
+            and analysis["name"] == "MCP Burn" and analysis["main_total"] == 60,
+            analysis,
+        )
         check("deck_edit already carried the same curve", deck["curve"] == analysis["curve"], deck)
 
         deck = await call(session, "deck_edit", deck_id=deck["id"], format="standard")
@@ -134,6 +139,17 @@ async def main() -> None:
         check("deck_show points at a ui:// resource", ui_uri == "ui://knowledge-pool/deck-table.html", listed_tools["deck_show"].meta)
         page = (await session.read_resource(ui_uri)).contents[0]
         check("the deck view is served as an MCP App", page.mime_type == "text/html;profile=mcp-app" and "ui/initialize" in page.text, page.mime_type)
+        mana_uri = ((listed_tools["deck_analyze"].meta or {}).get("ui") or {}).get("resourceUri")
+        check("deck_analyze points at a ui:// resource", mana_uri == "ui://knowledge-pool/mana-analysis.html", listed_tools["deck_analyze"].meta)
+        mana_page = (await session.read_resource(mana_uri)).contents[0]
+        check("the mana view is served as an MCP App", mana_page.mime_type == "text/html;profile=mcp-app" and "ui/initialize" in mana_page.text, mana_page.mime_type)
+        analysed = await session.call_tool("deck_analyze", {"deck_id": deck["id"]})
+        check("deck_analyze gives the view the mana data", analysed.structured_content["mana"]["land_count"] == 52 and analysed.structured_content["curve"]["buckets"]["1"] == 8, analysed.structured_content)
+        check(
+            "deck_analyze gives other clients Markdown tables",
+            "| Cards | 0 | 8 | 0 |" in analysed.content[0].text and "| Red | 8 | 52 |" in analysed.content[0].text,
+            analysed.content[0].text,
+        )
         shown = await session.call_tool("deck_show", {"deck_id": deck["id"]})
         check("deck_show gives the view the deck data", shown.structured_content["main_total"] == 60, shown.structured_content)
         check("deck_show gives other clients a Markdown table", "| 52 | Mountain |" in shown.content[0].text, shown.content[0].text)
@@ -174,6 +190,8 @@ async def main() -> None:
         check("an unknown play format says so", bad_format.get("code") == "unknown-format", bad_format)
         shown_missing = await session.call_tool("deck_show", {"deck_id": "nope"})
         check("deck_show gives the reason as a tool error", shown_missing.is_error and shown_missing.content[0].text == "No deck with id nope.", shown_missing.content)
+        analysed_missing = await session.call_tool("deck_analyze", {"deck_id": "nope"})
+        check("deck_analyze gives the reason as a tool error", analysed_missing.is_error and analysed_missing.content[0].text == "No deck with id nope.", analysed_missing.content)
 
         wait_for_web()
         web_decks = web("/walker/ListDecks")["data"]["reports"][0]

@@ -51,7 +51,9 @@ import from walker_errors { WalkerError }
 glob APP_DIR: str = os.path.dirname(os.path.abspath(__file__)),
      LOCK: threading.Lock = threading.Lock(),
      GUEST_ROOT: list[str] = [],
-     DECK_UI: str = "ui://knowledge-pool/deck-table.html";
+     DECK_UI: str = "ui://knowledge-pool/deck-table.html",
+     MANA_UI: str = "ui://knowledge-pool/mana-analysis.html",
+     COLOUR_NAMES: dict[str, str] = {"W": "White", "U": "Blue", "B": "Black", "R": "Red", "G": "Green"};
 
 """Show a deck to the user as a table in the chat: cards by zone, totals and legality.
 Clients that support MCP Apps (Claude Desktop and claude.ai) render it as an HTML list
@@ -94,13 +96,64 @@ def power_toughness(card: any) -> str {
     return f"{card['power']}/{card['toughness']}";
 }
 
-"""MCP Apps: deck_show is bound to a self-contained HTML view (ui/deck_table.html)
-that the host renders in a sandboxed iframe and fills from the tool result."""
+"""Mana analysis for a deck: land count, coloured pips (spell demand) and
+coloured sources (lands and other cards that produce that colour), plus the
+non-land mana curve (card count by mana value, 0-6 and 7+) and its average.
+Main deck only - the sideboard is excluded. deck_get and deck_edit return the
+same analysis with the whole deck; this tool returns only the analysis.
+Clients that support MCP Apps show it as a chart; others get it as Markdown."""
+def deck_analyze(deck_id: str) -> CallToolResult {
+    view = deck_get(deck_id);
+    if "error" in view {
+        return CallToolResult(content=[TextContent(text=view["error"])], is_error=True);
+    }
+    analysis = {
+        "id": view["id"],
+        "name": view["name"],
+        "format": view["format"],
+        "main_total": view["main_total"],
+        "mana": view["mana"],
+        "curve": view["curve"]
+    };
+    return CallToolResult(content=[TextContent(text=mana_markdown(analysis))], structured_content=analysis);
+}
+
+"""The mana analysis as Markdown tables, for clients that do not render MCP Apps."""
+def mana_markdown(analysis: dict) -> str {
+    mana = analysis["mana"];
+    curve = analysis["curve"];
+    buckets = curve["buckets"] as dict[str, int];
+    non_land = sum(buckets.values());
+    used = [c for c in COLOUR_NAMES if mana["pips"].get(c, 0) or mana["sources"].get(c, 0)];
+    lines = [
+        f"## {analysis['name']}: mana ({analysis['format']}, main deck only)",
+        f"Lands: {mana['land_count']} · Non-land: {non_land} · Average mana value: {curve['average_mv']:.2f}",
+        "",
+        "| Mana value | " + " | ".join(buckets.keys()) + " |",
+        "|---|" + "|".join("--:" for _ in buckets) + "|",
+        "| Cards | " + " | ".join(str(n) for n in buckets.values()) + " |"
+    ];
+    if used {
+        lines += ["", "| Colour | Pips | Sources |", "|---|--:|--:|"];
+        lines += [f"| {COLOUR_NAMES[c]} | {mana['pips'][c]} | {mana['sources'][c]} |" for c in used];
+    } else {
+        lines += ["", "No coloured mana in the main deck yet."];
+    }
+    return "\n".join(lines);
+}
+
+"""MCP Apps: deck_show and deck_analyze are each bound to a self-contained HTML
+view (ui/deck_table.html, ui/mana_analysis.html) that the host renders in a
+sandboxed iframe and fills from the tool result."""
 def make_apps -> Apps {
     apps = Apps();
     apps.tool(resource_uri=DECK_UI)(deck_show);
+    apps.tool(resource_uri=MANA_UI)(deck_analyze);
     with open(os.path.join(APP_DIR, "ui", "deck_table.html"), encoding="utf-8") as f {
         apps.add_html_resource(DECK_UI, f.read(), title="Deck table", prefers_border=True);
+    }
+    with open(os.path.join(APP_DIR, "ui", "mana_analysis.html"), encoding="utf-8") as f {
+        apps.add_html_resource(MANA_UI, f.read(), title="Mana analysis", prefers_border=True);
     }
     return apps;
 }
@@ -112,7 +165,7 @@ glob server: MCPServer = MCPServer(
         + "Card data comes only from the MTGJSON catalogue: turn card names into oracle ids with "
         + "resolve_names (or search_cards) before adding them, and never add a card that was not "
         + "resolved. Give a short reason for every deck change. Finish with deck_validate. "
-        + "When the user wants to see a deck, call deck_show."
+        + "When the user wants to see a deck, call deck_show; for its mana curve and colours, call deck_analyze."
     ),
     extensions=[make_apps()]
 );
@@ -271,20 +324,6 @@ def deck_validate(deck_id: str) -> dict {
         "legal": view["legal"],
         "violations": view["violations"]
     };
-}
-
-"""Mana analysis for a deck: land count, coloured pips (spell demand) and
-coloured sources (lands and other cards that produce that colour), plus the
-non-land mana curve (card count by mana value, 0-6 and 7+) and its average.
-Main deck only - the sideboard is excluded. deck_get and deck_edit return the
-same analysis with the whole deck; this tool returns only the analysis."""
-@server.tool()
-def deck_analyze(deck_id: str) -> dict {
-    view = deck_get(deck_id);
-    if "error" in view {
-        return view;
-    }
-    return {"id": view["id"], "mana": view["mana"], "curve": view["curve"]};
 }
 
 """Export a deck: mtgdeck1 (lossless), mtgjson (lossless, export only), or text/arena/moxfield (lossy)."""
