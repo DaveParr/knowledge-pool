@@ -1,0 +1,188 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Card Details Mockup</title>
+<!--
+  STATIC MOCKUP for sign-off. Not wired to the server.
+  The deck view (ui/deck_table.html for deck_show, and deck_detail.cl.jac on the
+  web) keeps one compact line per card. Each card expands on its own to show the
+  rest of the in-game information: rules text (per face), stats, keywords,
+  oracle tags, this deck's notes for the card and rulings. No art or printing
+  info (artist, flavour text, rarity, sets). Sample data is the CARDS const below.
+  Fields marked NEW are not in the catalogue yet; MTGJSON AtomicCards has them.
+-->
+<style>
+  :root {
+    color-scheme: light dark;
+    --bg: var(--color-background-primary, light-dark(#ffffff, #1f1e1d));
+    --fg: var(--color-text-primary, light-dark(#1f1e1d, #f5f4ef));
+    --muted: var(--color-text-secondary, light-dark(#6b6a65, #a6a49c));
+    --line: var(--color-border-tertiary, light-dark(#e6e4dc, #3a3935));
+    --soft: light-dark(#f6f5f1, #282725);
+    --ok-bg: var(--color-background-success, light-dark(#e8f5e9, #16301b));
+    --ok-fg: var(--color-text-success, light-dark(#1b5e20, #9fd8a6));
+    --bad-bg: var(--color-background-danger, light-dark(#fdecea, #3a1714));
+    --bad-fg: var(--color-text-danger, light-dark(#8a1c13, #f2a59c));
+  }
+  html, body { margin: 0; background: var(--bg); color: var(--fg);
+    font: 14px/1.45 var(--font-sans, system-ui, sans-serif); }
+  main { padding: 12px 16px 16px; max-width: 720px; }
+  h1 { font-size: 17px; margin: 0 0 2px; }
+  .meta { color: var(--muted); margin: 0 0 10px; }
+  h2 { font-size: 13px; text-transform: uppercase; letter-spacing: .04em; color: var(--muted); margin: 14px 0 4px; }
+  .zonehead { display: flex; justify-content: space-between; align-items: baseline; }
+  button { font: inherit; font-size: 12px; color: var(--muted); background: none; border: 1px solid transparent;
+    border-radius: 6px; padding: 2px 8px; cursor: pointer; }
+  button:hover { border-color: var(--line); color: var(--fg); }
+
+  ul.cards { list-style: none; margin: 0; padding: 0; }
+  li.card { border-bottom: 1px solid var(--line); }
+  details > summary { list-style: none; cursor: pointer; display: grid;
+    grid-template-columns: 14px 2.2em 1fr 7em minmax(0, 34%); gap: 8px; align-items: baseline; padding: 6px 4px; }
+  details > summary::-webkit-details-marker { display: none; }
+  details > summary::before { content: "▸"; font-size: 10px; color: var(--muted); transition: transform .12s; }
+  details[open] > summary::before { transform: rotate(90deg); }
+  details[open] > summary { background: var(--soft); border-radius: 6px 6px 0 0; }
+  .n { text-align: right; font-variant-numeric: tabular-nums; }
+  .name { font-weight: 600; }
+  .cost { font-family: var(--font-mono, ui-monospace, monospace); font-size: 12px; white-space: nowrap; }
+  .type { color: var(--muted); font-size: 13px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
+  .body { background: var(--soft); border-radius: 0 0 6px 6px; padding: 4px 12px 12px 36px; display: grid; gap: 10px; }
+  .face { border-left: 2px solid var(--line); padding-left: 10px; }
+  .face h3 { font-size: 13px; margin: 0; display: flex; gap: 8px; align-items: baseline; flex-wrap: wrap; }
+  .face .ft { color: var(--muted); font-size: 12px; font-weight: 400; }
+  .rules { white-space: pre-line; margin: 4px 0 0; }
+  .stats { display: inline-block; margin-top: 4px; padding: 1px 8px; border: 1px solid var(--line); border-radius: 6px;
+    font-variant-numeric: tabular-nums; font-weight: 600; font-size: 13px; }
+  dl { display: grid; grid-template-columns: 8.5em 1fr; gap: 4px 10px; margin: 0; font-size: 13px; }
+  dt { color: var(--muted); }
+  dd { margin: 0; }
+  .pills { display: flex; flex-wrap: wrap; gap: 4px; }
+  .pill { display: inline-block; padding: 1px 8px; border-radius: 999px; background: var(--line);
+    color: var(--muted); font-size: 11px; white-space: nowrap; }
+  .pill.kw { background: var(--bg); border: 1px solid var(--line); color: var(--fg); }
+  .new { font-size: 10px; color: var(--muted); border: 1px dashed var(--muted); border-radius: 4px; padding: 0 4px; margin-left: 4px; }
+  details.rulings summary { display: block; padding: 0; color: var(--muted); font-size: 13px; }
+  details.rulings summary::before { content: "▸ "; }
+  details.rulings[open] summary::before { content: "▾ "; transform: none; }
+  details.rulings[open] summary { background: none; }
+  details.rulings ul { margin: 6px 0 0; padding-left: 18px; font-size: 13px; }
+  details.rulings li { margin-bottom: 4px; }
+  details.rulings time { color: var(--muted); font-size: 12px; margin-right: 6px; }
+
+  .mock { margin: 0 0 12px; padding: 6px 10px; border: 1px dashed var(--line); border-radius: 6px; color: var(--muted); font-size: 12px; }
+  .fallback { margin-top: 28px; border-top: 2px dashed var(--line); padding-top: 12px; }
+  .fallback pre { white-space: pre-wrap; background: var(--line); padding: 10px; border-radius: 6px;
+    font: 12px/1.45 var(--font-mono, ui-monospace, monospace); }
+  @media (max-width: 520px) {
+    details > summary { grid-template-columns: 14px 2em 1fr 6em; }
+    .type { display: none; }
+  }
+</style>
+</head>
+<body>
+<main>
+  <p class="mock">Mockup for sign-off · static sample data · <span class="new">NEW</span> marks fields not in the catalogue yet</p>
+  <h1>Izzet Tempo</h1>
+  <p class="meta">Standard · short sample list</p>
+  <div id="app"></div>
+
+  <section class="fallback">
+    <h2>Text fallback (Claude Code and other clients without MCP Apps)</h2>
+    <pre id="fallback"></pre>
+  </section>
+</main>
+
+<script>
+const CARDS = [
+  { zone: "main", count: 4, name: "Slickshot Show-Off", mana_cost: "{1}{R}", type_line: "Creature — Bird Wizard",
+    faces: [{ text: "Flying, haste\nWhenever you cast a noncreature spell, this creature gets +2/+0 until end of turn.\nPlot {1}{R} (You may exile this card from your hand and cast it as a sorcery on a later turn without paying its mana cost. Plot only as a sorcery.)", stats: "1/2" }],
+    keywords: ["Flying", "Haste", "Plot"],
+    oracle_tags: ["alliteration", "alternative-cost", "cast-trigger-you", "evasion", "prowess-like"],
+    deck: { roles: ["threat"], reason: "evasive two-drop that grows with spells", locked: true },
+    rulings: [
+      { date: "2024-04-12", text: "Exiling a card using its plot ability is a special action. Once you announce you’re taking that action, no other player can respond by trying to remove that card from your hand." },
+      { date: "2024-04-12", text: "You can’t cast a plotted card on the same turn it became plotted." }
+    ], open: true },
+  { zone: "main", count: 2, name: "Emeritus of Conflict // Lightning Bolt", mana_cost: "{1}{R} // {R}", type_line: "Creature — Human Wizard // Instant",
+    faces: [
+      { name: "Emeritus of Conflict", cost: "{1}{R}", type: "Creature — Human Wizard", text: "First strike\nWhenever you cast your third spell each turn, this creature becomes prepared. (While it’s prepared, you may cast a copy of its spell. Doing so unprepares it.)", stats: "2/1" },
+      { name: "Lightning Bolt", cost: "{R}", type: "Instant", text: "Lightning Bolt deals 3 damage to any target." }
+    ],
+    keywords: ["First strike", "Prepared"], oracle_tags: ["burn-any"], deck: { roles: ["removal"], reason: "", locked: false }, rulings: [{ date: "2026-03-20", text: "A creature without a prepare spell can’t become prepared." }], open: true },
+  { zone: "main", count: 4, name: "Lightning Strike", mana_cost: "{1}{R}", type_line: "Instant",
+    faces: [{ text: "Lightning Strike deals 3 damage to any target." }], keywords: [], oracle_tags: ["burn-any", "spot-removal"],
+    deck: { roles: ["removal"], reason: "cheap instant-speed removal", locked: false }, rulings: [] },
+  { zone: "main", count: 4, name: "Consider", mana_cost: "{U}", type_line: "Instant",
+    faces: [{ text: "Look at the top card of your library. You may put that card into your graveyard.\nDraw a card." }], keywords: ["Surveil"],
+    oracle_tags: ["cantrip"], deck: { roles: [], reason: "", locked: false }, rulings: [] },
+  { zone: "main", count: 10, name: "Island", mana_cost: "", type_line: "Basic Land — Island",
+    faces: [{ text: "({T}: Add {U}.)" }], keywords: [], oracle_tags: [], deck: { roles: ["land"], reason: "", locked: false }, rulings: [] },
+  { zone: "sideboard", count: 2, name: "Negate", mana_cost: "{1}{U}", type_line: "Instant",
+    faces: [{ text: "Counter target noncreature spell." }], keywords: [], oracle_tags: ["counterspell-noncreature"],
+    deck: { roles: ["counter"], reason: "against control", locked: false }, rulings: [] }
+];
+
+const esc = (s) => String(s ?? "").replace(/[&<>"']/g, (c) =>
+  ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[c]);
+const NEW = `<span class="new">NEW</span>`;
+
+function body(c) {
+  const faces = c.faces.map((f) => `
+    <div class="face">
+      ${f.name ? `<h3>${esc(f.name)} <span class="ft">${esc(f.cost)} · ${esc(f.type)}</span></h3>` : ""}
+      <p class="rules">${esc(f.text)}</p>
+      ${f.stats ? `<span class="stats" title="Power/toughness">${esc(f.stats)}</span>${NEW}` : ""}
+    </div>`).join("");
+  const notes = [
+    c.deck.roles.length ? `<span>${c.deck.roles.map((r) => `<span class="pill">${esc(r)}</span>`).join(" ")}</span>` : "",
+    c.deck.locked ? `<span class="pill">locked</span>` : "",
+    c.deck.reason ? `<span>“${esc(c.deck.reason)}”</span>` : ""
+  ].filter(Boolean).join(" ");
+  return `<div class="body">
+    ${faces}
+    <dl>
+      ${c.keywords.length ? `<dt>Keywords ${NEW}</dt><dd class="pills">${c.keywords.map((k) => `<span class="pill kw">${esc(k)}</span>`).join("")}</dd>` : ""}
+      ${c.oracle_tags.length ? `<dt>Oracle tags</dt><dd class="pills">${c.oracle_tags.map((t) => `<span class="pill">${esc(t)}</span>`).join("")}</dd>` : ""}
+      ${notes ? `<dt>In this deck</dt><dd>${notes}</dd>` : ""}
+    </dl>
+    ${c.rulings.length ? `<details class="rulings"><summary>${c.rulings.length} ruling${c.rulings.length > 1 ? "s" : ""} ${NEW}</summary>
+      <ul>${c.rulings.map((r) => `<li><time>${esc(r.date)}</time>${esc(r.text)}</li>`).join("")}</ul></details>` : ""}
+  </div>`;
+}
+
+function zone(title, key) {
+  const rows = CARDS.filter((c) => c.zone === key);
+  if (!rows.length) return "";
+  const total = rows.reduce((a, c) => a + c.count, 0);
+  return `<div class="zonehead"><h2>${title} (${total})</h2>
+      <span><button data-all="open" data-zone="${key}">Expand all</button><button data-all="close" data-zone="${key}">Collapse all</button></span></div>
+    <ul class="cards" data-zone="${key}">${rows.map((c) => `<li class="card"><details${c.open ? " open" : ""}>
+      <summary><span class="n">${c.count}</span><span class="name">${esc(c.name)}</span><span class="cost">${esc(c.mana_cost)}</span><span class="type">${esc(c.type_line)}</span></summary>
+      ${body(c)}</details></li>`).join("")}</ul>`;
+}
+
+document.getElementById("app").innerHTML = zone("Main deck", "main") + zone("Sideboard", "sideboard");
+document.getElementById("app").addEventListener("click", (e) => {
+  const b = e.target.closest("button[data-all]"); if (!b) return;
+  document.querySelectorAll(`ul[data-zone="${b.dataset.zone}"] > li > details`).forEach((d) => { d.open = b.dataset.all === "open"; });
+});
+
+document.getElementById("fallback").textContent = [
+  `## Izzet Tempo`,
+  `Standard, short sample list.`,
+  ``,
+  `### Main deck`,
+  ``,
+  `| # | Card | Cost | Type |`,
+  `|--:|---|---|---|`,
+  ...CARDS.filter((c) => c.zone === "main").map((c) => `| ${c.count} | ${c.name} | ${c.mana_cost} | ${c.type_line} |`),
+  ``,
+  `(Card details aren't in the table. Ask about a card and Claude calls get_card.)`
+].join("\n");
+</script>
+</body>
+</html>
