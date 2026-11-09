@@ -1,6 +1,6 @@
 import json
 
-from deckformats.base import ExportDeck, ParsedDeck, ParsedEntry
+from deckformats.base import ExportDeck, ParsedDeck, ParsedEntry, basic_entry_problem, unparsed_note
 
 
 class Mtgdeck1Format:
@@ -52,9 +52,7 @@ class Mtgdeck1Format:
             for entry in zone_entries:
                 problem = _entry_problem(entry)
                 if problem:
-                    name = entry.get("name") if isinstance(entry, dict) else None
-                    label = name if isinstance(name, str) and name else "<unnamed>"
-                    parsed.unparsed.append(f"{label} ({problem})")
+                    parsed.unparsed.append(unparsed_note(entry, problem))
                     continue
                 parsed.entries.append(
                     ParsedEntry(
@@ -79,13 +77,9 @@ def _is_str_list(value) -> bool:
 def _entry_problem(entry) -> str:
     """Why an entry can't be imported, or "" if it can. Mirrors the schema:
     a non-empty string name, an integer count >= 1, string-list roles/tags."""
-    if not isinstance(entry, dict):
-        return "invalid entry"
-    if not isinstance(entry.get("name"), str) or not entry["name"]:
-        return "invalid name"
-    count = entry.get("count")
-    if isinstance(count, bool) or not isinstance(count, int) or count < 1:
-        return "invalid count"
+    problem = basic_entry_problem(entry)
+    if problem:
+        return problem
     if not isinstance(entry.get("oracleId", ""), str):
         return "invalid oracleId"
     if not _is_str_list(entry.get("roles", [])):

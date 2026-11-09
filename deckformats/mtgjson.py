@@ -1,6 +1,6 @@
 import json
 
-from deckformats.base import ExportDeck, ParsedDeck, ParsedEntry
+from deckformats.base import ExportDeck, ParsedDeck, ParsedEntry, basic_entry_problem, unparsed_note
 
 MTGJSON_ZONE_KEYS = {
     "commander": "commander", "companion": "companion", "main": "mainBoard",
@@ -9,6 +9,13 @@ MTGJSON_ZONE_KEYS = {
 ZONE_BY_MTGJSON_KEY = {key: zone for zone, key in MTGJSON_ZONE_KEYS.items()}
 # MTGJSON deck lists that are not part of a deck we can hold.
 SKIPPED_KEYS = ("displayCommander", "tokens", "planes", "schemes")
+# Ends each `unparsed` note for a skipped list, e.g. "tokens (3 entries, not imported)".
+SKIPPED_SUFFIX = ", not imported)"
+
+
+def is_skipped_list_note(note: str) -> bool:
+    """True when an `unparsed` note is for a skipped non-card list, not a card."""
+    return note.endswith(SKIPPED_SUFFIX)
 
 
 class MtgjsonFormat:
@@ -44,11 +51,9 @@ class MtgjsonFormat:
         )
         for key, zone in ZONE_BY_MTGJSON_KEY.items():
             for entry in _zone_list(doc, key):
-                problem = _entry_problem(entry)
+                problem = basic_entry_problem(entry)
                 if problem:
-                    name = entry.get("name") if isinstance(entry, dict) else None
-                    label = name if isinstance(name, str) and name else "<unnamed>"
-                    parsed.unparsed.append(f"{label} ({problem})")
+                    parsed.unparsed.append(unparsed_note(entry, problem))
                     continue
                 identifiers = entry.get("identifiers")
                 oracle_id = identifiers.get("scryfallOracleId", "") if isinstance(identifiers, dict) else ""
@@ -60,7 +65,7 @@ class MtgjsonFormat:
             skipped = _zone_list(doc, key)
             if skipped:
                 noun = "entry" if len(skipped) == 1 else "entries"
-                parsed.unparsed.append(f"{key} ({len(skipped)} {noun}, not imported)")
+                parsed.unparsed.append(f"{key} ({len(skipped)} {noun}{SKIPPED_SUFFIX}")
         return parsed
 
 
@@ -72,14 +77,3 @@ def _zone_list(doc: dict, key: str) -> list:
         raise ValueError(f"Not a valid MTGJSON deck: `{key}` must be a list.")
     return entries
 
-
-def _entry_problem(entry) -> str:
-    """Why an entry can't be imported, or "" if it can."""
-    if not isinstance(entry, dict):
-        return "invalid entry"
-    if not isinstance(entry.get("name"), str) or not entry["name"]:
-        return "invalid name"
-    count = entry.get("count")
-    if isinstance(count, bool) or not isinstance(count, int) or count < 1:
-        return "invalid count"
-    return ""

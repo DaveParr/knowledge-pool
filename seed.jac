@@ -30,6 +30,7 @@ import from catalog.precons { DECK_TYPES, TRIES, DeckSource, Pick, candidates, f
 import from cards { check_catalogue, find_card }
 import from card_lines { CardLine }
 import from decks { Deck, ListDecks, GetDeck, DeckView }
+import from deckformats.mtgjson { is_skipped_list_note }
 import from deck_io { CreateDeckFromList, NewDeckResult, resolve_list }
 import from legality { Violation, check_lines, format_node }
 import from walker_errors { WalkerError }
@@ -100,6 +101,7 @@ def deck_names -> set[str] {
     return {d.name for d in decks};
 }
 
+"""A deck's card counts for the output line, e.g. "1 commander + 99 main"."""
 def card_count(view: DeckView) -> str {
     commander = sum([c.count for c in view.cards if c.zone == "commander"]);
     counts = f"{view.main_total} main";
@@ -147,7 +149,7 @@ def seed_format(source: DeckSource, deck_list: list[dict[str, str]], play_format
     }
     # The MTGJSON parser also lists the deck file's non-card lists (tokens,
     # displayCommander, ...) it skipped; those are not unresolved cards.
-    skipped = [u for u in result.unresolved if u.endswith(", not imported)")];
+    skipped = [u for u in result.unresolved if is_skipped_list_note(u)];
     unresolved = ", ".join([u for u in result.unresolved if u not in skipped]) or "none";
     line = f"{play_format}: {about} - {legal} - {card_count(view)} - unresolved: {unresolved}";
     if skipped {
