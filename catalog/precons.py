@@ -106,21 +106,17 @@ def try_order(entries: list[dict], rng: random.Random, tries: int) -> list[dict]
 @dataclass
 class Pick:
     entry: dict
-    # True or False when the pick was checked; None when it was taken unchecked.
-    legal: bool | None
+    legal: bool
     tried: list[str] = field(default_factory=list)
 
 
 def pick(entries: list[dict], rng: random.Random, is_legal: Callable[[dict], bool], tries: int = TRIES) -> Pick | None:
     """Pick one entry at random, preferring a legal one: try up to `tries`
     random entries and take the first that `is_legal` accepts, else the last
-    one tried. With `tries=1` the first pick is taken without checking. None
-    when there is nothing to pick."""
+    one tried. None when there is nothing to pick."""
     order = try_order(entries, rng, tries)
     if not order:
         return None
-    if tries == 1:
-        return Pick(entry=order[0], legal=None, tried=[order[0]["name"]])
     tried: list[str] = []
     legal = False
     for entry in order:

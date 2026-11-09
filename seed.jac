@@ -7,9 +7,9 @@
 
 Picks come from MTGJSON's DeckList.json (catalog/precons.py maps each deck type
 to a play format). For each format it tries up to 3 random precons and takes
-the first that is legal in that format today, else the last one tried; a
-commander precon is taken as-is. A precon whose name is already a deck in the
-graph is never picked again, so each run adds new decks.
+the first that is legal in that format today, else the last one tried. A
+precon whose name is already a deck in the graph is never picked again, so
+each run adds new decks.
 
 Decks are made by `CreateDeckFromList` on the shared guest root, the same
 graph the web app and MCP server use, so stop those first: two processes
@@ -27,9 +27,9 @@ import from urllib.error { URLError }
 import from contextlib { redirect_stdout }
 import from datetime { date }
 import from catalog.precons { DECK_TYPES, TRIES, DeckSource, Pick, candidates, format_rng, pick }
-import from cards { check_catalogue, find_card }
+import from cards { check_catalogue, card_node }
 import from card_lines { CardLine }
-import from decks { Deck, ListDecks, GetDeck, DeckView }
+import from decks { Deck, ListDecks, GetDeck, DeckView, card_line }
 import from deckformats.mtgjson { is_skipped_list_note }
 import from deck_io { CreateDeckFromList, NewDeckResult, resolve_list }
 import from legality { Violation, check_lines, format_node }
@@ -68,21 +68,10 @@ walker CheckList {
         }
         lines: list[CardLine] = [];
         for e in rl.entries {
-            c = find_card(e.oracle_id);
-            if c is None {
-                continue;
+            card = card_node(here, e.oracle_id);
+            if card is not None {
+                lines.append(card_line(card, e.zone, e.count));
             }
-            lines.append(
-                CardLine(
-                    oracle_id=e.oracle_id,
-                    name=c["name"] as str,
-                    zone=e.zone,
-                    count=e.count,
-                    type_line=c["type_line"] as str,
-                    text=c["text"] as str,
-                    legal=c["legal"] as dict[str, str]
-                )
-            );
         }
         report check_lines(lines, fmt);
     }
@@ -118,10 +107,8 @@ def card_count(view: DeckView) -> str {
 def seed_format(source: DeckSource, deck_list: list[dict[str, str]], play_format: str, seed: int) -> str {
     deck_type = DECK_TYPES[play_format];
     left = candidates(deck_list, play_format, deck_names(), date.today());
-    # No commander format until S06a (#50): take the first pick as-is.
-    tries = 1 if play_format == "commander" else TRIES;
     chosen: Pick | None = pick(
-        left, format_rng(seed, play_format), lambda(p: dict[str, str]) -> bool { return is_legal(source, p, play_format); }, tries
+        left, format_rng(seed, play_format), lambda(p: dict[str, str]) -> bool { return is_legal(source, p, play_format); }, TRIES
     );
     if chosen is None {
         return f"{play_format}: no precon left to add (every released {deck_type} is already in the graph)";
@@ -142,9 +129,9 @@ def seed_format(source: DeckSource, deck_list: list[dict[str, str]], play_format
     legal = "legal" if view.legal else f"illegal in {view.format}";
     if view.format != play_format {
         legal += f" (no {play_format} format yet, so it is checked as {view.format})";
-    } elif chosen.legal is True {
+    } elif chosen.legal {
         legal += f" (on try {len(chosen.tried)})";
-    } elif chosen.legal is False {
+    } else {
         legal += f" (no legal precon in {len(chosen.tried)} {'try' if len(chosen.tried) == 1 else 'tries'})";
     }
     # The MTGJSON parser also lists the deck file's non-card lists (tokens,

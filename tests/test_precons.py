@@ -80,17 +80,6 @@ def test_pick_takes_the_last_try_when_none_is_legal():
     assert picked.legal is False
 
 
-def test_pick_with_one_try_takes_the_first_pick_without_checking():
-    entries = [{"name": n} for n in "abc"]
-
-    def never(_entry):
-        raise AssertionError("not checked")
-
-    picked = precons.pick(entries, random.Random(1), never, tries=1)
-    assert picked.tried == [picked.entry["name"]]
-    assert picked.legal is None
-
-
 def test_pick_of_nothing_is_none():
     assert precons.pick([], random.Random(1), lambda e: True, tries=3) is None
 

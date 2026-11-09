@@ -375,8 +375,8 @@ def test_create_deck_from_a_real_mtgjson_deck_file(tmp_path, file_name, name, to
         assert result["unresolved"] == []
         view = _reports(client.post("/walker/GetDeck", json={"deck_id": result["deck_id"]}))[0]
         assert view["name"] == name
-        # Until the commander format exists (#50), a Commander Deck falls back to standard.
-        assert view["format"] == "standard"
+        # A Commander Deck imports as commander; anything else leaves the play format to the caller.
+        assert view["format"] == ("commander" if name == "Temur Roar" else "standard")
         zones = _zone_counts(view)
         assert {zone: sum(cards.values()) for zone, cards in zones.items()} == totals
         zone, card, count = summed

@@ -99,11 +99,11 @@ def test_seed_adds_one_precon_per_format_then_different_ones(fixture_catalog, tm
     by_format = {}
     for name, deck in decks.items():
         by_format.setdefault(deck["format"], []).append(name)
-    # The commander pick falls back to standard until there is a commander format.
-    commander = next(n for n in decks if n in ("Temur Roar", "Partners in the Wild"))
-    assert decks[commander]["legal"] is False
-    assert "illegal" in lines["commander"]
-    assert commander in lines["commander"] and "Commander Deck" in lines["commander"]
+    # Commander picks legal-first too: Temur Roar is a legal commander deck,
+    # Partners in the Wild (too few cards) is not.
+    assert decks["Temur Roar"]["format"] == "commander" and decks["Temur Roar"]["legal"] is True
+    assert "Temur Roar" in lines["commander"] and "Commander Deck" in lines["commander"]
+    assert " legal" in lines["commander"]
 
     # Legal-first: the first standard try was illegal, but a legal deck was taken,
     # and the rejected try left no deck behind.
