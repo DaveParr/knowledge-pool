@@ -34,7 +34,8 @@ node Deck {
 
 """Every zone a deck can hold cards in (the mtgdeck/1 zones), in display
 order. The one list of zones: every holdings change and every import checks
-against it. Legality looks only at main and sideboard (see legality.LEGALITY_ZONES)."""
+against it. Constructed legality looks only at main and sideboard (see
+legality.LEGALITY_ZONES); Commander also counts the commander and companion zones."""
 glob ZONES: list[str] = ["commander", "companion", "main", "sideboard", "maybeboard"];
 
 """Create a deck and report it. A blank name or an unknown format creates

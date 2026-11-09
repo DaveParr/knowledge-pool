@@ -7,7 +7,7 @@ is legal is always worked out here, on demand; it is never stored.
 
 import re;
 import from card_lines { CardLine, main_deck }
-import from commander { DECK_ZONES, CHECKED_ZONES, commanders, can_lead, identity, identity_label, commander_names, partner_ability, is_background, pair_problem }
+import from commander { DECK_ZONES, CHECKED_ZONES, commanders, can_lead, identity, identity_label, commander_names, partner_abilities, is_background, pair_problem }
 import from walker_errors { WalkerError }
 
 """Deck-construction rules for one format."""
@@ -105,7 +105,8 @@ def copy_limit_for(line: CardLine, fmt: Format) -> int | None {
     return fmt.copy_limit;
 }
 
-"""Check a deck's card lines against a format. Only LEGALITY_ZONES count."""
+"""Check a deck's card lines against a format. Constructed formats count only LEGALITY_ZONES;
+Commander goes to check_commander, which counts its own zones."""
 def check_lines(lines: list[CardLine], fmt: Format) -> list[Violation] {
     if fmt.name == "commander" {
         return check_commander(lines, fmt);
@@ -215,7 +216,7 @@ def check_commander(lines: list[CardLine], fmt: Format) -> list[Violation] {
         }
     }
     for (i, c) in enumerate(cmdrs) {
-        if paired and is_background(c) and partner_ability(cmdrs[1 - i]) == "choose a background" {
+        if paired and is_background(c) and "choose a background" in partner_abilities(cmdrs[1 - i]) {
             continue;
         }
         if not can_lead(c) {

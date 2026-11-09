@@ -522,7 +522,7 @@ def resolve_names(names: list[str]) -> dict {
     return catalog_resolve_names(names);
 }
 
-"""Deck-construction rules for a format: standard, pioneer or modern."""
+"""Deck-construction rules for a format: standard, pioneer, modern or commander."""
 @server.tool()
 def get_format_rules(format: str) -> dict {
     return outcome(run_walker(GetFormatRules(format=format)));
@@ -574,7 +574,8 @@ def deck_edit(deck_id: str, changes: list[dict] = [], format: str = "") -> dict 
     return outcome(run_walker(EditDeck(deck_id=deck_id, changes=changes)));
 }
 
-"""Check a deck against its format. Returns legal (true or false) and each violation."""
+"""Check a deck against its format. Returns legal (true or false), each violation and, for a
+Commander deck, game_changers (count, cards and a bracket hint; null for other formats)."""
 @server.tool()
 def deck_validate(deck_id: str) -> dict {
     view = deck_get(deck_id);

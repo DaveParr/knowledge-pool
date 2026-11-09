@@ -107,6 +107,20 @@ async def main() -> None:
             cmd_verdict,
         )
 
+        rhystic = (await call(session, "resolve_names", names=["Rhystic Study"]))["exact"][0]["oracle_id"]
+        gc_deck = await call(session, "deck_create", name="MCP Krenko Study", format="commander", cards=[
+            {"oracle_id": krenko, "count": 1, "zone": "commander", "reason": "commander"},
+            {"oracle_id": rhystic, "count": 1, "zone": "main", "reason": "draw"},
+            {"oracle_id": ids["Mountain"], "count": 97, "zone": "main", "reason": "mana base"},
+        ])
+        gc_shown = await session.call_tool("deck_show", {"deck_id": gc_deck["id"]})
+        gc_text = gc_shown.content[0].text
+        check(
+            "deck_show's text names the Game Changers and has a Commander heading",
+            "Game Changers: 1 (Rhystic Study)" in gc_text and "### Commander" in gc_text,
+            gc_text,
+        )
+
         hits = await call(session, "search_cards", query="deals 3 damage to any target", limit=5)
         check("search_cards returns cards", len(hits) > 0, hits)
 

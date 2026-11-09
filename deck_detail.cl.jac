@@ -263,6 +263,6 @@ def:pub DeckDetail(deckId: str, importNotes: list[str], onBack: Callable[[], Non
                 }
             }}
 
-            <AddCards deckId={deckId} cards={deck.cards} onChanged={changed}/>
+            <AddCards deckId={deckId} format={deck.format} cards={deck.cards} onChanged={changed}/>
         </section>;
 }
