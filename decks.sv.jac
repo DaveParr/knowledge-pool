@@ -9,6 +9,7 @@ import from datetime { datetime, timezone }
 import from cards { Card, card_node }
 import from card_lines { CardLine, main_deck }
 import from legality { Violation, FORMAT_LABELS, format_node, check_lines, unknown_format }
+import from commander { GameChangers, game_changers }
 import from mana { ManaProfile, ManaCurve, mana_profile, mana_curve }
 import from walker_errors { WalkerError }
 
@@ -102,7 +103,8 @@ obj DeckView {
         legal: bool = False,
         violations: list[Violation] = [],
         history: list[ChangeNote] = [],
-        rejected: list[str] = [];
+        rejected: list[str] = [],
+        game_changers: GameChangers | None = None;
 }
 
 """Every (edge, card) pair a deck holds. A card in both zones has two edges."""
@@ -182,7 +184,8 @@ def deck_view(deck: Deck) -> DeckView {
         sideboard_total=sum([l.count for l in lines if l.zone == "sideboard"]),
         legal=len(violations) == 0,
         violations=violations,
-        history=deck.history[-20:]
+        history=deck.history[-20:],
+        game_changers=game_changers(lines) if deck.format == "commander" else None
     );
 }
 

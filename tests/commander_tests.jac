@@ -2,7 +2,7 @@
 
 import from card_lines { CardLine }
 import from legality { Format, Violation, check_commander }
-import from commander { can_lead, commanders, identity, identity_label, commander_names, partner_ability, partner_abilities, is_background, is_time_lord_doctor, pair_problem }
+import from commander { can_lead, commanders, identity, identity_label, commander_names, partner_ability, partner_abilities, is_background, is_time_lord_doctor, pair_problem, bracket_hint, game_changers }
 
 glob CMD: Format = Format(name="commander", label="Commander", min_main=100, copy_limit=1, sideboard_max=0);
 
@@ -15,7 +15,8 @@ def _line(
     legal: dict[str, str] = {"commander": "Legal"},
     leadership: dict[str, bool] = {},
     text: str = "",
-    colour_identity: list[str] = []
+    colour_identity: list[str] = [],
+    game_changer: bool = False
 ) -> CardLine {
     return CardLine(
         oracle_id=name,
@@ -26,7 +27,8 @@ def _line(
         legal=legal,
         leadership=leadership,
         text=text,
-        colour_identity=colour_identity
+        colour_identity=colour_identity,
+        game_changer=game_changer
     );
 }
 
@@ -295,4 +297,26 @@ test "a partner-with aimed at the other card is not blamed for a mismatch" {
     a = _syn("A", "Partner with B");
     assert pair_problem(a, _syn("B", "Partner")) == "Partner with B and Partner don't pair";
     assert pair_problem(a, _syn("B", "Partner with C")) == "B can only partner with C";
+}
+
+test "bracket hint bands" {
+    assert bracket_hint(0) == "Bracket 1–2";
+    assert bracket_hint(1) == "Bracket 3";
+    assert bracket_hint(3) == "Bracket 3";
+    assert bracket_hint(4) == "Bracket 4+";
+    assert bracket_hint(9) == "Bracket 4+";
+}
+
+test "game changers are listed by name from commander, companion and main" {
+    lines = [
+        _line("Rhystic Study", "main", 1, game_changer=True),
+        _line("Chrome Mox", "main", 1, game_changer=True),
+        _line("Chrome Mox", "commander", 1, game_changer=True),
+        _line("Mana Vault", "sideboard", 1, game_changer=True),
+        _line("Counterspell", "main", 1)
+    ];
+    gc = game_changers(lines);
+    assert gc.cards == ["Chrome Mox", "Rhystic Study"];
+    assert gc.count == 2;
+    assert gc.bracket_hint == "Bracket 3";
 }

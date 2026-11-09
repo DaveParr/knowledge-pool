@@ -89,9 +89,22 @@ def deck_brief(view: dict) -> str {
         f"Shown to the user as an expandable deck list: {view['name']}, {view['format']}, "
         + f"{view['main_total']} main, {view['sideboard_total']} sideboard. "
         + ("Legal. " if view["legal"] else "Not legal: " + "; ".join(v["message"] for v in view["violations"]) + ". ")
+        + game_changers_note(view)
         + "The user can see every card, so do not list the cards again; "
         + "call deck_get if you need them to answer a question."
     );
+}
+
+"""For a Commander deck, a sentence with its Game Changers and bracket hint
+("" for other formats)."""
+def game_changers_note(view: dict) -> str {
+    gc = view.get("game_changers");
+    if gc is None {
+        return "";
+    }
+    cards = [str(c) for c in gc["cards"]];
+    listed = " (" + ", ".join(cards) + ")" if cards else "";
+    return f"Game Changers: {gc['count']}{listed}. Bracket hint from Game Changers only: {gc['bracket_hint']}. ";
 }
 
 """The deck as a compact Markdown table, for clients that do not render MCP
@@ -102,7 +115,11 @@ def deck_markdown(view: dict) -> str {
         f"{view['format']}, {view['main_total']} main, {view['sideboard_total']} sideboard. "
         + ("Legal." if view["legal"] else "Not legal: " + "; ".join(v["message"] for v in view["violations"]))
     ];
-    for (zone, title) in [("main", "Main deck"), ("sideboard", "Sideboard")] {
+    note = game_changers_note(view).strip();
+    if note {
+        lines.append(note);
+    }
+    for (zone, title) in [("commander", "Commander"), ("main", "Main deck"), ("sideboard", "Sideboard")] {
         rows = [c for c in view["cards"] if c["zone"] == zone];
         if rows {
             lines += ["", f"### {title}", "", "| # | Card | Cost | Type | P/T |", "|--:|---|---|---|--:|"];
@@ -568,7 +585,8 @@ def deck_validate(deck_id: str) -> dict {
         "deck_id": deck_id,
         "format": view["format"],
         "legal": view["legal"],
-        "violations": view["violations"]
+        "violations": view["violations"],
+        "game_changers": view["game_changers"]
     };
 }
 

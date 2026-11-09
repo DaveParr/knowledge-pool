@@ -167,3 +167,28 @@ def pair_problem(a: CardLine, b: CardLine) -> str {
     }
     return f"{_printed(_most_relevant(ab_a, b))} and {_printed(_most_relevant(ab_b, a))} don't pair";
 }
+
+"""Game Changers in a deck: their names (sorted), how many, and the bracket
+that count suggests. A hint from Game Changers only, not a full bracket rating."""
+obj GameChangers {
+    has cards: list[str] = [],
+        count: int = 0,
+        bracket_hint: str = "";
+}
+
+"""The bracket suggested by a Game Changer count: 0 is 1-2, 1 to 3 is 3, 4 or more is 4+."""
+def bracket_hint(count: int) -> str {
+    if count == 0 {
+        return "Bracket 1–2";
+    }
+    if count <= 3 {
+        return "Bracket 3";
+    }
+    return "Bracket 4+";
+}
+
+"""The distinct Game Changers in the commander, companion and main zones."""
+def game_changers(lines: list[CardLine]) -> GameChangers {
+    names = sorted(list({l.name for l in lines if l.game_changer and l.zone in CHECKED_ZONES}));
+    return GameChangers(cards=names, count=len(names), bracket_hint=bracket_hint(len(names)));
+}

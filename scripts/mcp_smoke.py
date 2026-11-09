@@ -101,6 +101,12 @@ async def main() -> None:
             cmd_verdict,
         )
 
+        check(
+            "deck_validate returns Game Changers for a Commander deck",
+            cmd_verdict["game_changers"]["count"] == 0 and cmd_verdict["game_changers"]["bracket_hint"] == "Bracket 1–2",
+            cmd_verdict,
+        )
+
         hits = await call(session, "search_cards", query="deals 3 damage to any target", limit=5)
         check("search_cards returns cards", len(hits) > 0, hits)
 
@@ -122,6 +128,7 @@ async def main() -> None:
 
         verdict = await call(session, "deck_validate", deck_id=deck["id"])
         check("deck_validate says legal", verdict["legal"] is True and verdict["violations"] == [], verdict)
+        check("deck_validate has no Game Changers for a Standard-style deck", verdict["game_changers"] is None, verdict)
 
         analysis = await call(session, "deck_analyze", deck_id=deck["id"])
         check("deck_analyze buckets the 4x Bolt and 4x Goblin Guide at mv 1", analysis["curve"]["buckets"]["1"] == 8, analysis)

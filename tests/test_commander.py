@@ -73,3 +73,35 @@ def test_validator_agrees_with_known_commander_decks(client, deck):
     assert view["legal"] == deck["legal"], view["violations"]
     assert sorted({v["rule"] for v in view["violations"]}) == deck["rules"]
 
+
+
+PRECON_TIMEY_WIMEY = next(d for d in DECKS if d["name"] == "Precon: Timey-Wimey")
+
+
+def test_game_changers_on_commander_decks(client):
+    view = _build(client, PRECON_TIMEY_WIMEY)
+    assert view["game_changers"] == {**view["game_changers"], "cards": ["Farewell"], "count": 1, "bracket_hint": "Bracket 3"}
+
+
+def test_four_game_changers_hint_bracket_4(client):
+    names = ["Rhystic Study", "Demonic Tutor", "Smothering Tithe", "Mana Vault"]
+    deck = {
+        "name": "Four changers",
+        "commander": {"Kenrith, the Returned King": 1},
+        "companion": {},
+        "main": {**{n: 1 for n in names}, "Plains": 95},
+        "sideboard": {},
+    }
+    view = _build(client, deck)
+    assert view["game_changers"]["count"] == 4
+    assert view["game_changers"]["bracket_hint"] == "Bracket 4+"
+
+
+def test_game_changers_only_on_commander_decks(client):
+    view = _build(client, PRECON_TIMEY_WIMEY)
+    assert view["game_changers"] is not None
+    deck_id = view["id"]
+    client.post("/walker/SetDeckFormat", json={"deck_id": deck_id, "format": "modern"})
+    assert _reports(client.post("/walker/GetDeck", json={"deck_id": deck_id}))[0]["game_changers"] is None
+    client.post("/walker/SetDeckFormat", json={"deck_id": deck_id, "format": "commander"})
+    assert _reports(client.post("/walker/GetDeck", json={"deck_id": deck_id}))[0]["game_changers"] is not None
