@@ -264,6 +264,49 @@ async def main() -> None:
         listed = await call(session, "deck_list")
         check("deck made in the web app shows over MCP", "Made in the app" in [d["name"] for d in listed], listed)
 
+    # A client that renders MCP Apps already shows the view, so the model gets a
+    # short brief instead of the full Markdown (otherwise it repeats the view).
+    # A second server process on the same saved graph, without the web app.
+    apps_params = StdioServerParameters(
+        command="uv",
+        args=["run", "jac", "run", "mcp_server.jac"],
+        cwd=str(ROOT),
+        env={**os.environ, "KP_WEB": "0"},
+    )
+    apps_ext = {"io.modelcontextprotocol/ui": {"mimeTypes": ["text/html;profile=mcp-app"]}}
+    async with stdio_client(apps_params) as (read, write), ClientSession(read, write, extensions=apps_ext) as session:
+        await session.initialize()
+        shown = await session.call_tool("deck_show", {"deck_id": deck["id"]})
+        check(
+            "deck_show gives an Apps client a brief, not the table",
+            shown.structured_content["main_total"] == 60
+            and shown.content[0].text.startswith("Shown to the user as an expandable deck list: MCP Burn")
+            and "| Mountain |" not in shown.content[0].text,
+            shown.content[0].text,
+        )
+        analysed = await session.call_tool("deck_analyze", {"deck_id": deck["id"]})
+        check(
+            "deck_analyze gives an Apps client the numbers on one line, not tables",
+            "52 lands" in analysed.content[0].text and "Red 8 pips, 52 sources" in analysed.content[0].text
+            and "|" not in analysed.content[0].text,
+            analysed.content[0].text,
+        )
+        found = await session.call_tool("card_search", {"deck_id": deck["id"], "query": "lightning bolt", "limit": 5})
+        check(
+            "card_search gives an Apps client the hits with oracle ids, not a table",
+            found.content[0].text.startswith("Shown to the user as a search panel")
+            and "Lightning Bolt (" in found.content[0].text and "4 main in deck" in found.content[0].text
+            and "|" not in found.content[0].text,
+            found.content[0].text,
+        )
+        exported = await session.call_tool("deck_export", {"deck_id": deck["id"]})
+        check(
+            "deck_export tells an Apps client not to paste the export, and still carries it",
+            exported.content[0].text.startswith("Shown to the user in the export view")
+            and "4 Lightning Bolt" in exported.content[0].text,
+            exported.content[0].text,
+        )
+
     print("all checks passed")
 
 
