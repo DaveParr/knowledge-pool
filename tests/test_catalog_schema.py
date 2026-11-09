@@ -9,7 +9,7 @@ from pathlib import Path
 import pytest
 
 from catalog import store
-from tests.old_catalog import drop_produced_mana
+from tests.old_catalog import drop_card_details, drop_produced_mana
 
 ROOT = Path(__file__).resolve().parent.parent
 
@@ -41,6 +41,21 @@ def test_old_schema_catalogue_names_what_is_missing_and_the_ingest_command(old_c
     assert str(old_catalog) in message
     assert "cards.produced_mana" in message
     assert "card_tags" in message
+    assert "uv run python -m catalog.ingest" in message
+
+
+def test_catalogue_from_before_card_details_names_the_new_columns(fixture_catalog):
+    con = sqlite3.connect(fixture_catalog)
+    drop_card_details(con)
+    con.commit()
+    con.close()
+    store.reset()
+    with pytest.raises(store.CatalogOutOfDate) as caught:
+        store.check_current()
+    message = str(caught.value)
+    for column in ("power", "toughness", "loyalty", "defense", "keywords", "faces"):
+        assert f"cards.{column}" in message
+    assert "cards.produced_mana" not in message
     assert "uv run python -m catalog.ingest" in message
 
 

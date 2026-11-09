@@ -7,7 +7,24 @@ deck's lines, so each can be tested without a graph. The one definition of a
 land (`CardLine.is_land`) and of the main deck (`main_deck`) live here.
 """
 
-"""One card in one zone of a deck, as every analyser and client sees it."""
+"""One face of a multi-face card (double-faced, split, adventure, prepare...),
+with its own cost, type line, rules text and stats. A stat the face lacks is
+"". Stats are text: MTGJSON gives "*" and "1+*" as well as numbers."""
+obj CardFace {
+    has name: str,
+        mana_cost: str = "",
+        type_line: str = "",
+        text: str = "",
+        power: str = "",
+        toughness: str = "",
+        loyalty: str = "",
+        defense: str = "";
+}
+
+"""One card in one zone of a deck, as every analyser and client sees it.
+`power`, `toughness`, `loyalty` and `defense` are the front face's ("" when it
+has none); `faces` lists every face of a multi-face card, and is empty for a
+one-face card."""
 obj CardLine {
     has oracle_id: str,
         name: str,
@@ -20,6 +37,12 @@ obj CardLine {
         legal: dict[str, str] = {},
         oracle_tags: list[str] = [],
         produced_mana: list[str] = [],
+        power: str = "",
+        toughness: str = "",
+        loyalty: str = "",
+        defense: str = "",
+        keywords: list[str] = [],
+        faces: list[CardFace] = [],
         roles: list[str] = [],
         tags: list[str] = [],
         locked: bool = False,

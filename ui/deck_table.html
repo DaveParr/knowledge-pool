@@ -11,6 +11,7 @@
     --fg: var(--color-text-primary, light-dark(#1f1e1d, #f5f4ef));
     --muted: var(--color-text-secondary, light-dark(#6b6a65, #a6a49c));
     --line: var(--color-border-tertiary, light-dark(#e6e4dc, #3a3935));
+    --soft: var(--color-background-secondary, light-dark(#f6f5f1, #282725));
     --ok-bg: var(--color-background-success, light-dark(#e8f5e9, #16301b));
     --ok-fg: var(--color-text-success, light-dark(#1b5e20, #9fd8a6));
     --bad-bg: var(--color-background-danger, light-dark(#fdecea, #3a1714));
@@ -27,32 +28,59 @@
   .status ul { margin: 4px 0 0; padding-left: 18px; }
   h2 { font-size: 13px; text-transform: uppercase; letter-spacing: .04em;
     color: var(--muted); margin: 14px 0 4px; }
-  table { width: 100%; border-collapse: collapse; table-layout: fixed; }
-  col.n { width: 3em; } col.cost { width: 7em; } col.type { width: 30%; } col.tags { width: 25%; }
-  th, td { text-align: left; padding: 5px 8px; border-bottom: 1px solid var(--line); vertical-align: top; }
-  th { font-weight: 600; color: var(--muted); font-size: 12px; }
-  td.n { text-align: right; font-variant-numeric: tabular-nums; }
-  td.cost { white-space: nowrap; font-family: var(--font-mono, ui-monospace, monospace); font-size: 12px; }
-  td.type { color: var(--muted); }
   .empty { color: var(--muted); }
-  td.card summary {
-    cursor: pointer; list-style: none; display: flex; align-items: center; gap: 5px;
-  }
-  td.card summary::-webkit-details-marker { display: none; }
-  td.card summary::before {
-    content: "▸"; display: inline-block; font-size: 10px; color: var(--muted);
-    transition: transform .12s ease;
-  }
-  td.card details[open] summary::before { transform: rotate(90deg); }
-  td.card .tip {
-    margin: 6px 0 2px; padding: 6px 8px; border-radius: 6px;
-    background: var(--line); font-size: 12px; line-height: 1.4; white-space: pre-line;
-  }
-  td.tags { display: flex; flex-wrap: wrap; gap: 4px; }
+  /* One compact line per card; each expands to its in-game details. */
+  .zonehead { display: flex; justify-content: space-between; align-items: baseline; gap: 8px; }
+  .zonehead button { font: inherit; font-size: 12px; color: var(--muted); background: none;
+    border: 1px solid transparent; border-radius: 6px; padding: 2px 8px; cursor: pointer; }
+  .zonehead button:hover { border-color: var(--line); color: var(--fg); }
+  :root { --cols: 10px 2.2em minmax(0, 1fr) 7em minmax(0, 30%) 3.5em; }
+  .colhead { display: grid; grid-template-columns: var(--cols); gap: 8px; padding: 0 4px 2px;
+    color: var(--muted); font-size: 12px; font-weight: 600; border-bottom: 1px solid var(--line); }
+  .colhead span:nth-child(2), .colhead span:last-child { text-align: right; }
+  ul.cards { list-style: none; margin: 0; padding: 0; }
+  li.card { border-bottom: 1px solid var(--line); }
+  li.card > details > summary { list-style: none; cursor: pointer; display: grid;
+    grid-template-columns: var(--cols); gap: 8px; align-items: baseline; padding: 5px 4px; }
+  li.card > details > summary::-webkit-details-marker { display: none; }
+  li.card > details > summary::before { content: "▸"; content: "▸" / ""; font-size: 10px; color: var(--muted); transition: transform .12s; }
+  li.card > details[open] > summary::before { transform: rotate(90deg); }
+  li.card > details[open] > summary { background: var(--soft); border-radius: 6px 6px 0 0; }
+  .n, .pt { text-align: right; font-variant-numeric: tabular-nums; }
+  .pt { font-weight: 600; }
+  .name { font-weight: 600; overflow-wrap: anywhere; }
+  .cost { white-space: nowrap; }
+  .type { color: var(--muted); font-size: 13px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .body { background: var(--soft); border-radius: 0 0 6px 6px; padding: 4px 12px 12px 30px;
+    display: grid; gap: 10px; font-size: 13px; }
+  .face { border-left: 2px solid var(--line); padding-left: 10px; }
+  .face h3 { font-size: 13px; margin: 0; display: flex; gap: 8px; align-items: baseline; flex-wrap: wrap; }
+  .face .ft { color: var(--muted); font-size: 12px; font-weight: 400; display: inline-flex; gap: 6px; align-items: center; }
+  .rules { white-space: pre-line; margin: 4px 0 0; }
+  .stats { display: inline-block; margin: 4px 6px 0 0; padding: 1px 8px; border: 1px solid var(--line);
+    border-radius: 6px; font-variant-numeric: tabular-nums; font-weight: 600; font-size: 12px; }
+  dl { display: grid; grid-template-columns: 8em minmax(0, 1fr); gap: 4px 10px; margin: 0; }
+  dt { color: var(--muted); }
+  dt.quiet { font-size: 12px; }
+  dd { margin: 0; }
+  dd.tags { color: var(--muted); font-size: 11px; }
+  .pills { display: flex; flex-wrap: wrap; gap: 4px; }
   .pill {
     display: inline-block; padding: 1px 8px; border-radius: 999px;
     background: var(--line); color: var(--muted); font-size: 11px; white-space: nowrap;
   }
+  .pill.kw { background: var(--bg); border: 1px solid var(--line); color: var(--fg); }
+  @media (max-width: 520px) {
+    :root { --cols: 10px 2em minmax(0, 1fr) 6em 3em; }
+    .type, .colhead span:nth-child(5) { display: none; }
+  }
+  /* Mana symbol pills (same as mana_cost.css in the web app). */
+  :root { --mana-w: #f8f3d6; --mana-u: #b4d7f0; --mana-b: #c8c1bd; --mana-r: #f0a68c; --mana-g: #9fd0ae; --mana-c: #d8d4cc; }
+  .mc-cost { display: inline-flex; flex-wrap: wrap; gap: 2px; align-items: center; vertical-align: middle; }
+  .mc-sym { display: inline-flex; align-items: center; justify-content: center; min-width: 18px; height: 18px;
+    padding: 0 4px; box-sizing: border-box; border-radius: 999px; border: 1px solid rgba(0, 0, 0, .18);
+    color: #1f1e1d; font: 600 11px/1 var(--font-sans, system-ui, sans-serif); font-variant-numeric: tabular-nums; }
+  .mc-sep { color: var(--muted); font-size: 11px; margin: 0 2px; }
 </style>
 </head>
 <body>
@@ -74,6 +102,18 @@
   const esc = (s) => String(s ?? "").replace(/[&<>"']/g, (c) =>
     ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[c]);
 
+  // "{1}{R} // {U}" -> symbol pills; hybrids like {W/U} are split diagonally.
+  const manaColour = (p) => "WUBRG".includes(p) && p.length === 1 ? `var(--mana-${p.toLowerCase()})` : "var(--mana-c)";
+  function manaPills(cost) {
+    if (!cost) return "";
+    const faces = String(cost).split("//").map((face) => (face.match(/\{[^}]+\}/g) || []).map((m) => {
+      const sym = m.slice(1, -1), parts = sym.split("/").filter((p) => p !== "P");
+      const bg = parts.length > 1 ? `linear-gradient(135deg, ${manaColour(parts[0])} 50%, ${manaColour(parts[1])} 50%)` : manaColour(parts[0] || sym);
+      return `<span class="mc-sym" style="background:${bg}">${esc(sym)}</span>`;
+    }).join(""));
+    return `<span class="mc-cost" role="img" aria-label="Mana cost ${esc(cost)}">${faces.join('<span class="mc-sep">//</span>')}</span>`;
+  }
+
   function applyHost(ctx) {
     if (!ctx) return;
     const vars = ctx.styles && ctx.styles.variables;
@@ -81,18 +121,58 @@
     if (ctx.theme) document.documentElement.style.colorScheme = ctx.theme;
   }
 
-  function zoneTable(title, rows) {
+  // Front-face power/toughness for the card's row ("2/2"), or "".
+  const pt = (c) => (c.power || c.toughness ? `${c.power}/${c.toughness}` : "");
+
+  // A face's stat badges: loyalty and defence, plus P/T when the row doesn't already show it.
+  function stats(f, withPT) {
+    const out = [];
+    if (withPT && pt(f)) out.push(`<span class="stats" title="Power/toughness">${esc(pt(f))}</span>`);
+    if (f.loyalty) out.push(`<span class="stats">Loyalty ${esc(f.loyalty)}</span>`);
+    if (f.defense) out.push(`<span class="stats">Defence ${esc(f.defense)}</span>`);
+    return out.length ? `<div>${out.join("")}</div>` : "";
+  }
+
+  // The expanded part of a card: rules text per face, stats, keywords, this
+  // deck's notes for the card, then Scryfall tags (last, in quieter text).
+  function details(c) {
+    const faces = (c.faces || []).length
+      ? c.faces.map((f, i) => `<div class="face">
+          <h3>${esc(f.name)} <span class="ft">${manaPills(f.mana_cost)}${f.mana_cost ? " · " : ""}${esc(f.type_line)}</span></h3>
+          ${f.text ? `<p class="rules">${esc(f.text)}</p>` : ""}${stats(f, i > 0)}</div>`).join("")
+      : (c.text || c.loyalty || c.defense
+        ? `<div class="face">${c.text ? `<p class="rules">${esc(c.text)}</p>` : ""}${stats(c, false)}</div>` : "");
+    const keywords = c.keywords || [], roles = c.roles || [], tags = c.oracle_tags || [];
+    const notes = [
+      ...roles.map((r) => `<span class="pill">${esc(r)}</span>`),
+      c.locked ? `<span class="pill">locked</span>` : "",
+      c.reason ? `<span>“${esc(c.reason)}”</span>` : "",
+    ].filter(Boolean).join(" ");
+    const rows = [
+      keywords.length ? `<dt>Keywords</dt><dd class="pills">${keywords.map((k) => `<span class="pill kw">${esc(k)}</span>`).join("")}</dd>` : "",
+      notes ? `<dt>In this deck</dt><dd>${notes}</dd>` : "",
+      tags.length ? `<dt class="quiet">Scryfall tags</dt><dd class="tags">${tags.map(esc).join(" · ")}</dd>` : "",
+    ].join("");
+    return `<div class="body">${faces}${rows ? `<dl>${rows}</dl>` : ""}</div>`;
+  }
+
+  function zoneList(title, zone, rows) {
     if (!rows.length) return "";
     const total = rows.reduce((a, r) => a + r.count, 0);
-    return `<h2>${esc(title)} (${total})</h2>
-      <table><colgroup><col class="n"><col><col class="cost"><col class="type"><col class="tags"></colgroup><thead><tr><th></th><th>Card</th><th>Cost</th><th>Type</th><th>Tags</th></tr></thead><tbody>
-      ${rows.map((r) => `<tr><td class="n">${r.count}</td><td class="card">${r.text
-          ? `<details><summary>${esc(r.name)}</summary><div class="tip">${esc(r.text)}</div></details>`
-          : esc(r.name)}</td>
-        <td class="cost">${esc(r.mana_cost)}</td><td class="type">${esc(r.type_line)}</td>
-        <td class="tags">${(r.oracle_tags || []).map((t) => `<span class="pill">${esc(t)}</span>`).join("")}</td></tr>`).join("")}
-      </tbody></table>`;
+    return `<div class="zonehead"><h2>${esc(title)} (${total})</h2>
+        <span><button type="button" data-all="open" data-zone="${zone}">Expand all</button><button type="button" data-all="close" data-zone="${zone}">Collapse all</button></span></div>
+      <div class="colhead" aria-hidden="true"><span></span><span>#</span><span>Card</span><span>Cost</span><span>Type</span><span>P/T</span></div>
+      <ul class="cards" data-zone="${zone}">${rows.map((r) => `<li class="card"><details>
+        <summary><span class="n">${r.count}</span><span class="name">${esc(r.name)}</span><span class="cost">${manaPills(r.mana_cost)}</span><span class="type" title="${esc(r.type_line)}">${esc(r.type_line)}</span><span class="pt">${esc(pt(r))}</span></summary>
+        ${details(r)}</details></li>`).join("")}</ul>`;
   }
+
+  // Expand all / Collapse all, per zone.
+  app.addEventListener("click", (e) => {
+    const b = e.target.closest("button[data-all]");
+    if (!b) return;
+    app.querySelectorAll(`ul[data-zone="${b.dataset.zone}"] > li > details`).forEach((d) => { d.open = b.dataset.all === "open"; });
+  });
 
   function render(deck) {
     if (!deck || deck.error) {
@@ -108,8 +188,8 @@
         <strong>${deck.legal ? "Legal" : "Not legal"}</strong>
         ${violations.length ? `<ul>${violations.map((v) => `<li>${esc(v.message)}</li>`).join("")}</ul>` : ""}
       </div>
-      ${zoneTable("Main deck", cards.filter((c) => c.zone === "main"))}
-      ${zoneTable("Sideboard", cards.filter((c) => c.zone === "sideboard"))}
+      ${zoneList("Main deck", "main", cards.filter((c) => c.zone === "main"))}
+      ${zoneList("Sideboard", "sideboard", cards.filter((c) => c.zone === "sideboard"))}
       ${cards.length ? "" : `<p class="empty">This deck has no cards yet.</p>`}`;
   }
 

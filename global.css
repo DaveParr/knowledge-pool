@@ -1,0 +1,89 @@
+/* App-wide look, shared with the MCP Apps views in ui/.
+
+   The token names match ui/deck_table.html and ui/mockups/*.html, so the web
+   app and the views Claude shows in chat look the same. Inside a chat host the
+   views take the host's --color-* variables; here only the fallbacks apply. */
+
+:root {
+  color-scheme: light dark;
+  --bg: light-dark(#ffffff, #1f1e1d);
+  --fg: light-dark(#1f1e1d, #f5f4ef);
+  --muted: light-dark(#6b6a65, #a6a49c);
+  --line: light-dark(#e6e4dc, #3a3935);
+  --soft: light-dark(#f6f5f1, #282725);
+  --ok-bg: light-dark(#e8f5e9, #16301b);
+  --ok-fg: light-dark(#1b5e20, #9fd8a6);
+  --bad-bg: light-dark(#fdecea, #3a1714);
+  --bad-fg: light-dark(#8a1c13, #f2a59c);
+  --warn-bg: light-dark(#fff8e1, #33290f);
+  --warn-fg: light-dark(#7a5300, #f0c96a);
+  --accent: light-dark(#2a78d6, #3987e5);
+  --series-1: light-dark(#2a78d6, #3987e5);
+  --series-2: light-dark(#eb6834, #d95926);
+  /* Mana symbol fills: light in both themes, with dark text, like printed symbols. */
+  --mana-w: #f8f3d6;
+  --mana-u: #b4d7f0;
+  --mana-b: #c8c1bd;
+  --mana-r: #f0a68c;
+  --mana-g: #9fd0ae;
+  --mana-c: #d8d4cc;
+  --font-sans: system-ui, -apple-system, sans-serif;
+  --font-mono: ui-monospace, SFMono-Regular, Menlo, monospace;
+}
+
+html, body {
+  margin: 0;
+  background: var(--bg);
+  color: var(--fg);
+  font: 14px/1.45 var(--font-sans);
+}
+
+.page { max-width: 860px; margin: 0 auto; padding: 24px 16px 48px; }
+.page.narrow { max-width: 640px; }
+
+h1 { font-size: 20px; margin: 0 0 2px; }
+h2 {
+  font-size: 13px; text-transform: uppercase; letter-spacing: .04em;
+  color: var(--muted); margin: 22px 0 6px;
+}
+.meta { color: var(--muted); margin: 0 0 12px; }
+.empty { color: var(--muted); }
+
+a { color: var(--accent); }
+
+button {
+  font: inherit; font-size: 13px; color: var(--fg); background: var(--bg);
+  border: 1px solid var(--line); border-radius: 6px; padding: 4px 10px;
+  cursor: pointer; white-space: nowrap;
+}
+button:hover { border-color: var(--muted); }
+button.primary { background: var(--accent); border-color: var(--accent); color: #fff; }
+button.quiet { border-color: transparent; color: var(--muted); }
+button.quiet:hover { border-color: var(--line); color: var(--fg); }
+
+input, select, textarea {
+  font: inherit; color: var(--fg); background: var(--bg);
+  border: 1px solid var(--line); border-radius: 6px; padding: 5px 8px;
+}
+textarea { font: 12px/1.45 var(--font-mono); box-sizing: border-box; width: 100%; }
+input:focus-visible, select:focus-visible, textarea:focus-visible, button:focus-visible {
+  outline: 2px solid var(--accent); outline-offset: 1px;
+}
+
+.status { padding: 8px 12px; border-radius: 6px; margin-bottom: 12px; }
+.status.ok { background: var(--ok-bg); color: var(--ok-fg); }
+.status.bad { background: var(--bad-bg); color: var(--bad-fg); }
+.status.warn { background: var(--warn-bg); color: var(--warn-fg); }
+.status ul { margin: 4px 0 0; padding-left: 18px; }
+
+.pill {
+  display: inline-block; padding: 1px 8px; border-radius: 999px;
+  background: var(--line); color: var(--muted); font-size: 11px; white-space: nowrap;
+}
+.pill.ok { background: var(--ok-bg); color: var(--ok-fg); }
+
+.toast {
+  padding: 6px 10px; border-radius: 6px; background: var(--ok-bg); color: var(--ok-fg);
+  font-size: 13px; margin: 6px 0;
+}
+.error { color: var(--bad-fg); }

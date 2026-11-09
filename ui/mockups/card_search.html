@@ -1,0 +1,171 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Card Search Mockup</title>
+<!--
+  STATIC MOCKUP for sign-off. Not wired to the server.
+  Decided on #68: a deck-aware search tool, so hits carry "in deck" counts. It renders hits from structuredContent,
+  re-runs searches with tools/call search_cards, and adds cards with
+  tools/call deck_edit {oracle_id, count, zone, reason} through the host,
+  so it never needs to reach localhost. Each add is reported back to the model
+  (ui/message or updated model context) so Claude knows the deck changed.
+  Here the buttons only change local state.
+-->
+<style>
+  :root {
+    color-scheme: light dark;
+    --bg: var(--color-background-primary, light-dark(#ffffff, #1f1e1d));
+    --fg: var(--color-text-primary, light-dark(#1f1e1d, #f5f4ef));
+    --muted: var(--color-text-secondary, light-dark(#6b6a65, #a6a49c));
+    --line: var(--color-border-tertiary, light-dark(#e6e4dc, #3a3935));
+    --ok-bg: var(--color-background-success, light-dark(#e8f5e9, #16301b));
+    --ok-fg: var(--color-text-success, light-dark(#1b5e20, #9fd8a6));
+    --accent: light-dark(#2a78d6, #3987e5);
+  }
+  html, body { margin: 0; background: var(--bg); color: var(--fg);
+    font: 14px/1.45 var(--font-sans, system-ui, sans-serif); }
+  main { padding: 12px 16px 16px; max-width: 640px; }
+  h1 { font-size: 17px; margin: 0 0 2px; }
+  .meta { color: var(--muted); margin: 0 0 10px; }
+  h2 { font-size: 13px; text-transform: uppercase; letter-spacing: .04em; color: var(--muted); margin: 18px 0 6px; }
+  form { display: flex; gap: 6px; margin-bottom: 8px; }
+  input[type=search] { flex: 1; min-width: 0; font: inherit; color: var(--fg); background: var(--bg);
+    border: 1px solid var(--line); border-radius: 6px; padding: 6px 10px; }
+  button { font: inherit; font-size: 13px; color: var(--fg); background: var(--bg);
+    border: 1px solid var(--line); border-radius: 6px; padding: 4px 10px; cursor: pointer; white-space: nowrap; }
+  button:hover { border-color: var(--muted); }
+  button.primary { background: var(--accent); border-color: var(--accent); color: #fff; }
+  .count { color: var(--muted); font-size: 12px; margin: 0 0 4px; }
+  ul.hits { list-style: none; margin: 0; padding: 0; }
+  li.hit { display: grid; grid-template-columns: 1fr auto; gap: 4px 10px; padding: 8px 0; border-bottom: 1px solid var(--line); }
+  .hit .title { display: flex; flex-wrap: wrap; gap: 4px 8px; align-items: baseline; }
+  .hit .name { font-weight: 600; }
+  .hit .cost { font-family: var(--font-mono, ui-monospace, monospace); font-size: 12px; color: var(--muted); }
+  .hit .type { color: var(--muted); font-size: 12px; }
+  .hit .text { grid-column: 1 / 2; font-size: 12px; color: var(--muted); white-space: pre-line; }
+  .hit .actions { grid-row: 1 / 3; grid-column: 2; display: flex; flex-direction: column; gap: 4px; align-items: stretch; }
+  .in-deck { display: inline-block; padding: 1px 8px; border-radius: 999px; font-size: 11px; background: var(--ok-bg); color: var(--ok-fg); }
+  .toast { padding: 6px 10px; border-radius: 6px; background: var(--ok-bg); color: var(--ok-fg); font-size: 13px; margin: 6px 0; }
+  .empty { color: var(--muted); padding: 10px 0; }
+  .states { display: grid; gap: 8px; }
+  .state { border: 1px solid var(--line); border-radius: 8px; padding: 8px 10px; }
+  .state .lbl { font-size: 11px; color: var(--muted); text-transform: uppercase; letter-spacing: .04em; }
+  .mock { margin: 0 0 12px; padding: 6px 10px; border: 1px dashed var(--line); border-radius: 6px; color: var(--muted); font-size: 12px; }
+  .fallback { margin-top: 28px; border-top: 2px dashed var(--line); padding-top: 12px; }
+  .fallback pre { white-space: pre-wrap; background: var(--line); padding: 10px; border-radius: 6px;
+    font: 12px/1.45 var(--font-mono, ui-monospace, monospace); }
+  @media (max-width: 420px) { .hit .actions { flex-direction: row; grid-row: auto; grid-column: 1 / -1; } li.hit { grid-template-columns: 1fr; } }
+  /* Mana symbol pills (same as mana_cost.css in the web app). */
+  :root { --mana-w: #f8f3d6; --mana-u: #b4d7f0; --mana-b: #c8c1bd; --mana-r: #f0a68c; --mana-g: #9fd0ae; --mana-c: #d8d4cc; }
+  .mc-cost { display: inline-flex; flex-wrap: wrap; gap: 2px; align-items: center; vertical-align: middle; }
+  .mc-sym { display: inline-flex; align-items: center; justify-content: center; min-width: 18px; height: 18px;
+    padding: 0 4px; box-sizing: border-box; border-radius: 999px; border: 1px solid rgba(0, 0, 0, .18);
+    color: #1f1e1d; font: 600 11px/1 var(--font-sans, system-ui, sans-serif); font-variant-numeric: tabular-nums; }
+  .mc-sep { color: var(--muted); font-size: 11px; margin: 0 2px; }
+</style>
+</head>
+<body>
+<main>
+  <p class="mock">Mockup for sign-off · static sample data · buttons only change local state here</p>
+
+  <h1>Add cards to Izzet Tempo</h1>
+  <p class="meta" id="deckmeta"></p>
+
+  <form id="f">
+    <input type="search" id="q" aria-label="Search cards" value="lightning">
+    <button type="submit" class="primary">Search</button>
+  </form>
+  <div id="toast"></div>
+  <p class="count" id="count"></p>
+  <ul class="hits" id="hits"></ul>
+
+  <h2>Other states</h2>
+  <div class="states">
+    <div class="state"><div class="lbl">No matches</div><p class="empty">No cards match “lightnign”. Every word must match the start of a word in the name, type or rules text.</p></div>
+    <div class="state"><div class="lbl">Search failed</div><p class="empty">Card search isn’t available right now. The catalogue may need rebuilding (see #61). The deck is unchanged.</p></div>
+  </div>
+
+  <section class="fallback">
+    <h2>Text fallback (Claude Code and other clients without MCP Apps)</h2>
+    <pre id="fallback"></pre>
+  </section>
+</main>
+
+<script>
+// Shape follows search_cards in mcp_server.jac (oracle_id, name, mana_cost, type_line, text),
+// plus in_deck counts the real view would get from a deck-aware search.
+const DECK = { name: "Izzet Tempo", format: "Standard", main_total: 58, sideboard_total: 15 };
+const HITS = [
+  { oracle_id: "a1", name: "Lightning Strike", mana_cost: "{1}{R}", type_line: "Instant",
+    text: "Lightning Strike deals 3 damage to any target.", in_deck: { main: 2 } },
+  { oracle_id: "a2", name: "Lightning Helix", mana_cost: "{R}{W}", type_line: "Instant",
+    text: "Lightning Helix deals 3 damage to any target and you gain 3 life.", in_deck: {} },
+  { oracle_id: "a3", name: "Lightning Axe", mana_cost: "{R}", type_line: "Instant",
+    text: "As an additional cost to cast this spell, discard a card or pay {5}.\nLightning Axe deals 5 damage to target creature.", in_deck: {} },
+  { oracle_id: "a4", name: "Electrostatic Field", mana_cost: "{1}{R}", type_line: "Creature — Wall",
+    text: "Defender\nWhenever you cast an instant or sorcery spell, Electrostatic Field deals 1 damage to each opponent.", in_deck: { sideboard: 1 } }
+];
+
+const esc = (s) => String(s ?? "").replace(/[&<>"']/g, (c) =>
+  ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[c]);
+
+  // "{1}{R} // {U}" -> symbol pills; hybrids like {W/U} are split diagonally.
+  const manaColour = (p) => "WUBRG".includes(p) && p.length === 1 ? `var(--mana-${p.toLowerCase()})` : "var(--mana-c)";
+  function manaPills(cost) {
+    if (!cost) return "";
+    const faces = String(cost).split("//").map((face) => (face.match(/\{[^}]+\}/g) || []).map((m) => {
+      const sym = m.slice(1, -1), parts = sym.split("/").filter((p) => p !== "P");
+      const bg = parts.length > 1 ? `linear-gradient(135deg, ${manaColour(parts[0])} 50%, ${manaColour(parts[1])} 50%)` : manaColour(parts[0] || sym);
+      return `<span class="mc-sym" style="background:${bg}">${esc(sym)}</span>`;
+    }).join(""));
+    return `<span class="mc-cost" role="img" aria-label="Mana cost ${esc(cost)}">${faces.join('<span class="mc-sep">//</span>')}</span>`;
+  }
+
+function meta() {
+  document.getElementById("deckmeta").textContent =
+    `${DECK.format} · ${DECK.main_total} main · ${DECK.sideboard_total} sideboard`;
+}
+
+function renderHits() {
+  document.getElementById("count").textContent = `${HITS.length} cards match “${document.getElementById("q").value}”`;
+  document.getElementById("hits").innerHTML = HITS.map((h) => {
+    const held = Object.entries(h.in_deck).filter(([, n]) => n)
+      .map(([z, n]) => `<span class="in-deck">${n} in ${z}</span>`).join(" ");
+    return `<li class="hit">
+      <div class="title"><span class="name">${esc(h.name)}</span><span class="cost">${manaPills(h.mana_cost)}</span><span class="type">${esc(h.type_line)}</span>${held}</div>
+      <div class="text">${esc(h.text)}</div>
+      <div class="actions">
+        <button data-id="${h.oracle_id}" data-zone="main" aria-label="Add ${esc(h.name)} to main deck">+ Main</button>
+        <button data-id="${h.oracle_id}" data-zone="sideboard" aria-label="Add ${esc(h.name)} to sideboard">+ Side</button>
+      </div></li>`;
+  }).join("");
+}
+
+document.getElementById("hits").addEventListener("click", (e) => {
+  const b = e.target.closest("button"); if (!b) return;
+  const h = HITS.find((x) => x.oracle_id === b.dataset.id);
+  const z = b.dataset.zone;
+  h.in_deck[z] = (h.in_deck[z] || 0) + 1;
+  if (z === "main") DECK.main_total++; else DECK.sideboard_total++;
+  // Real view: tools/call deck_edit with reason "added from card search", then re-render from the result.
+  document.getElementById("toast").innerHTML =
+    `<div class="toast" role="status">Added 1 ${esc(h.name)} to ${z === "main" ? "main deck" : "sideboard"} (now ${h.in_deck[z]}).</div>`;
+  meta(); renderHits();
+});
+document.getElementById("f").addEventListener("submit", (e) => { e.preventDefault(); renderHits(); });
+
+meta(); renderHits();
+document.getElementById("fallback").textContent = [
+  `4 cards match "lightning":`,
+  ``,
+  `| Card | Cost | Type | In deck |`,
+  `|---|---|---|---|`,
+  ...HITS.map((h) => `| ${h.name} | ${h.mana_cost} | ${h.type_line} | ${Object.entries(h.in_deck).map(([z, n]) => `${n} ${z}`).join(", ") || "-"} |`),
+  ``,
+  `Which should I add, how many, and to main or sideboard?`
+].join("\n");
+</script>
+</body>
+</html>

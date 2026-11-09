@@ -9,7 +9,7 @@ import from decks {
 }
 import from legality { Violation }
 import from card_lines { CardLine }
-import from cards { CardHit, CardSearch, CatalogInfo, search_cards, catalog_info, check_catalogue }
+import from cards { CardHit, CardSearch, CatalogInfo, search_cards, catalog_info, check_catalogue, RefreshCards }
 import from deck_io { DeckExport, DeckImport, CreateDeckFromList }
 
 # Refuse to serve a catalogue built by older code: the error names the ingest command.

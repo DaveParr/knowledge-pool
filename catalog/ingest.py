@@ -49,7 +49,13 @@ CREATE TABLE cards (
     type_line TEXT NOT NULL,
     text TEXT NOT NULL,
     legalities TEXT NOT NULL,       -- JSON object, format -> "Legal" / "Banned" / "Restricted"
-    produced_mana TEXT NOT NULL     -- JSON list, e.g. ["W", "U"]
+    produced_mana TEXT NOT NULL,    -- JSON list, e.g. ["W", "U"]
+    power TEXT NOT NULL,            -- front face; "" when it has none. Text: "*", "1+*"
+    toughness TEXT NOT NULL,        -- front face, as power
+    loyalty TEXT NOT NULL,          -- front face, as power
+    defense TEXT NOT NULL,          -- front face, as power
+    keywords TEXT NOT NULL,         -- JSON list, e.g. ["Flying", "Haste"]
+    faces TEXT NOT NULL             -- JSON list of face objects (see card_faces); [] for one face
 );
 CREATE UNIQUE INDEX cards_name ON cards(name COLLATE NOCASE);
 CREATE VIRTUAL TABLE cards_fts USING fts5(
@@ -119,13 +125,39 @@ def load_oracle_tags(source: Path) -> tuple[list[tuple], list[tuple]]:
     return list(tag_rows.values()), list(card_tag_rows.values())
 
 
+def card_faces(faces: list[dict]) -> list[dict]:
+    """Each face of a multi-face card (double-faced, split, adventure, prepare,
+    flip...) with its own name, cost, type line, rules text and stats, in
+    MTGJSON order (front first). A one-face card gives []: its row already
+    holds all of it."""
+    if len(faces) < 2:
+        return []
+    return [
+        {
+            "name": f.get("faceName") or f.get("name", ""),
+            "mana_cost": f.get("manaCost", ""),
+            "type_line": f.get("type", ""),
+            "text": f.get("text", ""),
+            "power": f.get("power", ""),
+            "toughness": f.get("toughness", ""),
+            "loyalty": f.get("loyalty", ""),
+            "defense": f.get("defense", ""),
+        }
+        for f in faces
+    ]
+
+
 def card_row(name: str, faces: list[dict]) -> tuple:
     """Flatten one MTGJSON atomic card (one or more faces) into a cards row."""
     first = faces[0]
     oracle_id = first.get("identifiers", {}).get("scryfallOracleId") or name
     types: list[str] = []
     produced_mana: list[str] = []
+    keywords: list[str] = []
     for face in faces:
+        for k in face.get("keywords", []):
+            if k not in keywords:
+                keywords.append(k)
         for t in face.get("types", []):
             if t not in types:
                 types.append(t)
@@ -143,6 +175,12 @@ def card_row(name: str, faces: list[dict]) -> tuple:
         "\n//\n".join(f.get("text", "") for f in faces if f.get("text")),
         json.dumps(first.get("legalities", {})),
         json.dumps(produced_mana),
+        first.get("power", ""),
+        first.get("toughness", ""),
+        first.get("loyalty", ""),
+        first.get("defense", ""),
+        json.dumps(keywords),
+        json.dumps(card_faces(faces)),
     )
 
 
@@ -163,7 +201,7 @@ def build(atomic: dict, out: Path, tags: tuple[list[tuple], list[tuple]] | None 
         for name, faces in atomic["data"].items():
             row = card_row(name, faces)
             rows.setdefault(row[0], row)  # same oracle id twice: keep the first
-        con.executemany("INSERT INTO cards VALUES (?,?,?,?,?,?,?,?,?,?)", rows.values())
+        con.executemany("INSERT INTO cards VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)", rows.values())
         con.execute("INSERT INTO cards_fts(cards_fts) VALUES ('rebuild')")
         tag_rows, card_tag_rows = tags or ([], [])
         con.executemany("INSERT INTO tags VALUES (?,?,?)", tag_rows)

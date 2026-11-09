@@ -1,33 +1,124 @@
-"""One deck: search real cards, add them, change counts, remove them."""
+"""One deck: legality, mana, its cards by zone, card search and export.
 
-import from .export_menu { ExportMenu }
+Laid out like the MCP Apps views Claude shows in chat: the card lists follow
+ui/deck_table.html, and ManaPanel, CardSearch and ExportPanel are the web twins
+of the mana, search and export apps (#67, #68, #69).
+"""
+
+import "./deck_detail.css";
+import from .export_panel { ExportPanel }
+import from .mana_panel { ManaPanel }
+import from .card_search { AddCards }
+import from .mana_cost { ManaCost }
 import from .walker_failure { failureMessage }
 
 sv import from decks {
-    DeckView, FormatInfo, GetDeck, SetDeckFormat, AddCard, SetCardCount, RemoveCard, list_formats
+    DeckView, FormatInfo, GetDeck, SetDeckFormat, SetCardCount, RemoveCard, list_formats
 }
 sv import from legality { Violation }
 sv import from mana { ManaProfile }
 sv import from card_lines { CardLine }
-sv import from cards { CardHit, CardSearch, search_cards }
 sv import from walker_errors { WalkerError }
+
+"""Zones in display order, with their headings."""
+glob ZONES: list[tuple[str, str]] = [
+    ("commander", "Commander"),
+    ("companion", "Companion"),
+    ("main", "Main deck"),
+    ("sideboard", "Sideboard"),
+    ("maybeboard", "Maybeboard")
+];
+
+"""One card line's key: a card can be in more than one zone."""
+def rowKey(line: CardLine) -> str {
+    return line.zone + ":" + line.oracle_id;
+}
+
+"""Power/toughness as "2/2", or "" for a card or face without them."""
+def powerToughness(power: str, toughness: str) -> str {
+    return power + "/" + toughness if power or toughness else "";
+}
+
+"""A face's stat badges: loyalty and defence, and P/T when `withPT` (the
+card's row already shows the front face's P/T)."""
+def FaceStats(power: str, toughness: str, loyalty: str, defense: str, withPT: bool) -> JsxElement {
+    pt = powerToughness(power, toughness) if withPT else "";
+    if not (pt or loyalty or defense) {
+        return <></>;
+    }
+    return
+        <div>
+            {<span className="dd-stats" title="Power/toughness">{pt}</span> if pt else None}
+            {<span className="dd-stats">{"Loyalty " + loyalty}</span> if loyalty else None}
+            {<span className="dd-stats">{"Defence " + defense}</span> if defense else None}
+        </div>;
+}
+
+"""A card's expanded details: rules text per face (with each face's name, cost,
+type and stats), keywords, this deck's notes for the card, then Scryfall tags
+last, in quieter text. Follows the expanded rows of ui/deck_table.html."""
+def:pub CardDetails(line: CardLine) -> JsxElement {
+    notes = len(line.roles) > 0 or line.locked or line.reason != "";
+    return
+        <div className="dd-body">
+            {if len(line.faces) > 0 {
+                for (i, face) in enumerate(line.faces) {
+                    <div key={str(i)} className="dd-face">
+                        <h3>
+                            {face.name}
+                            <span className="dd-ft">
+                                {<ManaCost cost={face.mana_cost}/> if face.mana_cost else None}
+                                {(" · " if face.mana_cost else "") + face.type_line}
+                            </span>
+                        </h3>
+                        {<p className="dd-rules">{face.text}</p> if face.text else None}
+                        <FaceStats
+                            power={face.power}
+                            toughness={face.toughness}
+                            loyalty={face.loyalty}
+                            defense={face.defense}
+                            withPT={i > 0}
+                        />
+                    </div>
+                }
+            } elif line.text or line.loyalty or line.defense {
+                <div key="rules" className="dd-face">
+                    {<p className="dd-rules">{line.text}</p> if line.text else None}
+                    <FaceStats power="" toughness="" loyalty={line.loyalty} defense={line.defense} withPT={False}/>
+                </div>
+            }}
+            {<dl>
+                {if len(line.keywords) > 0 {
+                    <dt key="kw">Keywords</dt>
+                    <dd key="kw-v" className="dd-pills">{[<span key={k} className="pill dd-kw">{k}</span> for k in line.keywords]}</dd>
+                }}
+                {if notes {
+                    <dt key="deck">In this deck</dt>
+                    <dd key="deck-v" className="dd-pills">
+                        {[<span key={r} className="pill">{r}</span> for r in line.roles]}
+                        {<span className="pill">locked</span> if line.locked else None}
+                        {<span>{"“" + line.reason + "”"}</span> if line.reason else None}
+                    </dd>
+                }}
+                {if len(line.oracle_tags) > 0 {
+                    <dt key="tags" className="dd-quiet">Scryfall tags</dt>
+                    <dd key="tags-v" className="dd-tags">{[<span key={t}>{(" · " if i > 0 else "") + t}</span> for (i, t) in enumerate(line.oracle_tags)]}</dd>
+                }}
+            </dl> if len(line.keywords) > 0 or notes or len(line.oracle_tags) > 0 else None}
+        </div>;
+}
 
 def:pub DeckDetail(deckId: str, importNotes: list[str], onBack: Callable[[], None]) -> JsxElement {
     has deck: DeckView | None = None,
-        query: str = "",
-        hits: list[CardHit] = [],
-        searched: bool = False,
         error: str = "",
-        searchError: str = "",
-        formats: list[FormatInfo] = [];
+        formats: list[FormatInfo] = [],
+        opened: dict[str, bool] = {};
 
     can with entry {
         loadDeck();
     }
 
     async def loadDeck -> None;
-    async def runSearch(e: FormEvent) -> None;
-    async def addCard(oracleId: str, zone: str) -> None;
     async def setCount(oracleId: str, zone: str, value: str) -> None;
     async def removeCard(oracleId: str, zone: str) -> None;
     async def setFormat(value: str) -> None;
@@ -38,191 +129,123 @@ def:pub DeckDetail(deckId: str, importNotes: list[str], onBack: Callable[[], Non
         onBack();
     }
 
-    def curveBarWidth(count: int, max_count: int) -> str {
-        pct = round(100 * count / max_count) if max_count > 0 else 0;
-        return str(pct) + "%";
+    def changed(view: DeckView) {
+        deck = view;
     }
 
-    alert = <p role="alert" style={{"color": "#b00020"}}>{error}</p> if error else None;
+    """Remember whether one card's details are open (the user toggled them)."""
+    def setOpen(key: str, isOpen: bool) {
+        if bool(opened.get(key, False)) != isOpen {
+            now: dict[str, bool] = opened.copy();
+            now[key] = isOpen;
+            opened = now;
+        }
+    }
+
+    """Expand all / Collapse all for one zone's cards."""
+    def openAll(rows: list[CardLine], isOpen: bool) {
+        now: dict[str, bool] = opened.copy();
+        for line in rows {
+            now[rowKey(line)] = isOpen;
+        }
+        opened = now;
+    }
+
+    alert = <p role="alert" className="error">{error}</p> if error else None;
     if deck is None {
-        return <section>{alert if error else <p>Loading deck...</p>}</section>;
+        return <section>{alert if error else <p className="empty">Loading deck...</p>}</section>;
     }
-
-    curveBuckets = deck.curve.buckets;
-    maxBucketCount = max(
-        curveBuckets["0"], curveBuckets["1"], curveBuckets["2"], curveBuckets["3"],
-        curveBuckets["4"], curveBuckets["5"], curveBuckets["6"], curveBuckets["7+"], 1
-    );
 
     return
         <section>
-            <button onClick={back} style={{"marginBottom": "1rem"}}>Back to decks</button>
-            <div style={{"display": "flex", "justifyContent": "space-between", "alignItems": "center"}}>
+            <button className="quiet dd-back" onClick={back}>← Decks</button>
+            <div className="dd-head">
                 <h1>{deck.name}</h1>
-                <ExportMenu deckId={deckId} deckName={deck.name}/>
+                <ExportPanel deckId={deckId} deckName={deck.name}/>
             </div>
+            <p className="meta">
+                <select
+                    aria-label="Format"
+                    value={deck.format}
+                    onChange={lambda e: ChangeEvent { setFormat(e.target.value); }}
+                >
+                    {[<option key={f.name} value={f.name}>{f.label}</option> for f in formats]}
+                </select>
+                {" · " + str(deck.main_total) + " main · " + str(deck.sideboard_total) + " sideboard"}
+            </p>
             {alert}
-            {<div role="status" style={{"padding": "0.75rem 1rem", "marginBottom": "1rem", "borderRadius": "6px", "backgroundColor": "#fff8e1"}}>
+            {<div role="status" className="status warn">
                 <strong>Lines that didn't resolve</strong>
-                <ul style={{"margin": "0.25rem 0 0", "paddingLeft": "1.25rem"}}>
+                <ul>
                     {[<li key={str(i)}>{line}</li> for (i, line) in enumerate(importNotes)]}
                 </ul>
             </div> if importNotes else None}
-            <p>
-                <label>
-                    {"Format "}
-                    <select
-                        aria-label="Format"
-                        value={deck.format}
-                        onChange={lambda e: ChangeEvent { setFormat(e.target.value); }}
-                    >
-                        {[<option key={f.name} value={f.name}>{f.label}</option> for f in formats]}
-                    </select>
-                </label>
-                {"  " + str(deck.main_total) + " main, " + str(deck.sideboard_total) + " sideboard"}
-            </p>
-            <div
-                role="status"
-                style={{
-                    "padding": "0.75rem 1rem",
-                    "marginBottom": "1rem",
-                    "borderRadius": "6px",
-                    "backgroundColor": "#e8f5e9" if deck.legal else "#fdecea",
-                    "color": "#1b5e20" if deck.legal else "#8a1c13"
-                }}
-            >
+            <div role="status" className={"status ok" if deck.legal else "status bad"}>
                 <strong>{"Legal" if deck.legal else "Not legal"}</strong>
-                <ul style={{"margin": "0.25rem 0 0", "paddingLeft": "1.25rem"}}>
+                {<ul>
                     {[<li key={str(i)}>{v.message}</li> for (i, v) in enumerate(deck.violations)]}
-                </ul>
+                </ul> if deck.violations else None}
             </div>
-            <div style={{"marginBottom": "1rem"}}>
-                <strong>{"Lands: " + str(deck.mana.land_count)}</strong>
-                <ul style={{"margin": "0.25rem 0 0", "paddingLeft": "1.25rem"}}>
-                    {[
-                        <li key={colour}>
-                            {
-                                colour + ": " + str(deck.mana.pips[colour]) + " pips, "
-                                + str(deck.mana.sources[colour]) + " sources"
-                            }
-                        </li>
-                        for colour in ["W", "U", "B", "R", "G"]
-                    ]}
-                </ul>
-            </div>
-            <section style={{"marginBottom": "2rem"}}>
-                <h2>Mana curve</h2>
-                <p>{"Average mana value (non-land): " + f"{deck.curve.average_mv:.2f}"}</p>
-                <div>
-                    {[
-                        <div
-                            key={label}
-                            style={{"display": "flex", "alignItems": "center", "gap": "0.5rem", "marginBottom": "0.15rem"}}
-                        >
-                            <span style={{"width": "2rem"}}>{label}</span>
-                            <div style={{
-                                "backgroundColor": "#1976d2",
-                                "height": "1rem",
-                                "width": curveBarWidth(count, maxBucketCount)
-                            }}/>
-                            <span>{str(count)}</span>
+
+            <ManaPanel mana={deck.mana} curve={deck.curve} mainTotal={deck.main_total}/>
+
+            {if len(deck.cards) == 0 {
+                <p className="empty">This deck has no cards yet. Search below to add some.</p>
+            }}
+            {for (zone, title) in ZONES {
+                rows = [c for c in deck.cards if c.zone == zone];
+                if len(rows) > 0 {
+                    <div key={zone}>
+                        <div className="dd-zonehead">
+                            <h2>{title + " (" + str(sum([c.count for c in rows])) + ")"}</h2>
+                            <span>
+                                <button className="quiet dd-all" onClick={lambda _e: MouseEvent { openAll(rows, True); }}>Expand all</button>
+                                <button className="quiet dd-all" onClick={lambda _e: MouseEvent { openAll(rows, False); }}>Collapse all</button>
+                            </span>
                         </div>
-                        # CURVE_BUCKETS order from the server (0..6, 7+) is what drives display order here.
-                        for (label, count) in deck.curve.buckets.items()
-                    ]}
-                </div>
-            </section>
-            <table style={{"width": "100%", "borderCollapse": "collapse", "marginBottom": "2rem"}}>
-                <tbody>
-                    {[
-                        <tr key={line.zone + line.oracle_id} style={{"borderBottom": "1px solid #ddd"}}>
-                            <td style={{"width": "5rem"}}>
-                                <input
-                                    type="number"
-                                    min="0"
-                                    aria-label={"Count of " + line.name + " in " + line.zone}
-                                    value={str(line.count)}
-                                    onChange={lambda e: ChangeEvent { setCount(line.oracle_id, line.zone, e.target.value); }}
-                                    style={{"width": "4rem"}}
-                                />
-                            </td>
-                            <td>{line.name}</td>
-                            <td style={{"color": "#666"}}>{"Sideboard" if line.zone == "sideboard" else ""}</td>
-                            <td style={{"color": "#666"}}>{line.mana_cost}</td>
-                            <td style={{"color": "#666"}}>{line.type_line}</td>
-                            <td>
-                                {[
-                                    <span
-                                        key={tag}
-                                        style={{
-                                            "display": "inline-block",
-                                            "padding": "0.1rem 0.5rem",
-                                            "marginRight": "0.25rem",
-                                            "marginBottom": "0.15rem",
-                                            "borderRadius": "999px",
-                                            "backgroundColor": "#eee",
-                                            "color": "#444",
-                                            "fontSize": "0.8rem"
-                                        }}
+                        <div className="dd-row dd-colhead" aria-hidden="true">
+                            <span>#</span>
+                            <div className="dd-line"><span/><span>Card</span><span>Cost</span><span className="dd-type">Type</span><span className="dd-pt">P/T</span></div>
+                            <span/>
+                        </div>
+                        <ul className="dd-cards">
+                            {for line in rows {
+                                <li key={rowKey(line)} className="dd-row">
+                                    <input
+                                        type="number"
+                                        min="0"
+                                        className="dd-count"
+                                        aria-label={"Count of " + line.name + " in " + line.zone}
+                                        value={str(line.count)}
+                                        onChange={lambda e: ChangeEvent { setCount(line.oracle_id, line.zone, e.target.value); }}
+                                    />
+                                    <details
+                                        open={bool(opened.get(rowKey(line), False))}
+                                        onToggle={lambda e: Event { setOpen(rowKey(line), e.target.hasAttribute("open")); }}
                                     >
-                                        {tag}
-                                    </span>
-                                    for tag in line.oracle_tags
-                                ]}
-                            </td>
-                            <td>
-                                <button
-                                    aria-label={"Remove " + line.name + " from " + line.zone}
-                                    onClick={lambda _e: MouseEvent { removeCard(line.oracle_id, line.zone); }}
-                                >
-                                    Remove
-                                </button>
-                            </td>
-                        </tr>
-                        for line in deck.cards
-                    ]}
-                </tbody>
-            </table>
-            <h2>Add cards</h2>
-            <form onSubmit={runSearch} style={{"display": "flex", "gap": "0.5rem"}}>
-                <input
-                    type="search"
-                    aria-label="Search cards"
-                    placeholder="Card name or rules text"
-                    value={query}
-                    onChange={lambda e: ChangeEvent { query = e.target.value; }}
-                    style={{"flex": "1", "padding": "0.5rem"}}
-                />
-                <button type="submit">Search</button>
-            </form>
-            {<p role="alert" style={{"color": "#8a1c13"}}>{searchError}</p> if searchError else None}
-            {<p>No cards found.</p> if searched and not searchError and len(hits) == 0 else None}
-            <ul style={{"listStyle": "none", "padding": "0"}}>
-                {[
-                    <li
-                        key={hit.oracle_id}
-                        style={{"padding": "0.5rem 0", "borderBottom": "1px solid #eee"}}
-                    >
-                        <button
-                            aria-label={"Add " + hit.name}
-                            onClick={lambda _e: MouseEvent { addCard(hit.oracle_id, "main"); }}
-                            style={{"marginRight": "0.25rem"}}
-                        >
-                            Add
-                        </button>
-                        <button
-                            aria-label={"Add " + hit.name + " to sideboard"}
-                            onClick={lambda _e: MouseEvent { addCard(hit.oracle_id, "sideboard"); }}
-                            style={{"marginRight": "0.5rem"}}
-                        >
-                            Side
-                        </button>
-                        <strong>{hit.name}</strong>
-                        <span style={{"color": "#666"}}>{" " + hit.mana_cost + " · " + hit.type_line}</span>
-                        <div style={{"color": "#444", "fontSize": "0.9rem", "whiteSpace": "pre-line"}}>{hit.text}</div>
-                    </li>
-                    for hit in hits
-                ]}
-            </ul>
+                                        <summary className="dd-line">
+                                            <span className="dd-name">{line.name}</span>
+                                            <span className="dd-cost"><ManaCost cost={line.mana_cost}/></span>
+                                            <span className="dd-type" title={line.type_line}>{line.type_line}</span>
+                                            <span className="dd-pt">{powerToughness(line.power, line.toughness)}</span>
+                                        </summary>
+                                        <CardDetails line={line}/>
+                                    </details>
+                                    <button
+                                        className="quiet dd-remove"
+                                        aria-label={"Remove " + line.name + " from " + line.zone}
+                                        title="Remove"
+                                        onClick={lambda _e: MouseEvent { removeCard(line.oracle_id, line.zone); }}
+                                    >
+                                        ✕
+                                    </button>
+                                </li>
+                            }}
+                        </ul>
+                    </div>
+                }
+            }}
+
+            <AddCards deckId={deckId} cards={deck.cards} onChanged={changed}/>
         </section>;
 }

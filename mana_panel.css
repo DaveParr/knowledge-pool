@@ -1,0 +1,53 @@
+/* Matches ui/mockups/mana_analysis.html. */
+
+.mp-tiles { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; }
+.mp-tile { border: 1px solid var(--line); border-radius: 8px; padding: 8px 10px; }
+.mp-k { color: var(--muted); font-size: 12px; }
+.mp-v { font-size: 22px; font-weight: 600; font-variant-numeric: tabular-nums; }
+.mp-s { color: var(--muted); font-size: 12px; }
+
+/* One series, one hue; counts sit on the bars. */
+.mp-curve {
+  display: grid; grid-template-columns: repeat(8, 1fr); gap: 2px; align-items: end;
+  height: 150px; padding-top: 18px; border-bottom: 1px solid var(--line);
+}
+.mp-col {
+  position: relative; height: 100%; display: flex; flex-direction: column;
+  justify-content: flex-end; align-items: center;
+}
+.mp-bar { width: 70%; max-width: 34px; background: var(--series-1); border-radius: 4px 4px 0 0; }
+.mp-n { font-size: 12px; font-variant-numeric: tabular-nums; margin-bottom: 2px; }
+.mp-col:hover .mp-bar { filter: brightness(1.12); }
+.mp-col:hover::after {
+  content: attr(data-tip); position: absolute; bottom: 100%; left: 50%; transform: translateX(-50%);
+  background: var(--fg); color: var(--bg); font-size: 12px; padding: 4px 8px; border-radius: 6px;
+  white-space: nowrap; pointer-events: none; z-index: 2;
+}
+.mp-axis {
+  display: grid; grid-template-columns: repeat(8, 1fr); gap: 2px;
+  color: var(--muted); font-size: 12px; text-align: center; margin-top: 4px;
+}
+.mp-axis-title { color: var(--muted); font-size: 12px; text-align: center; margin-top: 2px; }
+
+/* Two series per colour, with a legend and the values beside the bars. */
+.mp-legend { display: flex; flex-wrap: wrap; gap: 4px 14px; color: var(--muted); font-size: 12px; margin-bottom: 6px; }
+.mp-key { display: inline-block; width: 10px; height: 10px; border-radius: 2px; margin-right: 5px; vertical-align: -1px; }
+.mp-key-pips, .mp-hbar-pips { background: var(--series-1); }
+.mp-key-sources, .mp-hbar-sources { background: var(--series-2); }
+.mp-colour {
+  display: grid; grid-template-columns: 74px 1fr; gap: 8px; align-items: center;
+  padding: 6px 0; border-bottom: 1px solid var(--line);
+}
+.mp-name { font-weight: 600; }
+.mp-name small { display: block; font-weight: 400; color: var(--muted); font-size: 11px; }
+.mp-pair { display: grid; gap: 2px; }
+.mp-hrow { display: grid; grid-template-columns: 1fr 34px; gap: 6px; align-items: center; }
+.mp-hbar { height: 10px; border-radius: 0 4px 4px 0; }
+.mp-hv { font-size: 12px; font-variant-numeric: tabular-nums; text-align: right; }
+
+.mp-show-table { margin-top: 8px; font-size: 12px; }
+.mp-tables { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 12px; margin-top: 6px; }
+.mp-tables table { width: 100%; border-collapse: collapse; font-size: 13px; }
+.mp-tables th, .mp-tables td { text-align: left; padding: 4px 8px; border-bottom: 1px solid var(--line); }
+.mp-tables th { color: var(--muted); font-weight: 600; font-size: 12px; }
+.mp-tables .mp-num { text-align: right; font-variant-numeric: tabular-nums; }

@@ -6,26 +6,6 @@ impl DeckDetail.loadDeck -> None {
     show(result.reports);
 }
 
-impl DeckDetail.runSearch(e: FormEvent) -> None {
-    e.preventDefault();
-    if not query.strip() {
-        hits = [];
-        searchError = "";
-        searched = False;
-        return;
-    }
-    result: CardSearch | None = await search_cards(query);
-    # None means the call itself failed (the client stub found no result).
-    hits = result.hits if result is not None else [];
-    searchError = result.error if result is not None else "Card search failed.";
-    searched = True;
-}
-
-impl DeckDetail.addCard(oracleId: str, zone: str) -> None {
-    result = root spawn AddCard(deck_id=deckId, oracle_id=oracleId, count=1, zone=zone);
-    show(result.reports);
-}
-
 impl DeckDetail.setCount(oracleId: str, zone: str, value: str) -> None {
     if value == "" {
         return;

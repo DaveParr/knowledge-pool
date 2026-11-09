@@ -27,7 +27,7 @@ uv sync --locked
 uv run python -m catalog.ingest
 ```
 
-The ingest downloads MTGJSON's `AtomicCards.json.xz` (about 26 MB) and builds `data/catalog.sqlite`: one row per oracle card plus an FTS5 search index, with the MTGJSON version and build date in its `meta` table. It takes a few seconds. Pass `--source FILE` to build from a file you already have. Run it again to pick up a newer MTGJSON build. Run it again after pulling new code, too: a code change can add columns or tables to the catalogue, and the server (`jac start` and the MCP server) refuses to start against a catalogue built by older code, with a message that names this command.
+The ingest downloads MTGJSON's `AtomicCards.json.xz` (about 26 MB) and builds `data/catalog.sqlite`: one row per oracle card (cost, type line, rules text, power/toughness, loyalty, defence, keywords, legalities, and each face of a double-faced, split or adventure card) plus an FTS5 search index, with the MTGJSON version and build date in its `meta` table. It takes a few seconds. Pass `--source FILE` to build from a file you already have. Run it again to pick up a newer MTGJSON build. Run it again after pulling new code, too: a code change can add columns or tables to the catalogue, and the server (`jac start` and the MCP server) refuses to start against a catalogue built by older code, with a message that names this command.
 
 ### Run
 
@@ -35,9 +35,9 @@ The ingest downloads MTGJSON's `AtomicCards.json.xz` (about 26 MB) and builds `d
 uv run jac start main.jac
 ```
 
-Open http://localhost:8000. The Decks view lists your decks and creates new ones. Open a deck to search cards by name or rules text, add them to the main deck or sideboard, change counts and remove them. Each deck has a format (Standard, Pioneer or Modern), and the deck view shows straight away whether it is legal and lists each rule it breaks: at least 60 main-deck cards, at most 15 in the sideboard, at most 4 copies of a card across both (basic lands and "any number" cards are exempt, and cards like Seven Dwarves use their own limit), and every card legal in the format according to MTGJSON. Legality is worked out on every view and edit; it is never stored. Decks are stored in `.jac/data` and survive a restart; delete that folder to start fresh.
+Open http://localhost:8000. The Decks view lists your decks and creates new ones. Open a deck to search cards by name or rules text, add them to the main deck or sideboard, change counts and remove them. Each card is one compact line (count, name, cost, type, and power/toughness for creatures); click it to expand its rules text (face by face for double-faced and split cards), loyalty or defence, keywords, this deck's notes for it, and its Scryfall tags. Each zone has Expand all and Collapse all. Each deck has a format (Standard, Pioneer or Modern), and the deck view shows straight away whether it is legal and lists each rule it breaks: at least 60 main-deck cards, at most 15 in the sideboard, at most 4 copies of a card across both (basic lands and "any number" cards are exempt, and cards like Seven Dwarves use their own limit), and every card legal in the format according to MTGJSON. Legality is worked out on every view and edit; it is never stored. Decks are stored in `.jac/data` and survive a restart; delete that folder to start fresh.
 
-The full catalogue stays in SQLite. A `Card` node is added to the graph the first time a deck uses that card, because saving all 35,000 cards as graph nodes took more than 15 minutes.
+The full catalogue stays in SQLite. A `Card` node is added to the graph the first time a deck uses that card, because saving all 35,000 cards as graph nodes took more than 15 minutes. A `Card` node keeps a copy of the card's catalogue data, so after re-running the ingest, refresh the copies once with the app running: `curl -X POST http://localhost:8000/walker/RefreshCards`. Until then, cards already in a deck show their old data (for example, no power/toughness after the upgrade that added it).
 
 ### Use with Claude (MCP)
 
@@ -47,7 +47,9 @@ The full catalogue stays in SQLite. A `Card` node is added to the graph the firs
 claude mcp add knowledge-pool -- uv run --directory "$PWD" jac run mcp_server.jac
 ```
 
-Then ask Claude to build or change a deck, for example "build a Modern mono-red burn deck around Lightning Bolt and Goblin Guide". The tools are `search_cards`, `get_card`, `resolve_names`, `get_format_rules`, `deck_list`, `deck_create`, `deck_get`, `deck_edit`, `deck_validate`, `deck_analyze`, `deck_export` and `deck_import`. `deck_analyze` reports a deck's mana base (land count, plus coloured pips and coloured sources for each colour) and its mana curve (non-land card count by mana value, plus the average), main deck only. `deck_get` and `deck_edit` return the same analysis alongside the cards. Card names have to go through `resolve_names`, which splits them into exact, fuzzy and unknown, so an invented card can't get into a deck. Every `deck_edit` change needs a reason, and the reasons are kept in the deck's history. No tool calls a model.
+Then ask Claude to build or change a deck, for example "build a Modern mono-red burn deck around Lightning Bolt and Goblin Guide". The tools are `search_cards`, `get_card`, `resolve_names`, `get_format_rules`, `deck_list`, `deck_create`, `deck_get`, `deck_edit`, `deck_validate`, `deck_analyze`, `deck_export`, `deck_import`, `deck_show` and `card_search`. `deck_analyze` reports a deck's mana base (land count, plus coloured pips and coloured sources for each colour) and its mana curve (non-land card count by mana value, plus the average), main deck only. `deck_get` and `deck_edit` return the same analysis alongside the cards. `card_search` searches the catalogue for one deck: each hit shows how many copies the deck already holds. Clients that support MCP Apps (Claude Desktop, claude.ai) show `deck_show` as a list where each card expands to its details, `deck_analyze` as a mana curve and pips-vs-sources chart, and `card_search` as a search panel whose **+ Main** / **+ Side** buttons add cards with `deck_edit` and tell Claude what changed. Others, such as Claude Code, get the same as Markdown (the deck as a compact table with a P/T column). Where the view is shown, Claude itself gets only a one-line summary (and, for a search, the hits with their oracle ids), so it doesn't repeat what the user can already see; it calls `deck_get` when it needs the cards. Ask about a card and Claude calls `get_card`, which returns its rules text, stats, keywords and each face. Card names have to go through `resolve_names`, which splits them into exact, fuzzy and unknown, so an invented card can't get into a deck. Every `deck_edit` change needs a reason, and the reasons are kept in the deck's history. No tool calls a model.
+
+`deck_export` defaults to MTGA/MTGO (`arena`); the other formats are `moxfield`, `text` (both lossy, like `arena`), `mtgdeck1` and `mtgjson` (lossless JSON). In clients that render MCP Apps (Claude Desktop, claude.ai) the export shows in a view (`ui/deck_export.html`) with a button per format, **Copy** and **Download**; changing format there calls `deck_export` again through the host. Other clients, such as Claude Code, get the export as text: a lossy list in a code block, or a short summary followed by the full JSON for a lossless format.
 
 The MCP server also serves the web app at http://localhost:8000 while Claude is connected, so decks made in either place show up in the other straight away. Stop `jac start` first: two Jac processes writing the same saved graph overwrite each other's decks, so the MCP server refuses to start while the port is taken. Set `KP_PORT` to use a different port, or `KP_WEB=0` to skip the web app.
 
@@ -64,7 +66,7 @@ uv run jac test        # walker tests in tests/*_tests.jac
 uv run pytest tests    # ingest, search, REST, legality and MCP tests
 ```
 
-`tests/fixtures/legality_decks.json` holds 27 known legal and illegal decks that the validator is tested against. Tests build their catalogue from `tests/fixtures/atomic_small.json`, 31 real cards taken from MTGJSON (legalities as of 2 Nov 2026). Type-check with `uv run jac check *.jac`. Run `jac guide` for Jac's own reference guides (see `AGENTS.md`).
+`tests/fixtures/legality_decks.json` holds 27 known legal and illegal decks that the validator is tested against. Tests build their catalogue from `tests/fixtures/atomic_small.json`, 35 real cards taken from MTGJSON (legalities as of 2 Nov 2026). Type-check with `uv run jac check *.jac`. Run `jac guide` for Jac's own reference guides (see `AGENTS.md`).
 
 ### Layout
 
@@ -75,9 +77,13 @@ uv run pytest tests    # ingest, search, REST, legality and MCP tests
 - `deckformats/` the deck import/export format strategies (mtgdeck/1, MTGJSON Deck JSON, plain/Arena/Moxfield text)
 - `decks.sv.jac` the `Deck` node, the `Holds` edge, the deck walkers, `card_lines` and `deck_view`
 - `deck_io.sv.jac` the `DeckExport`, `DeckImport` and `CreateDeckFromList` walkers
-- `export_menu.cl.jac` the per-deck Export button that copies to the clipboard
+- `export_panel.cl.jac` the per-deck Export panel (format, preview, copy, download)
+- `mana_panel.cl.jac`, `card_search.cl.jac` (`AddCards`) the deck page's mana and search sections
+- `mana_cost.cl.jac` mana costs as symbol pills (the MCP views draw the same)
+- `global.css` app-wide style tokens, shared with the MCP Apps views in `ui/`
 - `legality.sv.jac` `Format` nodes and the deck-construction rules
 - `mcp_server.jac` the MCP server (and the web app, in the same process)
+- `ui/` the MCP Apps views: `deck_table.html` (`deck_show`), `mana_analysis.html` (`deck_analyze`), `card_search.html` (`card_search`) and `deck_export.html` (`deck_export`); `ui/mockups/` holds the signed-off static mockups
 - `scripts/mcp_smoke.py` an MCP client session that checks the tools end to end
 - `frontend.cl.jac`, `frontend.impl.jac` the Decks view
 - `deck_detail.cl.jac`, `deck_detail.impl.jac` one deck: search, add, change, remove

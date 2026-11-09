@@ -39,6 +39,25 @@ test "a card with no taggings gets an empty oracle_tags list" {
     assert card.oracle_tags == [];
 }
 
+test "card_node copies stats, keywords and each face of a double-faced card" {
+    card = card_node(root, "edd531b9-f615-4399-8c8c-1c5e18c4acbf");  # Delver of Secrets
+    assert isinstance(card, Card);
+    assert (card.power, card.toughness, card.loyalty, card.defense) == ("1", "1", "", "");
+    assert card.keywords == ["Flying", "Transform"];
+    assert [f.name for f in card.faces] == ["Delver of Secrets", "Insectile Aberration"];
+    back = card.faces[1];
+    assert (back.mana_cost, back.type_line, back.text) == ("", "Creature — Human Insect", "Flying");
+    assert (back.power, back.toughness) == ("3", "2");
+}
+
+test "a one-face card has no faces; its row holds the rules text" {
+    card = card_node(root, BOLT);
+    assert isinstance(card, Card);
+    assert card.faces == [];
+    assert card.power == "";
+    assert card.keywords == [];
+}
+
 test "card_node returns None for an unknown oracle id" {
     assert card_node(root, "no-such-oracle-id") is None;
 }
@@ -72,6 +91,12 @@ test "re-ingest then one RefreshCards updates every field on existing Card nodes
     face["text"] = "Lightning Bolt deals 4 damage to any target.";
     face["legalities"] = {"modern": "Banned"};
     face["producedMana"] = ["R"];
+    face["power"] = "3";
+    face["toughness"] = "1";
+    face["loyalty"] = "4";
+    face["defense"] = "2";
+    face["keywords"] = ["Haste"];
+    changed["data"]["Lightning Bolt"].append({"faceName": "Bolt Back", "type": "Instant", "text": "Draw a card."});
     changed["data"]["Lightning Bot"] = changed["data"].pop("Lightning Bolt");
     try {
         build(changed, CATALOG, tags=([], [("4457ed35-7c10-48c8-9776-456485fdf070", "burn")]));
@@ -84,11 +109,15 @@ test "re-ingest then one RefreshCards updates every field on existing Card nodes
         assert card.mana_value == 2.0;
         assert card.colour_identity == ["R", "G"];
         assert card.types == ["Sorcery"];
-        assert card.type_line == "Sorcery";
-        assert card.text == "Lightning Bolt deals 4 damage to any target.";
+        assert card.type_line == "Sorcery // Instant";
+        assert card.text == "Lightning Bolt deals 4 damage to any target.\n//\nDraw a card.";
         assert card.legal == {"modern": "Banned"};
         assert card.oracle_tags == ["burn"];
         assert card.produced_mana == ["R"];
+        assert (card.power, card.toughness, card.loyalty, card.defense) == ("3", "1", "4", "2");
+        assert card.keywords == ["Haste"];
+        assert [f.name for f in card.faces] == ["Lightning Bolt", "Bolt Back"];
+        assert card.faces[1].text == "Draw a card.";
         # Lookups see the new build too, not a connection to the old file.
         assert find_card(BOLT)["name"] == "Lightning Bot";
     } finally {
@@ -97,6 +126,7 @@ test "re-ingest then one RefreshCards updates every field on existing Card nodes
     }
     assert card.name == "Lightning Bolt";
     assert sorted(card.oracle_tags) == ["burn", "removal"];
+    assert card.faces == [];
 }
 
 test "RefreshCards leaves a card the new catalogue no longer has untouched" {

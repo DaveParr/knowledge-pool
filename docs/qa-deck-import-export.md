@@ -18,14 +18,14 @@ To put your own decks back afterwards, run `rm -rf .jac/data && mv .jac/data.bef
 uv run pytest tests                  # expect 123 passed
 uv run jac test                      # expect all passed
 uv run jac check *.jac               # expect no errors (warnings are fine)
-uv run python scripts/mcp_smoke.py   # expect "all checks passed", including the 3 export/import lines
+uv run python scripts/mcp_smoke.py   # expect "all checks passed", including the export/import lines
 ```
 
 ## 3. Manual QA in the app
 
 Start the app with `uv run jac start main.jac` and open http://localhost:8000.
 
-Import isn't a section of its own. It's an expander on the deck list: press **Import list ▾** next to **Create deck**, pick a format, paste a list and press **Create from list**. Every import makes a new deck. Replacing an existing deck's cards from a list is only available over MCP (`deck_import`). Export is the small **Export ▾** button on each deck row and in each deck's header. Picking a format copies the export to the clipboard and shows "Copied <format>".
+Import isn't a section of its own. It's an expander on the deck list: press **Import list ▾** next to **Create deck**, pick a format, paste a list and press **Create from list**. Every import makes a new deck. Replacing an existing deck's cards from a list is only available over MCP (`deck_import`). Export is the small **Export ▾** button on each deck row and in each deck's header. It opens a panel showing the export as MTGA/MTGO, with buttons to switch format, **Copy** and **Download**.
 
 ### Import a pasted list (Moxfield or Arena)
 
@@ -67,18 +67,20 @@ Sideboard
 - [ ] `Deck` is read as a header, not as a card.
 - [ ] With the expander closed, **Create deck** with a blank name still says "A deck needs a name."
 
-### Export copies to the clipboard
+### Export panel
 
-On the deck list, press **Export ▾** on QA Burn and choose **Moxfield**.
+On the deck list, press **Export ▾** on QA Burn.
 
-- [ ] "Copied Moxfield" appears next to the button, and pasting into a text editor gives the list.
+- [ ] A panel opens under the row showing the deck as **MTGA/MTGO**, with a yellow note that the format is lossy.
+- [ ] Press **Moxfield**: the text changes. Press **mtgdeck/1**: the note turns green ("Lossless") and the download button says **Download .json**.
+- [ ] **Copy** shows "Copied", and pasting into a text editor gives the list. If the browser refuses clipboard access, the text is selected instead with "Press Ctrl+C (Cmd+C) to copy".
+- [ ] **Download** saves `qa-burn.txt` (or `.json`).
 - [ ] Do the same from inside the deck (the button by the deck name).
-- [ ] If the browser refuses clipboard access, a box titled "Couldn't copy automatically" shows the text to copy by hand instead.
 
 Check each format's shape:
 
 - [ ] **mtgdeck/1**: JSON with `"schema": "mtgdeck/1"`, a `name`, `format` and `zones`.
-- [ ] **MTGJSON Deck JSON**: JSON with `mainBoard` and `sideBoard` arrays.
+- [ ] **MTGJSON**: JSON with `mainBoard` and `sideBoard` arrays.
 - [ ] **Plain text**: `4 Lightning Bolt` lines, with the sideboard after a blank line and a `Sideboard` header.
 - [ ] **MTGA/MTGO**: as plain text, but starting with a `Deck` header.
 - [ ] **Moxfield**: as plain text.
@@ -167,7 +169,9 @@ claude mcp add knowledge-pool -- uv run --directory "$PWD" jac run mcp_server.ja
 
 In a new Claude Code session:
 
-- [ ] Ask: "Using knowledge-pool, export my QA Burn deck as mtgdeck/1." Claude calls `deck_export` and shows the JSON.
+- [ ] Ask: "Using knowledge-pool, export my QA Burn deck." Claude calls `deck_export` with no format and shows the MTGA/MTGO list in a code block, noting what it drops.
+- [ ] Ask: "Using knowledge-pool, export my QA Burn deck as mtgdeck/1." Claude calls `deck_export`, gets a short summary plus the full JSON, and shows or saves the JSON when asked.
+- [ ] Optional, in Claude Desktop: ask for the same export. It shows in the export view, defaulting to MTGA/MTGO. Switching to **mtgdeck/1** exports again; **Copy** copies (or selects the text if the clipboard is blocked) and **Download** saves the file.
 - [ ] Ask Claude to import an Arena list containing one misspelt card into a new deck. Claude calls `deck_import`, and the result lists the misspelt line as unresolved.
 - [ ] Ask Claude to import a different list into that same deck. The cards are **replaced**, not added to.
 - [ ] Open http://localhost:8000. The imported deck is there with the same cards.

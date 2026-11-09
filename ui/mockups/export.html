@@ -1,0 +1,148 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Deck Export Mockup</title>
+<!--
+  STATIC MOCKUP for sign-off. Not wired to the server.
+  The real view would be bound to deck_export. It shows the exported text from
+  structuredContent ({format, content}); switching format re-runs
+  tools/call deck_export. Copy tries navigator.clipboard and, if the host
+  sandbox blocks it, falls back to selecting the text so the user can press
+  Ctrl/Cmd+C. Download is a Blob link, or ui/download-file if the host offers it.
+  The model only gets a short summary, so the chat isn't filled with JSON.
+-->
+<style>
+  :root {
+    color-scheme: light dark;
+    --bg: var(--color-background-primary, light-dark(#ffffff, #1f1e1d));
+    --fg: var(--color-text-primary, light-dark(#1f1e1d, #f5f4ef));
+    --muted: var(--color-text-secondary, light-dark(#6b6a65, #a6a49c));
+    --line: var(--color-border-tertiary, light-dark(#e6e4dc, #3a3935));
+    --ok-bg: var(--color-background-success, light-dark(#e8f5e9, #16301b));
+    --ok-fg: var(--color-text-success, light-dark(#1b5e20, #9fd8a6));
+    --warn-bg: var(--color-background-warning, light-dark(#fff8e1, #33290f));
+    --warn-fg: var(--color-text-warning, light-dark(#7a5300, #f0c96a));
+    --accent: light-dark(#2a78d6, #3987e5);
+  }
+  html, body { margin: 0; background: var(--bg); color: var(--fg);
+    font: 14px/1.45 var(--font-sans, system-ui, sans-serif); }
+  main { padding: 12px 16px 16px; max-width: 640px; }
+  h1 { font-size: 17px; margin: 0 0 2px; }
+  .meta { color: var(--muted); margin: 0 0 10px; }
+  h2 { font-size: 13px; text-transform: uppercase; letter-spacing: .04em; color: var(--muted); margin: 18px 0 6px; }
+  .formats { display: flex; flex-wrap: wrap; gap: 4px; margin-bottom: 8px; }
+  .formats button { display: flex; flex-direction: column; align-items: flex-start; gap: 0; }
+  button { font: inherit; font-size: 13px; color: var(--fg); background: var(--bg);
+    border: 1px solid var(--line); border-radius: 6px; padding: 4px 10px; cursor: pointer; }
+  button:hover { border-color: var(--muted); }
+  button[aria-pressed=true] { border-color: var(--accent); box-shadow: inset 0 0 0 1px var(--accent); }
+  button .sub { font-size: 11px; color: var(--muted); }
+  button.primary { background: var(--accent); border-color: var(--accent); color: #fff; }
+  .note { padding: 6px 10px; border-radius: 6px; font-size: 13px; margin-bottom: 8px; }
+  .note.lossy { background: var(--warn-bg); color: var(--warn-fg); }
+  .note.lossless { background: var(--ok-bg); color: var(--ok-fg); }
+  textarea { width: 100%; box-sizing: border-box; height: 220px; resize: vertical;
+    font: 12px/1.45 var(--font-mono, ui-monospace, monospace); color: var(--fg); background: var(--bg);
+    border: 1px solid var(--line); border-radius: 6px; padding: 8px; }
+  .bar { display: flex; gap: 6px; align-items: center; margin-top: 6px; flex-wrap: wrap; }
+  .size { color: var(--muted); font-size: 12px; margin-left: auto; }
+  .status { font-size: 13px; color: var(--ok-fg); }
+  .mock { margin: 0 0 12px; padding: 6px 10px; border: 1px dashed var(--line); border-radius: 6px; color: var(--muted); font-size: 12px; }
+  .fallback { margin-top: 28px; border-top: 2px dashed var(--line); padding-top: 12px; }
+  .fallback pre { white-space: pre-wrap; background: var(--line); padding: 10px; border-radius: 6px;
+    font: 12px/1.45 var(--font-mono, ui-monospace, monospace); }
+</style>
+</head>
+<body>
+<main>
+  <p class="mock">Mockup for sign-off · static sample data · would render inline in chat after <code>deck_export</code></p>
+
+  <h1>Export Izzet Tempo</h1>
+  <p class="meta" id="meta"></p>
+
+  <div class="formats" role="group" aria-label="Export format" id="formats"></div>
+  <div id="note"></div>
+  <textarea id="out" readonly aria-label="Exported deck"></textarea>
+  <div class="bar">
+    <button class="primary" id="copy">Copy</button>
+    <button id="dl">Download</button>
+    <span class="status" id="status" role="status"></span>
+    <span class="size" id="size"></span>
+  </div>
+
+  <section class="fallback">
+    <h2>Text fallback (Claude Code and other clients without MCP Apps)</h2>
+    <pre id="fallback"></pre>
+  </section>
+</main>
+
+<script>
+const CARDS = [
+  { n: 4, name: "Lightning Strike", zone: "main", roles: ["removal"], reason: "cheap instant-speed removal" },
+  { n: 4, name: "Consider", zone: "main", roles: ["card-flow"], reason: "smooths draws" },
+  { n: 4, name: "Stormchaser's Talent", zone: "main", roles: ["threat"], reason: "one-drop that returns a spell" },
+  { n: 10, name: "Island", zone: "main", roles: ["land"], reason: "" },
+  { n: 9, name: "Mountain", zone: "main", roles: ["land"], reason: "" },
+  { n: 2, name: "Negate", zone: "sideboard", roles: ["counter"], reason: "against control" }
+];
+const LINES = (cards) => cards.map((c) => `${c.n} ${c.name}`).join("\n");
+const main = CARDS.filter((c) => c.zone === "main"), side = CARDS.filter((c) => c.zone === "sideboard");
+
+const FORMATS = [
+  { key: "mtgdeck1", label: "mtgdeck/1", lossless: true, ext: "json",
+    loses: "", render: () => JSON.stringify({
+      schema: "mtgdeck/1", name: "Izzet Tempo", format: "standard",
+      zones: Object.fromEntries(["main", "sideboard"].map((z) => [z,
+        CARDS.filter((c) => c.zone === z).map((c) => ({ name: c.name, count: c.n, roles: c.roles, ...(c.reason ? { reason: c.reason } : {}) }))]))
+    }, null, 2) },
+  { key: "mtgjson", label: "MTGJSON", lossless: true, ext: "json", loses: "",
+    render: () => JSON.stringify({ data: { name: "Izzet Tempo", mainBoard: main.map((c) => ({ name: c.name, count: c.n })), sideBoard: side.map((c) => ({ name: c.name, count: c.n })) } }, null, 2) },
+  { key: "arena", label: "Arena", lossless: false, ext: "txt", loses: "roles, tags, locks and reasons",
+    render: () => `Deck\n${LINES(main)}\n\nSideboard\n${LINES(side)}` },
+  { key: "moxfield", label: "Moxfield", lossless: false, ext: "txt", loses: "roles, tags, locks and reasons",
+    render: () => `${LINES(main)}\n\nSIDEBOARD:\n${LINES(side)}` },
+  { key: "text", label: "Plain text", lossless: false, ext: "txt", loses: "roles, tags, locks and reasons",
+    render: () => `${LINES(main)}\n\nSideboard\n${LINES(side)}` }
+];
+let current = "arena";
+const total = (cs) => cs.reduce((a, c) => a + c.n, 0);
+document.getElementById("meta").textContent = `Standard · ${total(main)} main · ${total(side)} sideboard (short sample list)`;
+
+function render() {
+  const f = FORMATS.find((x) => x.key === current);
+  document.getElementById("formats").innerHTML = FORMATS.map((x) =>
+    `<button aria-pressed="${x.key === current}" data-k="${x.key}">${x.label}<span class="sub">${x.lossless ? "lossless" : "lossy"}</span></button>`).join("");
+  document.getElementById("note").innerHTML = f.lossless
+    ? `<div class="note lossless">Lossless: this file re-imports with every role, tag, lock and reason.</div>`
+    : `<div class="note lossy">Lossy: ${f.label} keeps card names and counts only. It drops ${f.loses}.</div>`;
+  const text = f.render();
+  document.getElementById("out").value = text;
+  document.getElementById("size").textContent = `${text.split("\n").length} lines · ${text.length.toLocaleString()} characters`;
+  document.getElementById("dl").textContent = `Download .${f.ext}`;
+  document.getElementById("status").textContent = "";
+  document.getElementById("fallback").textContent = f.lossless
+    ? `Exported Izzet Tempo as ${f.label} (lossless, ${text.length.toLocaleString()} characters).\nIt's too long to paste here usefully. Want me to show it, or save it to a file?`
+    : `Exported Izzet Tempo as ${f.label}. Note it drops ${f.loses}.\n\n\`\`\`\n${text}\n\`\`\``;
+}
+
+document.getElementById("formats").addEventListener("click", (e) => {
+  const b = e.target.closest("button"); if (!b) return;
+  current = b.dataset.k; render();
+});
+document.getElementById("copy").addEventListener("click", async () => {
+  const out = document.getElementById("out"), status = document.getElementById("status");
+  try { await navigator.clipboard.writeText(out.value); status.textContent = "Copied"; }
+  catch { out.focus(); out.select(); status.textContent = "Selected. Press Ctrl+C (Cmd+C) to copy."; }
+});
+document.getElementById("dl").addEventListener("click", () => {
+  const f = FORMATS.find((x) => x.key === current);
+  const a = document.createElement("a");
+  a.href = URL.createObjectURL(new Blob([document.getElementById("out").value], { type: "text/plain" }));
+  a.download = `izzet-tempo.${f.ext}`; a.click();
+});
+render();
+</script>
+</body>
+</html>

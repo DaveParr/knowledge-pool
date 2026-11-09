@@ -1,0 +1,194 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Mana Analysis Mockup</title>
+<!--
+  STATIC MOCKUP for sign-off. Not wired to the server.
+  Bound to deck_analyze (decided on #67) as ui://knowledge-pool/mana-analysis.html
+  and fill itself from the structuredContent of ui/notifications/tool-result,
+  same handshake as ui/deck_table.html. Sample data is the SAMPLE const below.
+-->
+<style>
+  :root {
+    color-scheme: light dark;
+    --bg: var(--color-background-primary, light-dark(#ffffff, #1f1e1d));
+    --fg: var(--color-text-primary, light-dark(#1f1e1d, #f5f4ef));
+    --muted: var(--color-text-secondary, light-dark(#6b6a65, #a6a49c));
+    --line: var(--color-border-tertiary, light-dark(#e6e4dc, #3a3935));
+    --warn-bg: var(--color-background-warning, light-dark(#fff8e1, #33290f));
+    --warn-fg: var(--color-text-warning, light-dark(#7a5300, #f0c96a));
+    /* dataviz reference palette: slot 1 (blue) and slot 2 (orange) */
+    --series-1: light-dark(#2a78d6, #3987e5);
+    --series-2: light-dark(#eb6834, #d95926);
+  }
+  html, body { margin: 0; background: var(--bg); color: var(--fg);
+    font: 14px/1.45 var(--font-sans, system-ui, sans-serif); }
+  main { padding: 12px 16px 16px; max-width: 640px; }
+  h1 { font-size: 17px; margin: 0 0 2px; }
+  .meta { color: var(--muted); margin: 0 0 12px; }
+  h2 { font-size: 13px; text-transform: uppercase; letter-spacing: .04em;
+    color: var(--muted); margin: 18px 0 6px; }
+  .tiles { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; }
+  .tile { border: 1px solid var(--line); border-radius: 8px; padding: 8px 10px; }
+  .tile .k { color: var(--muted); font-size: 12px; }
+  .tile .v { font-size: 22px; font-weight: 600; font-variant-numeric: tabular-nums; }
+  .tile .s { color: var(--muted); font-size: 12px; }
+
+  /* Mana curve: one series, one hue, counts as selective direct labels */
+  .curve { position: relative; display: grid; grid-template-columns: repeat(8, 1fr);
+    gap: 2px; align-items: end; height: 150px; border-bottom: 1px solid var(--line);
+    padding-top: 18px; }
+  .col { position: relative; height: 100%; display: flex; flex-direction: column;
+    justify-content: flex-end; align-items: center; cursor: default; }
+  .bar { width: 70%; max-width: 34px; background: var(--series-1);
+    border-radius: 4px 4px 0 0; min-height: 0; }
+  .col .n { font-size: 12px; color: var(--fg); font-variant-numeric: tabular-nums; margin-bottom: 2px; }
+  .col:hover .bar { filter: brightness(1.12); }
+  .axis { display: grid; grid-template-columns: repeat(8, 1fr); gap: 2px;
+    color: var(--muted); font-size: 12px; text-align: center; margin-top: 4px; }
+  .axis-title { color: var(--muted); font-size: 12px; text-align: center; margin-top: 2px; }
+  .tip { position: absolute; pointer-events: none; background: var(--fg); color: var(--bg);
+    font-size: 12px; padding: 4px 8px; border-radius: 6px; white-space: nowrap;
+    transform: translate(-50%, -110%); opacity: 0; transition: opacity .08s; }
+
+  /* Pips vs sources: two series per colour, legend + direct values */
+  .legend { display: flex; gap: 14px; color: var(--muted); font-size: 12px; margin-bottom: 6px; }
+  .key { display: inline-block; width: 10px; height: 10px; border-radius: 2px; margin-right: 5px; vertical-align: -1px; }
+  .colour { display: grid; grid-template-columns: 74px 1fr; gap: 8px; align-items: center;
+    padding: 6px 0; border-bottom: 1px solid var(--line); }
+  .colour .name { font-weight: 600; }
+  .colour .name small { display: block; font-weight: 400; color: var(--muted); font-size: 11px; }
+  .pair { display: grid; gap: 2px; }
+  .hrow { display: grid; grid-template-columns: 1fr 34px; gap: 6px; align-items: center; }
+  .track { height: 10px; }
+  .hbar { height: 10px; border-radius: 0 4px 4px 0; }
+  .hrow .v { font-size: 12px; font-variant-numeric: tabular-nums; text-align: right; }
+  details.table { margin-top: 12px; }
+  details.table summary { cursor: pointer; color: var(--muted); font-size: 12px; }
+  table { width: 100%; border-collapse: collapse; margin-top: 6px; font-size: 13px; }
+  th, td { text-align: left; padding: 4px 8px; border-bottom: 1px solid var(--line); }
+  td.num, th.num { text-align: right; font-variant-numeric: tabular-nums; }
+  th { color: var(--muted); font-weight: 600; font-size: 12px; }
+
+  .mock { margin: 0 0 12px; padding: 6px 10px; border: 1px dashed var(--line); border-radius: 6px;
+    color: var(--muted); font-size: 12px; }
+  .fallback { margin-top: 28px; border-top: 2px dashed var(--line); padding-top: 12px; }
+  .fallback pre { white-space: pre-wrap; background: var(--line); padding: 10px; border-radius: 6px;
+    font: 12px/1.45 var(--font-mono, ui-monospace, monospace); }
+</style>
+</head>
+<body>
+<main>
+  <p class="mock">Mockup for sign-off · static sample data · would render inline in chat after <code>deck_analyze</code></p>
+
+  <div id="app"></div>
+
+  <section class="fallback">
+    <h2>Text fallback (Claude Code and other clients without MCP Apps)</h2>
+    <pre id="fallback"></pre>
+  </section>
+</main>
+
+<script>
+// Shape follows AnalyzeDeck (decks.sv.jac:290) + DeckView.mana (mana.sv.jac ManaProfile).
+const SAMPLE = {
+  name: "Izzet Tempo",
+  format: "Standard",
+  main_total: 60,
+  land_count: 24,
+  curve: { buckets: { "0": 0, "1": 9, "2": 12, "3": 8, "4": 5, "5": 2, "6": 0, "7+": 0 }, average_mv: 2.42 },
+  pips:    { W: 0, U: 18, B: 0, R: 22, G: 0 },
+  sources: { W: 0, U: 13, B: 0, R: 15, G: 0 }
+};
+const COLOURS = { W: "White", U: "Blue", B: "Black", R: "Red", G: "Green" };
+
+const esc = (s) => String(s ?? "").replace(/[&<>"']/g, (c) =>
+  ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[c]);
+
+function render(d) {
+  const nonLand = Object.values(d.curve.buckets).reduce((a, b) => a + b, 0);
+  const buckets = Object.entries(d.curve.buckets);
+  const maxN = Math.max(1, ...buckets.map(([, n]) => n));
+  const used = Object.keys(COLOURS).filter((c) => d.pips[c] || d.sources[c]);
+  const maxPS = Math.max(1, ...used.flatMap((c) => [d.pips[c], d.sources[c]]));
+
+  document.getElementById("app").innerHTML = `
+    <h1>${esc(d.name)}: mana</h1>
+    <p class="meta">${esc(d.format)} · main deck only (${d.main_total} cards), sideboard excluded</p>
+
+    <div class="tiles">
+      <div class="tile"><div class="k">Lands</div><div class="v">${d.land_count}</div><div class="s">${Math.round(100 * d.land_count / d.main_total)}% of main</div></div>
+      <div class="tile"><div class="k">Non-land spells</div><div class="v">${nonLand}</div><div class="s">in the curve below</div></div>
+      <div class="tile"><div class="k">Average mana value</div><div class="v">${d.curve.average_mv.toFixed(2)}</div><div class="s">non-land only</div></div>
+    </div>
+
+    <h2>Mana curve</h2>
+    <div class="curve" id="curve">
+      ${buckets.map(([mv, n]) => `
+        <div class="col" data-tip="Mana value ${mv}: ${n} card${n === 1 ? "" : "s"}">
+          ${n ? `<span class="n">${n}</span>` : ""}
+          <div class="bar" style="height:${(n / maxN) * 100}%"></div>
+        </div>`).join("")}
+      <div class="tip" id="tip"></div>
+    </div>
+    <div class="axis">${buckets.map(([mv]) => `<span>${mv}</span>`).join("")}</div>
+    <div class="axis-title">Mana value</div>
+
+    <h2>Coloured pips vs sources</h2>
+    <div class="legend">
+      <span><i class="key" style="background:var(--series-1)"></i>Pips (spell demand)</span>
+      <span><i class="key" style="background:var(--series-2)"></i>Sources (lands and mana producers)</span>
+    </div>
+    ${used.map((c) => `
+      <div class="colour">
+        <div class="name">${COLOURS[c]}<small>${c}</small></div>
+        <div class="pair">
+          <div class="hrow"><div class="track"><div class="hbar" style="width:${(d.pips[c] / maxPS) * 100}%;background:var(--series-1)"></div></div><span class="v">${d.pips[c]}</span></div>
+          <div class="hrow"><div class="track"><div class="hbar" style="width:${(d.sources[c] / maxPS) * 100}%;background:var(--series-2)"></div></div><span class="v">${d.sources[c]}</span></div>
+        </div>
+      </div>`).join("")}
+
+    <details class="table">
+      <summary>Show as table</summary>
+      <table>
+        <thead><tr><th>Mana value</th><th class="num">Cards</th></tr></thead>
+        <tbody>${buckets.map(([mv, n]) => `<tr><td>${mv}</td><td class="num">${n}</td></tr>`).join("")}</tbody>
+      </table>
+      <table>
+        <thead><tr><th>Colour</th><th class="num">Pips</th><th class="num">Sources</th></tr></thead>
+        <tbody>${used.map((c) => `<tr><td>${COLOURS[c]}</td><td class="num">${d.pips[c]}</td><td class="num">${d.sources[c]}</td></tr>`).join("")}</tbody>
+      </table>
+    </details>`;
+
+  const tip = document.getElementById("tip");
+  const curve = document.getElementById("curve");
+  curve.querySelectorAll(".col").forEach((col) => {
+    col.addEventListener("mouseenter", () => {
+      tip.textContent = col.dataset.tip;
+      const r = col.getBoundingClientRect(), p = curve.getBoundingClientRect();
+      tip.style.left = (r.left - p.left + r.width / 2) + "px";
+      tip.style.top = (col.querySelector(".bar").getBoundingClientRect().top - p.top) + "px";
+      tip.style.opacity = 1;
+    });
+    col.addEventListener("mouseleave", () => { tip.style.opacity = 0; });
+  });
+
+  document.getElementById("fallback").textContent = [
+    `## ${d.name}: mana (${d.format}, main deck only)`,
+    `Lands: ${d.land_count} · Non-land: ${nonLand} · Average mana value: ${d.curve.average_mv.toFixed(2)}`,
+    ``,
+    `| Mana value | ${buckets.map(([mv]) => mv).join(" | ")} |`,
+    `|---|${buckets.map(() => "--:").join("|")}|`,
+    `| Cards | ${buckets.map(([, n]) => n).join(" | ")} |`,
+    ``,
+    `| Colour | Pips | Sources |`,
+    `|---|--:|--:|`,
+    ...used.map((c) => `| ${COLOURS[c]} | ${d.pips[c]} | ${d.sources[c]} |`)
+  ].join("\n");
+}
+render(SAMPLE);
+</script>
+</body>
+</html>
