@@ -96,6 +96,9 @@ def is_time_lord_doctor(line: CardLine) -> bool {
 
 """An ability as printed on the card ("partner—Friends forever" -> "Partner—Friends forever")."""
 def _printed(ability: str) -> str {
+    if ability.startswith("partner with:") {
+        return "Partner with " + ability[len("partner with:"):];
+    }
     return ability[0].upper() + ability[1:];
 }
 
@@ -112,6 +115,15 @@ def _pairs_with(ab: str, x: CardLine, y: CardLine) -> bool {
         return is_background(y);
     }
     return is_time_lord_doctor(y);
+}
+
+"""The ability to name in a "don't pair" message: a partner-with aimed at
+the other card, else the first."""
+def _most_relevant(abilities: list[str], other: CardLine) -> str {
+    if ("partner with:" + other.name) in abilities {
+        return "partner with:" + other.name;
+    }
+    return abilities[0];
 }
 
 """Why two cards can't be commanders together, or "" when they may be.
@@ -146,12 +158,12 @@ def pair_problem(a: CardLine, b: CardLine) -> str {
             return f"{x.name} has no partner ability";
         }
     }
-    for (x, abs_x) in [(a, ab_a), (b, ab_b)] {
+    for (x, y, abs_x) in [(a, b, ab_a), (b, a, ab_b)] {
         for ab in abs_x {
-            if ab.startswith("partner with:") {
+            if ab.startswith("partner with:") and ab != "partner with:" + y.name {
                 return f"{x.name} can only partner with {ab[len('partner with:'):]}";
             }
         }
     }
-    return f"{_printed(ab_a[0])} and {_printed(ab_b[0])} don't pair";
+    return f"{_printed(_most_relevant(ab_a, b))} and {_printed(_most_relevant(ab_b, a))} don't pair";
 }

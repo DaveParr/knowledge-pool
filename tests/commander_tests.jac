@@ -286,3 +286,13 @@ test "a card with two pairing abilities lists both and pairs by either" {
     assert pair_problem(_amy(), _rory()) == "";
     assert pair_problem(_amy(), _krenko()) == "Amy Pond needs a Time Lord Doctor";
 }
+
+def _syn(name: str, text: str) -> CardLine {
+    return _cmdr(name, "Legendary Creature — Human", text);
+}
+
+test "a partner-with aimed at the other card is not blamed for a mismatch" {
+    a = _syn("A", "Partner with B");
+    assert pair_problem(a, _syn("B", "Partner")) == "Partner with B and Partner don't pair";
+    assert pair_problem(a, _syn("B", "Partner with C")) == "B can only partner with C";
+}
