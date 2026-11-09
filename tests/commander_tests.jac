@@ -2,7 +2,7 @@
 
 import from card_lines { CardLine }
 import from legality { Format, Violation, check_commander }
-import from commander { can_lead, commanders, identity, identity_label, commander_names, partner_ability, is_background, is_time_lord_doctor, pair_problem }
+import from commander { can_lead, commanders, identity, identity_label, commander_names, partner_ability, partner_abilities, is_background, is_time_lord_doctor, pair_problem }
 
 glob CMD: Format = Format(name="commander", label="Commander", min_main=100, copy_limit=1, sideboard_max=0);
 
@@ -268,4 +268,21 @@ test "the commander-pair message names both cards" {
     vs = check_commander([_krenko(), _thrasios(), _basics(98)], CMD);
     msgs = [v.message for v in vs if v.rule == "commander-pair"];
     assert msgs == ["Krenko, Mob Boss and Thrasios, Triton Hero can't be commanders together: Krenko, Mob Boss has no partner ability."];
+}
+
+def _amy() -> CardLine {
+    return _cmdr("Amy Pond", "Legendary Creature — Human", "Partner with Rory Williams (When this creature enters, target player may put Rory into their hand from their library, then shuffle.)\nWhenever Amy Pond deals combat damage to a player, choose a suspended card you own and remove that many time counters from it.\nDoctor's companion (You can have two commanders if the other is the Doctor.)", ["R"]);
+}
+
+def _rory() -> CardLine {
+    return _cmdr("Rory Williams", "Legendary Creature — Human Soldier", "Partner with Amy Pond\nFirst strike, lifelink\nThe Last Centurion — When you cast this spell from anywhere other than exile, exile it with three time counters on it. It gains suspend. Then investigate. (Create a Clue token. It's an artifact with \"{2}, Sacrifice this token: Draw a card.\")", ["U", "W"]);
+}
+
+test "a card with two pairing abilities lists both and pairs by either" {
+    assert partner_abilities(_amy()) == ["partner with:Rory Williams", "doctor's companion"];
+    assert partner_ability(_amy()) == "partner with:Rory Williams";
+    assert pair_problem(_amy(), _tenth()) == "";
+    assert pair_problem(_tenth(), _amy()) == "";
+    assert pair_problem(_amy(), _rory()) == "";
+    assert pair_problem(_amy(), _krenko()) == "Amy Pond needs a Time Lord Doctor";
 }

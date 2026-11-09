@@ -44,29 +44,32 @@ def commander_names(cmdrs: list[CardLine]) -> str {
     return " and ".join([c.name for c in cmdrs]);
 }
 
-"""A card's partner ability, read from its rules-text lines (reminder text
-stripped): "partner", "partner with:<Name>", "partner—<Quality>",
-"choose a background", "doctor's companion", or "" when it has none."""
-def partner_ability(line: CardLine) -> str {
+"""Every pairing ability on a card, in text order, read from its rules-text
+lines (reminder text stripped): "partner", "partner with:<Name>",
+"partner—<Quality>", "choose a background", "doctor's companion"."""
+def partner_abilities(line: CardLine) -> list[str] {
+    found: list[str] = [];
     for raw in line.text.split("\n") {
         t = raw.split(" (")[0].strip();
         if t == "Partner" {
-            return "partner";
-        }
-        if t.startswith("Partner with ") {
-            return "partner with:" + t[len("Partner with "):];
-        }
-        if t.startswith("Partner—") {
-            return "partner—" + t[len("Partner—"):];
-        }
-        if t == "Choose a Background" {
-            return "choose a background";
-        }
-        if t == "Doctor's companion" {
-            return "doctor's companion";
+            found.append("partner");
+        } elif t.startswith("Partner with ") {
+            found.append("partner with:" + t[len("Partner with "):]);
+        } elif t.startswith("Partner—") {
+            found.append("partner—" + t[len("Partner—"):]);
+        } elif t == "Choose a Background" {
+            found.append("choose a background");
+        } elif t == "Doctor's companion" {
+            found.append("doctor's companion");
         }
     }
-    return "";
+    return found;
+}
+
+"""A card's first partner ability, or "" when it has none."""
+def partner_ability(line: CardLine) -> str {
+    found = partner_abilities(line);
+    return found[0] if found else "";
 }
 
 """The subtypes on the front face's type line."""
@@ -87,7 +90,8 @@ def is_background(line: CardLine) -> bool {
 def is_time_lord_doctor(line: CardLine) -> bool {
     front = line.type_line.split(" // ")[0];
     subs = _front_subtypes(line);
-    return "Creature" in front.split("—")[0] and "Time Lord" in subs and "Doctor" in subs.split(" ");
+    padded = " " + subs + " ";
+    return "Creature" in front.split("—")[0].split(" ") and " Time Lord " in padded and " Doctor " in padded;
 }
 
 """An ability as printed on the card ("partner—Friends forever" -> "Partner—Friends forever")."""
@@ -95,40 +99,59 @@ def _printed(ability: str) -> str {
     return ability[0].upper() + ability[1:];
 }
 
+"""Whether one ability on x pairs with y."""
+def _pairs_with(ab: str, x: CardLine, y: CardLine) -> bool {
+    abs_y = partner_abilities(y);
+    if ab == "partner" or ab.startswith("partner—") {
+        return ab in abs_y;
+    }
+    if ab.startswith("partner with:") {
+        return ab == "partner with:" + y.name and ("partner with:" + x.name) in abs_y;
+    }
+    if ab == "choose a background" {
+        return is_background(y);
+    }
+    return is_time_lord_doctor(y);
+}
+
 """Why two cards can't be commanders together, or "" when they may be.
-The cards are named in the order given."""
+A card with several pairing abilities pairs if any of them does. The cards
+are named in the order given."""
 def pair_problem(a: CardLine, b: CardLine) -> str {
-    ab_a = partner_ability(a);
-    ab_b = partner_ability(b);
-    for (x, y, ab) in [(a, b, ab_a), (b, a, ab_b)] {
-        if ab == "choose a background" and not is_background(y) {
+    ab_a = partner_abilities(a);
+    ab_b = partner_abilities(b);
+    for ab in ab_a {
+        if _pairs_with(ab, a, b) {
+            return "";
+        }
+    }
+    for ab in ab_b {
+        if _pairs_with(ab, b, a) {
+            return "";
+        }
+    }
+    for (x, y, abs_x) in [(a, b, ab_a), (b, a, ab_b)] {
+        if "choose a background" in abs_x and not is_background(y) {
             return f"{x.name} needs a Background";
         }
     }
-    for (x, y, ab) in [(a, b, ab_a), (b, a, ab_b)] {
-        if ab == "doctor's companion" and not is_time_lord_doctor(y) {
+    for (x, y, abs_x) in [(a, b, ab_a), (b, a, ab_b)] {
+        if "doctor's companion" in abs_x and not is_time_lord_doctor(y) {
             return f"{x.name} needs a Time Lord Doctor";
         }
     }
-    for (x, ab, other) in [(a, ab_a, ab_b), (b, ab_b, ab_a)] {
-        matched = (is_background(x) and other == "choose a background") or (is_time_lord_doctor(x) and other == "doctor's companion");
-        if ab == "" and not matched {
+    for (x, abs_x, abs_y) in [(a, ab_a, ab_b), (b, ab_b, ab_a)] {
+        matched = (is_background(x) and "choose a background" in abs_y) or (is_time_lord_doctor(x) and "doctor's companion" in abs_y);
+        if not abs_x and not matched {
             return f"{x.name} has no partner ability";
         }
     }
-    for (x, y, ab) in [(a, b, ab_a), (b, a, ab_b)] {
-        if ab.startswith("partner with:") and ab != "partner with:" + y.name {
-            return f"{x.name} can only partner with {ab[len('partner with:'):]}";
+    for (x, abs_x) in [(a, ab_a), (b, ab_b)] {
+        for ab in abs_x {
+            if ab.startswith("partner with:") {
+                return f"{x.name} can only partner with {ab[len('partner with:'):]}";
+            }
         }
     }
-    if ab_a == "" or ab_b == "" {
-        return "";
-    }
-    if ab_a == ab_b and not ab_a.startswith("partner with:") {
-        return "";
-    }
-    if ab_a.startswith("partner with:") and ab_b.startswith("partner with:") {
-        return "";
-    }
-    return f"{_printed(ab_a)} and {_printed(ab_b)} don't pair";
+    return f"{_printed(ab_a[0])} and {_printed(ab_b[0])} don't pair";
 }
