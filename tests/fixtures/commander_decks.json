@@ -160,5 +160,68 @@
   "rules": [
    "commander-eligible"
   ]
+ },
+ {
+  "name": "Krenko with Counterspell",
+  "commander": {
+   "Krenko, Mob Boss": 1
+  },
+  "companion": {},
+  "main": {
+   "Counterspell": 1,
+   "Mountain": 98
+  },
+  "sideboard": {},
+  "legal": false,
+  "rules": [
+   "colour-identity"
+  ]
+ },
+ {
+  "name": "Traxos colourless",
+  "commander": {
+   "Traxos, Scourge of Kroog": 1
+  },
+  "companion": {},
+  "main": {
+   "Sol Ring": 1,
+   "Wastes": 98
+  },
+  "sideboard": {},
+  "legal": true,
+  "rules": []
+ },
+ {
+  "name": "Traxos with a Bolt",
+  "commander": {
+   "Traxos, Scourge of Kroog": 1
+  },
+  "companion": {},
+  "main": {
+   "Lightning Bolt": 1,
+   "Wastes": 98
+  },
+  "sideboard": {},
+  "legal": false,
+  "rules": [
+   "colour-identity"
+  ]
+ },
+ {
+  "name": "Krenko with Lutri companion",
+  "commander": {
+   "Krenko, Mob Boss": 1
+  },
+  "companion": {
+   "Lutri, the Spellchaser": 1
+  },
+  "main": {
+   "Mountain": 99
+  },
+  "sideboard": {},
+  "legal": false,
+  "rules": [
+   "colour-identity"
+  ]
  }
 ]

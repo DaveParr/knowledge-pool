@@ -7,7 +7,7 @@ is legal is always worked out here, on demand; it is never stored.
 
 import re;
 import from card_lines { CardLine, main_deck }
-import from commander { DECK_ZONES, CHECKED_ZONES, commanders, can_lead }
+import from commander { DECK_ZONES, CHECKED_ZONES, commanders, can_lead, identity, identity_label, commander_names }
 import from walker_errors { WalkerError }
 
 """Deck-construction rules for one format."""
@@ -213,6 +213,23 @@ def check_commander(lines: list[CardLine], fmt: Format) -> list[Violation] {
             );
         }
     }
+    if 1 <= n and n <= 2 {
+        allowed = identity(cmdrs);
+        for l in lines {
+            if l.zone in ["main", "companion"] {
+                outside = [c for c in l.colour_identity if c not in allowed];
+                if outside {
+                    found.append(
+                        Violation(
+                            rule="colour-identity",
+                            message=f"{l.name} ({identity_label(l.colour_identity)}) is outside {commander_names(cmdrs)}'s identity ({identity_label(allowed)})",
+                            card=l.name
+                        )
+                    );
+                }
+            }
+        }
+    }
     return found;
 }
 
@@ -241,7 +258,8 @@ def format_notes(fmt: Format) -> list[str] {
             "Exactly 100 cards, counting the commander zone and the main deck. Companion and sideboard are not counted.",
             "Singleton: one copy of each card across the commander zone and main deck. Basic lands, and cards that say a deck can have any number (or up to N) of them, are exempt.",
             "The commander must be able to lead per MTGJSON leadershipSkills.commander.",
-            "Every card in the commander zone, companion and main deck must be legal in Commander according to MTGJSON."
+            "Every card in the commander zone, companion and main deck must be legal in Commander according to MTGJSON.",
+            "Every card in the main deck and companion must fit inside the commander's colour identity (both commanders' together, for a pair)."
         ];
     }
     return [

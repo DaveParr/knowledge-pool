@@ -2,7 +2,7 @@
 
 import from card_lines { CardLine }
 import from legality { Format, Violation, check_commander }
-import from commander { can_lead, commanders }
+import from commander { can_lead, commanders, identity, identity_label, commander_names }
 
 glob CMD: Format = Format(name="commander", label="Commander", min_main=100, copy_limit=1, sideboard_max=0);
 
@@ -14,7 +14,8 @@ def _line(
     type_line: str = "Instant",
     legal: dict[str, str] = {"commander": "Legal"},
     leadership: dict[str, bool] = {},
-    text: str = ""
+    text: str = "",
+    colour_identity: list[str] = []
 ) -> CardLine {
     return CardLine(
         oracle_id=name,
@@ -24,12 +25,13 @@ def _line(
         type_line=type_line,
         legal=legal,
         leadership=leadership,
-        text=text
+        text=text,
+        colour_identity=colour_identity
     );
 }
 
 def _krenko() -> CardLine {
-    return _line("Krenko, Mob Boss", "commander", 1, "Legendary Creature — Goblin", {"commander": "Legal"}, {"commander": True});
+    return _line("Krenko, Mob Boss", "commander", 1, "Legendary Creature — Goblin", {"commander": "Legal"}, {"commander": True}, "", ["R"]);
 }
 
 def _basics(n: int) -> CardLine {
@@ -100,4 +102,62 @@ test "a planeswalker that can't lead is commander-eligible, naming the card" {
     assert _rules(vs) == ["commander-eligible"];
     assert vs[0].card == "Jace, the Mind Sculptor";
     assert vs[0].message == "Jace, the Mind Sculptor can't be your commander: MTGJSON doesn't list it as one (a legendary creature, or a card that says it can be your commander).";
+}
+
+def _lead(name: str, colours: list[str]) -> CardLine {
+    return _line(name, "commander", 1, "Legendary Creature — Human", {"commander": "Legal"}, {"commander": True}, "", colours);
+}
+
+test "identity unions colours in WUBRG order and labels them" {
+    ls = [_line("A", "main", 1, "Instant", {"commander": "Legal"}, {}, "", ["G", "U"]), _line("B", "main", 1, "Instant", {"commander": "Legal"}, {}, "", ["W", "B"])];
+    assert identity(ls) == ["W", "U", "B", "G"];
+    assert identity_label([]) == "colourless";
+    assert identity_label(["U", "R"]) == "UR";
+    assert identity_label(identity(ls)) == "WUBG";
+}
+
+test "a card outside the commander's identity names the card and both identities" {
+    bolt = _line("Counterspell", "main", 1, "Instant", {"commander": "Legal"}, {}, "", ["U"]);
+    vs = check_commander([_krenko(), bolt, _basics(98)], CMD);
+    assert _rules(vs) == ["colour-identity"];
+    assert vs[0].message == "Counterspell (U) is outside Krenko, Mob Boss's identity (R)";
+    assert vs[0].rule == "colour-identity" and vs[0].card == "Counterspell";
+}
+
+test "a colourless commander allows only colourless cards" {
+    traxos = _lead("Traxos, Scourge of Kroog", []);
+    ring = _line("Sol Ring", "main", 1, "Artifact");
+    assert check_commander([traxos, ring, _line("Wastes", "main", 98, "Basic Land")], CMD) == [];
+    bolt = _line("Lightning Bolt", "main", 1, "Instant", {"commander": "Legal"}, {}, "", ["R"]);
+    vs = check_commander([traxos, bolt, _line("Wastes", "main", 98, "Basic Land")], CMD);
+    assert vs[0].message == "Lightning Bolt (R) is outside Traxos, Scourge of Kroog's identity (colourless)";
+}
+
+test "the companion is checked like the main deck" {
+    lutri = _line("Lutri, the Spellchaser", "companion", 1, "Legendary Creature", {"commander": "Legal"}, {}, "", ["U", "R"]);
+    vs = check_commander([_krenko(), _basics(99), lutri], CMD);
+    assert _rules(vs) == ["colour-identity"];
+    assert vs[0].message == "Lutri, the Spellchaser (UR) is outside Krenko, Mob Boss's identity (R)";
+}
+
+test "two commanders combine their identities" {
+    t1 = _lead("Thrasios, Triton Hero", ["G", "U"]);
+    t2 = _lead("Tymna the Weaver", ["B", "W"]);
+    bolt = _line("Lightning Bolt", "main", 1, "Instant", {"commander": "Legal"}, {}, "", ["R"]);
+    vs = [v for v in check_commander([t1, t2, bolt, _basics(97)], CMD) if v.rule == "colour-identity"];
+    assert len(vs) == 1;
+    assert vs[0].message == "Lightning Bolt (R) is outside Thrasios, Triton Hero and Tymna the Weaver's identity (WUBG)";
+    assert commander_names([t1, t2]) == "Thrasios, Triton Hero and Tymna the Weaver";
+}
+
+test "no commander means no identity check" {
+    cs = _line("Counterspell", "main", 1, "Instant", {"commander": "Legal"}, {}, "", ["U"]);
+    assert _rules(check_commander([cs, _basics(99)], CMD)) == ["commander-count"];
+}
+
+test "sideboard and maybeboard cards are not identity-checked" {
+    cs = "Counterspell";
+    side = _line(cs, "sideboard", 1, "Instant", {"commander": "Legal"}, {}, "", ["U"]);
+    maybe = _line("Brainstorm", "maybeboard", 1, "Instant", {"commander": "Legal"}, {}, "", ["U"]);
+    assert check_commander([_krenko(), _basics(99), side, maybe], CMD) == [];
 }
