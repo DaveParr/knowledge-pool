@@ -9,7 +9,7 @@ from pathlib import Path
 import pytest
 
 from catalog import store
-from tests.old_catalog import drop_card_details, drop_produced_mana
+from tests.old_catalog import drop_card_details, drop_commander_fields, drop_produced_mana
 
 ROOT = Path(__file__).resolve().parent.parent
 
@@ -88,3 +88,16 @@ def _free_port() -> int:
     with socket.socket() as s:
         s.bind(("127.0.0.1", 0))
         return s.getsockname()[1]
+
+
+def test_catalogue_from_before_commander_fields_names_the_new_columns(fixture_catalog):
+    con = sqlite3.connect(fixture_catalog)
+    drop_commander_fields(con)
+    con.commit()
+    con.close()
+    store.reset()
+    with pytest.raises(store.CatalogOutOfDate) as caught:
+        store.check_current()
+    assert "cards.leadership_skills" in str(caught.value)
+    assert "cards.game_changer" in str(caught.value)
+    assert "cards.faces" not in str(caught.value)

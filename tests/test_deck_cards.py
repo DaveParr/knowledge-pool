@@ -149,6 +149,24 @@ def test_deck_view_carries_each_cards_oracle_tags(tmp_path):
         client.close()
 
 
+def test_deck_view_carries_commander_facts_for_each_card(tmp_path):
+    client = JacTestClient.from_file("main.jac", base_path=str(tmp_path))
+    try:
+        deck_id = _new_deck(client)
+        krenko, study = _oracle_id("Krenko, Mob Boss"), _oracle_id("Rhystic Study")
+        client.post("/walker/AddCard", json={"deck_id": deck_id, "oracle_id": krenko})
+        view = _reports(client.post("/walker/AddCard", json={"deck_id": deck_id, "oracle_id": study}))[0]
+
+        by_name = {c["name"]: c for c in view["cards"]}
+        assert by_name["Krenko, Mob Boss"]["colour_identity"] == ["R"]
+        assert by_name["Krenko, Mob Boss"]["leadership"]["commander"] is True
+        assert by_name["Krenko, Mob Boss"]["game_changer"] is False
+        assert by_name["Rhystic Study"]["leadership"] == {}
+        assert by_name["Rhystic Study"]["game_changer"] is True
+    finally:
+        client.close()
+
+
 def test_card_details_survive_a_restart_including_each_face(tmp_path):
     first = JacTestClient.from_file("main.jac", base_path=str(tmp_path))
     deck_id = _new_deck(first)

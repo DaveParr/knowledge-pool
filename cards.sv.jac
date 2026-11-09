@@ -32,7 +32,9 @@ node Card {
         loyalty: str = "",
         defense: str = "",
         keywords: list[str] = [],
-        faces: list[CardFace] = [];
+        faces: list[CardFace] = [],
+        leadership: dict[str, bool] = {},
+        game_changer: bool = False;
 }
 
 """One search result."""
@@ -139,6 +141,8 @@ def fill_card(card: Card, c: dict[str, any]) {
     card.keywords = c["keywords"] as list[str];
     faces = c["faces"] as list[dict[str, str]];
     card.faces = [card_face(f) for f in faces];
+    card.leadership = c["leadership"] as dict[str, bool];
+    card.game_changer = c["game_changer"] as bool;
 }
 
 """A catalogue face record as a CardFace."""
