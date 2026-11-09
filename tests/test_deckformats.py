@@ -61,9 +61,106 @@ def test_render_mtgjson_groups_entries_by_zone():
     assert {e["name"]: e["count"] for e in doc["commander"]} == {"Atraxa, Grand Unifier": 1}
 
 
-def test_mtgjson_does_not_support_import():
-    with pytest.raises(NotImplementedError):
-        get_format("mtgjson").parse("anything")
+MTGJSON_DECKS = Path(__file__).parent / "fixtures" / "mtgjson_decks"
+
+
+def _zone_counts(parsed) -> dict[str, int]:
+    totals: dict[str, int] = {}
+    for e in parsed.entries:
+        totals[e.zone] = totals.get(e.zone, 0) + e.count
+    return totals
+
+
+def test_parse_mtgjson_reads_a_real_commander_precon_file():
+    parsed = get_format("mtgjson").parse((MTGJSON_DECKS / "TemurRoar_TDC.json").read_text())
+    assert (parsed.name, parsed.format) == ("Temur Roar", "commander")
+    assert _zone_counts(parsed) == {"commander": 1, "main": 99}
+    [commander] = [e for e in parsed.entries if e.zone == "commander"]
+    assert commander.raw_name == "Eshki, Temur's Roar"
+    assert commander.oracle_id
+    assert all(e.oracle_id for e in parsed.entries)
+    assert parsed.unparsed == []
+
+
+def test_parse_mtgjson_reads_a_real_challenger_deck_with_no_play_format():
+    parsed = get_format("mtgjson").parse((MTGJSON_DECKS / "GruulStompy_Q07.json").read_text())
+    assert (parsed.name, parsed.format) == ("Gruul Stompy", "")
+    assert _zone_counts(parsed) == {"main": 60, "sideboard": 15}
+    # Two printings of one card stay as two entries; resolve_list sums them.
+    assert [e.count for e in parsed.entries if e.raw_name == "Kappa Tech-Wrecker"] == [1, 1]
+
+
+def test_parse_mtgjson_accepts_a_bare_deck_object():
+    doc = json.loads((MTGJSON_DECKS / "GruulStompy_Q07.json").read_text())
+    fmt = get_format("mtgjson")
+    bare = fmt.parse(json.dumps(doc["data"]))
+    full = fmt.parse(json.dumps(doc))
+    assert bare == full
+
+
+def test_parse_mtgjson_maps_every_zone_we_export():
+    doc = {
+        "name": "Zones", "type": "Commander Deck",
+        "commander": [{"name": "A", "count": 1}],
+        "mainBoard": [{"name": "B", "count": 2}],
+        "sideBoard": [{"name": "C", "count": 3}],
+        "companion": [{"name": "D", "count": 1}],
+        "maybeboard": [{"name": "E", "count": 4}],
+    }
+    parsed = get_format("mtgjson").parse(json.dumps(doc))
+    assert {(e.raw_name, e.count, e.zone) for e in parsed.entries} == {
+        ("A", 1, "commander"), ("B", 2, "main"), ("C", 3, "sideboard"), ("D", 1, "companion"), ("E", 4, "maybeboard"),
+    }
+
+
+def test_parse_mtgjson_notes_each_skipped_list_that_has_entries():
+    doc = {
+        "name": "Extras",
+        "mainBoard": [{"name": "Forest", "count": 1, "identifiers": {"scryfallOracleId": "f"}}],
+        "displayCommander": [{"name": "X", "count": 1}],
+        "tokens": [{"name": "Beast", "count": 1}, {"name": "Saproling", "count": 2}, {"name": "Treasure", "count": 1}],
+        "planes": [],
+        "schemes": [{"name": "Y", "count": 1}],
+    }
+    parsed = get_format("mtgjson").parse(json.dumps(doc))
+    assert [(e.raw_name, e.oracle_id) for e in parsed.entries] == [("Forest", "f")]
+    assert parsed.unparsed == [
+        "displayCommander (1 entry, not imported)",
+        "tokens (3 entries, not imported)",
+        "schemes (1 entry, not imported)",
+    ]
+
+
+def test_parse_mtgjson_skips_and_notes_bad_entries():
+    doc = {"mainBoard": [
+        {"name": "Good", "count": 2},
+        {"count": 1},
+        {"name": "Zero", "count": 0},
+        {"name": "Flag", "count": True},
+        "junk",
+    ]}
+    parsed = get_format("mtgjson").parse(json.dumps(doc))
+    assert [(e.raw_name, e.count) for e in parsed.entries] == [("Good", 2)]
+    assert parsed.unparsed == [
+        "<unnamed> (invalid name)", "Zero (invalid count)", "Flag (invalid count)", "<unnamed> (invalid entry)",
+    ]
+
+
+@pytest.mark.parametrize("text", ["not json", "[]", '"deck"', '{"data": []}', '{"mainBoard": {}}'])
+def test_parse_mtgjson_rejects_a_document_that_is_not_a_deck(text):
+    with pytest.raises(ValueError, match="Not a valid MTGJSON deck"):
+        get_format("mtgjson").parse(text)
+
+
+def test_mtgjson_export_parses_back():
+    fmt = get_format("mtgjson")
+    parsed = fmt.parse(fmt.render(_sample_deck()))
+    assert parsed.name == "Izzet Spells"
+    assert {(e.raw_name, e.count, e.zone) for e in parsed.entries} == {
+        ("Ledger Shredder", 4, "main"), ("Consider", 4, "main"),
+        ("Unlicensed Hearse", 2, "sideboard"), ("Atraxa, Grand Unifier", 1, "commander"),
+    }
+    assert parsed.unparsed == []
 
 
 @pytest.mark.parametrize("name", ["text", "arena", "moxfield"])

@@ -1,4 +1,5 @@
 import json
+from pathlib import Path
 
 import pytest
 
@@ -127,10 +128,7 @@ def test_import_says_why_a_format_cannot_be_used(tmp_path):
     try:
         deck_id = _new_deck(client)
         assert _error(_reports(client.post("/walker/DeckImport", json={"deck_id": deck_id, "format": "nope", "text": ""})))["code"] == "unknown-list-format"
-        assert _error(_reports(client.post("/walker/DeckImport", json={"deck_id": deck_id, "format": "mtgjson", "text": "{}"}))) == {
-            "code": "no-import", "message": "mtgjson lists can be exported but not imported.",
-        }
-        assert _error(_reports(client.post("/walker/CreateDeckFromList", json={"format": "mtgjson", "text": "{}"})))["code"] == "no-import"
+        assert _error(_reports(client.post("/walker/CreateDeckFromList", json={"format": "nope", "text": "{}"})))["code"] == "unknown-list-format"
         assert [d["name"] for d in _reports(client.post("/walker/ListDecks"))[0]] == ["IO deck"]
     finally:
         client.close()
@@ -348,5 +346,58 @@ def test_create_deck_from_list_uses_the_chosen_play_format(tmp_path, fmt, text):
         assert view["format"] == "modern"
         assert view["legal"] is False
         assert all("not legal in" not in v["message"] for v in view["violations"])
+    finally:
+        client.close()
+
+
+MTGJSON_DECKS = Path(__file__).parent / "fixtures" / "mtgjson_decks"
+
+
+def _zone_counts(view: dict) -> dict[str, dict[str, int]]:
+    zones: dict[str, dict[str, int]] = {}
+    for c in view["cards"]:
+        zones.setdefault(c["zone"], {})[c["name"]] = c["count"]
+    return zones
+
+
+@pytest.mark.parametrize("file_name, name, totals, summed", [
+    # Precon basics come in several printings; each card is one deck line.
+    ("TemurRoar_TDC.json", "Temur Roar", {"commander": 1, "main": 99}, ("main", "Forest", 5)),
+    # Two printings of Kappa Tech-Wrecker in the sideboard.
+    ("GruulStompy_Q07.json", "Gruul Stompy", {"main": 60, "sideboard": 15}, ("sideboard", "Kappa Tech-Wrecker", 2)),
+])
+def test_create_deck_from_a_real_mtgjson_deck_file(tmp_path, file_name, name, totals, summed):
+    client = JacTestClient.from_file("main.jac", base_path=str(tmp_path))
+    try:
+        result = _reports(client.post("/walker/CreateDeckFromList", json={
+            "format": "mtgjson", "text": (MTGJSON_DECKS / file_name).read_text(),
+        }))[0]
+        assert result["unresolved"] == []
+        view = _reports(client.post("/walker/GetDeck", json={"deck_id": result["deck_id"]}))[0]
+        assert view["name"] == name
+        # A Commander Deck imports as commander; anything else leaves the play format to the caller.
+        assert view["format"] == ("commander" if name == "Temur Roar" else "standard")
+        zones = _zone_counts(view)
+        assert {zone: sum(cards.values()) for zone, cards in zones.items()} == totals
+        zone, card, count = summed
+        assert zones[zone][card] == count
+    finally:
+        client.close()
+
+
+def test_mtgjson_export_then_import_round_trips(tmp_path):
+    client = JacTestClient.from_file("main.jac", base_path=str(tmp_path))
+    try:
+        result = _reports(client.post("/walker/CreateDeckFromList", json={
+            "format": "mtgjson", "text": (MTGJSON_DECKS / "GruulStompy_Q07.json").read_text(),
+        }))[0]
+        before = _reports(client.post("/walker/GetDeck", json={"deck_id": result["deck_id"]}))[0]
+        exported = _reports(client.post("/walker/DeckExport", json={"deck_id": result["deck_id"], "format": "mtgjson"}))[0]
+
+        again = _reports(client.post("/walker/CreateDeckFromList", json={"format": "mtgjson", "text": exported["content"]}))[0]
+        assert again["unresolved"] == []
+        after = _reports(client.post("/walker/GetDeck", json={"deck_id": again["deck_id"]}))[0]
+        assert after["name"] == "Gruul Stompy"
+        assert _zone_counts(after) == _zone_counts(before)
     finally:
         client.close()

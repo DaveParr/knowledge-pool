@@ -1,0 +1,37 @@
+{
+  "meta": {
+    "date": "2026-11-08",
+    "version": "5.3.0+20261108"
+  },
+  "data": {
+    "code": "QX3",
+    "name": "Pioneer Monks",
+    "releaseDate": "2023-05-01",
+    "type": "Pioneer Challenger Deck",
+    "commander": [],
+    "mainBoard": [
+      {
+        "count": 48,
+        "name": "Mountain"
+      },
+      {
+        "count": 4,
+        "name": "Monastery Swiftspear"
+      },
+      {
+        "count": 4,
+        "name": "Abbot of Keral Keep"
+      },
+      {
+        "count": 4,
+        "name": "Shock"
+      }
+    ],
+    "sideBoard": [
+      {
+        "count": 3,
+        "name": "Abrade"
+      }
+    ]
+  }
+}

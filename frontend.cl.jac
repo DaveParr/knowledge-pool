@@ -61,7 +61,7 @@ def:pub app -> JsxElement {
                         aria-label="Deck name"
                         value={name}
                         onChange={lambda e: ChangeEvent { name = e.target.value; }}
-                        placeholder={"Deck name (optional for mtgdeck/1)" if importOpen else "New deck name"}
+                        placeholder={"Deck name (optional for mtgdeck/1 or MTGJSON)" if importOpen else "New deck name"}
                     />
                     <button type="submit" className="primary">
                         {"Create from list" if importOpen else "Create deck"}
@@ -88,6 +88,7 @@ def:pub app -> JsxElement {
                                 <option value="arena">MTGA/MTGO</option>
                                 <option value="text">Plain text</option>
                                 <option value="mtgdeck1">mtgdeck/1</option>
+                                <option value="mtgjson">MTGJSON deck</option>
                             </select>
                         </label>
                         <label>

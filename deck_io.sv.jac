@@ -169,9 +169,9 @@ obj NewDeckResult {
 }
 
 """Create a new deck filled from a pasted list. A blank name falls back to the
-list's own name (mtgdeck/1), then "Imported deck". The play format is
+list's own name (mtgdeck/1 or MTGJSON), then "Imported deck". The play format is
 `play_format` when it names a known format; otherwise the list's own format
-(mtgdeck/1) when known, else standard. When nothing in the list
+(mtgdeck/1, or commander for an MTGJSON Commander Deck) when known, else standard. When nothing in the list
 resolves, no deck is created and `deck_id` is empty. An unknown or
 import-less list format reports a WalkerError (see resolve_list)."""
 walker:pub CreateDeckFromList {

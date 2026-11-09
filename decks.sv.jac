@@ -124,40 +124,45 @@ def holdings(deck: Deck) -> list[tuple[Holds, Card]] {
     return pairs;
 }
 
+"""A card line for `count` copies of catalogue card `c` in `zone`, with the
+holding's roles, tags, lock and reason."""
+def card_line(
+    c: Card, zone: str, count: int, roles: list[str] = [], tags: list[str] = [], locked: bool = False, reason: str = ""
+) -> CardLine {
+    return CardLine(
+        oracle_id=c.oracle_id,
+        name=c.name,
+        zone=zone,
+        count=count,
+        mana_cost=c.mana_cost,
+        mana_value=c.mana_value,
+        type_line=c.type_line,
+        text=c.text,
+        legal=c.legal,
+        oracle_tags=c.oracle_tags,
+        produced_mana=c.produced_mana,
+        power=c.power,
+        toughness=c.toughness,
+        loyalty=c.loyalty,
+        defense=c.defense,
+        keywords=c.keywords,
+        faces=c.faces,
+        colour_identity=c.colour_identity,
+        leadership=c.leadership,
+        game_changer=c.game_changer,
+        roles=roles,
+        tags=tags,
+        locked=locked,
+        reason=reason
+    );
+}
+
 """The deck's card lines, sorted by zone (ZONES order) then name: the one read
 model every analysis and export works from (see card_lines.sv.jac)."""
 def card_lines(deck: Deck) -> list[CardLine] {
-    lines: list[CardLine] = [];
-    for (e, c) in holdings(deck) {
-        lines.append(
-            CardLine(
-                oracle_id=c.oracle_id,
-                name=c.name,
-                zone=e.zone,
-                count=e.count,
-                mana_cost=c.mana_cost,
-                mana_value=c.mana_value,
-                type_line=c.type_line,
-                text=c.text,
-                legal=c.legal,
-                oracle_tags=c.oracle_tags,
-                produced_mana=c.produced_mana,
-                power=c.power,
-                toughness=c.toughness,
-                loyalty=c.loyalty,
-                defense=c.defense,
-                keywords=c.keywords,
-                faces=c.faces,
-                colour_identity=c.colour_identity,
-                leadership=c.leadership,
-                game_changer=c.game_changer,
-                roles=e.roles,
-                tags=e.tags,
-                locked=e.locked,
-                reason=e.reason
-            )
-        );
-    }
+    lines: list[CardLine] = [
+        card_line(c, e.zone, e.count, e.roles, e.tags, e.locked, e.reason) for (e, c) in holdings(deck)
+    ];
     lines.sort(key=lambda l: CardLine : (ZONES.index(l.zone), l.name));
     return lines;
 }
