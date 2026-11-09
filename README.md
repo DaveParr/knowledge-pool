@@ -1,17 +1,5 @@
 # knowledge-pool
 
-Personal knowledge/working repo, set up with [Matt Pocock's Claude Code skills](https://github.com/mattpocock/skills) for use with Claude Code.
-
-## Skills
-
-The 25 skills from the `engineering` and `productivity` buckets of [mattpocock/skills](https://github.com/mattpocock/skills) (commit `5b15a47`) are copied into [.claude/skills/](.claude/skills/) as editable project skills. See that repo's `README.md` for what each skill does.
-
-Attribution: these skill files are copied from mattpocock/skills, MIT licensed by Matt Pocock — see [.claude/skills/LICENSE-mattpocock-skills](.claude/skills/LICENSE-mattpocock-skills).
-
-## Setup
-
-Run `/setup-matt-pocock-skills` once in a Claude Code session in this repo to configure issue tracker, triage labels, and docs location.
-
 ## MTG deckbuilder (Jac)
 
 A local Magic: The Gathering deckbuilder written in [Jac](https://www.jaseci.org/). The server side is Jac walkers over a persistent graph; the UI is a Jac client app served by the same process.
@@ -36,7 +24,7 @@ export KP_CATALOG=/path/to/main/checkout/data/catalog.sqlite   # or: uv run pyth
 uv run jac run seed.jac
 ```
 
-It adds one random MTGJSON precon for each format (a Challenger Deck for Standard, a Pioneer Challenger Deck, a Modern Event Deck and a Commander Deck) to the shared graph the web app and MCP server use, and prints one line per format: the deck, its type and release date, whether it is legal, and any unresolved cards. For Standard, Pioneer and Modern it tries up to 3 precons and keeps the first legal one, else the last tried (old Challenger Decks have rotated out of Standard). Commander precons show as illegal Standard decks until there is a Commander format. A precon already in the graph is never picked again, so run it again for more decks. The seed is printed every run; `--seed N` repeats a set of picks on a fresh graph, `--format X` (repeatable) limits the formats, and `--from-dir DIR` reads `DeckList.json` and deck files from DIR instead of mtgjson.com. Downloads are cached in `data/mtgjson/decks/`. Stop `jac start` and the MCP server first: like the MCP server, it refuses to run while `KP_PORT` (default 8000) is taken.
+It adds one random MTGJSON precon for each format (a Challenger Deck for Standard, a Pioneer Challenger Deck, a Modern Event Deck and a Commander Deck) to the shared graph the web app and MCP server use, and prints one line per format: the deck, its type and release date, whether it is legal, and any unresolved cards. For Standard, Pioneer and Modern it tries up to 3 precons and keeps the first legal one, else the last tried (old Challenger Decks have rotated out of Standard). A precon already in the graph is never picked again, so run it again for more decks. The seed is printed every run; `--seed N` repeats a set of picks on a fresh graph, `--format X` (repeatable) limits the formats, and `--from-dir DIR` reads `DeckList.json` and deck files from DIR instead of mtgjson.com. Downloads are cached in `data/mtgjson/decks/`. Stop `jac start` and the MCP server first: like the MCP server, it refuses to run while `KP_PORT` (default 8000) is taken.
 
 ### Run
 
@@ -44,7 +32,7 @@ It adds one random MTGJSON precon for each format (a Challenger Deck for Standar
 uv run jac start main.jac
 ```
 
-Open http://localhost:8000. The Decks view lists your decks and creates new ones. Open a deck to search cards by name or rules text, add them to the main deck or sideboard, change counts and remove them. Each card is one compact line (count, name, cost, type, and power/toughness for creatures); click it to expand its rules text (face by face for double-faced and split cards), loyalty or defence, keywords, this deck's notes for it, and its Scryfall tags. Each zone has Expand all and Collapse all. Each deck has a format (Standard, Pioneer or Modern), and the deck view shows straight away whether it is legal and lists each rule it breaks: at least 60 main-deck cards, at most 15 in the sideboard, at most 4 copies of a card across both (basic lands and "any number" cards are exempt, and cards like Seven Dwarves use their own limit), and every card legal in the format according to MTGJSON. Legality is worked out on every view and edit; it is never stored. Decks are stored in `.jac/data` and survive a restart; delete that folder to start fresh.
+Open http://localhost:8000. The Decks view lists your decks and creates new ones. Open a deck to search cards by name or rules text, add them to the main deck or sideboard, change counts and remove them. Each card is one compact line (count, name, cost, type, and power/toughness for creatures); click it to expand its rules text (face by face for double-faced and split cards), loyalty or defence, keywords, this deck's notes for it, and its Scryfall tags. Each zone has Expand all and Collapse all. Each deck has a format (Standard, Pioneer, Modern or Commander), and the deck view shows straight away whether it is legal and lists each rule it breaks: at least 60 main-deck cards, at most 15 in the sideboard, at most 4 copies of a card across both (basic lands and "any number" cards are exempt, and cards like Seven Dwarves use their own limit), and every card legal in the format according to MTGJSON. Commander has its own rules: exactly 100 cards counting the commander, one copy of each card, and no sideboard. Legality is worked out on every view and edit; it is never stored. Decks are stored in `.jac/data` and survive a restart; delete that folder to start fresh.
 
 The full catalogue stays in SQLite. A `Card` node is added to the graph the first time a deck uses that card, because saving all 35,000 cards as graph nodes took more than 15 minutes. A `Card` node keeps a copy of the card's catalogue data, so after re-running the ingest, refresh the copies once with the app running: `curl -X POST http://localhost:8000/walker/RefreshCards`. Until then, cards already in a deck show their old data (for example, no power/toughness after the upgrade that added it), and commanders in an existing graph show as ineligible.
 
