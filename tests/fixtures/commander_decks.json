@@ -30,7 +30,7 @@
   "companion": {},
   "main": {
    "Relentless Rats": 20,
-   "Nazgûl": 9,
+   "Nazg\u00fbl": 9,
    "Seven Dwarves": 7,
    "Mountain": 63
   },
@@ -102,13 +102,13 @@
   ]
  },
  {
-  "name": "Ten Nazgûl",
+  "name": "Ten Nazg\u00fbl",
   "commander": {
    "Anje Falkenrath": 1
   },
   "companion": {},
   "main": {
-   "Nazgûl": 10,
+   "Nazg\u00fbl": 10,
    "Mountain": 89
   },
   "sideboard": {},
@@ -222,6 +222,187 @@
   "legal": false,
   "rules": [
    "colour-identity"
+  ]
+ },
+ {
+  "name": "Thrasios and Tymna",
+  "commander": {
+   "Thrasios, Triton Hero": 1,
+   "Tymna the Weaver": 1
+  },
+  "companion": {},
+  "main": {
+   "Island": 49,
+   "Plains": 49
+  },
+  "sideboard": {},
+  "legal": true,
+  "rules": []
+ },
+ {
+  "name": "Pir and Toothy",
+  "commander": {
+   "Pir, Imaginative Rascal": 1,
+   "Toothy, Imaginary Friend": 1
+  },
+  "companion": {},
+  "main": {
+   "Forest": 49,
+   "Island": 49
+  },
+  "sideboard": {},
+  "legal": true,
+  "rules": []
+ },
+ {
+  "name": "Bjorna and Sophina (Friends forever)",
+  "commander": {
+   "Bjorna, Nightfall Alchemist": 1,
+   "Sophina, Spearsage Deserter": 1
+  },
+  "companion": {},
+  "main": {
+   "Mountain": 49,
+   "Island": 49
+  },
+  "sideboard": {},
+  "legal": true,
+  "rules": []
+ },
+ {
+  "name": "Wilson and Candlekeep Sage",
+  "commander": {
+   "Wilson, Refined Grizzly": 1,
+   "Candlekeep Sage": 1
+  },
+  "companion": {},
+  "main": {
+   "Forest": 49,
+   "Island": 49
+  },
+  "sideboard": {},
+  "legal": true,
+  "rules": []
+ },
+ {
+  "name": "Precon: Timey-Wimey",
+  "precon": "TimeyWimey_WHO",
+  "legal": true,
+  "rules": []
+ },
+ {
+  "name": "Krenko and Thrasios",
+  "commander": {
+   "Krenko, Mob Boss": 1,
+   "Thrasios, Triton Hero": 1
+  },
+  "companion": {},
+  "main": {
+   "Mountain": 49,
+   "Island": 49
+  },
+  "sideboard": {},
+  "legal": false,
+  "rules": [
+   "commander-pair"
+  ]
+ },
+ {
+  "name": "Pir and Thrasios",
+  "commander": {
+   "Pir, Imaginative Rascal": 1,
+   "Thrasios, Triton Hero": 1
+  },
+  "companion": {},
+  "main": {
+   "Forest": 49,
+   "Island": 49
+  },
+  "sideboard": {},
+  "legal": false,
+  "rules": [
+   "commander-pair"
+  ]
+ },
+ {
+  "name": "Bjorna and Abby",
+  "commander": {
+   "Bjorna, Nightfall Alchemist": 1,
+   "Abby, Merciless Soldier": 1
+  },
+  "companion": {},
+  "main": {
+   "Mountain": 49,
+   "Island": 49
+  },
+  "sideboard": {},
+  "legal": false,
+  "rules": [
+   "commander-pair"
+  ]
+ },
+ {
+  "name": "Candlekeep Sage alone",
+  "commander": {
+   "Candlekeep Sage": 1
+  },
+  "companion": {},
+  "main": {
+   "Island": 99
+  },
+  "sideboard": {},
+  "legal": false,
+  "rules": [
+   "commander-eligible"
+  ]
+ },
+ {
+  "name": "Thrasios twice",
+  "commander": {
+   "Thrasios, Triton Hero": 2
+  },
+  "companion": {},
+  "main": {
+   "Island": 98
+  },
+  "sideboard": {},
+  "legal": false,
+  "rules": [
+   "copy-limit"
+  ]
+ },
+ {
+  "name": "Three commanders",
+  "commander": {
+   "Thrasios, Triton Hero": 1,
+   "Tymna the Weaver": 1,
+   "Krenko, Mob Boss": 1
+  },
+  "companion": {},
+  "main": {
+   "Island": 97
+  },
+  "sideboard": {},
+  "legal": false,
+  "rules": [
+   "commander-count"
+  ]
+ },
+ {
+  "name": "Thrasios and Tymna, 99 main",
+  "commander": {
+   "Thrasios, Triton Hero": 1,
+   "Tymna the Weaver": 1
+  },
+  "companion": {},
+  "main": {
+   "Island": 49,
+   "Plains": 50
+  },
+  "sideboard": {},
+  "legal": false,
+  "rules": [
+   "deck-size"
   ]
  }
 ]

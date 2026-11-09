@@ -7,7 +7,7 @@ is legal is always worked out here, on demand; it is never stored.
 
 import re;
 import from card_lines { CardLine, main_deck }
-import from commander { DECK_ZONES, CHECKED_ZONES, commanders, can_lead, identity, identity_label, commander_names }
+import from commander { DECK_ZONES, CHECKED_ZONES, commanders, can_lead, identity, identity_label, commander_names, partner_ability, is_background, pair_problem }
 import from walker_errors { WalkerError }
 
 """Deck-construction rules for one format."""
@@ -194,15 +194,30 @@ def check_commander(lines: list[CardLine], fmt: Format) -> list[Violation] {
                 message="A Commander deck needs a commander: put one in the commander zone."
             )
         );
-    } elif n >= 2 {
+    } elif n >= 3 {
         found.append(
             Violation(
                 rule="commander-count",
-                message=f"The commander zone holds {n} cards; {fmt.label} allows one."
+                message=f"The commander zone holds {n} cards; {fmt.label} allows one, or two that pair."
             )
         );
     }
-    for c in cmdrs {
+    paired = len(cmdrs) == 2 and n == 2;
+    if paired {
+        why = pair_problem(cmdrs[0], cmdrs[1]);
+        if why {
+            found.append(
+                Violation(
+                    rule="commander-pair",
+                    message=f"{cmdrs[0].name} and {cmdrs[1].name} can't be commanders together: {why}."
+                )
+            );
+        }
+    }
+    for (i, c) in enumerate(cmdrs) {
+        if paired and is_background(c) and partner_ability(cmdrs[1 - i]) == "choose a background" {
+            continue;
+        }
         if not can_lead(c) {
             found.append(
                 Violation(
@@ -257,7 +272,7 @@ def format_notes(fmt: Format) -> list[str] {
         return [
             "Exactly 100 cards, counting the commander zone and the main deck. Companion and sideboard are not counted.",
             "Singleton: one copy of each card across the commander zone and main deck. Basic lands, and cards that say a deck can have any number (or up to N) of them, are exempt.",
-            "The commander must be able to lead per MTGJSON leadershipSkills.commander.",
+            "The commander must be able to lead per MTGJSON leadershipSkills.commander. Two commanders are allowed when they pair: Partner, Partner with (each other), Partner—<same quality> such as Friends forever, Choose a Background with a Background, or Doctor's companion with a Time Lord Doctor.",
             "Every card in the commander zone, companion and main deck must be legal in Commander according to MTGJSON.",
             "Every card in the main deck and companion must fit inside the commander's colour identity (both commanders' together, for a pair)."
         ];

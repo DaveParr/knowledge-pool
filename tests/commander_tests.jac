@@ -2,7 +2,7 @@
 
 import from card_lines { CardLine }
 import from legality { Format, Violation, check_commander }
-import from commander { can_lead, commanders, identity, identity_label, commander_names }
+import from commander { can_lead, commanders, identity, identity_label, commander_names, partner_ability, is_background, is_time_lord_doctor, pair_problem }
 
 glob CMD: Format = Format(name="commander", label="Commander", min_main=100, copy_limit=1, sideboard_max=0);
 
@@ -89,11 +89,11 @@ test "no commander is one commander-count violation" {
     assert vs[0].message == "A Commander deck needs a commander: put one in the commander zone.";
 }
 
-test "two commanders are one commander-count violation" {
-    vs = check_commander([_krenko(), _krenko(), _basics(98)], CMD);
-    assert "commander-count" in _rules(vs);
+test "three commanders is commander-count" {
+    vs = check_commander([_thrasios(), _tymna(), _krenko(), _basics(97)], CMD);
     msgs = [v.message for v in vs if v.rule == "commander-count"];
-    assert msgs == ["The commander zone holds 2 cards; Commander allows one."];
+    assert msgs == ["The commander zone holds 3 cards; Commander allows one, or two that pair."];
+    assert "commander-pair" not in _rules(vs);
 }
 
 test "a planeswalker that can't lead is commander-eligible, naming the card" {
@@ -160,4 +160,112 @@ test "sideboard and maybeboard cards are not identity-checked" {
     side = _line(cs, "sideboard", 1, "Instant", {"commander": "Legal"}, {}, "", ["U"]);
     maybe = _line("Brainstorm", "maybeboard", 1, "Instant", {"commander": "Legal"}, {}, "", ["U"]);
     assert check_commander([_krenko(), _basics(99), side, maybe], CMD) == [];
+}
+
+def _cmdr(name: str, type_line: str, text: str, colours: list[str] = []) -> CardLine {
+    return _line(name, "commander", 1, type_line, {"commander": "Legal"}, {"commander": True}, text, colours);
+}
+
+def _thrasios() -> CardLine {
+    return _cmdr("Thrasios, Triton Hero", "Legendary Creature — Merfolk Wizard", "{4}: Scry 1, then reveal the top card of your library. If it's a land card, put it onto the battlefield tapped. Otherwise, draw a card.\nPartner (You can have two commanders if both have partner.)", ["G", "U"]);
+}
+
+def _tymna() -> CardLine {
+    return _cmdr("Tymna the Weaver", "Legendary Creature — Human Cleric", "Lifelink\nAt the beginning of each of your postcombat main phases, you may pay X life, where X is the number of opponents that were dealt combat damage this turn. If you do, draw X cards.\nPartner (You can have two commanders if both have partner.)", ["B", "W"]);
+}
+
+def _pir() -> CardLine {
+    return _cmdr("Pir, Imaginative Rascal", "Legendary Creature — Human", "Partner with Toothy, Imaginary Friend (When this creature enters, target player may put Toothy into their hand from their library, then shuffle.)\nIf one or more counters would be put on a permanent your team controls, that many plus one of each of those kinds of counters are put on that permanent instead.", ["G"]);
+}
+
+def _toothy() -> CardLine {
+    return _cmdr("Toothy, Imaginary Friend", "Legendary Creature — Illusion", "Partner with Pir, Imaginative Rascal (When this creature enters, target player may put Pir into their hand from their library, then shuffle.)\nWhenever you draw a card, put a +1/+1 counter on Toothy.\nWhen Toothy leaves the battlefield, draw a card for each +1/+1 counter on it.", ["U"]);
+}
+
+def _bjorna() -> CardLine {
+    return _cmdr("Bjorna, Nightfall Alchemist", "Legendary Creature — Human", "{T}, Sacrifice an artifact: Bjorna, Nightfall Alchemist deals 1 damage to target creature. Goad that creature. (Until your next turn, that creature attacks each combat if able and attacks a player other than you if able.)\nPartner—Friends forever (You can have two commanders if both have this ability.)", ["R", "U"]);
+}
+
+def _sophina() -> CardLine {
+    return _cmdr("Sophina, Spearsage Deserter", "Legendary Creature — Human Soldier", "Menace\nWhenever Sophina, Spearsage Deserter attacks, investigate once for each nontoken attacking creature. (To investigate, create a Clue token. It's an artifact with \"{2}, Sacrifice this artifact: Draw a card.\")\nPartner—Friends forever (You can have two commanders if both have this ability.)", ["R", "W"]);
+}
+
+def _abby() -> CardLine {
+    return _cmdr("Abby, Merciless Soldier", "Legendary Creature — Human Survivor", "When you cast this spell, create a number of 1/1 black Fungus Zombie creature tokens named Cordyceps Infected equal to the amount of mana spent to cast it.\nAbby enters under the control of an opponent of your choice.\nPartner—Survivors (You can have two commanders if both have this ability.)", ["G", "R"]);
+}
+
+def _wilson() -> CardLine {
+    return _cmdr("Wilson, Refined Grizzly", "Legendary Creature — Bear Warrior", "This spell can't be countered.\nReach, vigilance, trample\nWard {2} (Whenever this creature becomes the target of a spell or ability an opponent controls, counter it unless that player pays {2}.)\nChoose a Background (You can have a Background as a second commander.)", ["G"]);
+}
+
+def _sage() -> CardLine {
+    return _line("Candlekeep Sage", "commander", 1, "Legendary Enchantment — Background", {"commander": "Legal"}, {}, "Commander creatures you own have \"When this creature enters or leaves the battlefield, draw a card.\"", ["U"]);
+}
+
+def _tenth() -> CardLine {
+    return _cmdr("The Tenth Doctor", "Legendary Creature — Time Lord Doctor", "Allons-y! — Whenever you attack, exile cards from the top of your library until you exile a nonland card. Put three time counters on it. If it doesn't have suspend, it gains suspend.\nTimey-Wimey — {7}: Time travel three times. Activate only as a sorcery. (For each suspended card you own and each permanent you control with a time counter on it, you may add or remove a time counter. Then do it two more times.)", ["R", "U"]);
+}
+
+def _rose() -> CardLine {
+    return _cmdr("Rose Tyler", "Legendary Creature — Human", "Rose Tyler gets +1/+1 for each time counter on it.\nBad Wolf — Whenever Rose Tyler attacks, put a time counter on it for each suspended card you own and each other permanent you control with a time counter on it.\nDoctor's companion (You can have two commanders if the other is the Doctor.)", ["W"]);
+}
+
+test "partner ability reads the keyword line, not other text" {
+    assert partner_ability(_thrasios()) == "partner";
+    assert partner_ability(_pir()) == "partner with:Toothy, Imaginary Friend";
+    assert partner_ability(_bjorna()) == "partner—Friends forever";
+    assert partner_ability(_wilson()) == "choose a background";
+    assert partner_ability(_rose()) == "doctor's companion";
+    assert partner_ability(_krenko()) == "";
+    other = _cmdr("Other", "Legendary Creature — Human", "Creatures you control with partner get +1/+1.");
+    assert partner_ability(other) == "";
+}
+
+test "backgrounds and Time Lord Doctors are told from their type lines" {
+    assert is_background(_sage());
+    assert not is_background(_krenko());
+    assert is_time_lord_doctor(_tenth());
+    assert not is_time_lord_doctor(_rose());
+}
+
+test "each pair kind is legal" {
+    assert pair_problem(_thrasios(), _tymna()) == "";
+    assert pair_problem(_pir(), _toothy()) == "";
+    assert pair_problem(_bjorna(), _sophina()) == "";
+    assert pair_problem(_wilson(), _sage()) == "";
+    assert pair_problem(_tenth(), _rose()) == "";
+}
+
+test "illegal pairs name the reason" {
+    assert pair_problem(_krenko(), _thrasios()) == "Krenko, Mob Boss has no partner ability";
+    assert pair_problem(_pir(), _thrasios()) == "Pir, Imaginative Rascal can only partner with Toothy, Imaginary Friend";
+    assert pair_problem(_bjorna(), _abby()) == "Partner—Friends forever and Partner—Survivors don't pair";
+    assert pair_problem(_wilson(), _thrasios()) == "Wilson, Refined Grizzly needs a Background";
+    assert pair_problem(_rose(), _krenko()) == "Rose Tyler needs a Time Lord Doctor";
+}
+
+test "a Background can lead only beside a choose-a-Background commander" {
+    alone = check_commander([_sage(), _basics(99)], CMD);
+    assert "commander-eligible" in _rules(alone);
+    paired = check_commander([_sage(), _wilson(), _basics(98)], CMD);
+    assert "commander-eligible" not in _rules(paired);
+}
+
+test "same card twice is not a pair" {
+    t = _thrasios();
+    t.count = 2;
+    vs = check_commander([t, _basics(98)], CMD);
+    assert "commander-pair" not in _rules(vs);
+    assert "copy-limit" in _rules(vs);
+}
+
+test "legal pairs have no pair violation" {
+    vs = check_commander([_thrasios(), _tymna(), _basics(98)], CMD);
+    assert "commander-pair" not in _rules(vs);
+}
+
+test "the commander-pair message names both cards" {
+    vs = check_commander([_krenko(), _thrasios(), _basics(98)], CMD);
+    msgs = [v.message for v in vs if v.rule == "commander-pair"];
+    assert msgs == ["Krenko, Mob Boss and Thrasios, Triton Hero can't be commanders together: Krenko, Mob Boss has no partner ability."];
 }
