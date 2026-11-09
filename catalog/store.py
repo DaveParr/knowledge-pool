@@ -12,7 +12,7 @@ from catalog.ingest import SCHEMA, db_path
 _COLUMNS = (
     "c.oracle_id, c.name, c.mana_cost, c.mana_value, c.colour_identity, c.types, "
     "c.type_line, c.text, c.legalities, c.produced_mana, "
-    "c.power, c.toughness, c.loyalty, c.defense, c.keywords, c.faces"
+    "c.power, c.toughness, c.loyalty, c.defense, c.keywords, c.faces, c.leadership_skills, c.game_changer"
 )
 _WORD = re.compile(r"[\w']+", re.UNICODE)
 
@@ -96,6 +96,8 @@ def _card(row: sqlite3.Row, con: sqlite3.Connection) -> dict:
         "defense": row["defense"],
         "keywords": json.loads(row["keywords"]),
         "faces": json.loads(row["faces"]),
+        "leadership": json.loads(row["leadership_skills"]),
+        "game_changer": bool(row["game_changer"]),
     }
 
 

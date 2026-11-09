@@ -14,7 +14,7 @@ sv import from card_lines { CardLine }
 sv import from walker_errors { WalkerError }
 sv import from cards { CardHit, CardSearch, search_cards }
 
-def:pub AddCards(deckId: str, cards: list[CardLine], onChanged: Callable[[DeckView], None]) -> JsxElement {
+def:pub AddCards(deckId: str, format: str, cards: list[CardLine], onChanged: Callable[[DeckView], None]) -> JsxElement {
     has query: str = "",
         lastQuery: str = "",
         hits: list[CardHit] = [],
@@ -65,7 +65,7 @@ def:pub AddCards(deckId: str, cards: list[CardLine], onChanged: Callable[[DeckVi
                             <span className="cs-name">{hit.name}</span>
                             <span className="cs-cost"><ManaCost cost={hit.mana_cost}/></span>
                             <span className="cs-type">{hit.type_line}</span>
-                            {for zone in ["main", "sideboard"] {
+                            {for zone in ["commander", "companion", "main", "sideboard", "maybeboard"] {
                                 if heldIn(hit.oracle_id, zone) > 0 {
                                     <span key={zone} className="pill ok">{str(heldIn(hit.oracle_id, zone)) + " in " + zone}</span>
                                 }
@@ -85,6 +85,24 @@ def:pub AddCards(deckId: str, cards: list[CardLine], onChanged: Callable[[DeckVi
                             >
                                 + Side
                             </button>
+                            {if format == "commander" {
+                                <button
+                                    key="commander"
+                                    aria-label={"Add " + hit.name + " as commander"}
+                                    onClick={lambda _e: MouseEvent { addCard(hit, "commander"); }}
+                                >
+                                    + Commander
+                                </button>
+                            }}
+                            {if format == "commander" {
+                                <button
+                                    key="companion"
+                                    aria-label={"Add " + hit.name + " as companion"}
+                                    onClick={lambda _e: MouseEvent { addCard(hit, "companion"); }}
+                                >
+                                    + Companion
+                                </button>
+                            }}
                         </div>
                     </li>
                 }}

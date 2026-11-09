@@ -36,7 +36,7 @@ impl AddCards.addCard(hit: CardHit, zone: str) -> None {
             now += c.count;
         }
     }
-    where = "main deck" if zone == "main" else "sideboard";
+    where = {"main": "main deck", "sideboard": "sideboard", "commander": "commander zone", "companion": "companion zone"}.get(zone, zone);
     toast = "Added 1 " + hit.name + " to " + where + " (now " + str(now) + ").";
     onChanged(view);
 }

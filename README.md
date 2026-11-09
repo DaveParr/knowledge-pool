@@ -46,7 +46,7 @@ uv run jac start main.jac
 
 Open http://localhost:8000. The Decks view lists your decks and creates new ones. Open a deck to search cards by name or rules text, add them to the main deck or sideboard, change counts and remove them. Each card is one compact line (count, name, cost, type, and power/toughness for creatures); click it to expand its rules text (face by face for double-faced and split cards), loyalty or defence, keywords, this deck's notes for it, and its Scryfall tags. Each zone has Expand all and Collapse all. Each deck has a format (Standard, Pioneer or Modern), and the deck view shows straight away whether it is legal and lists each rule it breaks: at least 60 main-deck cards, at most 15 in the sideboard, at most 4 copies of a card across both (basic lands and "any number" cards are exempt, and cards like Seven Dwarves use their own limit), and every card legal in the format according to MTGJSON. Legality is worked out on every view and edit; it is never stored. Decks are stored in `.jac/data` and survive a restart; delete that folder to start fresh.
 
-The full catalogue stays in SQLite. A `Card` node is added to the graph the first time a deck uses that card, because saving all 35,000 cards as graph nodes took more than 15 minutes. A `Card` node keeps a copy of the card's catalogue data, so after re-running the ingest, refresh the copies once with the app running: `curl -X POST http://localhost:8000/walker/RefreshCards`. Until then, cards already in a deck show their old data (for example, no power/toughness after the upgrade that added it).
+The full catalogue stays in SQLite. A `Card` node is added to the graph the first time a deck uses that card, because saving all 35,000 cards as graph nodes took more than 15 minutes. A `Card` node keeps a copy of the card's catalogue data, so after re-running the ingest, refresh the copies once with the app running: `curl -X POST http://localhost:8000/walker/RefreshCards`. Until then, cards already in a deck show their old data (for example, no power/toughness after the upgrade that added it), and commanders in an existing graph show as ineligible.
 
 ### Use with Claude (MCP)
 
@@ -75,7 +75,7 @@ uv run jac test        # walker tests in tests/*_tests.jac
 uv run pytest tests    # ingest, search, REST, legality and MCP tests
 ```
 
-`tests/fixtures/legality_decks.json` holds 27 known legal and illegal decks that the validator is tested against. Tests build their catalogue from `tests/fixtures/atomic_small.json`, 35 real cards taken from MTGJSON (legalities as of 2 Nov 2026). Type-check with `uv run jac check *.jac`. Run `jac guide` for Jac's own reference guides (see `AGENTS.md`).
+`tests/fixtures/legality_decks.json` holds 27 known legal and illegal decks that the validator is tested against, and `tests/fixtures/commander_decks.json` holds known Commander decks, including real MTGJSON precons in `tests/fixtures/mtgjson_decks/` (trimmed, MIT). Tests build their catalogue from `tests/fixtures/atomic_small.json`, 214 real cards taken from MTGJSON (legalities as of 2 Nov 2026); `scripts/fixture_cards.py` adds cards to it. Type-check with `uv run jac check *.jac`. Run `jac guide` for Jac's own reference guides (see `AGENTS.md`).
 
 ### Layout
 

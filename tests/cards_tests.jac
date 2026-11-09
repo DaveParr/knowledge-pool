@@ -96,6 +96,8 @@ test "re-ingest then one RefreshCards updates every field on existing Card nodes
     face["loyalty"] = "4";
     face["defense"] = "2";
     face["keywords"] = ["Haste"];
+    face["leadershipSkills"] = {"commander": True};
+    face["isGameChanger"] = True;
     changed["data"]["Lightning Bolt"].append({"faceName": "Bolt Back", "type": "Instant", "text": "Draw a card."});
     changed["data"]["Lightning Bot"] = changed["data"].pop("Lightning Bolt");
     try {
@@ -116,6 +118,8 @@ test "re-ingest then one RefreshCards updates every field on existing Card nodes
         assert card.produced_mana == ["R"];
         assert (card.power, card.toughness, card.loyalty, card.defense) == ("3", "1", "4", "2");
         assert card.keywords == ["Haste"];
+        assert card.leadership == {"commander": True};
+        assert card.game_changer;
         assert [f.name for f in card.faces] == ["Lightning Bolt", "Bolt Back"];
         assert card.faces[1].text == "Draw a card.";
         # Lookups see the new build too, not a connection to the old file.

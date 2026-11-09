@@ -56,3 +56,6 @@
   .dd-line { grid-template-columns: 10px minmax(0, 1fr) 6em 3em; }
   .dd-type { display: none; }
 }
+
+.dd-gc { margin-top: 0.5rem; }
+.dd-gc p { margin: 0.15rem 0; }

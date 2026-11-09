@@ -9,6 +9,7 @@ import from datetime { datetime, timezone }
 import from cards { Card, card_node }
 import from card_lines { CardLine, main_deck }
 import from legality { Violation, FORMAT_LABELS, format_node, check_lines, unknown_format }
+import from commander { GameChangers, game_changers }
 import from mana { ManaProfile, ManaCurve, mana_profile, mana_curve }
 import from walker_errors { WalkerError }
 
@@ -33,7 +34,8 @@ node Deck {
 
 """Every zone a deck can hold cards in (the mtgdeck/1 zones), in display
 order. The one list of zones: every holdings change and every import checks
-against it. Legality looks only at main and sideboard (see legality.LEGALITY_ZONES)."""
+against it. Constructed legality looks only at main and sideboard (see
+legality.LEGALITY_ZONES); Commander also counts the commander and companion zones."""
 glob ZONES: list[str] = ["commander", "companion", "main", "sideboard", "maybeboard"];
 
 """Create a deck and report it. A blank name or an unknown format creates
@@ -102,7 +104,8 @@ obj DeckView {
         legal: bool = False,
         violations: list[Violation] = [],
         history: list[ChangeNote] = [],
-        rejected: list[str] = [];
+        rejected: list[str] = [],
+        game_changers: GameChangers | None = None;
 }
 
 """Every (edge, card) pair a deck holds. A card in both zones has two edges."""
@@ -145,6 +148,9 @@ def card_lines(deck: Deck) -> list[CardLine] {
                 defense=c.defense,
                 keywords=c.keywords,
                 faces=c.faces,
+                colour_identity=c.colour_identity,
+                leadership=c.leadership,
+                game_changer=c.game_changer,
                 roles=e.roles,
                 tags=e.tags,
                 locked=e.locked,
@@ -179,7 +185,8 @@ def deck_view(deck: Deck) -> DeckView {
         sideboard_total=sum([l.count for l in lines if l.zone == "sideboard"]),
         legal=len(violations) == 0,
         violations=violations,
-        history=deck.history[-20:]
+        history=deck.history[-20:],
+        game_changers=game_changers(lines) if deck.format == "commander" else None
     );
 }
 

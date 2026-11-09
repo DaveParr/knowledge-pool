@@ -1,0 +1,408 @@
+[
+ {
+  "name": "Krenko mono-red",
+  "commander": {
+   "Krenko, Mob Boss": 1
+  },
+  "companion": {},
+  "main": {
+   "Lightning Bolt": 1,
+   "Goblin Guide": 1,
+   "Shock": 1,
+   "Sol Ring": 1,
+   "Mountain": 95
+  },
+  "sideboard": {},
+  "legal": true,
+  "rules": []
+ },
+ {
+  "name": "Precon: Draconic Rage",
+  "precon": "DraconicRage_AFC",
+  "legal": true,
+  "rules": []
+ },
+ {
+  "name": "Anje any-number cards",
+  "commander": {
+   "Anje Falkenrath": 1
+  },
+  "companion": {},
+  "main": {
+   "Relentless Rats": 20,
+   "Nazg\u00fbl": 9,
+   "Seven Dwarves": 7,
+   "Mountain": 63
+  },
+  "sideboard": {},
+  "legal": true,
+  "rules": []
+ },
+ {
+  "name": "Kenrith with a companion and sideboard",
+  "commander": {
+   "Kenrith, the Returned King": 1
+  },
+  "companion": {
+   "Jegantha, the Wellspring": 1
+  },
+  "main": {
+   "Mountain": 99
+  },
+  "sideboard": {
+   "Shock": 10
+  },
+  "legal": true,
+  "rules": []
+ },
+ {
+  "name": "99 cards",
+  "commander": {
+   "Krenko, Mob Boss": 1
+  },
+  "companion": {},
+  "main": {
+   "Mountain": 98
+  },
+  "sideboard": {},
+  "legal": false,
+  "rules": [
+   "deck-size"
+  ]
+ },
+ {
+  "name": "101 cards",
+  "commander": {
+   "Krenko, Mob Boss": 1
+  },
+  "companion": {},
+  "main": {
+   "Mountain": 100
+  },
+  "sideboard": {},
+  "legal": false,
+  "rules": [
+   "deck-size"
+  ]
+ },
+ {
+  "name": "Two Bolts",
+  "commander": {
+   "Krenko, Mob Boss": 1
+  },
+  "companion": {},
+  "main": {
+   "Lightning Bolt": 2,
+   "Mountain": 97
+  },
+  "sideboard": {},
+  "legal": false,
+  "rules": [
+   "copy-limit"
+  ]
+ },
+ {
+  "name": "Ten Nazg\u00fbl",
+  "commander": {
+   "Anje Falkenrath": 1
+  },
+  "companion": {},
+  "main": {
+   "Nazg\u00fbl": 10,
+   "Mountain": 89
+  },
+  "sideboard": {},
+  "legal": false,
+  "rules": [
+   "copy-limit"
+  ]
+ },
+ {
+  "name": "Black Lotus",
+  "commander": {
+   "Krenko, Mob Boss": 1
+  },
+  "companion": {},
+  "main": {
+   "Black Lotus": 1,
+   "Mountain": 98
+  },
+  "sideboard": {},
+  "legal": false,
+  "rules": [
+   "banned"
+  ]
+ },
+ {
+  "name": "No commander",
+  "commander": {},
+  "companion": {},
+  "main": {
+   "Mountain": 100
+  },
+  "sideboard": {},
+  "legal": false,
+  "rules": [
+   "commander-count"
+  ]
+ },
+ {
+  "name": "Jace leads",
+  "commander": {
+   "Jace, the Mind Sculptor": 1
+  },
+  "companion": {},
+  "main": {
+   "Island": 99
+  },
+  "sideboard": {},
+  "legal": false,
+  "rules": [
+   "commander-eligible"
+  ]
+ },
+ {
+  "name": "Krenko with Counterspell",
+  "commander": {
+   "Krenko, Mob Boss": 1
+  },
+  "companion": {},
+  "main": {
+   "Counterspell": 1,
+   "Mountain": 98
+  },
+  "sideboard": {},
+  "legal": false,
+  "rules": [
+   "colour-identity"
+  ]
+ },
+ {
+  "name": "Traxos colourless",
+  "commander": {
+   "Traxos, Scourge of Kroog": 1
+  },
+  "companion": {},
+  "main": {
+   "Sol Ring": 1,
+   "Wastes": 98
+  },
+  "sideboard": {},
+  "legal": true,
+  "rules": []
+ },
+ {
+  "name": "Traxos with a Bolt",
+  "commander": {
+   "Traxos, Scourge of Kroog": 1
+  },
+  "companion": {},
+  "main": {
+   "Lightning Bolt": 1,
+   "Wastes": 98
+  },
+  "sideboard": {},
+  "legal": false,
+  "rules": [
+   "colour-identity"
+  ]
+ },
+ {
+  "name": "Krenko with Lutri companion",
+  "commander": {
+   "Krenko, Mob Boss": 1
+  },
+  "companion": {
+   "Lutri, the Spellchaser": 1
+  },
+  "main": {
+   "Mountain": 99
+  },
+  "sideboard": {},
+  "legal": false,
+  "rules": [
+   "colour-identity"
+  ]
+ },
+ {
+  "name": "Thrasios and Tymna",
+  "commander": {
+   "Thrasios, Triton Hero": 1,
+   "Tymna the Weaver": 1
+  },
+  "companion": {},
+  "main": {
+   "Island": 49,
+   "Plains": 49
+  },
+  "sideboard": {},
+  "legal": true,
+  "rules": []
+ },
+ {
+  "name": "Pir and Toothy",
+  "commander": {
+   "Pir, Imaginative Rascal": 1,
+   "Toothy, Imaginary Friend": 1
+  },
+  "companion": {},
+  "main": {
+   "Forest": 49,
+   "Island": 49
+  },
+  "sideboard": {},
+  "legal": true,
+  "rules": []
+ },
+ {
+  "name": "Bjorna and Sophina (Friends forever)",
+  "commander": {
+   "Bjorna, Nightfall Alchemist": 1,
+   "Sophina, Spearsage Deserter": 1
+  },
+  "companion": {},
+  "main": {
+   "Mountain": 49,
+   "Island": 49
+  },
+  "sideboard": {},
+  "legal": true,
+  "rules": []
+ },
+ {
+  "name": "Wilson and Candlekeep Sage",
+  "commander": {
+   "Wilson, Refined Grizzly": 1,
+   "Candlekeep Sage": 1
+  },
+  "companion": {},
+  "main": {
+   "Forest": 49,
+   "Island": 49
+  },
+  "sideboard": {},
+  "legal": true,
+  "rules": []
+ },
+ {
+  "name": "Precon: Timey-Wimey",
+  "precon": "TimeyWimey_WHO",
+  "legal": true,
+  "rules": []
+ },
+ {
+  "name": "Krenko and Thrasios",
+  "commander": {
+   "Krenko, Mob Boss": 1,
+   "Thrasios, Triton Hero": 1
+  },
+  "companion": {},
+  "main": {
+   "Mountain": 49,
+   "Island": 49
+  },
+  "sideboard": {},
+  "legal": false,
+  "rules": [
+   "commander-pair"
+  ]
+ },
+ {
+  "name": "Pir and Thrasios",
+  "commander": {
+   "Pir, Imaginative Rascal": 1,
+   "Thrasios, Triton Hero": 1
+  },
+  "companion": {},
+  "main": {
+   "Forest": 49,
+   "Island": 49
+  },
+  "sideboard": {},
+  "legal": false,
+  "rules": [
+   "commander-pair"
+  ]
+ },
+ {
+  "name": "Bjorna and Abby",
+  "commander": {
+   "Bjorna, Nightfall Alchemist": 1,
+   "Abby, Merciless Soldier": 1
+  },
+  "companion": {},
+  "main": {
+   "Mountain": 49,
+   "Island": 49
+  },
+  "sideboard": {},
+  "legal": false,
+  "rules": [
+   "commander-pair"
+  ]
+ },
+ {
+  "name": "Candlekeep Sage alone",
+  "commander": {
+   "Candlekeep Sage": 1
+  },
+  "companion": {},
+  "main": {
+   "Island": 99
+  },
+  "sideboard": {},
+  "legal": false,
+  "rules": [
+   "commander-eligible"
+  ]
+ },
+ {
+  "name": "Thrasios twice",
+  "commander": {
+   "Thrasios, Triton Hero": 2
+  },
+  "companion": {},
+  "main": {
+   "Island": 98
+  },
+  "sideboard": {},
+  "legal": false,
+  "rules": [
+   "copy-limit"
+  ]
+ },
+ {
+  "name": "Three commanders",
+  "commander": {
+   "Thrasios, Triton Hero": 1,
+   "Tymna the Weaver": 1,
+   "Krenko, Mob Boss": 1
+  },
+  "companion": {},
+  "main": {
+   "Island": 97
+  },
+  "sideboard": {},
+  "legal": false,
+  "rules": [
+   "commander-count"
+  ]
+ },
+ {
+  "name": "Thrasios and Tymna, 99 main",
+  "commander": {
+   "Thrasios, Triton Hero": 1,
+   "Tymna the Weaver": 1
+  },
+  "companion": {},
+  "main": {
+   "Island": 49,
+   "Plains": 50
+  },
+  "sideboard": {},
+  "legal": false,
+  "rules": [
+   "deck-size"
+  ]
+ }
+]
