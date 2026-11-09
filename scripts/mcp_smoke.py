@@ -82,6 +82,45 @@ async def main() -> None:
         rules = await call(session, "get_format_rules", format="modern")
         check("format rules", rules["min_main"] == 60 and rules["copy_limit"] == 4 and rules["sideboard_max"] == 15, rules)
 
+        cmd_rules = await call(session, "get_format_rules", format="commander")
+        check(
+            "Commander rules say exactly 100, singleton",
+            (cmd_rules["min_main"], cmd_rules["copy_limit"], cmd_rules["exact_size"]) == (100, 1, True)
+            and any("Exactly 100 cards" in n for n in cmd_rules["notes"]),
+            cmd_rules,
+        )
+        krenko = (await call(session, "resolve_names", names=["Krenko, Mob Boss"]))["exact"][0]["oracle_id"]
+        cmd_deck = await call(session, "deck_create", name="MCP Krenko", format="commander", cards=[
+            {"oracle_id": krenko, "count": 1, "zone": "commander", "reason": "commander"},
+            {"oracle_id": ids["Mountain"], "count": 98, "zone": "main", "reason": "mana base"},
+        ])
+        cmd_verdict = await call(session, "deck_validate", deck_id=cmd_deck["id"])
+        check(
+            "deck_validate flags a 99-card Commander deck",
+            cmd_verdict["legal"] is False and [v["rule"] for v in cmd_verdict["violations"]] == ["deck-size"],
+            cmd_verdict,
+        )
+
+        check(
+            "deck_validate returns Game Changers for a Commander deck",
+            cmd_verdict["game_changers"]["count"] == 0 and cmd_verdict["game_changers"]["bracket_hint"] == "Bracket 1–2",
+            cmd_verdict,
+        )
+
+        rhystic = (await call(session, "resolve_names", names=["Rhystic Study"]))["exact"][0]["oracle_id"]
+        gc_deck = await call(session, "deck_create", name="MCP Krenko Study", format="commander", cards=[
+            {"oracle_id": krenko, "count": 1, "zone": "commander", "reason": "commander"},
+            {"oracle_id": rhystic, "count": 1, "zone": "main", "reason": "draw"},
+            {"oracle_id": ids["Mountain"], "count": 97, "zone": "main", "reason": "mana base"},
+        ])
+        gc_shown = await session.call_tool("deck_show", {"deck_id": gc_deck["id"]})
+        gc_text = gc_shown.content[0].text
+        check(
+            "deck_show's text names the Game Changers and has a Commander heading",
+            "Game Changers: 1 (Rhystic Study)" in gc_text and "### Commander" in gc_text,
+            gc_text,
+        )
+
         hits = await call(session, "search_cards", query="deals 3 damage to any target", limit=5)
         check("search_cards returns cards", len(hits) > 0, hits)
 
@@ -103,6 +142,7 @@ async def main() -> None:
 
         verdict = await call(session, "deck_validate", deck_id=deck["id"])
         check("deck_validate says legal", verdict["legal"] is True and verdict["violations"] == [], verdict)
+        check("deck_validate has no Game Changers for a Standard-style deck", verdict["game_changers"] is None, verdict)
 
         analysis = await call(session, "deck_analyze", deck_id=deck["id"])
         check("deck_analyze buckets the 4x Bolt and 4x Goblin Guide at mv 1", analysis["curve"]["buckets"]["1"] == 8, analysis)

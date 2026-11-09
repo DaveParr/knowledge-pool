@@ -16,6 +16,7 @@ sv import from decks {
     DeckView, FormatInfo, GetDeck, SetDeckFormat, SetCardCount, RemoveCard, list_formats
 }
 sv import from legality { Violation }
+sv import from commander { GameChangers }
 sv import from mana { ManaProfile }
 sv import from card_lines { CardLine }
 sv import from walker_errors { WalkerError }
@@ -32,6 +33,18 @@ glob ZONES: list[tuple[str, str]] = [
 """One card line's key: a card can be in more than one zone."""
 def rowKey(line: CardLine) -> str {
     return line.zone + ":" + line.oracle_id;
+}
+
+"""The Game Changers line: "Game Changers: 2 — Chrome Mox, Rhystic Study"."""
+def gameChangersLine(gc: GameChangers) -> str {
+    line = "Game Changers: " + str(gc.count);
+    if gc.count > 0 {
+        line = line + " — " + gc.cards[0];
+        for name in gc.cards[1:] {
+            line = line + ", " + name;
+        }
+    }
+    return line;
 }
 
 """Power/toughness as "2/2", or "" for a card or face without them."""
@@ -185,6 +198,10 @@ def:pub DeckDetail(deckId: str, importNotes: list[str], onBack: Callable[[], Non
                 {<ul>
                     {[<li key={str(i)}>{v.message}</li> for (i, v) in enumerate(deck.violations)]}
                 </ul> if deck.violations else None}
+                {<div className="dd-gc">
+                    <p>{gameChangersLine(deck.game_changers)}</p>
+                    <p>{"Bracket hint: " + deck.game_changers.bracket_hint + " (from Game Changers only, not a full bracket rating)"}</p>
+                </div> if deck.game_changers else None}
             </div>
 
             <ManaPanel mana={deck.mana} curve={deck.curve} mainTotal={deck.main_total}/>
@@ -246,6 +263,6 @@ def:pub DeckDetail(deckId: str, importNotes: list[str], onBack: Callable[[], Non
                 }
             }}
 
-            <AddCards deckId={deckId} cards={deck.cards} onChanged={changed}/>
+            <AddCards deckId={deckId} format={deck.format} cards={deck.cards} onChanged={changed}/>
         </section>;
 }

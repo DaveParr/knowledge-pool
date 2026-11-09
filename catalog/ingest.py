@@ -55,7 +55,9 @@ CREATE TABLE cards (
     loyalty TEXT NOT NULL,          -- front face, as power
     defense TEXT NOT NULL,          -- front face, as power
     keywords TEXT NOT NULL,         -- JSON list, e.g. ["Flying", "Haste"]
-    faces TEXT NOT NULL             -- JSON list of face objects (see card_faces); [] for one face
+    faces TEXT NOT NULL,            -- JSON list of face objects (see card_faces); [] for one face
+    leadership_skills TEXT NOT NULL, -- JSON object, MTGJSON leadershipSkills, e.g. {"commander": true}; {} when none
+    game_changer INTEGER NOT NULL    -- 1 when on the Commander Game Changers list (MTGJSON isGameChanger)
 );
 CREATE UNIQUE INDEX cards_name ON cards(name COLLATE NOCASE);
 CREATE VIRTUAL TABLE cards_fts USING fts5(
@@ -181,6 +183,8 @@ def card_row(name: str, faces: list[dict]) -> tuple:
         first.get("defense", ""),
         json.dumps(keywords),
         json.dumps(card_faces(faces)),
+        json.dumps(first.get("leadershipSkills") or {}),
+        int(bool(first.get("isGameChanger"))),
     )
 
 
@@ -201,7 +205,7 @@ def build(atomic: dict, out: Path, tags: tuple[list[tuple], list[tuple]] | None 
         for name, faces in atomic["data"].items():
             row = card_row(name, faces)
             rows.setdefault(row[0], row)  # same oracle id twice: keep the first
-        con.executemany("INSERT INTO cards VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)", rows.values())
+        con.executemany("INSERT INTO cards VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)", rows.values())
         con.execute("INSERT INTO cards_fts(cards_fts) VALUES ('rebuild')")
         tag_rows, card_tag_rows = tags or ([], [])
         con.executemany("INSERT INTO tags VALUES (?,?,?)", tag_rows)

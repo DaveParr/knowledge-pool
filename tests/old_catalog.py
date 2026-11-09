@@ -16,6 +16,15 @@ _BEFORE_PRODUCED_MANA = [
 ]
 # `cards` as it was before the card details columns were added (#70).
 _BEFORE_CARD_DETAILS = _BEFORE_PRODUCED_MANA + ["produced_mana TEXT NOT NULL"]
+# `cards` as it was before the commander fields were added (#50).
+_BEFORE_COMMANDER = _BEFORE_CARD_DETAILS + [
+    "power TEXT NOT NULL",
+    "toughness TEXT NOT NULL",
+    "loyalty TEXT NOT NULL",
+    "defense TEXT NOT NULL",
+    "keywords TEXT NOT NULL",
+    "faces TEXT NOT NULL",
+]
 
 
 def _keep_only(con: sqlite3.Connection, columns: list[str]) -> None:
@@ -44,3 +53,8 @@ def drop_produced_mana(con: sqlite3.Connection) -> None:
 def drop_card_details(con: sqlite3.Connection) -> None:
     """Make `cards` as it was before power, toughness, loyalty, defense, keywords and faces (#70)."""
     _keep_only(con, _BEFORE_CARD_DETAILS)
+
+
+def drop_commander_fields(con: sqlite3.Connection) -> None:
+    """Make `cards` as it was before leadership_skills and game_changer (#50)."""
+    _keep_only(con, _BEFORE_COMMANDER)
