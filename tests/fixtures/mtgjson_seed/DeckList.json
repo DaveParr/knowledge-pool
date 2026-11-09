@@ -1,0 +1,85 @@
+{
+  "meta": {
+    "date": "2026-11-08",
+    "version": "5.3.0+20261108"
+  },
+  "data": [
+    {
+      "code": "Q07",
+      "fileName": "GruulStompy_Q07",
+      "name": "Gruul Stompy",
+      "releaseDate": "2022-04-01",
+      "type": "Challenger Deck"
+    },
+    {
+      "code": "QX1",
+      "fileName": "MonoRedRally_QX1",
+      "name": "Mono Red Rally",
+      "releaseDate": "2025-03-01",
+      "type": "Challenger Deck"
+    },
+    {
+      "code": "QX2",
+      "fileName": "BoltBurn_QX2",
+      "name": "Bolt Burn",
+      "releaseDate": "2021-03-01",
+      "type": "Challenger Deck"
+    },
+    {
+      "code": "QX3",
+      "fileName": "PioneerMonks_QX3",
+      "name": "Pioneer Monks",
+      "releaseDate": "2023-05-01",
+      "type": "Pioneer Challenger Deck"
+    },
+    {
+      "code": "QX4",
+      "fileName": "PioneerIteration_QX4",
+      "name": "Pioneer Iteration",
+      "releaseDate": "2023-05-01",
+      "type": "Pioneer Challenger Deck"
+    },
+    {
+      "code": "MX1",
+      "fileName": "ModernBurn_MX1",
+      "name": "Modern Burn",
+      "releaseDate": "2019-08-01",
+      "type": "Modern Event Deck"
+    },
+    {
+      "code": "MX2",
+      "fileName": "ModernMox_MX2",
+      "name": "Modern Mox",
+      "releaseDate": "2019-08-01",
+      "type": "Modern Event Deck"
+    },
+    {
+      "code": "TDC",
+      "fileName": "TemurRoar_TDC",
+      "name": "Temur Roar",
+      "releaseDate": "2025-04-11",
+      "type": "Commander Deck"
+    },
+    {
+      "code": "CX1",
+      "fileName": "PartnersInTheWild_CX1",
+      "name": "Partners in the Wild",
+      "releaseDate": "2024-06-01",
+      "type": "Commander Deck"
+    },
+    {
+      "code": "CX9",
+      "fileName": "FutureCommander_CX9",
+      "name": "Future Commander",
+      "releaseDate": "2099-01-01",
+      "type": "Commander Deck"
+    },
+    {
+      "code": "BX1",
+      "fileName": "BrawlDeck_BX1",
+      "name": "Some Brawl Deck",
+      "releaseDate": "2024-01-01",
+      "type": "Brawl Deck"
+    }
+  ]
+}

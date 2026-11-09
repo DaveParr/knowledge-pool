@@ -29,6 +29,15 @@ uv run python -m catalog.ingest
 
 The ingest downloads MTGJSON's `AtomicCards.json.xz` (about 26 MB) and builds `data/catalog.sqlite`: one row per oracle card (cost, type line, rules text, power/toughness, loyalty, defence, keywords, legalities, and each face of a double-faced, split or adventure card) plus an FTS5 search index, with the MTGJSON version and build date in its `meta` table. It takes a few seconds. Pass `--source FILE` to build from a file you already have. Run it again to pick up a newer MTGJSON build. Run it again after pulling new code, too: a code change can add columns or tables to the catalogue, and the server (`jac start` and the MCP server) refuses to start against a catalogue built by older code, with a message that names this command.
 
+In a new worktree (or after deleting `.jac/data`), fill the graph with real decks to look at and test against. A worktree needs a catalogue first; rather than re-run the ingest, point `KP_CATALOG` at the main checkout's:
+
+```bash
+export KP_CATALOG=/path/to/main/checkout/data/catalog.sqlite   # or: uv run python -m catalog.ingest
+uv run jac run seed.jac
+```
+
+It adds one random MTGJSON precon for each format (a Challenger Deck for Standard, a Pioneer Challenger Deck, a Modern Event Deck and a Commander Deck) to the shared graph the web app and MCP server use, and prints one line per format: the deck, its type and release date, whether it is legal, and any unresolved cards. For Standard, Pioneer and Modern it tries up to 3 precons and keeps the first legal one, else the last tried (old Challenger Decks have rotated out of Standard). Commander precons show as illegal Standard decks until there is a Commander format. A precon already in the graph is never picked again, so run it again for more decks. The seed is printed every run; `--seed N` repeats a set of picks on a fresh graph, `--format X` (repeatable) limits the formats, and `--from-dir DIR` reads `DeckList.json` and deck files from DIR instead of mtgjson.com. Downloads are cached in `data/mtgjson/decks/`. Stop `jac start` and the MCP server first: like the MCP server, it refuses to run while `KP_PORT` (default 8000) is taken.
+
 ### Run
 
 ```bash
@@ -83,6 +92,8 @@ uv run pytest tests    # ingest, search, REST, legality and MCP tests
 - `global.css` app-wide style tokens, shared with the MCP Apps views in `ui/`
 - `legality.sv.jac` `Format` nodes and the deck-construction rules
 - `mcp_server.jac` the MCP server (and the web app, in the same process)
+- `shared_graph.jac` runs walkers on the shared (guest) root from outside the web app, for the MCP server and the seed script
+- `seed.jac`, `catalog/precons.py` the seed script: one random MTGJSON precon per format
 - `ui/` the MCP Apps views: `deck_table.html` (`deck_show`), `mana_analysis.html` (`deck_analyze`), `card_search.html` (`card_search`) and `deck_export.html` (`deck_export`); `ui/mockups/` holds the signed-off static mockups
 - `scripts/mcp_smoke.py` an MCP client session that checks the tools end to end
 - `frontend.cl.jac`, `frontend.impl.jac` the Decks view

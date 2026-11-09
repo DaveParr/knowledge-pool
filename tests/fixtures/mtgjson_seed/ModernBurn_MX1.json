@@ -1,0 +1,37 @@
+{
+  "meta": {
+    "date": "2026-11-08",
+    "version": "5.3.0+20261108"
+  },
+  "data": {
+    "code": "MX1",
+    "name": "Modern Burn",
+    "releaseDate": "2019-08-01",
+    "type": "Modern Event Deck",
+    "commander": [],
+    "mainBoard": [
+      {
+        "count": 48,
+        "name": "Mountain"
+      },
+      {
+        "count": 4,
+        "name": "Lightning Bolt"
+      },
+      {
+        "count": 4,
+        "name": "Goblin Guide"
+      },
+      {
+        "count": 4,
+        "name": "Monastery Swiftspear"
+      }
+    ],
+    "sideBoard": [
+      {
+        "count": 4,
+        "name": "Shock"
+      }
+    ]
+  }
+}

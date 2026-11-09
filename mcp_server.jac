@@ -26,7 +26,6 @@ this machine.
 
 import io;
 import os;
-import socket;
 import sys;
 import threading;
 import anyio;
@@ -38,8 +37,6 @@ import from mcp_types { CallToolResult, TextContent }
 import from mcp.server.stdio { stdio_server }
 import from mcp.server.streamable_http { TransportSecuritySettings }
 import from jaclang { JacRuntime as Jac }
-import from jaclang.runtimelib.context { ExecutionContext }
-import from jaclang.jac0core.constant { Constants as Con }
 import from cards { search_cards as catalog_search, find_card, resolve_names as catalog_resolve_names, check_catalogue }
 import from decks {
     Deck, DeckView, CreateDeck, ListDecks, GetDeck, SetDeckFormat, EditDeck
@@ -47,11 +44,9 @@ import from decks {
 import from deck_io { DeckExport, DeckImport }
 import from legality { GetFormatRules }
 import from walker_errors { WalkerError }
+import from shared_graph { APP_DIR, run_walker, port_in_use }
 
-glob APP_DIR: str = os.path.dirname(os.path.abspath(__file__)),
-     LOCK: threading.Lock = threading.Lock(),
-     GUEST_ROOT: list[str] = [],
-     LOGGED_CLIENT_UI: list[bool] = [],
+glob LOGGED_CLIENT_UI: list[bool] = [],
      DECK_UI: str = "ui://knowledge-pool/deck-table.html",
      MANA_UI: str = "ui://knowledge-pool/mana-analysis.html",
      COLOUR_NAMES: dict[str, str] = {"W": "White", "U": "Blue", "B": "Black", "R": "Red", "G": "Green"},
@@ -416,38 +411,6 @@ glob server: MCPServer = MCPServer(
     extensions=[make_apps()]
 );
 
-"""The root id of the app's shared (guest) graph, which the web app's `:pub` walkers use."""
-def guest_root_id -> str {
-    if not GUEST_ROOT {
-        um = Jac.get_user_manager(base_path=APP_DIR);
-        if not um.user_exists(Con.GUEST.value) {
-            um.create_user(Con.GUEST.value, "__no_password__");
-        }
-        GUEST_ROOT.append(str(um.get_root_id(Con.GUEST.value)));
-    }
-    return GUEST_ROOT[0];
-}
-
-"""Spawn a walker on the shared root, commit, and return the finished walker.
-
-Same shape as one web request: a request context forked from the process
-context, so both share one in-memory graph and one database connection.
-"""
-def run_walker(w: any) -> any {
-    with LOCK {
-        ctx = ExecutionContext(_parent=Jac.get_context());
-        ctx.set_user_root(guest_root_id());
-        token = Jac.push_request_context(ctx);
-        try {
-            done = Jac.spawn(ctx.get_root(), w);  # jac:ignore[E1053]
-            Jac.commit();
-            return done;
-        } finally {
-            Jac.reset_request_context(token);
-        }
-    }
-}
-
 """Plain JSON-ready data from walker reports (objs and nodes become dicts)."""
 def plain(value: any) -> any {
     if is_dataclass(value) and not isinstance(value, type) {
@@ -578,14 +541,6 @@ under "unresolved" and never added."""
 @server.tool()
 def deck_import(deck_id: str, format: str, text: str) -> dict {
     return outcome(run_walker(DeckImport(deck_id=deck_id, format=format, text=text)));
-}
-
-"""True when something already listens on this local port."""
-def port_in_use(port: int) -> bool {
-    with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s {
-        s.settimeout(0.5);
-        return s.connect_ex(("127.0.0.1", port)) == 0;
-    }
 }
 
 """Serve the web app (UI and REST) from this process, on a background thread."""

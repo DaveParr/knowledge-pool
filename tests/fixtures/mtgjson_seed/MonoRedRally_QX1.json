@@ -1,0 +1,65 @@
+{
+  "meta": {
+    "date": "2026-11-08",
+    "version": "5.3.0+20261108"
+  },
+  "data": {
+    "code": "QX1",
+    "name": "Mono Red Rally",
+    "releaseDate": "2025-03-01",
+    "type": "Challenger Deck",
+    "commander": [],
+    "mainBoard": [
+      {
+        "count": 20,
+        "name": "Mountain"
+      },
+      {
+        "count": 4,
+        "name": "Shock"
+      },
+      {
+        "count": 4,
+        "name": "Adrenaline Jockey"
+      },
+      {
+        "count": 4,
+        "name": "Angry Rabble"
+      },
+      {
+        "count": 4,
+        "name": "Axgard Cavalry"
+      },
+      {
+        "count": 4,
+        "name": "Ball Lightning"
+      },
+      {
+        "count": 4,
+        "name": "Hare Apparent"
+      },
+      {
+        "count": 4,
+        "name": "Fireball"
+      },
+      {
+        "count": 4,
+        "name": "Abrade"
+      },
+      {
+        "count": 4,
+        "name": "Dragonlord's Servant"
+      },
+      {
+        "count": 4,
+        "name": "Dragonmaster Outcast"
+      }
+    ],
+    "sideBoard": [
+      {
+        "count": 2,
+        "name": "Breaching Dragonstorm"
+      }
+    ]
+  }
+}
