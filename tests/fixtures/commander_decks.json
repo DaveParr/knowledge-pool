@@ -1,0 +1,164 @@
+[
+ {
+  "name": "Krenko mono-red",
+  "commander": {
+   "Krenko, Mob Boss": 1
+  },
+  "companion": {},
+  "main": {
+   "Lightning Bolt": 1,
+   "Goblin Guide": 1,
+   "Shock": 1,
+   "Sol Ring": 1,
+   "Mountain": 95
+  },
+  "sideboard": {},
+  "legal": true,
+  "rules": []
+ },
+ {
+  "name": "Precon: Draconic Rage",
+  "precon": "DraconicRage_AFC",
+  "legal": true,
+  "rules": []
+ },
+ {
+  "name": "Anje any-number cards",
+  "commander": {
+   "Anje Falkenrath": 1
+  },
+  "companion": {},
+  "main": {
+   "Relentless Rats": 20,
+   "Nazgûl": 9,
+   "Seven Dwarves": 7,
+   "Mountain": 63
+  },
+  "sideboard": {},
+  "legal": true,
+  "rules": []
+ },
+ {
+  "name": "Kenrith with a companion and sideboard",
+  "commander": {
+   "Kenrith, the Returned King": 1
+  },
+  "companion": {
+   "Jegantha, the Wellspring": 1
+  },
+  "main": {
+   "Mountain": 99
+  },
+  "sideboard": {
+   "Shock": 10
+  },
+  "legal": true,
+  "rules": []
+ },
+ {
+  "name": "99 cards",
+  "commander": {
+   "Krenko, Mob Boss": 1
+  },
+  "companion": {},
+  "main": {
+   "Mountain": 98
+  },
+  "sideboard": {},
+  "legal": false,
+  "rules": [
+   "deck-size"
+  ]
+ },
+ {
+  "name": "101 cards",
+  "commander": {
+   "Krenko, Mob Boss": 1
+  },
+  "companion": {},
+  "main": {
+   "Mountain": 100
+  },
+  "sideboard": {},
+  "legal": false,
+  "rules": [
+   "deck-size"
+  ]
+ },
+ {
+  "name": "Two Bolts",
+  "commander": {
+   "Krenko, Mob Boss": 1
+  },
+  "companion": {},
+  "main": {
+   "Lightning Bolt": 2,
+   "Mountain": 97
+  },
+  "sideboard": {},
+  "legal": false,
+  "rules": [
+   "copy-limit"
+  ]
+ },
+ {
+  "name": "Ten Nazgûl",
+  "commander": {
+   "Anje Falkenrath": 1
+  },
+  "companion": {},
+  "main": {
+   "Nazgûl": 10,
+   "Mountain": 89
+  },
+  "sideboard": {},
+  "legal": false,
+  "rules": [
+   "copy-limit"
+  ]
+ },
+ {
+  "name": "Black Lotus",
+  "commander": {
+   "Krenko, Mob Boss": 1
+  },
+  "companion": {},
+  "main": {
+   "Black Lotus": 1,
+   "Mountain": 98
+  },
+  "sideboard": {},
+  "legal": false,
+  "rules": [
+   "banned"
+  ]
+ },
+ {
+  "name": "No commander",
+  "commander": {},
+  "companion": {},
+  "main": {
+   "Mountain": 100
+  },
+  "sideboard": {},
+  "legal": false,
+  "rules": [
+   "commander-count"
+  ]
+ },
+ {
+  "name": "Jace leads",
+  "commander": {
+   "Jace, the Mind Sculptor": 1
+  },
+  "companion": {},
+  "main": {
+   "Island": 99
+  },
+  "sideboard": {},
+  "legal": false,
+  "rules": [
+   "commander-eligible"
+  ]
+ }
+]

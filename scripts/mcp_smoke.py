@@ -82,6 +82,25 @@ async def main() -> None:
         rules = await call(session, "get_format_rules", format="modern")
         check("format rules", rules["min_main"] == 60 and rules["copy_limit"] == 4 and rules["sideboard_max"] == 15, rules)
 
+        cmd_rules = await call(session, "get_format_rules", format="commander")
+        check(
+            "Commander rules say exactly 100, singleton",
+            (cmd_rules["min_main"], cmd_rules["copy_limit"], cmd_rules["exact_size"]) == (100, 1, True)
+            and any("Exactly 100 cards" in n for n in cmd_rules["notes"]),
+            cmd_rules,
+        )
+        krenko = (await call(session, "resolve_names", names=["Krenko, Mob Boss"]))["exact"][0]["oracle_id"]
+        cmd_deck = await call(session, "deck_create", name="MCP Krenko", format="commander", cards=[
+            {"oracle_id": krenko, "count": 1, "zone": "commander", "reason": "commander"},
+            {"oracle_id": ids["Mountain"], "count": 98, "zone": "main", "reason": "mana base"},
+        ])
+        cmd_verdict = await call(session, "deck_validate", deck_id=cmd_deck["id"])
+        check(
+            "deck_validate flags a 99-card Commander deck",
+            cmd_verdict["legal"] is False and [v["rule"] for v in cmd_verdict["violations"]] == ["deck-size"],
+            cmd_verdict,
+        )
+
         hits = await call(session, "search_cards", query="deals 3 damage to any target", limit=5)
         check("search_cards returns cards", len(hits) > 0, hits)
 

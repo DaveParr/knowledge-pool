@@ -66,7 +66,7 @@ uv run jac test        # walker tests in tests/*_tests.jac
 uv run pytest tests    # ingest, search, REST, legality and MCP tests
 ```
 
-`tests/fixtures/legality_decks.json` holds 27 known legal and illegal decks that the validator is tested against. Tests build their catalogue from `tests/fixtures/atomic_small.json`, 35 real cards taken from MTGJSON (legalities as of 2 Nov 2026). Type-check with `uv run jac check *.jac`. Run `jac guide` for Jac's own reference guides (see `AGENTS.md`).
+`tests/fixtures/legality_decks.json` holds 27 known legal and illegal decks that the validator is tested against, and `tests/fixtures/commander_decks.json` holds known Commander decks, including real MTGJSON precons in `tests/fixtures/mtgjson_decks/` (trimmed, MIT). Tests build their catalogue from `tests/fixtures/atomic_small.json`, 214 real cards taken from MTGJSON (legalities as of 2 Nov 2026); `scripts/fixture_cards.py` adds cards to it. Type-check with `uv run jac check *.jac`. Run `jac guide` for Jac's own reference guides (see `AGENTS.md`).
 
 ### Layout
 
