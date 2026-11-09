@@ -12,7 +12,7 @@ def test_meta_records_mtgjson_version_and_date():
     assert meta["mtgjson_version"] == "5.3.0+fixture"
     assert meta["mtgjson_date"] == "2026-01-01"
     assert meta["ingested_at"]
-    assert meta["card_count"] == "35"
+    assert meta["card_count"] == "140"
 
 
 def test_one_row_per_oracle_card_with_its_fields():
@@ -129,7 +129,7 @@ def test_ingest_command_builds_from_a_local_file(tmp_path, capsys):
 
     out = tmp_path / "cli.sqlite"
     assert main(["--source", str(FIXTURE), "--tags-source", str(TAGS_FIXTURE), "--out", str(out)]) == 0
-    assert "35 cards from MTGJSON 5.3.0+fixture (2026-01-01) and 3 Scryfall oracle tags" in capsys.readouterr().out
+    assert "140 cards from MTGJSON 5.3.0+fixture (2026-01-01) and 3 Scryfall oracle tags" in capsys.readouterr().out
     assert out.exists()
 
 

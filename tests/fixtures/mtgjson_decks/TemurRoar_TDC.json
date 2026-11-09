@@ -1,0 +1,5965 @@
+{
+ "data": {
+  "code": "TDC",
+  "commander": [
+   {
+    "artist": "Billy Christian",
+    "availability": [
+     "arena",
+     "mtgo",
+     "paper"
+    ],
+    "borderColor": "borderless",
+    "colorIdentity": [
+     "G",
+     "R",
+     "U"
+    ],
+    "colors": [
+     "G",
+     "R",
+     "U"
+    ],
+    "convertedManaCost": 3.0,
+    "count": 1,
+    "edhrecRank": 5265,
+    "edhrecSaltiness": 0.11,
+    "finishes": [
+     "foil",
+     "nonfoil"
+    ],
+    "frameEffects": [
+     "inverted",
+     "legendary"
+    ],
+    "frameVersion": "2015",
+    "identifiers": {
+     "cardKingdomFoilId": "311107",
+     "cardKingdomId": "311106",
+     "cardsphereFoilId": "134822",
+     "cardsphereId": "134813",
+     "mcmId": "817898",
+     "mcmMetaId": "447382",
+     "mtgArenaId": "96567",
+     "mtgjsonV4Id": "ca448b88-d822-5746-8daa-01137ee0392c",
+     "mtgoId": "138023",
+     "multiverseId": "695722",
+     "scryfallCardBackId": "0aeebaf5-8c7d-4636-9e82-8c27447861f7",
+     "scryfallId": "ff9aa863-8773-452d-946c-ae334c632e11",
+     "scryfallIllustrationId": "03f84305-274c-4b90-ac4a-f2e9b1461e4b",
+     "scryfallOracleId": "1b162dd3-3be6-406d-bf86-f7cc9eff098d",
+     "tcgplayerProductId": "623910"
+    },
+    "isEtched": false,
+    "isFoil": true,
+    "language": "English",
+    "layout": "normal",
+    "leadershipSkills": {
+     "brawl": false,
+     "commander": true,
+     "oathbreaker": false,
+     "pauper_commander": false,
+     "predh": false
+    },
+    "manaCost": "{G}{U}{R}",
+    "manaValue": 3.0,
+    "name": "Eshki, Temur's Roar",
+    "number": "3",
+    "originalType": "Legendary Creature – Human Warrior",
+    "power": "2",
+    "rarity": "mythic",
+    "securityStamp": "oval",
+    "setCode": "TDC",
+    "subtypes": [
+     "Human",
+     "Warrior"
+    ],
+    "supertypes": [
+     "Legendary"
+    ],
+    "text": "Whenever you cast a creature spell, put a +1/+1 counter on Eshki. If that spell's power is 4 or greater, draw a card. If that spell's power is 6 or greater, Eshki deals damage equal to Eshki's power to each opponent.",
+    "toughness": "2",
+    "type": "Legendary Creature — Human Warrior",
+    "types": [
+     "Creature"
+    ],
+    "uuid": "93323985-08ca-5bf7-a07f-af664478c183"
+   }
+  ],
+  "displayCommander": [],
+  "mainBoard": [
+   {
+    "artist": "Valera Lutfullina",
+    "availability": [
+     "arena",
+     "mtgo",
+     "paper"
+    ],
+    "borderColor": "borderless",
+    "colorIdentity": [
+     "G",
+     "R",
+     "U"
+    ],
+    "colors": [
+     "G",
+     "R",
+     "U"
+    ],
+    "convertedManaCost": 7.0,
+    "count": 1,
+    "edhrecRank": 2398,
+    "edhrecSaltiness": 1.11,
+    "finishes": [
+     "foil",
+     "nonfoil"
+    ],
+    "frameEffects": [
+     "inverted",
+     "legendary"
+    ],
+    "frameVersion": "2015",
+    "identifiers": {
+     "cardKingdomFoilId": "311119",
+     "cardKingdomId": "311118",
+     "cardsphereFoilId": "134828",
+     "cardsphereId": "134814",
+     "mcmId": "817904",
+     "mcmMetaId": "447388",
+     "mtgArenaId": "96573",
+     "mtgjsonV4Id": "34d0ab07-537f-5ec4-8e4c-542c4f7306f2",
+     "mtgoId": "138035",
+     "multiverseId": "695728",
+     "scryfallCardBackId": "0aeebaf5-8c7d-4636-9e82-8c27447861f7",
+     "scryfallId": "f54ecbf1-83df-4486-bd6a-7d1f173b6863",
+     "scryfallIllustrationId": "977db6ef-5457-4183-8813-fc8079e30c53",
+     "scryfallOracleId": "99c2d3ef-e5b4-48cd-b3f5-de9b02c7c36a",
+     "tcgplayerProductId": "623916"
+    },
+    "isEtched": false,
+    "isFoil": true,
+    "keywords": [
+     "Flying",
+     "Trample"
+    ],
+    "language": "English",
+    "layout": "normal",
+    "leadershipSkills": {
+     "brawl": false,
+     "commander": true,
+     "oathbreaker": false,
+     "pauper_commander": false,
+     "predh": false
+    },
+    "manaCost": "{4}{G}{U}{R}",
+    "manaValue": 7.0,
+    "name": "Ureni of the Unwritten",
+    "number": "9",
+    "originalType": "Legendary Creature – Spirit Dragon",
+    "power": "7",
+    "rarity": "mythic",
+    "securityStamp": "oval",
+    "setCode": "TDC",
+    "subtypes": [
+     "Spirit",
+     "Dragon"
+    ],
+    "supertypes": [
+     "Legendary"
+    ],
+    "text": "Flying, trample\nWhenever Ureni enters or attacks, look at the top eight cards of your library. You may put a Dragon creature card from among them onto the battlefield. Put the rest on the bottom of your library in a random order.",
+    "toughness": "7",
+    "type": "Legendary Creature — Spirit Dragon",
+    "types": [
+     "Creature"
+    ],
+    "uuid": "d292eed1-c527-5384-b376-5aaff02840cc"
+   },
+   {
+    "artist": "Josu Solano",
+    "availability": [
+     "mtgo",
+     "paper"
+    ],
+    "borderColor": "black",
+    "colorIdentity": [
+     "U"
+    ],
+    "colors": [
+     "U"
+    ],
+    "convertedManaCost": 2.0,
+    "count": 1,
+    "edhrecRank": 3610,
+    "edhrecSaltiness": 0.13,
+    "finishes": [
+     "nonfoil"
+    ],
+    "frameVersion": "2015",
+    "identifiers": {
+     "cardKingdomId": "311710",
+     "cardsphereId": "135973",
+     "mcmId": "819276",
+     "mcmMetaId": "447747",
+     "mtgjsonV4Id": "a0c84f5d-b61f-5627-9e22-c33234597308",
+     "mtgoId": "138055",
+     "multiverseId": "695948",
+     "scryfallCardBackId": "0aeebaf5-8c7d-4636-9e82-8c27447861f7",
+     "scryfallId": "1f87120f-d2a7-4c06-aadd-3ed5729d7abf",
+     "scryfallIllustrationId": "17910b59-5fa1-4c05-afb3-66a90dd298a9",
+     "scryfallOracleId": "96d7b761-b0b2-4ba3-98bd-3a9191ba544e",
+     "tcgplayerProductId": "625123"
+    },
+    "isEtched": false,
+    "isFoil": false,
+    "keywords": [
+     "Flying"
+    ],
+    "language": "English",
+    "layout": "normal",
+    "manaCost": "{U}{U}",
+    "manaValue": 2.0,
+    "name": "Deceptive Frostkite",
+    "number": "19",
+    "originalType": "Creature – Dragon",
+    "power": "1",
+    "rarity": "rare",
+    "securityStamp": "oval",
+    "setCode": "TDC",
+    "subtypes": [
+     "Dragon"
+    ],
+    "supertypes": [],
+    "text": "Flying\nYou may have this creature enter as a copy of a creature you control with power 4 or greater, except it's a Dragon in addition to its other types and it has flying.",
+    "toughness": "1",
+    "type": "Creature — Dragon",
+    "types": [
+     "Creature"
+    ],
+    "uuid": "4028a073-321a-5dd0-8e72-43732b797ac2"
+   },
+   {
+    "artist": "Xavier Ribeiro",
+    "availability": [
+     "mtgo",
+     "paper"
+    ],
+    "borderColor": "black",
+    "colorIdentity": [
+     "U"
+    ],
+    "colors": [
+     "U"
+    ],
+    "convertedManaCost": 6.0,
+    "count": 1,
+    "edhrecRank": 4810,
+    "edhrecSaltiness": 0.5,
+    "finishes": [
+     "nonfoil"
+    ],
+    "frameVersion": "2015",
+    "identifiers": {
+     "cardKingdomId": "311711",
+     "cardsphereId": "135974",
+     "mcmId": "819277",
+     "mcmMetaId": "447748",
+     "mtgjsonV4Id": "fee25cf0-86ca-5b6a-b892-ac4f9b2c727a",
+     "mtgoId": "138059",
+     "multiverseId": "695950",
+     "scryfallCardBackId": "0aeebaf5-8c7d-4636-9e82-8c27447861f7",
+     "scryfallId": "87d4d694-c80e-435a-ba1b-f2f1949f91fc",
+     "scryfallIllustrationId": "b867bbd6-8e28-4cdd-8a7e-858590130880",
+     "scryfallOracleId": "7830f600-c7c7-48f8-8020-3493c5745eed",
+     "tcgplayerProductId": "624915"
+    },
+    "isEtched": false,
+    "isFoil": false,
+    "keywords": [
+     "Flying"
+    ],
+    "language": "English",
+    "layout": "normal",
+    "manaCost": "{4}{U}{U}",
+    "manaValue": 6.0,
+    "name": "Hammerhead Tyrant",
+    "number": "21",
+    "originalType": "Creature – Dragon",
+    "power": "6",
+    "rarity": "rare",
+    "securityStamp": "oval",
+    "setCode": "TDC",
+    "subtypes": [
+     "Dragon"
+    ],
+    "supertypes": [],
+    "text": "Flying\nWhenever you cast a spell, return up to one target nonland permanent an opponent controls with mana value less than or equal to that spell's mana value to its owner's hand.",
+    "toughness": "6",
+    "type": "Creature — Dragon",
+    "types": [
+     "Creature"
+    ],
+    "uuid": "25eb55d2-dbed-58c1-90fe-6316f6e7f24f"
+   },
+   {
+    "artist": "Irina Nordsol",
+    "availability": [
+     "mtgo",
+     "paper"
+    ],
+    "borderColor": "black",
+    "colorIdentity": [
+     "U"
+    ],
+    "colors": [
+     "U"
+    ],
+    "convertedManaCost": 6.0,
+    "count": 1,
+    "edhrecRank": 3938,
+    "edhrecSaltiness": 0.26,
+    "finishes": [
+     "nonfoil"
+    ],
+    "frameVersion": "2015",
+    "identifiers": {
+     "cardKingdomId": "311712",
+     "cardsphereId": "135975",
+     "mcmId": "819278",
+     "mcmMetaId": "447749",
+     "mtgjsonV4Id": "5ab04cc0-17f6-578b-a9cc-5c15c2ebe114",
+     "mtgoId": "138065",
+     "multiverseId": "695953",
+     "scryfallCardBackId": "0aeebaf5-8c7d-4636-9e82-8c27447861f7",
+     "scryfallId": "d236aa15-f60c-4368-b796-4d41e0bc3358",
+     "scryfallIllustrationId": "e0741c2d-78db-46cd-8ae5-f78506620b69",
+     "scryfallOracleId": "ebe1448e-21c5-4b73-8296-03d3e5097c50",
+     "tcgplayerProductId": "624916"
+    },
+    "isEtched": false,
+    "isFoil": false,
+    "language": "English",
+    "layout": "normal",
+    "manaCost": "{5}{U}",
+    "manaValue": 6.0,
+    "name": "Will of the Temur",
+    "number": "24",
+    "originalType": "Sorcery",
+    "rarity": "rare",
+    "relatedCards": {
+     "tokens": [
+      "bfc3fdde-e02b-5444-995c-bd8fcbbd9724"
+     ]
+    },
+    "securityStamp": "oval",
+    "setCode": "TDC",
+    "subtypes": [],
+    "supertypes": [],
+    "text": "Choose one. If you control a commander as you cast this spell, you may choose both instead.\n• Create a token that's a copy of target permanent, except it's a 4/4 Dragon creature with flying in addition to its other types.\n• Target player draws cards equal to the greatest mana value among permanents you control.",
+    "type": "Sorcery",
+    "types": [
+     "Sorcery"
+    ],
+    "uuid": "e15b5523-c19a-53c5-8df9-e8c1182cb23c",
+    "watermark": "temur"
+   },
+   {
+    "artist": "Cristi Balanescu",
+    "availability": [
+     "mtgo",
+     "paper"
+    ],
+    "borderColor": "black",
+    "colorIdentity": [
+     "R"
+    ],
+    "colors": [
+     "R"
+    ],
+    "convertedManaCost": 4.0,
+    "count": 1,
+    "edhrecRank": 3378,
+    "edhrecSaltiness": 0.21,
+    "finishes": [
+     "nonfoil"
+    ],
+    "frameVersion": "2015",
+    "identifiers": {
+     "cardKingdomId": "311713",
+     "cardsphereId": "135978",
+     "mcmId": "819279",
+     "mcmMetaId": "447750",
+     "mtgjsonV4Id": "3ce1a3b8-744c-5af7-8692-ed8e632881c1",
+     "mtgoId": "138089",
+     "multiverseId": "695965",
+     "scryfallCardBackId": "0aeebaf5-8c7d-4636-9e82-8c27447861f7",
+     "scryfallId": "6d3ba135-e8d6-443a-952b-5c93edb4523c",
+     "scryfallIllustrationId": "6aa3c025-0443-41d3-aaa4-97fe9e7040f1",
+     "scryfallOracleId": "722e23d5-4f2a-43cd-bbd5-baf56b76e68d",
+     "tcgplayerProductId": "624922"
+    },
+    "isEtched": false,
+    "isFoil": false,
+    "keywords": [
+     "Flying"
+    ],
+    "language": "English",
+    "layout": "normal",
+    "manaCost": "{2}{R}{R}",
+    "manaValue": 4.0,
+    "name": "Parapet Thrasher",
+    "number": "36",
+    "originalType": "Creature – Dragon",
+    "power": "4",
+    "rarity": "rare",
+    "securityStamp": "oval",
+    "setCode": "TDC",
+    "subtypes": [
+     "Dragon"
+    ],
+    "supertypes": [],
+    "text": "Flying\nWhenever one or more Dragons you control deal combat damage to an opponent, choose one that hasn't been chosen this turn —\n• Destroy target artifact that opponent controls.\n• This creature deals 4 damage to each other opponent.\n• Exile the top card of your library. You may play it this turn.",
+    "toughness": "3",
+    "type": "Creature — Dragon",
+    "types": [
+     "Creature"
+    ],
+    "uuid": "f1e85273-c56b-5320-a99f-a490d6ee95a3"
+   },
+   {
+    "artist": "Slawomir Maniak",
+    "availability": [
+     "mtgo",
+     "paper"
+    ],
+    "borderColor": "black",
+    "colorIdentity": [
+     "R"
+    ],
+    "colors": [
+     "R"
+    ],
+    "convertedManaCost": 4.0,
+    "count": 1,
+    "edhrecRank": 3333,
+    "edhrecSaltiness": 0.34,
+    "finishes": [
+     "nonfoil"
+    ],
+    "frameVersion": "2015",
+    "identifiers": {
+     "cardKingdomId": "311714",
+     "cardsphereId": "135981",
+     "mcmId": "819280",
+     "mcmMetaId": "447751",
+     "mtgjsonV4Id": "0a6f67c8-20c5-5807-a453-3eb12b49f926",
+     "mtgoId": "138093",
+     "multiverseId": "695967",
+     "scryfallCardBackId": "0aeebaf5-8c7d-4636-9e82-8c27447861f7",
+     "scryfallId": "7ca93b31-d6ec-4265-b2ff-d46090086f07",
+     "scryfallIllustrationId": "f95489be-2d84-4661-a419-178c37e10789",
+     "scryfallOracleId": "a1602bd0-f346-43cf-86ec-1dd300a7f2ed",
+     "tcgplayerProductId": "624923"
+    },
+    "isEtched": false,
+    "isFoil": false,
+    "keywords": [
+     "Flying"
+    ],
+    "language": "English",
+    "layout": "normal",
+    "manaCost": "{3}{R}",
+    "manaValue": 4.0,
+    "name": "Thundermane Dragon",
+    "number": "38",
+    "originalType": "Creature – Dragon",
+    "power": "4",
+    "rarity": "rare",
+    "securityStamp": "oval",
+    "setCode": "TDC",
+    "subtypes": [
+     "Dragon"
+    ],
+    "supertypes": [],
+    "text": "Flying\nYou may look at the top card of your library any time.\nYou may cast creature spells with power 4 or greater from the top of your library. If you cast a creature spell this way, it gains haste until end of turn.",
+    "toughness": "4",
+    "type": "Creature — Dragon",
+    "types": [
+     "Creature"
+    ],
+    "uuid": "1340d487-309c-5233-85f9-9c3e131df969"
+   },
+   {
+    "artist": "Ben Wootten",
+    "availability": [
+     "mtgo",
+     "paper"
+    ],
+    "borderColor": "black",
+    "colorIdentity": [
+     "R"
+    ],
+    "colors": [
+     "R"
+    ],
+    "convertedManaCost": 2.0,
+    "count": 1,
+    "edhrecRank": 7231,
+    "edhrecSaltiness": 0.06,
+    "finishes": [
+     "nonfoil"
+    ],
+    "frameVersion": "2015",
+    "identifiers": {
+     "cardKingdomId": "311715",
+     "cardsphereId": "135983",
+     "mcmId": "819281",
+     "mcmMetaId": "447752",
+     "mtgjsonV4Id": "4ed3cc6d-4b78-507f-ac35-7bdff3cb3bdf",
+     "mtgoId": "138099",
+     "multiverseId": "695970",
+     "scryfallCardBackId": "0aeebaf5-8c7d-4636-9e82-8c27447861f7",
+     "scryfallId": "8cffd86b-1f4a-4e1c-a5a0-f467ecd8f63b",
+     "scryfallIllustrationId": "4808ce71-fe79-44cd-a8ea-9f279da11535",
+     "scryfallOracleId": "4dabba8c-0490-41ec-a03e-f7d0c9f0edb6",
+     "tcgplayerProductId": "624924"
+    },
+    "isEtched": false,
+    "isFoil": false,
+    "keywords": [
+     "Harmonize"
+    ],
+    "language": "English",
+    "layout": "normal",
+    "manaCost": "{X}{R}{R}",
+    "manaValue": 2.0,
+    "name": "Zenith Festival",
+    "number": "41",
+    "originalType": "Sorcery",
+    "rarity": "rare",
+    "securityStamp": "oval",
+    "setCode": "TDC",
+    "subtypes": [],
+    "supertypes": [],
+    "text": "Exile the top X cards of your library. You may play them until the end of your next turn.\nHarmonize {X}{R}{R} (You may cast this card from your graveyard for its harmonize cost. You may tap a creature you control to reduce that cost by an amount of generic mana equal to its power. Then exile this spell.)",
+    "type": "Sorcery",
+    "types": [
+     "Sorcery"
+    ],
+    "uuid": "eb0b1b88-67b2-5d2c-a618-dbe79224b6aa",
+    "watermark": "temur"
+   },
+   {
+    "artist": "Slawomir Maniak",
+    "availability": [
+     "mtgo",
+     "paper"
+    ],
+    "borderColor": "black",
+    "colorIdentity": [
+     "G"
+    ],
+    "colors": [
+     "G"
+    ],
+    "convertedManaCost": 6.0,
+    "count": 1,
+    "edhrecRank": 6024,
+    "edhrecSaltiness": 0.37,
+    "finishes": [
+     "nonfoil"
+    ],
+    "frameVersion": "2015",
+    "identifiers": {
+     "cardKingdomId": "311716",
+     "cardsphereId": "135986",
+     "mcmId": "819282",
+     "mcmMetaId": "447753",
+     "mtgjsonV4Id": "fecde611-00cb-596d-9901-091c5932d3ba",
+     "mtgoId": "138103",
+     "multiverseId": "695972",
+     "scryfallCardBackId": "0aeebaf5-8c7d-4636-9e82-8c27447861f7",
+     "scryfallId": "f49b7b11-ce78-44c4-98c2-dc8e2332c667",
+     "scryfallIllustrationId": "1755d02f-1ea8-4efd-b5fc-6eea229479bd",
+     "scryfallOracleId": "e5fcbbaf-9431-4fa8-ac11-12ace1f2054c",
+     "tcgplayerProductId": "624953"
+    },
+    "isEtched": false,
+    "isFoil": false,
+    "language": "English",
+    "layout": "normal",
+    "manaCost": "{4}{G}{G}",
+    "manaValue": 6.0,
+    "name": "Become the Avalanche",
+    "number": "43",
+    "originalType": "Sorcery",
+    "rarity": "rare",
+    "securityStamp": "oval",
+    "setCode": "TDC",
+    "subtypes": [],
+    "supertypes": [],
+    "text": "Draw a card for each creature you control with power 4 or greater. Then creatures you control get +X/+X until end of turn, where X is the number of cards in your hand.",
+    "type": "Sorcery",
+    "types": [
+     "Sorcery"
+    ],
+    "uuid": "f8714039-980d-54a9-9ee8-28362b3dab9d"
+   },
+   {
+    "artist": "Loïc Canavaggia",
+    "availability": [
+     "mtgo",
+     "paper"
+    ],
+    "borderColor": "black",
+    "colorIdentity": [
+     "G"
+    ],
+    "colors": [
+     "G"
+    ],
+    "convertedManaCost": 7.0,
+    "count": 1,
+    "edhrecRank": 3799,
+    "edhrecSaltiness": 0.42,
+    "finishes": [
+     "nonfoil"
+    ],
+    "frameVersion": "2015",
+    "identifiers": {
+     "cardKingdomId": "311717",
+     "cardsphereId": "135996",
+     "mcmId": "819283",
+     "mcmMetaId": "447754",
+     "mtgjsonV4Id": "9d98bff8-b549-5f0a-8e70-712d0d56935f",
+     "mtgoId": "138105",
+     "multiverseId": "695973",
+     "scryfallCardBackId": "0aeebaf5-8c7d-4636-9e82-8c27447861f7",
+     "scryfallId": "6fc0a74b-0b8a-4c70-87f2-f9f2625d5ff2",
+     "scryfallIllustrationId": "2a503fd5-423e-4232-addd-74a47cc4c765",
+     "scryfallOracleId": "16aa790a-8f7c-401c-9d43-dc9440a6f585",
+     "tcgplayerProductId": "624954"
+    },
+    "isEtched": false,
+    "isFoil": false,
+    "keywords": [
+     "Flying"
+    ],
+    "language": "English",
+    "layout": "normal",
+    "manaCost": "{5}{G}{G}",
+    "manaValue": 7.0,
+    "name": "Broodcaller Scourge",
+    "number": "44",
+    "originalType": "Creature – Dragon",
+    "power": "5",
+    "rarity": "rare",
+    "securityStamp": "oval",
+    "setCode": "TDC",
+    "subtypes": [
+     "Dragon"
+    ],
+    "supertypes": [],
+    "text": "Flying\nWhenever one or more Dragons you control deal combat damage to a player, you may put a permanent card with mana value less than or equal to that damage from your hand onto the battlefield.",
+    "toughness": "7",
+    "type": "Creature — Dragon",
+    "types": [
+     "Creature"
+    ],
+    "uuid": "e563fa4f-a9a1-5b87-86cf-cf9c07805ee2"
+   },
+   {
+    "artist": "Ittoku",
+    "availability": [
+     "mtgo",
+     "paper"
+    ],
+    "borderColor": "black",
+    "colorIdentity": [
+     "U"
+    ],
+    "colors": [
+     "U"
+    ],
+    "convertedManaCost": 6.0,
+    "count": 1,
+    "edhrecRank": 4466,
+    "edhrecSaltiness": 0.61,
+    "finishes": [
+     "nonfoil"
+    ],
+    "frameEffects": [
+     "legendary"
+    ],
+    "frameVersion": "2015",
+    "identifiers": {
+     "cardKingdomId": "311721",
+     "cardsphereId": "136015",
+     "mcmId": "819287",
+     "mcmMetaId": "7050",
+     "mtgjsonV4Id": "f7830ac3-25d6-5ac1-a8d5-a605dd59e4d7",
+     "mtgoId": "138249",
+     "multiverseId": "696312",
+     "scryfallCardBackId": "0aeebaf5-8c7d-4636-9e82-8c27447861f7",
+     "scryfallId": "84d9c584-322f-49c9-9826-4838c6d2f36a",
+     "scryfallIllustrationId": "037bb686-e060-4218-a692-5dda3748afc3",
+     "scryfallOracleId": "521b1598-58c6-47a0-a7b3-021d70bf2b05",
+     "tcgplayerProductId": "624918"
+    },
+    "isEtched": false,
+    "isFoil": false,
+    "isReprint": true,
+    "keywords": [
+     "Flying"
+    ],
+    "language": "English",
+    "layout": "normal",
+    "leadershipSkills": {
+     "brawl": false,
+     "commander": true,
+     "oathbreaker": false,
+     "pauper_commander": false,
+     "predh": true
+    },
+    "manaCost": "{5}{U}",
+    "manaValue": 6.0,
+    "name": "Keiga, the Tide Star",
+    "number": "156",
+    "originalType": "Legendary Creature – Dragon Spirit",
+    "power": "5",
+    "rarity": "rare",
+    "securityStamp": "oval",
+    "setCode": "TDC",
+    "subtypes": [
+     "Dragon",
+     "Spirit"
+    ],
+    "supertypes": [
+     "Legendary"
+    ],
+    "text": "Flying\nWhen Keiga dies, gain control of target creature.",
+    "toughness": "5",
+    "type": "Legendary Creature — Dragon Spirit",
+    "types": [
+     "Creature"
+    ],
+    "uuid": "cc5e6186-2fec-5ab4-a039-9e8133e60eb5"
+   },
+   {
+    "artist": "Aaron Miller",
+    "availability": [
+     "mtgo",
+     "paper"
+    ],
+    "borderColor": "black",
+    "colorIdentity": [
+     "U"
+    ],
+    "colors": [
+     "U"
+    ],
+    "convertedManaCost": 5.0,
+    "count": 1,
+    "edhrecRank": 701,
+    "edhrecSaltiness": 0.51,
+    "finishes": [
+     "nonfoil"
+    ],
+    "frameEffects": [
+     "enchantment"
+    ],
+    "frameVersion": "2015",
+    "identifiers": {
+     "cardKingdomId": "311769",
+     "cardsphereId": "136022",
+     "mcmId": "819290",
+     "mcmMetaId": "328462",
+     "mtgjsonV4Id": "c5e2032a-abaa-5667-8696-afa9a107c617",
+     "mtgoId": "138265",
+     "multiverseId": "696320",
+     "scryfallCardBackId": "0aeebaf5-8c7d-4636-9e82-8c27447861f7",
+     "scryfallId": "578a1846-8c1a-4013-b669-1d3f4ddbbaa3",
+     "scryfallIllustrationId": "fc9e3dfb-df6d-4fad-8f30-e84f34693856",
+     "scryfallOracleId": "c3fdfb94-2d10-4743-864c-a59fdd57d8b7",
+     "tcgplayerProductId": "624921"
+    },
+    "isEtched": false,
+    "isFoil": false,
+    "isReprint": true,
+    "language": "English",
+    "layout": "normal",
+    "manaCost": "{4}{U}",
+    "manaValue": 5.0,
+    "name": "Reflections of Littjara",
+    "number": "164",
+    "originalType": "Enchantment",
+    "rarity": "rare",
+    "relatedCards": {
+     "tokens": [
+      "bfc3fdde-e02b-5444-995c-bd8fcbbd9724"
+     ]
+    },
+    "securityStamp": "oval",
+    "setCode": "TDC",
+    "subtypes": [],
+    "supertypes": [],
+    "text": "As this enchantment enters, choose a creature type.\nWhenever you cast a spell of the chosen type, copy that spell. (A copy of a permanent spell becomes a token.)",
+    "type": "Enchantment",
+    "types": [
+     "Enchantment"
+    ],
+    "uuid": "85a41fed-8eb3-52f8-869a-8010d872cce9"
+   },
+   {
+    "artist": "Victor Adame Minguez",
+    "availability": [
+     "mtgo",
+     "paper"
+    ],
+    "borderColor": "black",
+    "colorIdentity": [
+     "R"
+    ],
+    "colors": [
+     "R"
+    ],
+    "convertedManaCost": 4.0,
+    "count": 1,
+    "edhrecRank": 1356,
+    "edhrecSaltiness": 0.11,
+    "finishes": [
+     "nonfoil"
+    ],
+    "frameEffects": [
+     "legendary"
+    ],
+    "frameVersion": "2015",
+    "identifiers": {
+     "cardKingdomId": "311770",
+     "cardsphereId": "136017",
+     "mcmId": "819291",
+     "mcmMetaId": "401197",
+     "mtgjsonV4Id": "b55c0c27-1e03-57e2-a5f4-289ec18c7405",
+     "mtgoId": "138345",
+     "multiverseId": "696360",
+     "scryfallCardBackId": "0aeebaf5-8c7d-4636-9e82-8c27447861f7",
+     "scryfallId": "da9484bd-2cf5-4490-a52b-066de5520afd",
+     "scryfallIllustrationId": "8e74fa13-8d2e-44f5-9096-7d506a7d7172",
+     "scryfallOracleId": "535f405d-94df-4f45-aedc-b331103720b7",
+     "tcgplayerProductId": "624927"
+    },
+    "isEtched": false,
+    "isFoil": false,
+    "isReprint": true,
+    "keywords": [
+     "Flying",
+     "Trample",
+     "Treasure"
+    ],
+    "language": "English",
+    "layout": "normal",
+    "leadershipSkills": {
+     "brawl": false,
+     "commander": true,
+     "oathbreaker": false,
+     "pauper_commander": false,
+     "predh": false
+    },
+    "manaCost": "{2}{R}{R}",
+    "manaValue": 4.0,
+    "name": "Atsushi, the Blazing Sky",
+    "number": "204",
+    "originalType": "Legendary Creature – Dragon Spirit",
+    "power": "4",
+    "rarity": "mythic",
+    "relatedCards": {
+     "tokens": [
+      "198c5204-6b23-5085-b962-e6db6c948bd6"
+     ]
+    },
+    "securityStamp": "oval",
+    "setCode": "TDC",
+    "subtypes": [
+     "Dragon",
+     "Spirit"
+    ],
+    "supertypes": [
+     "Legendary"
+    ],
+    "text": "Flying, trample\nWhen Atsushi dies, choose one —\n• Exile the top two cards of your library. Until the end of your next turn, you may play those cards.\n• Create three Treasure tokens.",
+    "toughness": "4",
+    "type": "Legendary Creature — Dragon Spirit",
+    "types": [
+     "Creature"
+    ],
+    "uuid": "f15ee421-233e-5c9d-bdf6-43b573033d80"
+   },
+   {
+    "artist": "Justine Cruz",
+    "availability": [
+     "mtgo",
+     "paper"
+    ],
+    "borderColor": "black",
+    "colorIdentity": [
+     "R"
+    ],
+    "colors": [
+     "R"
+    ],
+    "convertedManaCost": 9.0,
+    "count": 1,
+    "edhrecRank": 22,
+    "edhrecSaltiness": 0.67,
+    "finishes": [
+     "nonfoil"
+    ],
+    "frameVersion": "2015",
+    "identifiers": {
+     "cardKingdomId": "311771",
+     "cardsphereId": "136021",
+     "mcmId": "819292",
+     "mcmMetaId": "204021",
+     "mtgjsonV4Id": "66ed726d-ff7b-5bd6-9142-143f4d1da9e2",
+     "mtgoId": "138351",
+     "multiverseId": "696363",
+     "scryfallCardBackId": "0aeebaf5-8c7d-4636-9e82-8c27447861f7",
+     "scryfallId": "2c971698-c0e4-4b68-808f-a3d1a73d80e4",
+     "scryfallIllustrationId": "2fdec6fc-bf41-4312-bb09-5bf0e9e0e172",
+     "scryfallOracleId": "7a2484a9-04fd-41a0-8224-610c1c07ed10",
+     "tcgplayerProductId": "624928"
+    },
+    "isEtched": false,
+    "isFoil": false,
+    "isReprint": true,
+    "language": "English",
+    "layout": "normal",
+    "manaCost": "{8}{R}",
+    "manaValue": 9.0,
+    "name": "Blasphemous Act",
+    "number": "207",
+    "originalType": "Sorcery",
+    "rarity": "rare",
+    "securityStamp": "oval",
+    "setCode": "TDC",
+    "subtypes": [],
+    "supertypes": [],
+    "text": "This spell costs {1} less to cast for each creature on the battlefield.\nBlasphemous Act deals 13 damage to each creature.",
+    "type": "Sorcery",
+    "types": [
+     "Sorcery"
+    ],
+    "uuid": "cbdfb62f-3792-5e7b-a369-028ad9192415"
+   },
+   {
+    "artist": "Trevor Claxton",
+    "availability": [
+     "mtgo",
+     "paper"
+    ],
+    "borderColor": "black",
+    "colorIdentity": [
+     "R"
+    ],
+    "colors": [
+     "R"
+    ],
+    "convertedManaCost": 3.0,
+    "count": 1,
+    "edhrecRank": 29,
+    "edhrecSaltiness": 0.36,
+    "finishes": [
+     "nonfoil"
+    ],
+    "frameVersion": "2015",
+    "identifiers": {
+     "cardKingdomId": "311772",
+     "cardsphereId": "136024",
+     "mcmId": "819293",
+     "mcmMetaId": "203383",
+     "mtgjsonV4Id": "8b1b9b64-2ff8-5a16-91ac-5724580515af",
+     "mtgoId": "138353",
+     "multiverseId": "696364",
+     "scryfallCardBackId": "0aeebaf5-8c7d-4636-9e82-8c27447861f7",
+     "scryfallId": "3e78cf93-3b4e-4cd7-a9f8-0a8737013856",
+     "scryfallIllustrationId": "c3d94e2b-828b-4bee-b11c-4cd446c1be01",
+     "scryfallOracleId": "07a0cba9-8768-4fd9-a3d5-b0f83b4bf8e8",
+     "tcgplayerProductId": "624929"
+    },
+    "isEtched": false,
+    "isFoil": false,
+    "isReprint": true,
+    "language": "English",
+    "layout": "normal",
+    "manaCost": "{2}{R}",
+    "manaValue": 3.0,
+    "name": "Chaos Warp",
+    "number": "208",
+    "originalType": "Instant",
+    "rarity": "rare",
+    "securityStamp": "oval",
+    "setCode": "TDC",
+    "subtypes": [],
+    "supertypes": [],
+    "text": "The owner of target permanent shuffles it into their library, then reveals the top card of their library. If it's a permanent card, they put it onto the battlefield.",
+    "type": "Instant",
+    "types": [
+     "Instant"
+    ],
+    "uuid": "fe03de74-fa3a-52f2-a049-cd5915e2fe33"
+   },
+   {
+    "artist": "Raymond Swanland",
+    "availability": [
+     "mtgo",
+     "paper"
+    ],
+    "borderColor": "black",
+    "colorIdentity": [
+     "R"
+    ],
+    "colors": [
+     "R"
+    ],
+    "convertedManaCost": 1.0,
+    "count": 1,
+    "edhrecRank": 1541,
+    "edhrecSaltiness": 0.28,
+    "finishes": [
+     "nonfoil"
+    ],
+    "frameVersion": "2015",
+    "identifiers": {
+     "cardKingdomId": "311774",
+     "cardsphereId": "136037",
+     "mcmId": "819295",
+     "mcmMetaId": "10967",
+     "mtgjsonV4Id": "2dc3eb89-135e-5dda-9400-c4667005fe3d",
+     "mtgoId": "138359",
+     "multiverseId": "696367",
+     "scryfallCardBackId": "0aeebaf5-8c7d-4636-9e82-8c27447861f7",
+     "scryfallId": "a485edea-07cd-48dd-97e7-daeba85553d6",
+     "scryfallIllustrationId": "34ab34a8-ff4a-4c86-b9a3-792f0c9f1bf4",
+     "scryfallOracleId": "b6fb79c3-cd32-4045-8177-e52841eea65b",
+     "tcgplayerProductId": "624931"
+    },
+    "isEtched": false,
+    "isFoil": false,
+    "isReprint": true,
+    "language": "English",
+    "layout": "normal",
+    "manaCost": "{R}",
+    "manaValue": 1.0,
+    "name": "Dragonmaster Outcast",
+    "number": "211",
+    "originalType": "Creature – Human Shaman",
+    "power": "1",
+    "rarity": "mythic",
+    "relatedCards": {
+     "tokens": [
+      "4588ccb3-283b-51b2-9840-7d08f985f47f"
+     ]
+    },
+    "securityStamp": "oval",
+    "setCode": "TDC",
+    "subtypes": [
+     "Human",
+     "Shaman"
+    ],
+    "supertypes": [],
+    "text": "At the beginning of your upkeep, if you control six or more lands, create a 5/5 red Dragon creature token with flying.",
+    "toughness": "1",
+    "type": "Creature — Human Shaman",
+    "types": [
+     "Creature"
+    ],
+    "uuid": "39933cf8-4aa5-5921-a9dd-943ed0eb8a45"
+   },
+   {
+    "artist": "Daarken",
+    "availability": [
+     "mtgo",
+     "paper"
+    ],
+    "borderColor": "black",
+    "colorIdentity": [
+     "R"
+    ],
+    "colors": [
+     "R"
+    ],
+    "convertedManaCost": 3.0,
+    "count": 1,
+    "edhrecRank": 3904,
+    "edhrecSaltiness": 0.12,
+    "finishes": [
+     "nonfoil"
+    ],
+    "frameEffects": [
+     "legendary"
+    ],
+    "frameVersion": "2015",
+    "identifiers": {
+     "cardKingdomId": "311775",
+     "cardsphereId": "136036",
+     "mcmId": "819296",
+     "mcmMetaId": "306909",
+     "mtgjsonV4Id": "45ed6a5b-c340-5276-aecb-3f212f1a4326",
+     "mtgoId": "138365",
+     "multiverseId": "696370",
+     "scryfallCardBackId": "0aeebaf5-8c7d-4636-9e82-8c27447861f7",
+     "scryfallId": "249bf4b2-9239-4303-9c5d-81d06f6b7fb1",
+     "scryfallIllustrationId": "29dbe141-0664-44da-a113-394d3682b8cf",
+     "scryfallOracleId": "42d7ec93-0943-43e2-9b65-b7edc3349410",
+     "tcgplayerProductId": "624932"
+    },
+    "isEtched": false,
+    "isFoil": false,
+    "isReprint": true,
+    "keywords": [
+     "Flying",
+     "Treasure"
+    ],
+    "language": "English",
+    "layout": "normal",
+    "leadershipSkills": {
+     "brawl": false,
+     "commander": true,
+     "oathbreaker": false,
+     "pauper_commander": false,
+     "predh": false
+    },
+    "manaCost": "{2}{R}",
+    "manaValue": 3.0,
+    "name": "Gadrak, the Crown-Scourge",
+    "number": "214",
+    "originalType": "Legendary Creature – Dragon",
+    "power": "5",
+    "producedMana": [
+     "B",
+     "G",
+     "R",
+     "U",
+     "W"
+    ],
+    "rarity": "rare",
+    "relatedCards": {
+     "tokens": [
+      "198c5204-6b23-5085-b962-e6db6c948bd6"
+     ]
+    },
+    "securityStamp": "oval",
+    "setCode": "TDC",
+    "subtypes": [
+     "Dragon"
+    ],
+    "supertypes": [
+     "Legendary"
+    ],
+    "text": "Flying\nGadrak can't attack unless you control four or more artifacts.\nAt the beginning of your end step, create a Treasure token for each nontoken creature that died this turn. (It's an artifact with \"{T}, Sacrifice this token: Add one mana of any color.\")",
+    "toughness": "4",
+    "type": "Legendary Creature — Dragon",
+    "types": [
+     "Creature"
+    ],
+    "uuid": "3bad8932-4d6e-5786-90d0-dbdfd2b49523"
+   },
+   {
+    "artist": "Sam Burley",
+    "availability": [
+     "mtgo",
+     "paper"
+    ],
+    "borderColor": "black",
+    "colorIdentity": [
+     "R"
+    ],
+    "colors": [
+     "R"
+    ],
+    "convertedManaCost": 5.0,
+    "count": 1,
+    "edhrecRank": 7463,
+    "edhrecSaltiness": 0.07,
+    "finishes": [
+     "nonfoil"
+    ],
+    "frameVersion": "2015",
+    "identifiers": {
+     "cardKingdomId": "311776",
+     "cardsphereId": "136034",
+     "mcmId": "819297",
+     "mcmMetaId": "225245",
+     "mtgjsonV4Id": "5b8d163e-837e-5161-9a19-0a61b96cc0b9",
+     "mtgoId": "138367",
+     "multiverseId": "696371",
+     "scryfallCardBackId": "0aeebaf5-8c7d-4636-9e82-8c27447861f7",
+     "scryfallId": "06f90d62-6d21-47b1-a427-eb25a42f4dcb",
+     "scryfallIllustrationId": "13136c99-5915-49d3-b1b5-3a1398c7ac61",
+     "scryfallOracleId": "b75c3902-633e-4d24-acde-d7a9cc8f466e",
+     "tcgplayerProductId": "624933"
+    },
+    "isEtched": false,
+    "isFoil": false,
+    "isReprint": true,
+    "keywords": [
+     "Exert",
+     "Flying",
+     "Haste"
+    ],
+    "language": "English",
+    "layout": "normal",
+    "manaCost": "{3}{R}{R}",
+    "manaValue": 5.0,
+    "name": "Glorybringer",
+    "number": "215",
+    "originalType": "Creature – Dragon",
+    "power": "4",
+    "rarity": "rare",
+    "securityStamp": "oval",
+    "setCode": "TDC",
+    "subtypes": [
+     "Dragon"
+    ],
+    "supertypes": [],
+    "text": "Flying, haste\nYou may exert this creature as it attacks. When you do, it deals 4 damage to target non-Dragon creature an opponent controls. (An exerted creature won't untap during your next untap step.)",
+    "toughness": "4",
+    "type": "Creature — Dragon",
+    "types": [
+     "Creature"
+    ],
+    "uuid": "48c0f97d-bf39-5642-9db8-ed03d474eedf"
+   },
+   {
+    "artist": "Caio Monteiro",
+    "availability": [
+     "mtgo",
+     "paper"
+    ],
+    "borderColor": "black",
+    "colorIdentity": [
+     "R"
+    ],
+    "colors": [
+     "R"
+    ],
+    "convertedManaCost": 6.0,
+    "count": 1,
+    "edhrecRank": 1904,
+    "edhrecSaltiness": 0.6,
+    "finishes": [
+     "nonfoil"
+    ],
+    "frameVersion": "2015",
+    "identifiers": {
+     "cardKingdomId": "311777",
+     "cardsphereId": "136025",
+     "mcmId": "819298",
+     "mcmMetaId": "322620",
+     "mtgjsonV4Id": "8ceece20-2a97-5cfc-8069-8d39d07a30a4",
+     "mtgoId": "138373",
+     "multiverseId": "696374",
+     "scryfallCardBackId": "0aeebaf5-8c7d-4636-9e82-8c27447861f7",
+     "scryfallId": "d33eca2e-fef0-42fd-9970-46d5bdb4bd4b",
+     "scryfallIllustrationId": "fdecd2ee-01dd-4434-8168-8cc46c7e7e89",
+     "scryfallOracleId": "c5abd58f-3e00-447b-a978-64cb88ad501b",
+     "tcgplayerProductId": "624934"
+    },
+    "isEtched": false,
+    "isFoil": false,
+    "isReprint": true,
+    "keywords": [
+     "Flying"
+    ],
+    "language": "English",
+    "layout": "normal",
+    "manaCost": "{4}{R}{R}",
+    "manaValue": 6.0,
+    "name": "Hellkite Courser",
+    "number": "218",
+    "originalType": "Creature – Dragon",
+    "power": "6",
+    "rarity": "mythic",
+    "securityStamp": "oval",
+    "setCode": "TDC",
+    "subtypes": [
+     "Dragon"
+    ],
+    "supertypes": [],
+    "text": "Flying\nWhen this creature enters, you may put a commander you own from the command zone onto the battlefield. It gains haste. Return it to the command zone at the beginning of the next end step.",
+    "toughness": "5",
+    "type": "Creature — Dragon",
+    "types": [
+     "Creature"
+    ],
+    "uuid": "4acb929f-f8a5-5a07-8500-a1628b7e9cf5"
+   },
+   {
+    "artist": "Alex Konstad",
+    "availability": [
+     "mtgo",
+     "paper"
+    ],
+    "borderColor": "black",
+    "colorIdentity": [
+     "R"
+    ],
+    "colors": [
+     "R"
+    ],
+    "convertedManaCost": 6.0,
+    "count": 1,
+    "edhrecRank": 1063,
+    "edhrecSaltiness": 0.41,
+    "finishes": [
+     "nonfoil"
+    ],
+    "frameEffects": [
+     "legendary"
+    ],
+    "frameVersion": "2015",
+    "identifiers": {
+     "cardKingdomId": "311778",
+     "cardsphereId": "136028",
+     "mcmId": "819299",
+     "mcmMetaId": "263247",
+     "mtgjsonV4Id": "2e389f7a-e363-5978-86ae-9397114b5398",
+     "mtgoId": "138375",
+     "multiverseId": "696375",
+     "scryfallCardBackId": "0aeebaf5-8c7d-4636-9e82-8c27447861f7",
+     "scryfallId": "0cb48015-627b-49cd-8dc3-d446e82b8172",
+     "scryfallIllustrationId": "81d46a79-6cc8-4ba5-8a11-cca6dc0179fd",
+     "scryfallOracleId": "15fef45d-f1a9-49b2-abaa-fe77bb9d1afd",
+     "tcgplayerProductId": "624935"
+    },
+    "isEtched": false,
+    "isFoil": false,
+    "isReprint": true,
+    "keywords": [
+     "Flying"
+    ],
+    "language": "English",
+    "layout": "normal",
+    "leadershipSkills": {
+     "brawl": false,
+     "commander": true,
+     "oathbreaker": false,
+     "pauper_commander": false,
+     "predh": false
+    },
+    "manaCost": "{4}{R}{R}",
+    "manaValue": 6.0,
+    "name": "Lathliss, Dragon Queen",
+    "number": "219",
+    "originalType": "Legendary Creature – Dragon",
+    "power": "6",
+    "rarity": "rare",
+    "relatedCards": {
+     "tokens": [
+      "4588ccb3-283b-51b2-9840-7d08f985f47f"
+     ]
+    },
+    "securityStamp": "oval",
+    "setCode": "TDC",
+    "subtypes": [
+     "Dragon"
+    ],
+    "supertypes": [
+     "Legendary"
+    ],
+    "text": "Flying\nWhenever another nontoken Dragon you control enters, create a 5/5 red Dragon creature token with flying.\n{1}{R}: Dragons you control get +1/+0 until end of turn.",
+    "toughness": "6",
+    "type": "Legendary Creature — Dragon",
+    "types": [
+     "Creature"
+    ],
+    "uuid": "e0143c18-35f8-58f1-9d74-368bbf194b24"
+   },
+   {
+    "artist": "Chase Stone",
+    "availability": [
+     "mtgo",
+     "paper"
+    ],
+    "borderColor": "black",
+    "colorIdentity": [
+     "R"
+    ],
+    "colors": [
+     "R"
+    ],
+    "convertedManaCost": 4.0,
+    "count": 1,
+    "edhrecRank": 2281,
+    "edhrecSaltiness": 0.38,
+    "finishes": [
+     "nonfoil"
+    ],
+    "frameVersion": "2015",
+    "identifiers": {
+     "cardKingdomId": "311779",
+     "cardsphereId": "136030",
+     "mcmId": "819300",
+     "mcmMetaId": "316849",
+     "mtgjsonV4Id": "2ec6f68c-9415-5ad5-a0e0-a1e80d6e5e98",
+     "mtgoId": "138379",
+     "multiverseId": "696377",
+     "scryfallCardBackId": "0aeebaf5-8c7d-4636-9e82-8c27447861f7",
+     "scryfallId": "0542d0d7-5b0f-4093-b74d-6a60f174aeb5",
+     "scryfallIllustrationId": "efe9e3ee-b064-4a35-bf3c-4b972dd125d6",
+     "scryfallOracleId": "f92aaa00-6ece-4033-b3df-b2fc2c4718d9",
+     "tcgplayerProductId": "624936"
+    },
+    "isEtched": false,
+    "isFoil": false,
+    "isReprint": true,
+    "keywords": [
+     "Flying"
+    ],
+    "language": "English",
+    "layout": "normal",
+    "manaCost": "{2}{R}{R}",
+    "manaValue": 4.0,
+    "name": "Leyline Tyrant",
+    "number": "221",
+    "originalType": "Creature – Dragon",
+    "power": "4",
+    "rarity": "mythic",
+    "securityStamp": "oval",
+    "setCode": "TDC",
+    "subtypes": [
+     "Dragon"
+    ],
+    "supertypes": [],
+    "text": "Flying\nYou don't lose unspent red mana as steps and phases end.\nWhen this creature dies, you may pay any amount of {R}. When you do, it deals that much damage to any target.",
+    "toughness": "4",
+    "type": "Creature — Dragon",
+    "types": [
+     "Creature"
+    ],
+    "uuid": "c7b8e2c5-34c7-5460-8d97-4e7d12aff3a4"
+   },
+   {
+    "artist": "Jehan Choo",
+    "availability": [
+     "mtgo",
+     "paper"
+    ],
+    "borderColor": "black",
+    "colorIdentity": [
+     "R"
+    ],
+    "colors": [
+     "R"
+    ],
+    "convertedManaCost": 5.0,
+    "count": 1,
+    "edhrecRank": 3591,
+    "edhrecSaltiness": 0.24,
+    "finishes": [
+     "nonfoil"
+    ],
+    "frameVersion": "2015",
+    "identifiers": {
+     "cardKingdomId": "311780",
+     "cardsphereId": "136032",
+     "mcmId": "819301",
+     "mcmMetaId": "264341",
+     "mtgjsonV4Id": "93adc93b-e8fe-50f8-9b3c-c537ff520c9b",
+     "mtgoId": "138387",
+     "multiverseId": "696381",
+     "scryfallCardBackId": "0aeebaf5-8c7d-4636-9e82-8c27447861f7",
+     "scryfallId": "626db678-2dec-4026-af5a-83e834692ba0",
+     "scryfallIllustrationId": "a81cfaeb-c9f1-4461-a88c-cdfded98928e",
+     "scryfallOracleId": "0acc9372-58b4-43bf-ab82-1f95831c81d4",
+     "tcgplayerProductId": "624937"
+    },
+    "isEtched": false,
+    "isFoil": false,
+    "isReprint": true,
+    "keywords": [
+     "Flying",
+     "Landfall"
+    ],
+    "language": "English",
+    "layout": "normal",
+    "manaCost": "{3}{R}{R}",
+    "manaValue": 5.0,
+    "name": "Nesting Dragon",
+    "number": "225",
+    "originalType": "Creature – Dragon",
+    "power": "5",
+    "rarity": "rare",
+    "relatedCards": {
+     "tokens": [
+      "15340875-3056-5885-9374-53cd243ce047",
+      "d6489288-2c03-5ae7-8dc2-1358aebf22d5"
+     ]
+    },
+    "securityStamp": "oval",
+    "setCode": "TDC",
+    "subtypes": [
+     "Dragon"
+    ],
+    "supertypes": [],
+    "text": "Flying\nLandfall — Whenever a land you control enters, create a 0/2 red Dragon Egg creature token with defender and \"When this token dies, create a 2/2 red Dragon creature token with flying and '{R}: This token gets +1/+0 until end of turn.'\"",
+    "toughness": "4",
+    "type": "Creature — Dragon",
+    "types": [
+     "Creature"
+    ],
+    "uuid": "1a73b56c-5130-5177-8aaf-9df0c3950a7e"
+   },
+   {
+    "artist": "Dmitry Burmak",
+    "availability": [
+     "mtgo",
+     "paper"
+    ],
+    "borderColor": "black",
+    "colorIdentity": [
+     "R"
+    ],
+    "colors": [
+     "R"
+    ],
+    "convertedManaCost": 3.0,
+    "count": 1,
+    "edhrecRank": 4478,
+    "edhrecSaltiness": 0.0,
+    "finishes": [
+     "nonfoil"
+    ],
+    "frameEffects": [
+     "legendary"
+    ],
+    "frameVersion": "2015",
+    "identifiers": {
+     "cardKingdomId": "311781",
+     "cardsphereId": "136035",
+     "mcmId": "819302",
+     "mcmMetaId": "409738",
+     "mtgjsonV4Id": "8791b413-45c7-5c1c-abfd-ac4e8fa362c6",
+     "mtgoId": "138389",
+     "multiverseId": "696382",
+     "scryfallCardBackId": "0aeebaf5-8c7d-4636-9e82-8c27447861f7",
+     "scryfallId": "86e576f2-8f9f-4bbf-85c4-b99ecb665412",
+     "scryfallIllustrationId": "ae3466d6-8ce6-4883-90f6-67402cbcb68f",
+     "scryfallOracleId": "3d04aa8c-7bff-42c6-bed3-0b18d2cb1529",
+     "tcgplayerProductId": "624938"
+    },
+    "isEtched": false,
+    "isFoil": false,
+    "isReprint": true,
+    "language": "English",
+    "layout": "normal",
+    "leadershipSkills": {
+     "brawl": false,
+     "commander": true,
+     "oathbreaker": false,
+     "pauper_commander": false,
+     "predh": false
+    },
+    "manaCost": "{1}{R}{R}",
+    "manaValue": 3.0,
+    "name": "Nogi, Draco-Zealot",
+    "number": "226",
+    "originalType": "Legendary Creature – Kobold Shaman",
+    "power": "3",
+    "rarity": "mythic",
+    "securityStamp": "oval",
+    "setCode": "TDC",
+    "subtypes": [
+     "Kobold",
+     "Shaman"
+    ],
+    "supertypes": [
+     "Legendary"
+    ],
+    "text": "Dragon spells you cast cost {1} less to cast.\nWhenever Nogi attacks, if you control three or more Dragons, until end of turn, Nogi becomes a Dragon with base power and toughness 5/5 and gains flying.",
+    "toughness": "3",
+    "type": "Legendary Creature — Kobold Shaman",
+    "types": [
+     "Creature"
+    ],
+    "uuid": "484fd712-3535-5ef7-8e92-cb1a61781973"
+   },
+   {
+    "artist": "Chris Rahn",
+    "availability": [
+     "mtgo",
+     "paper"
+    ],
+    "borderColor": "black",
+    "colorIdentity": [
+     "R"
+    ],
+    "colors": [
+     "R"
+    ],
+    "convertedManaCost": 4.0,
+    "count": 1,
+    "edhrecRank": 8384,
+    "edhrecSaltiness": 0.69,
+    "finishes": [
+     "nonfoil"
+    ],
+    "frameVersion": "2015",
+    "identifiers": {
+     "cardKingdomId": "311782",
+     "cardsphereId": "136033",
+     "mcmId": "819303",
+     "mcmMetaId": "281739",
+     "mtgjsonV4Id": "8fb2ed2f-fc27-594f-b376-73976d01b4d2",
+     "mtgoId": "138393",
+     "multiverseId": "696384",
+     "scryfallCardBackId": "0aeebaf5-8c7d-4636-9e82-8c27447861f7",
+     "scryfallId": "eac89f5e-6331-4f4a-b0b4-bc9c57f8b892",
+     "scryfallIllustrationId": "3aa4a647-117c-4abf-b1e8-39e17354ba27",
+     "scryfallOracleId": "46f46bdd-52b8-436f-9a39-f5360a84b2cd",
+     "tcgplayerProductId": "624939"
+    },
+    "isEtched": false,
+    "isFoil": false,
+    "isReprint": true,
+    "keywords": [
+     "Flying"
+    ],
+    "language": "English",
+    "layout": "normal",
+    "manaCost": "{2}{R}{R}",
+    "manaValue": 4.0,
+    "name": "Opportunistic Dragon",
+    "number": "228",
+    "originalType": "Creature – Dragon",
+    "power": "4",
+    "rarity": "rare",
+    "securityStamp": "oval",
+    "setCode": "TDC",
+    "subtypes": [
+     "Dragon"
+    ],
+    "supertypes": [],
+    "text": "Flying\nWhen this creature enters, choose target Human or artifact an opponent controls. For as long as this creature remains on the battlefield, gain control of that permanent, it loses all abilities, and it can't attack or block.",
+    "toughness": "3",
+    "type": "Creature — Dragon",
+    "types": [
+     "Creature"
+    ],
+    "uuid": "468e15a6-f465-5284-bc08-02168d478367"
+   },
+   {
+    "artist": "Michael Komarck",
+    "availability": [
+     "mtgo",
+     "paper"
+    ],
+    "borderColor": "black",
+    "colorIdentity": [
+     "R"
+    ],
+    "colors": [
+     "R"
+    ],
+    "convertedManaCost": 6.0,
+    "count": 1,
+    "edhrecRank": 1271,
+    "edhrecSaltiness": 0.43,
+    "finishes": [
+     "nonfoil"
+    ],
+    "frameVersion": "2015",
+    "identifiers": {
+     "cardKingdomId": "311784",
+     "cardsphereId": "136029",
+     "mcmId": "819305",
+     "mcmMetaId": "209819",
+     "mtgjsonV4Id": "593a4e32-cfc4-5a16-b554-89527e34c01d",
+     "mtgoId": "138397",
+     "multiverseId": "696386",
+     "scryfallCardBackId": "0aeebaf5-8c7d-4636-9e82-8c27447861f7",
+     "scryfallId": "cd44f295-c4c8-4f47-9d51-d5ba578f7f8d",
+     "scryfallIllustrationId": "bc953a16-dfa8-485f-b9b3-c5ff930faf83",
+     "scryfallOracleId": "06496a05-7f1a-402c-9594-304cd82bfefd",
+     "tcgplayerProductId": "624941"
+    },
+    "isEtched": false,
+    "isFoil": false,
+    "isReprint": true,
+    "keywords": [
+     "Dethrone",
+     "Flying"
+    ],
+    "language": "English",
+    "layout": "normal",
+    "manaCost": "{4}{R}{R}",
+    "manaValue": 6.0,
+    "name": "Scourge of the Throne",
+    "number": "230",
+    "originalType": "Creature – Dragon",
+    "power": "5",
+    "rarity": "rare",
+    "securityStamp": "oval",
+    "setCode": "TDC",
+    "subtypes": [
+     "Dragon"
+    ],
+    "supertypes": [],
+    "text": "Flying\nDethrone (Whenever this creature attacks the player with the most life or tied for most life, put a +1/+1 counter on it.)\nWhenever this creature attacks for the first time each turn, if it's attacking the player with the most life or tied for most life, untap all attacking creatures. After this phase, there is an additional combat phase.",
+    "toughness": "5",
+    "type": "Creature — Dragon",
+    "types": [
+     "Creature"
+    ],
+    "uuid": "23688b27-6bf2-51f9-b4ea-5a91b5b14947"
+   },
+   {
+    "artist": "Svetlin Velinov",
+    "availability": [
+     "mtgo",
+     "paper"
+    ],
+    "borderColor": "black",
+    "colorIdentity": [
+     "R"
+    ],
+    "colors": [
+     "R"
+    ],
+    "convertedManaCost": 5.0,
+    "count": 1,
+    "edhrecRank": 13780,
+    "edhrecSaltiness": 0.11,
+    "finishes": [
+     "nonfoil"
+    ],
+    "frameVersion": "2015",
+    "identifiers": {
+     "cardKingdomId": "311785",
+     "cardsphereId": "136027",
+     "mcmId": "819306",
+     "mcmMetaId": "267549",
+     "mtgjsonV4Id": "fa48b695-93e2-5e3a-91e3-9c59aa302db1",
+     "mtgoId": "138403",
+     "multiverseId": "696389",
+     "scryfallCardBackId": "0aeebaf5-8c7d-4636-9e82-8c27447861f7",
+     "scryfallId": "a373c35e-a54a-4dae-a527-e94dfb10230a",
+     "scryfallIllustrationId": "da580719-c28b-4618-9d17-d0d588a68456",
+     "scryfallOracleId": "bfbe28a2-b656-4575-8b7e-9dbc22f8d4bc",
+     "tcgplayerProductId": "624942"
+    },
+    "isEtched": false,
+    "isFoil": false,
+    "isReprint": true,
+    "keywords": [
+     "Flying",
+     "Riot"
+    ],
+    "language": "English",
+    "layout": "normal",
+    "manaCost": "{3}{R}{R}",
+    "manaValue": 5.0,
+    "name": "Skarrgan Hellkite",
+    "number": "233",
+    "originalType": "Creature – Dragon",
+    "power": "4",
+    "rarity": "mythic",
+    "securityStamp": "oval",
+    "setCode": "TDC",
+    "subtypes": [
+     "Dragon"
+    ],
+    "supertypes": [],
+    "text": "Riot (This creature enters with your choice of a +1/+1 counter or haste.)\nFlying\n{3}{R}: This creature deals 2 damage divided as you choose among one or two targets. Activate only if this creature has a +1/+1 counter on it.",
+    "toughness": "4",
+    "type": "Creature — Dragon",
+    "types": [
+     "Creature"
+    ],
+    "uuid": "e077bbe0-db4d-5e6a-a633-4694afeb9196"
+   },
+   {
+    "artist": "Chris Rahn",
+    "availability": [
+     "mtgo",
+     "paper"
+    ],
+    "borderColor": "black",
+    "colorIdentity": [
+     "R"
+    ],
+    "colors": [
+     "R"
+    ],
+    "convertedManaCost": 3.0,
+    "count": 1,
+    "edhrecRank": 4544,
+    "edhrecSaltiness": 0.07,
+    "finishes": [
+     "nonfoil"
+    ],
+    "frameVersion": "2015",
+    "identifiers": {
+     "cardKingdomId": "311786",
+     "cardsphereId": "136023",
+     "mcmId": "819307",
+     "mcmMetaId": "263424",
+     "mtgjsonV4Id": "04a03a3f-eb21-58b8-a859-8e80f1e6d2a7",
+     "mtgoId": "138405",
+     "multiverseId": "696390",
+     "scryfallCardBackId": "0aeebaf5-8c7d-4636-9e82-8c27447861f7",
+     "scryfallId": "5fb4fa09-2864-4973-aa49-088043f6a6d1",
+     "scryfallIllustrationId": "4a47b35f-dce3-443a-8d5f-b126d22fc3fc",
+     "scryfallOracleId": "f63278e0-3c67-421d-87ce-67725e5e74df",
+     "tcgplayerProductId": "624943"
+    },
+    "isEtched": false,
+    "isFoil": false,
+    "isReprint": true,
+    "language": "English",
+    "layout": "normal",
+    "manaCost": "{2}{R}",
+    "manaValue": 3.0,
+    "name": "Spit Flame",
+    "number": "234",
+    "originalType": "Instant",
+    "rarity": "rare",
+    "securityStamp": "oval",
+    "setCode": "TDC",
+    "subtypes": [],
+    "supertypes": [],
+    "text": "Spit Flame deals 4 damage to target creature.\nWhenever a Dragon you control enters, you may pay {R}. If you do, return this card from your graveyard to your hand.",
+    "type": "Instant",
+    "types": [
+     "Instant"
+    ],
+    "uuid": "3c524036-f58f-5150-bc7d-75e68d4ff59a"
+   },
+   {
+    "artist": "Yeong-Hao Han",
+    "availability": [
+     "mtgo",
+     "paper"
+    ],
+    "borderColor": "black",
+    "colorIdentity": [
+     "R"
+    ],
+    "colors": [
+     "R"
+    ],
+    "convertedManaCost": 4.0,
+    "count": 1,
+    "edhrecRank": 8372,
+    "edhrecSaltiness": 0.14,
+    "finishes": [
+     "nonfoil"
+    ],
+    "frameVersion": "2015",
+    "identifiers": {
+     "cardKingdomId": "311787",
+     "cardsphereId": "136020",
+     "mcmId": "819308",
+     "mcmMetaId": "290994",
+     "mtgjsonV4Id": "ba0ad8e3-f694-5e54-a1cc-a9388ccdf232",
+     "mtgoId": "138409",
+     "multiverseId": "696392",
+     "scryfallCardBackId": "0aeebaf5-8c7d-4636-9e82-8c27447861f7",
+     "scryfallId": "6d064aff-711f-4670-b786-a74265bdf44a",
+     "scryfallIllustrationId": "17a010d0-4cc1-4f7d-bbd7-e665bb2325f0",
+     "scryfallOracleId": "eeb6f5eb-0e16-468e-9dfe-6ec8d8172f86",
+     "tcgplayerProductId": "624944"
+    },
+    "isEtched": false,
+    "isFoil": false,
+    "isReprint": true,
+    "language": "English",
+    "layout": "normal",
+    "manaCost": "{2}{R}{R}",
+    "manaValue": 4.0,
+    "name": "Storm's Wrath",
+    "number": "236",
+    "originalType": "Sorcery",
+    "rarity": "rare",
+    "securityStamp": "oval",
+    "setCode": "TDC",
+    "subtypes": [],
+    "supertypes": [],
+    "text": "Storm's Wrath deals 4 damage to each creature and each planeswalker.",
+    "type": "Sorcery",
+    "types": [
+     "Sorcery"
+    ],
+    "uuid": "76d1238f-6751-5c7e-8b3d-4d2474de4afa"
+   },
+   {
+    "artist": "Slawomir Maniak",
+    "availability": [
+     "mtgo",
+     "paper"
+    ],
+    "borderColor": "black",
+    "colorIdentity": [
+     "R"
+    ],
+    "colors": [
+     "R"
+    ],
+    "convertedManaCost": 5.0,
+    "count": 1,
+    "edhrecRank": 9779,
+    "edhrecSaltiness": 0.06,
+    "finishes": [
+     "nonfoil"
+    ],
+    "frameVersion": "2015",
+    "identifiers": {
+     "cardKingdomId": "311788",
+     "cardsphereId": "136018",
+     "mcmId": "819309",
+     "mcmMetaId": "208667",
+     "mtgjsonV4Id": "fbddb39b-c1bd-58be-aa26-8834fb24c60e",
+     "mtgoId": "138411",
+     "multiverseId": "696393",
+     "scryfallCardBackId": "0aeebaf5-8c7d-4636-9e82-8c27447861f7",
+     "scryfallId": "3637d9b8-87bb-478d-bfb1-59ddab7b5e4c",
+     "scryfallIllustrationId": "68f74bc9-e2e2-4ceb-99fe-aca0b1a12c18",
+     "scryfallOracleId": "7a770865-9383-45aa-883f-21ee649d1ea3",
+     "tcgplayerProductId": "624945"
+    },
+    "isEtched": false,
+    "isFoil": false,
+    "isReprint": true,
+    "keywords": [
+     "Flying",
+     "Haste",
+     "Monstrosity",
+     "Protection"
+    ],
+    "language": "English",
+    "layout": "normal",
+    "manaCost": "{3}{R}{R}",
+    "manaValue": 5.0,
+    "name": "Stormbreath Dragon",
+    "number": "237",
+    "originalType": "Creature – Dragon",
+    "power": "4",
+    "rarity": "mythic",
+    "securityStamp": "oval",
+    "setCode": "TDC",
+    "subtypes": [
+     "Dragon"
+    ],
+    "supertypes": [],
+    "text": "Flying, haste, protection from white\n{5}{R}{R}: Monstrosity 3. (If this creature isn't monstrous, put three +1/+1 counters on it and it becomes monstrous.)\nWhen this creature becomes monstrous, it deals damage to each opponent equal to the number of cards in that player's hand.",
+    "toughness": "4",
+    "type": "Creature — Dragon",
+    "types": [
+     "Creature"
+    ],
+    "uuid": "db749ba3-ef5b-5879-838c-3c667814c5df"
+   },
+   {
+    "artist": "Dominick Domingo",
+    "availability": [
+     "mtgo",
+     "paper"
+    ],
+    "borderColor": "black",
+    "colorIdentity": [
+     "R"
+    ],
+    "colors": [
+     "R"
+    ],
+    "convertedManaCost": 3.0,
+    "count": 1,
+    "edhrecRank": 960,
+    "edhrecSaltiness": 0.38,
+    "finishes": [
+     "nonfoil"
+    ],
+    "frameVersion": "2015",
+    "identifiers": {
+     "cardKingdomId": "311789",
+     "cardsphereId": "136014",
+     "mcmId": "819310",
+     "mcmMetaId": "9525",
+     "mtgjsonV4Id": "09ec4f28-7113-59c8-b4cc-d527305727b6",
+     "mtgoId": "138413",
+     "multiverseId": "696394",
+     "scryfallCardBackId": "0aeebaf5-8c7d-4636-9e82-8c27447861f7",
+     "scryfallId": "39938a5a-385b-47ba-a07b-8917cba14fd3",
+     "scryfallIllustrationId": "c4f403dd-ba99-48d0-ab16-fbf24378648e",
+     "scryfallOracleId": "fd5ee26c-cc54-4dc0-b611-5cda14354a5e",
+     "tcgplayerProductId": "624946"
+    },
+    "isEtched": false,
+    "isFoil": false,
+    "isReprint": true,
+    "keywords": [
+     "Changeling"
+    ],
+    "language": "English",
+    "layout": "normal",
+    "manaCost": "{2}{R}",
+    "manaValue": 3.0,
+    "name": "Taurean Mauler",
+    "number": "238",
+    "originalType": "Creature – Shapeshifter",
+    "power": "2",
+    "rarity": "rare",
+    "securityStamp": "oval",
+    "setCode": "TDC",
+    "subtypes": [
+     "Shapeshifter"
+    ],
+    "supertypes": [],
+    "text": "Changeling (This card is every creature type.)\nWhenever an opponent casts a spell, you may put a +1/+1 counter on this creature.",
+    "toughness": "2",
+    "type": "Creature — Shapeshifter",
+    "types": [
+     "Creature"
+    ],
+    "uuid": "056b6497-51e6-51e6-a758-2f6c3669786c"
+   },
+   {
+    "artist": "Jonas De Ro",
+    "availability": [
+     "mtgo",
+     "paper"
+    ],
+    "borderColor": "black",
+    "colorIdentity": [
+     "R"
+    ],
+    "colors": [
+     "R"
+    ],
+    "convertedManaCost": 4.0,
+    "count": 1,
+    "edhrecRank": 6823,
+    "edhrecSaltiness": 0.0,
+    "finishes": [
+     "nonfoil"
+    ],
+    "frameVersion": "2015",
+    "identifiers": {
+     "cardKingdomId": "311790",
+     "cardsphereId": "136013",
+     "mcmId": "819311",
+     "mcmMetaId": "226508",
+     "mtgjsonV4Id": "b725cb7d-ff6e-5f98-a713-490096c9ef0a",
+     "mtgoId": "138417",
+     "multiverseId": "696396",
+     "scryfallCardBackId": "0aeebaf5-8c7d-4636-9e82-8c27447861f7",
+     "scryfallId": "faad2d44-1443-42c3-9d3e-b78951b1e851",
+     "scryfallIllustrationId": "9791dfb4-6389-4014-8f98-add2c31886ed",
+     "scryfallOracleId": "1c772df4-bd88-4f7e-853c-5dd06f4cf70e",
+     "tcgplayerProductId": "624947"
+    },
+    "isEtched": false,
+    "isFoil": false,
+    "isReprint": true,
+    "keywords": [
+     "Flying",
+     "Haste"
+    ],
+    "language": "English",
+    "layout": "normal",
+    "manaCost": "{2}{R}{R}",
+    "manaValue": 4.0,
+    "name": "Territorial Hellkite",
+    "number": "240",
+    "originalType": "Creature – Dragon",
+    "power": "6",
+    "rarity": "rare",
+    "securityStamp": "oval",
+    "setCode": "TDC",
+    "subtypes": [
+     "Dragon"
+    ],
+    "supertypes": [],
+    "text": "Flying, haste\nAt the beginning of combat on your turn, choose an opponent at random that this creature didn't attack during your last combat. This creature attacks that player this combat if able. If you can't choose an opponent this way, tap this creature.",
+    "toughness": "5",
+    "type": "Creature — Dragon",
+    "types": [
+     "Creature"
+    ],
+    "uuid": "7be83a84-4877-534b-ad95-9296252ea506"
+   },
+   {
+    "artist": "Ryan Pancoast",
+    "availability": [
+     "mtgo",
+     "paper"
+    ],
+    "borderColor": "black",
+    "colorIdentity": [
+     "R"
+    ],
+    "colors": [
+     "R"
+    ],
+    "convertedManaCost": 4.0,
+    "count": 1,
+    "edhrecRank": 3009,
+    "edhrecSaltiness": 0.21,
+    "finishes": [
+     "nonfoil"
+    ],
+    "frameVersion": "2015",
+    "identifiers": {
+     "cardKingdomId": "311791",
+     "cardsphereId": "136012",
+     "mcmId": "819312",
+     "mcmMetaId": "211148",
+     "mtgjsonV4Id": "164dadd4-4415-5f91-8b58-67b09ad8e1a8",
+     "mtgoId": "138419",
+     "multiverseId": "696397",
+     "scryfallCardBackId": "0aeebaf5-8c7d-4636-9e82-8c27447861f7",
+     "scryfallId": "06624919-bb3e-458c-9301-0bb22d8b556c",
+     "scryfallIllustrationId": "b4756614-1775-4441-aa31-4ca1f2d44a7d",
+     "scryfallOracleId": "bb04f927-0348-4a14-9e74-381f18083f6a",
+     "tcgplayerProductId": "624948"
+    },
+    "isEtched": false,
+    "isFoil": false,
+    "isReprint": true,
+    "keywords": [
+     "Flying"
+    ],
+    "language": "English",
+    "layout": "normal",
+    "manaCost": "{2}{R}{R}",
+    "manaValue": 4.0,
+    "name": "Thunderbreak Regent",
+    "number": "241",
+    "originalType": "Creature – Dragon",
+    "power": "4",
+    "rarity": "rare",
+    "securityStamp": "oval",
+    "setCode": "TDC",
+    "subtypes": [
+     "Dragon"
+    ],
+    "supertypes": [],
+    "text": "Flying\nWhenever a Dragon you control becomes the target of a spell or ability an opponent controls, this creature deals 3 damage to that player.",
+    "toughness": "4",
+    "type": "Creature — Dragon",
+    "types": [
+     "Creature"
+    ],
+    "uuid": "739e48ba-65af-5615-b2d3-98d9b1f240f4"
+   },
+   {
+    "artist": "Mark Zug",
+    "availability": [
+     "mtgo",
+     "paper"
+    ],
+    "borderColor": "black",
+    "colorIdentity": [
+     "R"
+    ],
+    "colors": [
+     "R"
+    ],
+    "convertedManaCost": 4.0,
+    "count": 1,
+    "edhrecRank": 2105,
+    "edhrecSaltiness": 0.3,
+    "finishes": [
+     "nonfoil"
+    ],
+    "frameVersion": "2015",
+    "identifiers": {
+     "cardKingdomId": "311792",
+     "cardsphereId": "136010",
+     "mcmId": "819313",
+     "mcmMetaId": "344266",
+     "mtgjsonV4Id": "733ebdbd-742a-5a6a-82a8-7792db52db00",
+     "mtgoId": "138421",
+     "multiverseId": "696398",
+     "scryfallCardBackId": "0aeebaf5-8c7d-4636-9e82-8c27447861f7",
+     "scryfallId": "bcaa3213-6fc9-43c7-9819-657e16a578f1",
+     "scryfallIllustrationId": "3ebcf063-afdc-4df1-8e53-f2fac9d97ac3",
+     "scryfallOracleId": "f3b3173b-f7ae-420e-84ec-ea61414674a0",
+     "tcgplayerProductId": "624949"
+    },
+    "isEtched": false,
+    "isFoil": false,
+    "isReprint": true,
+    "keywords": [
+     "Flying",
+     "Goad"
+    ],
+    "language": "English",
+    "layout": "normal",
+    "manaCost": "{2}{R}{R}",
+    "manaValue": 4.0,
+    "name": "Vengeful Ancestor",
+    "number": "242",
+    "originalType": "Creature – Spirit Dragon",
+    "power": "3",
+    "rarity": "rare",
+    "securityStamp": "oval",
+    "setCode": "TDC",
+    "subtypes": [
+     "Spirit",
+     "Dragon"
+    ],
+    "supertypes": [],
+    "text": "Flying\nWhenever this creature enters or attacks, goad target creature. (Until your next turn, that creature attacks each combat if able and attacks a player other than you if able.)\nWhenever a goaded creature attacks, it deals 1 damage to its controller.",
+    "toughness": "4",
+    "type": "Creature — Spirit Dragon",
+    "types": [
+     "Creature"
+    ],
+    "uuid": "312249b9-9810-542f-b95f-e65c5565fe93"
+   },
+   {
+    "artist": "XiaoDi Jin",
+    "availability": [
+     "mtgo",
+     "paper"
+    ],
+    "borderColor": "black",
+    "colorIdentity": [
+     "R"
+    ],
+    "colors": [
+     "R"
+    ],
+    "convertedManaCost": 4.0,
+    "count": 1,
+    "edhrecRank": 9098,
+    "edhrecSaltiness": 0.06,
+    "finishes": [
+     "nonfoil"
+    ],
+    "frameEffects": [
+     "legendary"
+    ],
+    "frameVersion": "2015",
+    "identifiers": {
+     "cardKingdomId": "311793",
+     "cardsphereId": "136008",
+     "mcmId": "819314",
+     "mcmMetaId": "239501",
+     "mtgjsonV4Id": "ba6d08f8-e058-54df-9caa-f59f8a46244f",
+     "mtgoId": "138423",
+     "multiverseId": "696399",
+     "scryfallCardBackId": "0aeebaf5-8c7d-4636-9e82-8c27447861f7",
+     "scryfallId": "5d951996-3379-431d-bbb0-a7d099e72e4e",
+     "scryfallIllustrationId": "6ed96a84-0f6e-42a2-8d77-ce2cbd36d694",
+     "scryfallOracleId": "d7315b3b-6e5d-4d28-a503-bfae1daf6c43",
+     "tcgplayerProductId": "624950"
+    },
+    "isEtched": false,
+    "isFoil": false,
+    "isReprint": true,
+    "keywords": [
+     "Flying",
+     "Kicker"
+    ],
+    "language": "English",
+    "layout": "normal",
+    "leadershipSkills": {
+     "brawl": false,
+     "commander": true,
+     "oathbreaker": false,
+     "pauper_commander": false,
+     "predh": false
+    },
+    "manaCost": "{2}{R}{R}",
+    "manaValue": 4.0,
+    "name": "Verix Bladewing",
+    "number": "243",
+    "originalType": "Legendary Creature – Dragon",
+    "power": "4",
+    "rarity": "mythic",
+    "relatedCards": {
+     "tokens": [
+      "d01a5092-4603-5cdd-ad7d-2ff0eaec6128"
+     ]
+    },
+    "securityStamp": "oval",
+    "setCode": "TDC",
+    "subtypes": [
+     "Dragon"
+    ],
+    "supertypes": [
+     "Legendary"
+    ],
+    "text": "Kicker {3} (You may pay an additional {3} as you cast this spell.)\nFlying\nWhen Verix Bladewing enters, if it was kicked, create Karox Bladewing, a legendary 4/4 red Dragon creature token with flying.",
+    "toughness": "4",
+    "type": "Legendary Creature — Dragon",
+    "types": [
+     "Creature"
+    ],
+    "uuid": "964091ae-b737-5432-8ba1-54f8e3aba7fe"
+   },
+   {
+    "artist": "James Ryman",
+    "availability": [
+     "mtgo",
+     "paper"
+    ],
+    "borderColor": "black",
+    "colorIdentity": [
+     "G"
+    ],
+    "colors": [
+     "G"
+    ],
+    "convertedManaCost": 4.0,
+    "count": 1,
+    "edhrecRank": 3360,
+    "edhrecSaltiness": 0.35,
+    "finishes": [
+     "nonfoil"
+    ],
+    "frameEffects": [
+     "enchantment"
+    ],
+    "frameVersion": "2015",
+    "identifiers": {
+     "cardKingdomId": "311796",
+     "cardsphereId": "136005",
+     "mcmId": "819317",
+     "mcmMetaId": "210721",
+     "mtgjsonV4Id": "08ec2d7c-8ce7-529b-9fd9-57c01e64fefb",
+     "mtgoId": "138449",
+     "multiverseId": "696412",
+     "scryfallCardBackId": "0aeebaf5-8c7d-4636-9e82-8c27447861f7",
+     "scryfallId": "f419710e-3a73-4db0-bf2e-e76730f22c4d",
+     "scryfallIllustrationId": "61926168-de19-4dd5-b168-e080011b36af",
+     "scryfallOracleId": "4cfaa5cf-cc3d-49a7-9544-38a8bb7e9ec1",
+     "tcgplayerProductId": "624957"
+    },
+    "isEtched": false,
+    "isFoil": false,
+    "isReprint": true,
+    "keywords": [
+     "Fight"
+    ],
+    "language": "English",
+    "layout": "normal",
+    "manaCost": "{3}{G}",
+    "manaValue": 4.0,
+    "name": "Frontier Siege",
+    "number": "256",
+    "originalType": "Enchantment",
+    "producedMana": [
+     "G"
+    ],
+    "rarity": "rare",
+    "securityStamp": "oval",
+    "setCode": "TDC",
+    "subtypes": [],
+    "supertypes": [],
+    "text": "As this enchantment enters, choose Khans or Dragons.\n• Khans — At the beginning of each of your main phases, add {G}{G}.\n• Dragons — Whenever a creature you control with flying enters, you may have it fight target creature you don't control.",
+    "type": "Enchantment",
+    "types": [
+     "Enchantment"
+    ],
+    "uuid": "47e3b5b7-dbc3-545a-bb7d-932caf23c12a"
+   },
+   {
+    "artist": "Svetlin Velinov",
+    "availability": [
+     "mtgo",
+     "paper"
+    ],
+    "borderColor": "black",
+    "colorIdentity": [
+     "G"
+    ],
+    "colors": [
+     "G"
+    ],
+    "convertedManaCost": 6.0,
+    "count": 1,
+    "edhrecRank": 4025,
+    "edhrecSaltiness": 0.5,
+    "finishes": [
+     "nonfoil"
+    ],
+    "frameVersion": "2015",
+    "identifiers": {
+     "cardKingdomId": "311799",
+     "cardsphereId": "136001",
+     "mcmId": "819320",
+     "mcmMetaId": "223592",
+     "mtgjsonV4Id": "e854afa2-5bc6-50ca-a9eb-8416eecf96e6",
+     "mtgoId": "138475",
+     "multiverseId": "696425",
+     "scryfallCardBackId": "0aeebaf5-8c7d-4636-9e82-8c27447861f7",
+     "scryfallId": "b84e46c2-f3ea-49ff-8f8b-58aa6a1175a4",
+     "scryfallIllustrationId": "c3170536-c5c3-4e4a-909f-9282e9cd4bb8",
+     "scryfallOracleId": "9d2aea05-f55c-4355-950f-bfdc4e985e80",
+     "tcgplayerProductId": "624960"
+    },
+    "isEtched": false,
+    "isFoil": false,
+    "isReprint": true,
+    "keywords": [
+     "Council's dilemma"
+    ],
+    "language": "English",
+    "layout": "normal",
+    "manaCost": "{4}{G}{G}",
+    "manaValue": 6.0,
+    "name": "Selvala's Stampede",
+    "number": "269",
+    "originalType": "Sorcery",
+    "rarity": "rare",
+    "securityStamp": "oval",
+    "setCode": "TDC",
+    "subtypes": [],
+    "supertypes": [],
+    "text": "Council's dilemma — Starting with you, each player votes for wild or free. Reveal cards from the top of your library until you reveal a creature card for each wild vote. Put those creature cards onto the battlefield, then shuffle the rest into your library. You may put a permanent card from your hand onto the battlefield for each free vote.",
+    "type": "Sorcery",
+    "types": [
+     "Sorcery"
+    ],
+    "uuid": "44092377-aba5-5027-994f-95cc34ea4262"
+   },
+   {
+    "artist": "Karl Kopinski",
+    "availability": [
+     "mtgo",
+     "paper"
+    ],
+    "borderColor": "black",
+    "colorIdentity": [
+     "G",
+     "R"
+    ],
+    "colors": [
+     "G",
+     "R"
+    ],
+    "convertedManaCost": 7.0,
+    "count": 1,
+    "edhrecRank": 1386,
+    "edhrecSaltiness": 0.51,
+    "finishes": [
+     "nonfoil"
+    ],
+    "frameEffects": [
+     "legendary"
+    ],
+    "frameVersion": "2015",
+    "identifiers": {
+     "cardKingdomId": "311800",
+     "cardsphereId": "135998",
+     "mcmId": "819321",
+     "mcmMetaId": "210757",
+     "mtgjsonV4Id": "4964a775-abfb-5cda-b193-72ebbbc74219",
+     "mtgoId": "138499",
+     "multiverseId": "696437",
+     "scryfallCardBackId": "0aeebaf5-8c7d-4636-9e82-8c27447861f7",
+     "scryfallId": "c569fab1-6901-40ab-b958-001698819585",
+     "scryfallIllustrationId": "a304e69d-64fb-43a7-9467-807de7f5da7c",
+     "scryfallOracleId": "c0b3bbce-977c-42a9-afcb-dabdfc717c97",
+     "tcgplayerProductId": "624961"
+    },
+    "isEtched": false,
+    "isFoil": false,
+    "isReprint": true,
+    "keywords": [
+     "Flying",
+     "Trample"
+    ],
+    "language": "English",
+    "layout": "normal",
+    "leadershipSkills": {
+     "brawl": false,
+     "commander": true,
+     "oathbreaker": false,
+     "pauper_commander": false,
+     "predh": false
+    },
+    "manaCost": "{5}{R}{G}",
+    "manaValue": 7.0,
+    "name": "Atarka, World Render",
+    "number": "281",
+    "originalType": "Legendary Creature – Dragon",
+    "power": "6",
+    "rarity": "rare",
+    "securityStamp": "oval",
+    "setCode": "TDC",
+    "subtypes": [
+     "Dragon"
+    ],
+    "supertypes": [
+     "Legendary"
+    ],
+    "text": "Flying, trample\nWhenever a Dragon you control attacks, it gains double strike until end of turn.",
+    "toughness": "4",
+    "type": "Legendary Creature — Dragon",
+    "types": [
+     "Creature"
+    ],
+    "uuid": "07e01783-3e80-5ae5-88b5-fee81168749b"
+   },
+   {
+    "artist": "Karl Kopinski",
+    "availability": [
+     "mtgo",
+     "paper"
+    ],
+    "borderColor": "black",
+    "colorIdentity": [
+     "G",
+     "R"
+    ],
+    "colors": [
+     "G",
+     "R"
+    ],
+    "convertedManaCost": 7.0,
+    "count": 1,
+    "edhrecRank": 4504,
+    "edhrecSaltiness": 0.04,
+    "finishes": [
+     "nonfoil"
+    ],
+    "frameEffects": [
+     "legendary"
+    ],
+    "frameVersion": "2015",
+    "identifiers": {
+     "cardKingdomId": "311801",
+     "cardsphereId": "135997",
+     "mcmId": "819322",
+     "mcmMetaId": "211196",
+     "mtgjsonV4Id": "1852b7cf-be76-5cce-9bcd-e83466423991",
+     "mtgoId": "138507",
+     "multiverseId": "696441",
+     "scryfallCardBackId": "0aeebaf5-8c7d-4636-9e82-8c27447861f7",
+     "scryfallId": "d411ad43-3718-4ed7-932f-fcea28705782",
+     "scryfallIllustrationId": "269f3e00-805d-4842-83f7-8054b557c55a",
+     "scryfallOracleId": "daff70a4-a990-47c9-b6ef-2c379272c8a3",
+     "tcgplayerProductId": "624962"
+    },
+    "isEtched": false,
+    "isFoil": false,
+    "isReprint": true,
+    "keywords": [
+     "Flying",
+     "Trample"
+    ],
+    "language": "English",
+    "layout": "normal",
+    "leadershipSkills": {
+     "brawl": false,
+     "commander": true,
+     "oathbreaker": false,
+     "pauper_commander": false,
+     "predh": false
+    },
+    "manaCost": "{5}{R}{G}",
+    "manaValue": 7.0,
+    "name": "Dragonlord Atarka",
+    "number": "285",
+    "originalType": "Legendary Creature – Elder Dragon",
+    "power": "8",
+    "rarity": "mythic",
+    "securityStamp": "oval",
+    "setCode": "TDC",
+    "subtypes": [
+     "Elder",
+     "Dragon"
+    ],
+    "supertypes": [
+     "Legendary"
+    ],
+    "text": "Flying, trample\nWhen Dragonlord Atarka enters, it deals 5 damage divided as you choose among any number of target creatures and/or planeswalkers your opponents control.",
+    "toughness": "8",
+    "type": "Legendary Creature — Elder Dragon",
+    "types": [
+     "Creature"
+    ],
+    "uuid": "27d957d1-f314-5fc2-b1ae-55625255a283"
+   },
+   {
+    "artist": "Aaron Miller",
+    "availability": [
+     "mtgo",
+     "paper"
+    ],
+    "borderColor": "black",
+    "colorIdentity": [
+     "G",
+     "R"
+    ],
+    "colors": [
+     "G",
+     "R"
+    ],
+    "convertedManaCost": 5.0,
+    "count": 1,
+    "edhrecRank": 10828,
+    "edhrecSaltiness": 0.27,
+    "finishes": [
+     "nonfoil"
+    ],
+    "frameVersion": "2015",
+    "identifiers": {
+     "cardKingdomId": "311802",
+     "cardsphereId": "135995",
+     "mcmId": "819323",
+     "mcmMetaId": "211141",
+     "mtgjsonV4Id": "4c68d946-7d37-5c56-9ed2-3fcfda3516cb",
+     "mtgoId": "138523",
+     "multiverseId": "696447",
+     "scryfallCardBackId": "0aeebaf5-8c7d-4636-9e82-8c27447861f7",
+     "scryfallId": "a6d448c2-ea3b-4098-9e0e-3b0832d6ad24",
+     "scryfallIllustrationId": "d514038a-b560-4fa7-9280-8fda2899e867",
+     "scryfallOracleId": "3256029f-6558-4fcc-9fa1-74ceba3e5c92",
+     "tcgplayerProductId": "624963"
+    },
+    "isEtched": false,
+    "isFoil": false,
+    "isReprint": true,
+    "keywords": [
+     "Flying"
+    ],
+    "language": "English",
+    "layout": "normal",
+    "manaCost": "{3}{R}{G}",
+    "manaValue": 5.0,
+    "name": "Harbinger of the Hunt",
+    "number": "291",
+    "originalType": "Creature – Dragon",
+    "power": "5",
+    "rarity": "rare",
+    "securityStamp": "oval",
+    "setCode": "TDC",
+    "subtypes": [
+     "Dragon"
+    ],
+    "supertypes": [],
+    "text": "Flying\n{2}{R}: This creature deals 1 damage to each creature without flying.\n{2}{G}: This creature deals 1 damage to each other creature with flying.",
+    "toughness": "3",
+    "type": "Creature — Dragon",
+    "types": [
+     "Creature"
+    ],
+    "uuid": "4f8d212c-e008-5947-8d67-261364954113"
+   },
+   {
+    "artist": "Eric Wilkerson",
+    "availability": [
+     "mtgo",
+     "paper"
+    ],
+    "borderColor": "black",
+    "colorIdentity": [
+     "R",
+     "U"
+    ],
+    "colors": [
+     "R",
+     "U"
+    ],
+    "convertedManaCost": 3.0,
+    "count": 1,
+    "edhrecRank": 2083,
+    "edhrecSaltiness": 0.34,
+    "finishes": [
+     "nonfoil"
+    ],
+    "frameEffects": [
+     "legendary"
+    ],
+    "frameVersion": "2015",
+    "identifiers": {
+     "cardKingdomId": "311804",
+     "cardsphereId": "135994",
+     "mcmId": "819324",
+     "mcmMetaId": "419579",
+     "mtgjsonV4Id": "38817c51-2a07-52b2-9030-4c84c40634ca",
+     "mtgoId": "138543",
+     "multiverseId": "696457",
+     "scryfallCardBackId": "0aeebaf5-8c7d-4636-9e82-8c27447861f7",
+     "scryfallId": "49d64e6b-563f-486c-ba04-4a254a9a971d",
+     "scryfallIllustrationId": "9e557879-f1ea-46a0-bcf6-55ff2393aee7",
+     "scryfallOracleId": "bbcae463-ba05-4cfe-9c25-13f2e64698c7",
+     "tcgplayerProductId": "624964"
+    },
+    "isEtched": false,
+    "isFoil": false,
+    "isReprint": true,
+    "language": "English",
+    "layout": "normal",
+    "leadershipSkills": {
+     "brawl": false,
+     "commander": true,
+     "oathbreaker": false,
+     "pauper_commander": false,
+     "predh": false
+    },
+    "manaCost": "{1}{U}{R}",
+    "manaValue": 3.0,
+    "name": "Sarkhan, Soul Aflame",
+    "number": "301",
+    "originalType": "Legendary Creature – Human Shaman",
+    "power": "2",
+    "rarity": "mythic",
+    "securityStamp": "oval",
+    "setCode": "TDC",
+    "subtypes": [
+     "Human",
+     "Shaman"
+    ],
+    "supertypes": [
+     "Legendary"
+    ],
+    "text": "Dragon spells you cast cost {1} less to cast.\nWhenever a Dragon you control enters, you may have Sarkhan become a copy of it until end of turn, except its name is Sarkhan, Soul Aflame and it's legendary in addition to its other types.",
+    "toughness": "4",
+    "type": "Legendary Creature — Human Shaman",
+    "types": [
+     "Creature"
+    ],
+    "uuid": "4aecbe4e-e033-575f-b2da-ee6ae921f8f2"
+   },
+   {
+    "artist": "Jaime Jones",
+    "availability": [
+     "mtgo",
+     "paper"
+    ],
+    "borderColor": "black",
+    "colorIdentity": [
+     "G",
+     "R",
+     "U"
+    ],
+    "colors": [
+     "G",
+     "R",
+     "U"
+    ],
+    "convertedManaCost": 3.0,
+    "count": 1,
+    "edhrecRank": 905,
+    "edhrecSaltiness": 0.27,
+    "finishes": [
+     "nonfoil"
+    ],
+    "frameEffects": [
+     "enchantment"
+    ],
+    "frameVersion": "2015",
+    "identifiers": {
+     "cardKingdomId": "311805",
+     "cardsphereId": "135993",
+     "mcmId": "819325",
+     "mcmMetaId": "210184",
+     "mtgjsonV4Id": "35bc92aa-ad95-5bc9-8e1a-e5ae776e8c0c",
+     "mtgoId": "138551",
+     "multiverseId": "696461",
+     "scryfallCardBackId": "0aeebaf5-8c7d-4636-9e82-8c27447861f7",
+     "scryfallId": "5cedb54a-a6f6-48aa-acdf-01c988c1c37d",
+     "scryfallIllustrationId": "89df39ba-0159-42f1-a8cb-31be3c509e33",
+     "scryfallOracleId": "e68dc47c-692f-4420-9799-eee104017273",
+     "tcgplayerProductId": "624965"
+    },
+    "isEtched": false,
+    "isFoil": false,
+    "isReprint": true,
+    "language": "English",
+    "layout": "normal",
+    "manaCost": "{G}{U}{R}",
+    "manaValue": 3.0,
+    "name": "Temur Ascendancy",
+    "number": "305",
+    "originalType": "Enchantment",
+    "rarity": "rare",
+    "securityStamp": "oval",
+    "setCode": "TDC",
+    "subtypes": [],
+    "supertypes": [],
+    "text": "Creatures you control have haste.\nWhenever a creature you control with power 4 or greater enters, you may draw a card.",
+    "type": "Enchantment",
+    "types": [
+     "Enchantment"
+    ],
+    "uuid": "f72f32fd-6efe-5c90-afa3-f660ea6bb528"
+   },
+   {
+    "artist": "Adam Paquette",
+    "availability": [
+     "mtgo",
+     "paper"
+    ],
+    "borderColor": "black",
+    "colorIdentity": [],
+    "colors": [],
+    "convertedManaCost": 3.0,
+    "count": 1,
+    "edhrecRank": 1195,
+    "edhrecSaltiness": 0.12,
+    "finishes": [
+     "nonfoil"
+    ],
+    "frameVersion": "2015",
+    "identifiers": {
+     "cardKingdomId": "311806",
+     "cardsphereId": "135992",
+     "mcmId": "819326",
+     "mcmMetaId": "263496",
+     "mtgjsonV4Id": "3e5a8656-2fa2-533f-9c4e-072615789618",
+     "mtgoId": "138575",
+     "multiverseId": "696473",
+     "scryfallCardBackId": "0aeebaf5-8c7d-4636-9e82-8c27447861f7",
+     "scryfallId": "3ee80876-6e87-46c4-a6fd-ff6752db3032",
+     "scryfallIllustrationId": "c266b950-4d9e-4fb7-88ba-31e207d3d33c",
+     "scryfallOracleId": "8cf77dc4-763b-41b7-a5da-0ef2734f08e6",
+     "tcgplayerProductId": "624966"
+    },
+    "isEtched": false,
+    "isFoil": false,
+    "isReprint": true,
+    "language": "English",
+    "layout": "normal",
+    "manaCost": "{3}",
+    "manaValue": 3.0,
+    "name": "Dragon's Hoard",
+    "number": "317",
+    "originalType": "Artifact",
+    "producedMana": [
+     "B",
+     "G",
+     "R",
+     "U",
+     "W"
+    ],
+    "rarity": "rare",
+    "securityStamp": "oval",
+    "setCode": "TDC",
+    "subtypes": [],
+    "supertypes": [],
+    "text": "Whenever a Dragon you control enters, put a gold counter on this artifact.\n{T}, Remove a gold counter from this artifact: Draw a card.\n{T}: Add one mana of any color.",
+    "type": "Artifact",
+    "types": [
+     "Artifact"
+    ],
+    "uuid": "be4daa31-958d-59fd-963e-e6a41638e77f"
+   },
+   {
+    "artist": "James Paick",
+    "availability": [
+     "mtgo",
+     "paper"
+    ],
+    "borderColor": "black",
+    "colorIdentity": [],
+    "colors": [],
+    "convertedManaCost": 6.0,
+    "count": 1,
+    "edhrecRank": 1201,
+    "edhrecSaltiness": 0.43,
+    "finishes": [
+     "nonfoil"
+    ],
+    "frameVersion": "2015",
+    "identifiers": {
+     "cardKingdomId": "311807",
+     "cardsphereId": "135991",
+     "mcmId": "819327",
+     "mcmMetaId": "200697",
+     "mtgjsonV4Id": "d8a8d194-7e66-5453-8310-6229e3308f4c",
+     "mtgoId": "138595",
+     "multiverseId": "696483",
+     "scryfallCardBackId": "0aeebaf5-8c7d-4636-9e82-8c27447861f7",
+     "scryfallId": "548cbc66-d915-4b94-86da-4c909a1ce645",
+     "scryfallIllustrationId": "330f76ab-803d-4ce0-a5fc-845903f334fe",
+     "scryfallOracleId": "6e64f1e0-ddd6-4ee7-8797-086e234b02e8",
+     "tcgplayerProductId": "624967"
+    },
+    "isEtched": false,
+    "isFoil": false,
+    "isReprint": true,
+    "keywords": [
+     "Flying"
+    ],
+    "language": "English",
+    "layout": "normal",
+    "manaCost": "{6}",
+    "manaValue": 6.0,
+    "name": "Steel Hellkite",
+    "number": "327",
+    "originalType": "Artifact Creature – Dragon",
+    "power": "5",
+    "rarity": "rare",
+    "securityStamp": "oval",
+    "setCode": "TDC",
+    "subtypes": [
+     "Dragon"
+    ],
+    "supertypes": [],
+    "text": "Flying\n{2}: This creature gets +1/+0 until end of turn.\n{X}: Destroy each nonland permanent with mana value X whose controller was dealt combat damage by this creature this turn. Activate only once each turn.",
+    "toughness": "5",
+    "type": "Artifact Creature — Dragon",
+    "types": [
+     "Artifact",
+     "Creature"
+    ],
+    "uuid": "f95f69ab-3006-5d20-bc26-da8d8884d81e"
+   },
+   {
+    "artist": "Adam Paquette",
+    "availability": [
+     "mtgo",
+     "paper"
+    ],
+    "borderColor": "black",
+    "colorIdentity": [
+     "G",
+     "R"
+    ],
+    "colors": [],
+    "convertedManaCost": 0.0,
+    "count": 1,
+    "edhrecRank": 89,
+    "edhrecSaltiness": 0.06,
+    "finishes": [
+     "nonfoil"
+    ],
+    "frameVersion": "2015",
+    "identifiers": {
+     "cardKingdomId": "311811",
+     "cardsphereId": "135987",
+     "mcmId": "819329",
+     "mcmMetaId": "220619",
+     "mtgjsonV4Id": "241118ac-ebae-5ffa-8952-e01ca555f5d0",
+     "mtgoId": "138641",
+     "multiverseId": "696506",
+     "scryfallCardBackId": "0aeebaf5-8c7d-4636-9e82-8c27447861f7",
+     "scryfallId": "d78f519f-28f7-4e53-9cb1-1a83577c1669",
+     "scryfallIllustrationId": "c8e5afca-741d-4bd5-ad7d-9d16a1996d46",
+     "scryfallOracleId": "dfac0258-e148-4d7d-8ded-fc2466d9caa6",
+     "tcgplayerProductId": "624972"
+    },
+    "isEtched": false,
+    "isFoil": false,
+    "isReprint": true,
+    "language": "English",
+    "layout": "normal",
+    "manaValue": 0.0,
+    "name": "Cinder Glade",
+    "number": "350",
+    "originalType": "Land – Mountain Forest",
+    "producedMana": [
+     "G",
+     "R"
+    ],
+    "rarity": "rare",
+    "securityStamp": "oval",
+    "setCode": "TDC",
+    "subtypes": [
+     "Mountain",
+     "Forest"
+    ],
+    "supertypes": [],
+    "text": "({T}: Add {R} or {G}.)\nThis land enters tapped unless you control two or more basic lands.",
+    "type": "Land — Mountain Forest",
+    "types": [
+     "Land"
+    ],
+    "uuid": "b17c1273-dcf8-5fb6-a72e-35634b5cb4d1"
+   },
+   {
+    "artist": "Steven Belledin",
+    "availability": [
+     "mtgo",
+     "paper"
+    ],
+    "borderColor": "black",
+    "colorIdentity": [],
+    "colors": [],
+    "convertedManaCost": 0.0,
+    "count": 1,
+    "edhrecRank": 9,
+    "edhrecSaltiness": 0.08,
+    "finishes": [
+     "nonfoil"
+    ],
+    "frameVersion": "2015",
+    "identifiers": {
+     "cardKingdomId": "311660",
+     "cardsphereId": "135703",
+     "mcmId": "818928",
+     "mcmMetaId": "10409",
+     "mtgjsonV4Id": "dea1b439-4399-59cb-a0bd-cb61ae5d78e0",
+     "mtgoId": "138661",
+     "multiverseId": "696516",
+     "scryfallCardBackId": "0aeebaf5-8c7d-4636-9e82-8c27447861f7",
+     "scryfallId": "c2ea2395-4518-4683-8eed-59c43fb3328a",
+     "scryfallIllustrationId": "f67845cb-fe3b-4f90-8de2-bdb69daca307",
+     "scryfallOracleId": "27b047e3-0d41-45e2-98e9-9391d7923a1e",
+     "tcgplayerProductId": "624207"
+    },
+    "isEtched": false,
+    "isFoil": false,
+    "isReprint": true,
+    "language": "English",
+    "layout": "normal",
+    "manaValue": 0.0,
+    "name": "Exotic Orchard",
+    "number": "360",
+    "originalType": "Land",
+    "producedMana": [
+     "B",
+     "G",
+     "R",
+     "U",
+     "W"
+    ],
+    "rarity": "rare",
+    "securityStamp": "oval",
+    "setCode": "TDC",
+    "subtypes": [],
+    "supertypes": [],
+    "text": "{T}: Add one mana of any color that a land an opponent controls could produce.",
+    "type": "Land",
+    "types": [
+     "Land"
+    ],
+    "uuid": "1051403f-f017-570e-a4cc-29b77f4b508b"
+   },
+   {
+    "artist": "Dave Kendall",
+    "availability": [
+     "mtgo",
+     "paper"
+    ],
+    "borderColor": "black",
+    "colorIdentity": [
+     "G",
+     "U"
+    ],
+    "colors": [],
+    "convertedManaCost": 0.0,
+    "count": 1,
+    "edhrecRank": 303,
+    "edhrecSaltiness": 0.04,
+    "finishes": [
+     "nonfoil"
+    ],
+    "frameVersion": "2015",
+    "identifiers": {
+     "cardKingdomId": "311812",
+     "cardsphereId": "135985",
+     "mcmId": "819330",
+     "mcmMetaId": "10027",
+     "mtgjsonV4Id": "1a0d3660-b71d-5455-934a-7e7c25ff4890",
+     "mtgoId": "138669",
+     "multiverseId": "696520",
+     "scryfallCardBackId": "0aeebaf5-8c7d-4636-9e82-8c27447861f7",
+     "scryfallId": "e3bec498-9149-4045-8931-8decbb87c526",
+     "scryfallIllustrationId": "140ebeeb-c04c-409c-9def-e8088ac83b35",
+     "scryfallOracleId": "dc974eb4-72b9-4213-887b-8ee684b93420",
+     "tcgplayerProductId": "624973"
+    },
+    "isEtched": false,
+    "isFoil": false,
+    "isReprint": true,
+    "language": "English",
+    "layout": "normal",
+    "manaValue": 0.0,
+    "name": "Flooded Grove",
+    "number": "364",
+    "originalType": "Land",
+    "producedMana": [
+     "C",
+     "G",
+     "U"
+    ],
+    "rarity": "rare",
+    "securityStamp": "oval",
+    "setCode": "TDC",
+    "subtypes": [],
+    "supertypes": [],
+    "text": "{T}: Add {C}.\n{G/U}, {T}: Add {G}{G}, {G}{U}, or {U}{U}.",
+    "type": "Land",
+    "types": [
+     "Land"
+    ],
+    "uuid": "490c0bc5-8ac1-546e-ac62-ac280d4ac21f"
+   },
+   {
+    "artist": "Raymond Swanland",
+    "availability": [
+     "mtgo",
+     "paper"
+    ],
+    "borderColor": "black",
+    "colorIdentity": [],
+    "colors": [],
+    "convertedManaCost": 0.0,
+    "count": 1,
+    "edhrecRank": 1139,
+    "edhrecSaltiness": 0.16,
+    "finishes": [
+     "nonfoil"
+    ],
+    "frameVersion": "2015",
+    "identifiers": {
+     "cardKingdomId": "311813",
+     "cardsphereId": "135984",
+     "mcmId": "819331",
+     "mcmMetaId": "211230",
+     "mtgjsonV4Id": "7ae13c47-2398-5c34-ab68-610ae54e111b",
+     "mtgoId": "138681",
+     "multiverseId": "696526",
+     "scryfallCardBackId": "0aeebaf5-8c7d-4636-9e82-8c27447861f7",
+     "scryfallId": "d0c552da-874e-49eb-b221-47220b8b7786",
+     "scryfallIllustrationId": "ed82a1bb-a773-4297-a7b1-1e65758798f6",
+     "scryfallOracleId": "acc9c16a-5e72-43bd-87e1-56a16aa892f5",
+     "tcgplayerProductId": "624974"
+    },
+    "isEtched": false,
+    "isFoil": false,
+    "isReprint": true,
+    "language": "English",
+    "layout": "normal",
+    "manaValue": 0.0,
+    "name": "Haven of the Spirit Dragon",
+    "number": "370",
+    "originalType": "Land",
+    "producedMana": [
+     "B",
+     "C",
+     "G",
+     "R",
+     "U",
+     "W"
+    ],
+    "rarity": "rare",
+    "securityStamp": "oval",
+    "setCode": "TDC",
+    "subtypes": [],
+    "supertypes": [],
+    "text": "{T}: Add {C}.\n{T}: Add one mana of any color. Spend this mana only to cast a Dragon creature spell.\n{2}, {T}, Sacrifice this land: Return target Dragon creature card or Ugin planeswalker card from your graveyard to your hand.",
+    "type": "Land",
+    "types": [
+     "Land"
+    ],
+    "uuid": "9f17fdc9-1017-591e-bdd9-ed07b3ae0289"
+   },
+   {
+    "artist": "Daniel Ljunggren",
+    "availability": [
+     "mtgo",
+     "paper"
+    ],
+    "borderColor": "black",
+    "colorIdentity": [
+     "G",
+     "U"
+    ],
+    "colors": [],
+    "convertedManaCost": 0.0,
+    "count": 1,
+    "edhrecRank": 98,
+    "edhrecSaltiness": 0.08,
+    "finishes": [
+     "nonfoil"
+    ],
+    "frameVersion": "2015",
+    "identifiers": {
+     "cardKingdomId": "311669",
+     "cardsphereId": "135853",
+     "mcmId": "818937",
+     "mcmMetaId": "203986",
+     "mtgjsonV4Id": "45cc397e-8588-5c74-8ad2-12789b0d5ca2",
+     "mtgoId": "138683",
+     "multiverseId": "696527",
+     "scryfallCardBackId": "0aeebaf5-8c7d-4636-9e82-8c27447861f7",
+     "scryfallId": "3eb512f5-9782-4c49-9b6e-4e967e42408b",
+     "scryfallIllustrationId": "bf3f0a39-a474-4bb3-86b7-0397fe0d98a0",
+     "scryfallOracleId": "fb5a3403-7f0b-406c-8c4f-d693be010ca6",
+     "tcgplayerProductId": "624466"
+    },
+    "isEtched": false,
+    "isFoil": false,
+    "isReprint": true,
+    "language": "English",
+    "layout": "normal",
+    "manaValue": 0.0,
+    "name": "Hinterland Harbor",
+    "number": "371",
+    "originalType": "Land",
+    "producedMana": [
+     "G",
+     "U"
+    ],
+    "rarity": "rare",
+    "securityStamp": "oval",
+    "setCode": "TDC",
+    "subtypes": [],
+    "supertypes": [],
+    "text": "This land enters tapped unless you control a Forest or an Island.\n{T}: Add {G} or {U}.",
+    "type": "Land",
+    "types": [
+     "Land"
+    ],
+    "uuid": "15321b84-94dd-5d06-be27-59a2643a1d9c"
+   },
+   {
+    "artist": "Sam Burley",
+    "availability": [
+     "mtgo",
+     "paper"
+    ],
+    "borderColor": "black",
+    "colorIdentity": [
+     "G",
+     "R"
+    ],
+    "colors": [],
+    "convertedManaCost": 0.0,
+    "count": 1,
+    "edhrecRank": 216,
+    "edhrecSaltiness": 0.04,
+    "finishes": [
+     "nonfoil"
+    ],
+    "frameVersion": "2015",
+    "identifiers": {
+     "cardKingdomId": "311814",
+     "cardsphereId": "135982",
+     "mcmId": "819332",
+     "mcmMetaId": "3030",
+     "mtgjsonV4Id": "4943b84b-47e3-52c4-9180-c6a77a69ce67",
+     "mtgoId": "138689",
+     "multiverseId": "696530",
+     "scryfallCardBackId": "0aeebaf5-8c7d-4636-9e82-8c27447861f7",
+     "scryfallId": "2b45e8e8-4484-4c62-b507-5edb98d77f54",
+     "scryfallIllustrationId": "3f0e0bc4-8782-4888-b496-21c849a3694e",
+     "scryfallOracleId": "bd912666-f37f-4767-af6f-9e6d0fcccacf",
+     "tcgplayerProductId": "624975"
+    },
+    "isEtched": false,
+    "isFoil": false,
+    "isReprint": true,
+    "language": "English",
+    "layout": "normal",
+    "manaValue": 0.0,
+    "name": "Karplusan Forest",
+    "number": "374",
+    "originalType": "Land",
+    "producedMana": [
+     "C",
+     "G",
+     "R"
+    ],
+    "rarity": "rare",
+    "securityStamp": "oval",
+    "setCode": "TDC",
+    "subtypes": [],
+    "supertypes": [],
+    "text": "{T}: Add {C}.\n{T}: Add {R} or {G}. This land deals 1 damage to you.",
+    "type": "Land",
+    "types": [
+     "Land"
+    ],
+    "uuid": "4eee81e0-7de9-571d-8f81-be8b2c289350"
+   },
+   {
+    "artist": "Eytan Zana",
+    "availability": [
+     "mtgo",
+     "paper"
+    ],
+    "borderColor": "black",
+    "colorIdentity": [
+     "G",
+     "R"
+    ],
+    "colors": [],
+    "convertedManaCost": 0.0,
+    "count": 1,
+    "edhrecRank": 410,
+    "edhrecSaltiness": 0.18,
+    "finishes": [
+     "nonfoil"
+    ],
+    "frameVersion": "2015",
+    "identifiers": {
+     "cardKingdomId": "311815",
+     "cardsphereId": "135980",
+     "mcmId": "819333",
+     "mcmMetaId": "204029",
+     "mtgjsonV4Id": "238660ee-c2bd-5ae3-9815-5f19c36840ed",
+     "mtgoId": "138691",
+     "multiverseId": "696531",
+     "scryfallCardBackId": "0aeebaf5-8c7d-4636-9e82-8c27447861f7",
+     "scryfallId": "32da0d6c-64dd-4aec-b63e-953e96164603",
+     "scryfallIllustrationId": "7d3b1e94-b84d-4cff-a4ce-f8053e4ad35e",
+     "scryfallOracleId": "c6911265-54ef-4c16-bcf2-1ffb24b7d426",
+     "tcgplayerProductId": "624976"
+    },
+    "isEtched": false,
+    "isFoil": false,
+    "isReprint": true,
+    "language": "English",
+    "layout": "normal",
+    "manaValue": 0.0,
+    "name": "Kessig Wolf Run",
+    "number": "375",
+    "originalType": "Land",
+    "producedMana": [
+     "C"
+    ],
+    "rarity": "rare",
+    "securityStamp": "oval",
+    "setCode": "TDC",
+    "subtypes": [],
+    "supertypes": [],
+    "text": "{T}: Add {C}.\n{X}{R}{G}, {T}: Target creature gets +X/+0 and gains trample until end of turn.",
+    "type": "Land",
+    "types": [
+     "Land"
+    ],
+    "uuid": "68f0a2ef-1121-5d90-b4d3-bd714ab17a52"
+   },
+   {
+    "artist": "John Avon",
+    "availability": [
+     "mtgo",
+     "paper"
+    ],
+    "borderColor": "black",
+    "colorIdentity": [
+     "G",
+     "R"
+    ],
+    "colors": [],
+    "convertedManaCost": 0.0,
+    "count": 1,
+    "edhrecRank": 555,
+    "edhrecSaltiness": 0.01,
+    "finishes": [
+     "nonfoil"
+    ],
+    "frameVersion": "2015",
+    "identifiers": {
+     "cardKingdomId": "311816",
+     "cardsphereId": "135979",
+     "mcmId": "819334",
+     "mcmMetaId": "3741",
+     "mtgjsonV4Id": "104de814-1863-5df9-8621-6a2a853918dd",
+     "mtgoId": "138697",
+     "multiverseId": "696534",
+     "scryfallCardBackId": "0aeebaf5-8c7d-4636-9e82-8c27447861f7",
+     "scryfallId": "29208018-8079-44bc-b33b-21cda4709bf2",
+     "scryfallIllustrationId": "5135a044-c500-4d5b-85cd-629b49cbf2c1",
+     "scryfallOracleId": "23bbd091-f6ff-4514-97aa-42c08164b4eb",
+     "tcgplayerProductId": "624977"
+    },
+    "isEtched": false,
+    "isFoil": false,
+    "isReprint": true,
+    "language": "English",
+    "layout": "normal",
+    "manaValue": 0.0,
+    "name": "Mossfire Valley",
+    "number": "378",
+    "originalType": "Land",
+    "producedMana": [
+     "G",
+     "R"
+    ],
+    "rarity": "rare",
+    "securityStamp": "oval",
+    "setCode": "TDC",
+    "subtypes": [],
+    "supertypes": [],
+    "text": "{1}, {T}: Add {R}{G}.",
+    "type": "Land",
+    "types": [
+     "Land"
+    ],
+    "uuid": "aaa56afa-b62a-52a2-8c52-bc2fd4611b71"
+   },
+   {
+    "artist": "Jeremy Jarvis",
+    "availability": [
+     "mtgo",
+     "paper"
+    ],
+    "borderColor": "black",
+    "colorIdentity": [
+     "G"
+    ],
+    "colors": [],
+    "convertedManaCost": 0.0,
+    "count": 1,
+    "edhrecRank": 199,
+    "edhrecSaltiness": 0.13,
+    "finishes": [
+     "nonfoil"
+    ],
+    "frameVersion": "2015",
+    "identifiers": {
+     "cardKingdomId": "311817",
+     "cardsphereId": "135977",
+     "mcmId": "819335",
+     "mcmMetaId": "9381",
+     "mtgjsonV4Id": "fc544ce9-250d-5ead-a463-b41eb4ae7f52",
+     "mtgoId": "138699",
+     "multiverseId": "696535",
+     "scryfallCardBackId": "0aeebaf5-8c7d-4636-9e82-8c27447861f7",
+     "scryfallId": "1490c0dc-06d6-45ee-af3c-2935b0ab1233",
+     "scryfallIllustrationId": "eaf15887-1d9f-48eb-9849-9b24ea9f3930",
+     "scryfallOracleId": "7cb9e29f-835f-4155-a2a5-4b778866c773",
+     "tcgplayerProductId": "624978"
+    },
+    "isEtched": false,
+    "isFoil": false,
+    "isReprint": true,
+    "keywords": [
+     "Hideaway"
+    ],
+    "language": "English",
+    "layout": "normal",
+    "manaValue": 0.0,
+    "name": "Mosswort Bridge",
+    "number": "379",
+    "originalType": "Land",
+    "producedMana": [
+     "G"
+    ],
+    "rarity": "rare",
+    "securityStamp": "oval",
+    "setCode": "TDC",
+    "subtypes": [],
+    "supertypes": [],
+    "text": "Hideaway 4 (When this land enters, look at the top four cards of your library, exile one face down, then put the rest on the bottom in a random order.)\nThis land enters tapped.\n{T}: Add {G}.\n{G}, {T}: You may play the exiled card without paying its mana cost if creatures you control have total power 10 or greater.",
+    "type": "Land",
+    "types": [
+     "Land"
+    ],
+    "uuid": "0633a290-79ba-5a1f-a4e9-0db66e8326a9"
+   },
+   {
+    "artist": "Muhammad Firdaus",
+    "availability": [
+     "mtgo",
+     "paper"
+    ],
+    "borderColor": "black",
+    "colorIdentity": [
+     "G",
+     "R"
+    ],
+    "colors": [],
+    "convertedManaCost": 0.0,
+    "count": 1,
+    "edhrecRank": 224,
+    "edhrecSaltiness": 0.09,
+    "finishes": [
+     "nonfoil"
+    ],
+    "frameVersion": "2015",
+    "identifiers": {
+     "cardKingdomId": "311818",
+     "cardsphereId": "135976",
+     "mcmId": "819336",
+     "mcmMetaId": "345273",
+     "mtgjsonV4Id": "cb30324b-9c44-5afb-bb3a-33b0479cc8ab",
+     "mtgoId": "138715",
+     "multiverseId": "696543",
+     "scryfallCardBackId": "0aeebaf5-8c7d-4636-9e82-8c27447861f7",
+     "scryfallId": "dcdea659-ecaf-4abe-be0f-64e105abb104",
+     "scryfallIllustrationId": "e8c1eba8-53a0-4a49-aebc-04ceeb44c528",
+     "scryfallOracleId": "185c70c1-8403-4ae5-b45d-3679d4ee092a",
+     "tcgplayerProductId": "624979"
+    },
+    "isEtched": false,
+    "isFoil": false,
+    "isReprint": true,
+    "language": "English",
+    "layout": "normal",
+    "manaValue": 0.0,
+    "name": "Rockfall Vale",
+    "number": "387",
+    "originalType": "Land",
+    "producedMana": [
+     "G",
+     "R"
+    ],
+    "rarity": "rare",
+    "securityStamp": "oval",
+    "setCode": "TDC",
+    "subtypes": [],
+    "supertypes": [],
+    "text": "This land enters tapped unless you control two or more other lands.\n{T}: Add {R} or {G}.",
+    "type": "Land",
+    "types": [
+     "Land"
+    ],
+    "uuid": "dfc18fba-be18-587d-9726-7de21a3febfa"
+   },
+   {
+    "artist": "Grzegorz Rutkowski",
+    "availability": [
+     "mtgo",
+     "paper"
+    ],
+    "borderColor": "black",
+    "colorIdentity": [
+     "G",
+     "R"
+    ],
+    "colors": [],
+    "convertedManaCost": 0.0,
+    "count": 1,
+    "edhrecRank": 129,
+    "edhrecSaltiness": 0.03,
+    "finishes": [
+     "nonfoil"
+    ],
+    "frameVersion": "2015",
+    "identifiers": {
+     "cardKingdomId": "311819",
+     "cardsphereId": "135972",
+     "mcmId": "819337",
+     "mcmMetaId": "10672",
+     "mtgjsonV4Id": "9ea12800-1d04-5e22-b26c-be0c16da7852",
+     "mtgoId": "138717",
+     "multiverseId": "696544",
+     "scryfallCardBackId": "0aeebaf5-8c7d-4636-9e82-8c27447861f7",
+     "scryfallId": "1a88057c-0997-4b86-bcd5-b1127e4f1f28",
+     "scryfallIllustrationId": "8264c419-4b26-4550-a3ae-ebb1c381a91e",
+     "scryfallOracleId": "9516c4c1-d72d-434f-97e1-6a862434a169",
+     "tcgplayerProductId": "624980"
+    },
+    "isEtched": false,
+    "isFoil": false,
+    "isReprint": true,
+    "language": "English",
+    "layout": "normal",
+    "manaValue": 0.0,
+    "name": "Rootbound Crag",
+    "number": "388",
+    "originalType": "Land",
+    "producedMana": [
+     "G",
+     "R"
+    ],
+    "rarity": "rare",
+    "securityStamp": "oval",
+    "setCode": "TDC",
+    "subtypes": [],
+    "supertypes": [],
+    "text": "This land enters tapped unless you control a Mountain or a Forest.\n{T}: Add {R} or {G}.",
+    "type": "Land",
+    "types": [
+     "Land"
+    ],
+    "uuid": "777d145c-4581-5e06-985e-3e82f32e8830"
+   },
+   {
+    "artist": "Sung Choi",
+    "availability": [
+     "mtgo",
+     "paper"
+    ],
+    "borderColor": "black",
+    "colorIdentity": [
+     "G",
+     "R"
+    ],
+    "colors": [],
+    "convertedManaCost": 0.0,
+    "count": 1,
+    "edhrecRank": 655,
+    "edhrecSaltiness": 0.0,
+    "finishes": [
+     "nonfoil"
+    ],
+    "frameVersion": "2015",
+    "identifiers": {
+     "cardKingdomId": "311820",
+     "cardsphereId": "135971",
+     "mcmId": "819338",
+     "mcmMetaId": "225265",
+     "mtgjsonV4Id": "a0d8f827-d5e1-57da-8ad7-2bb5a9fc64dc",
+     "mtgoId": "138725",
+     "multiverseId": "696548",
+     "scryfallCardBackId": "0aeebaf5-8c7d-4636-9e82-8c27447861f7",
+     "scryfallId": "a67eff62-05db-417f-93d4-259cfb3fc387",
+     "scryfallIllustrationId": "89b25f52-7ec7-4e9e-9206-d241757f8d68",
+     "scryfallOracleId": "db8d8643-3d0b-4f20-bf53-f4cd26a0e8df",
+     "tcgplayerProductId": "624981"
+    },
+    "isEtched": false,
+    "isFoil": false,
+    "isReprint": true,
+    "keywords": [
+     "Cycling"
+    ],
+    "language": "English",
+    "layout": "normal",
+    "manaValue": 0.0,
+    "name": "Sheltered Thicket",
+    "number": "392",
+    "originalType": "Land – Mountain Forest",
+    "producedMana": [
+     "G",
+     "R"
+    ],
+    "rarity": "rare",
+    "securityStamp": "oval",
+    "setCode": "TDC",
+    "subtypes": [
+     "Mountain",
+     "Forest"
+    ],
+    "supertypes": [],
+    "text": "({T}: Add {R} or {G}.)\nThis land enters tapped.\nCycling {2} ({2}, Discard this card: Draw a card.)",
+    "type": "Land — Mountain Forest",
+    "types": [
+     "Land"
+    ],
+    "uuid": "ffdd82a2-b96f-5a74-b542-ed0a9c0c03b5"
+   },
+   {
+    "artist": "Andrew Mar",
+    "availability": [
+     "mtgo",
+     "paper"
+    ],
+    "borderColor": "black",
+    "colorIdentity": [
+     "R",
+     "U"
+    ],
+    "colors": [],
+    "convertedManaCost": 0.0,
+    "count": 1,
+    "edhrecRank": 113,
+    "edhrecSaltiness": 0.06,
+    "finishes": [
+     "nonfoil"
+    ],
+    "frameVersion": "2015",
+    "identifiers": {
+     "cardKingdomId": "311684",
+     "cardsphereId": "135694",
+     "mcmId": "818952",
+     "mcmMetaId": "5156",
+     "mtgjsonV4Id": "f492395a-048d-53c0-8ceb-b65871178a23",
+     "mtgoId": "138727",
+     "multiverseId": "696549",
+     "scryfallCardBackId": "0aeebaf5-8c7d-4636-9e82-8c27447861f7",
+     "scryfallId": "a67ddfae-746f-4952-8064-7d48f9f22981",
+     "scryfallIllustrationId": "b69a0b63-71d5-4db2-85c8-af784eb74017",
+     "scryfallOracleId": "0fe16212-66c3-4e45-a641-7391e9b2e304",
+     "tcgplayerProductId": "624216"
+    },
+    "isEtched": false,
+    "isFoil": false,
+    "isReprint": true,
+    "language": "English",
+    "layout": "normal",
+    "manaValue": 0.0,
+    "name": "Shivan Reef",
+    "number": "393",
+    "originalType": "Land",
+    "producedMana": [
+     "C",
+     "R",
+     "U"
+    ],
+    "rarity": "rare",
+    "securityStamp": "oval",
+    "setCode": "TDC",
+    "subtypes": [],
+    "supertypes": [],
+    "text": "{T}: Add {C}.\n{T}: Add {U} or {R}. This land deals 1 damage to you.",
+    "type": "Land",
+    "types": [
+     "Land"
+    ],
+    "uuid": "36c8b434-c1af-57e9-80e5-40a1718072bc"
+   },
+   {
+    "artist": "Cliff Childs",
+    "availability": [
+     "mtgo",
+     "paper"
+    ],
+    "borderColor": "black",
+    "colorIdentity": [
+     "R",
+     "U"
+    ],
+    "colors": [],
+    "convertedManaCost": 0.0,
+    "count": 1,
+    "edhrecRank": 75,
+    "edhrecSaltiness": 0.06,
+    "finishes": [
+     "nonfoil"
+    ],
+    "frameVersion": "2015",
+    "identifiers": {
+     "cardKingdomId": "311687",
+     "cardsphereId": "135692",
+     "mcmId": "818955",
+     "mcmMetaId": "203988",
+     "mtgjsonV4Id": "42dd64fd-4ac6-5733-b6d6-59d0d615d60d",
+     "mtgoId": "138733",
+     "multiverseId": "696552",
+     "scryfallCardBackId": "0aeebaf5-8c7d-4636-9e82-8c27447861f7",
+     "scryfallId": "33399b6b-67ae-499c-81aa-35132509d2d8",
+     "scryfallIllustrationId": "8106243d-d8b4-4fe1-ad6a-38f4d27a023f",
+     "scryfallOracleId": "6a6c5e17-6465-4a1f-9d63-8a3ce2edc522",
+     "tcgplayerProductId": "624218"
+    },
+    "isEtched": false,
+    "isFoil": false,
+    "isReprint": true,
+    "language": "English",
+    "layout": "normal",
+    "manaValue": 0.0,
+    "name": "Sulfur Falls",
+    "number": "396",
+    "originalType": "Land",
+    "producedMana": [
+     "R",
+     "U"
+    ],
+    "rarity": "rare",
+    "securityStamp": "oval",
+    "setCode": "TDC",
+    "subtypes": [],
+    "supertypes": [],
+    "text": "This land enters tapped unless you control an Island or a Mountain.\n{T}: Add {U} or {R}.",
+    "type": "Land",
+    "types": [
+     "Land"
+    ],
+    "uuid": "fae1e363-1325-5853-b9cb-ba5a3e6f3e70"
+   },
+   {
+    "artist": "Adam Paquette",
+    "availability": [
+     "mtgo",
+     "paper"
+    ],
+    "borderColor": "black",
+    "colorIdentity": [
+     "G",
+     "R"
+    ],
+    "colors": [],
+    "convertedManaCost": 0.0,
+    "count": 1,
+    "edhrecRank": 558,
+    "edhrecSaltiness": 0.07,
+    "finishes": [
+     "nonfoil"
+    ],
+    "frameVersion": "2015",
+    "identifiers": {
+     "cardKingdomId": "311821",
+     "cardsphereId": "135970",
+     "mcmId": "819339",
+     "mcmMetaId": "208682",
+     "mtgjsonV4Id": "b2e3bc2a-f7cb-5ad5-ac1c-da836fbe7fca",
+     "mtgoId": "138741",
+     "multiverseId": "696556",
+     "scryfallCardBackId": "0aeebaf5-8c7d-4636-9e82-8c27447861f7",
+     "scryfallId": "d2ce0759-6b24-41a6-8a24-16cf44dfc162",
+     "scryfallIllustrationId": "2a0fba2e-b5f9-44cd-8b42-f843b5fa84ba",
+     "scryfallOracleId": "3baa8e38-ef93-435d-b63e-f781d5bfcc68",
+     "tcgplayerProductId": "624982"
+    },
+    "isEtched": false,
+    "isFoil": false,
+    "isReprint": true,
+    "keywords": [
+     "Scry"
+    ],
+    "language": "English",
+    "layout": "normal",
+    "manaValue": 0.0,
+    "name": "Temple of Abandon",
+    "number": "400",
+    "originalType": "Land",
+    "producedMana": [
+     "G",
+     "R"
+    ],
+    "rarity": "rare",
+    "securityStamp": "oval",
+    "setCode": "TDC",
+    "subtypes": [],
+    "supertypes": [],
+    "text": "This land enters tapped.\nWhen this land enters, scry 1. (Look at the top card of your library. You may put that card on the bottom.)\n{T}: Add {R} or {G}.",
+    "type": "Land",
+    "types": [
+     "Land"
+    ],
+    "uuid": "c5193b80-c3f5-59c0-868c-ebd5cf837177"
+   },
+   {
+    "artist": "Piotr Dura",
+    "availability": [
+     "mtgo",
+     "paper"
+    ],
+    "borderColor": "black",
+    "colorIdentity": [
+     "G",
+     "U"
+    ],
+    "colors": [],
+    "convertedManaCost": 0.0,
+    "count": 1,
+    "edhrecRank": 340,
+    "edhrecSaltiness": 0.04,
+    "finishes": [
+     "nonfoil"
+    ],
+    "frameVersion": "2015",
+    "identifiers": {
+     "cardKingdomId": "311822",
+     "cardsphereId": "135969",
+     "mcmId": "819340",
+     "mcmMetaId": "208684",
+     "mtgjsonV4Id": "117fb669-a931-53e6-9e76-d712dc9b97bb",
+     "mtgoId": "138749",
+     "multiverseId": "696560",
+     "scryfallCardBackId": "0aeebaf5-8c7d-4636-9e82-8c27447861f7",
+     "scryfallId": "af2de306-8a58-43fe-a0fe-dc8a545b8630",
+     "scryfallIllustrationId": "7a680051-8ecd-42e0-aea6-eaf532aef0db",
+     "scryfallOracleId": "7e26f0b7-20e6-46d5-8130-d98c14d6aa29",
+     "tcgplayerProductId": "624983"
+    },
+    "isEtched": false,
+    "isFoil": false,
+    "isReprint": true,
+    "keywords": [
+     "Scry"
+    ],
+    "language": "English",
+    "layout": "normal",
+    "manaValue": 0.0,
+    "name": "Temple of Mystery",
+    "number": "404",
+    "originalType": "Land",
+    "producedMana": [
+     "G",
+     "U"
+    ],
+    "rarity": "rare",
+    "securityStamp": "oval",
+    "setCode": "TDC",
+    "subtypes": [],
+    "supertypes": [],
+    "text": "This land enters tapped.\nWhen this land enters, scry 1. (Look at the top card of your library. You may put that card on the bottom.)\n{T}: Add {G} or {U}.",
+    "type": "Land",
+    "types": [
+     "Land"
+    ],
+    "uuid": "59e08522-b75d-5190-bffa-67d8040937d6"
+   },
+   {
+    "artist": "Jesper Ejsing",
+    "availability": [
+     "mtgo",
+     "paper"
+    ],
+    "borderColor": "black",
+    "colorIdentity": [
+     "G",
+     "U"
+    ],
+    "colors": [],
+    "convertedManaCost": 0.0,
+    "count": 1,
+    "edhrecRank": 139,
+    "edhrecSaltiness": 0.06,
+    "finishes": [
+     "nonfoil"
+    ],
+    "frameVersion": "2015",
+    "identifiers": {
+     "cardKingdomId": "311823",
+     "cardsphereId": "135968",
+     "mcmId": "819341",
+     "mcmMetaId": "6759",
+     "mtgjsonV4Id": "65701afc-dce7-52c5-8312-f1d34dd7efae",
+     "mtgoId": "138767",
+     "multiverseId": "696569",
+     "scryfallCardBackId": "0aeebaf5-8c7d-4636-9e82-8c27447861f7",
+     "scryfallId": "9f98bf0c-74cf-49da-8b60-b2d3ac294a82",
+     "scryfallIllustrationId": "0682c3c4-7219-4952-8d9b-413d48e51288",
+     "scryfallOracleId": "40b36bc6-c185-4bda-99e7-0118953c2c97",
+     "tcgplayerProductId": "624984"
+    },
+    "isEtched": false,
+    "isFoil": false,
+    "isReprint": true,
+    "language": "English",
+    "layout": "normal",
+    "manaValue": 0.0,
+    "name": "Yavimaya Coast",
+    "number": "413",
+    "originalType": "Land",
+    "producedMana": [
+     "C",
+     "G",
+     "U"
+    ],
+    "rarity": "rare",
+    "securityStamp": "oval",
+    "setCode": "TDC",
+    "subtypes": [],
+    "supertypes": [],
+    "text": "{T}: Add {C}.\n{T}: Add {G} or {U}. This land deals 1 damage to you.",
+    "type": "Land",
+    "types": [
+     "Land"
+    ],
+    "uuid": "0b0823c9-463a-58c6-bc8d-7bbe280476df"
+   },
+   {
+    "artist": "Camille Alquier",
+    "availability": [
+     "mtgo",
+     "paper"
+    ],
+    "borderColor": "black",
+    "colorIdentity": [
+     "R"
+    ],
+    "colors": [
+     "R"
+    ],
+    "convertedManaCost": 2.0,
+    "count": 1,
+    "edhrecRank": 842,
+    "edhrecSaltiness": 0.62,
+    "finishes": [
+     "nonfoil"
+    ],
+    "frameEffects": [
+     "enchantment"
+    ],
+    "frameVersion": "2015",
+    "identifiers": {
+     "cardKingdomId": "311718",
+     "cardsphereId": "135999",
+     "mcmId": "819284",
+     "mcmMetaId": "211133",
+     "mtgjsonV4Id": "2090ed1e-6185-53f8-957c-0fb0c1796652",
+     "mtgoId": "138131",
+     "multiverseId": "696183",
+     "scryfallCardBackId": "0aeebaf5-8c7d-4636-9e82-8c27447861f7",
+     "scryfallId": "39ac7ad0-e570-4209-988c-7c0f9b9d2004",
+     "scryfallIllustrationId": "b960a91a-2e5b-4b92-88af-7cb5a0db68a2",
+     "scryfallOracleId": "b9bacb46-fd1d-459b-81c2-d7d08fe73848",
+     "tcgplayerProductId": "624926"
+    },
+    "isEtched": false,
+    "isFoil": false,
+    "isReprint": true,
+    "language": "English",
+    "layout": "normal",
+    "manaCost": "{1}{R}",
+    "manaValue": 2.0,
+    "name": "Dragon Tempest",
+    "number": "94",
+    "originalType": "Enchantment",
+    "rarity": "uncommon",
+    "setCode": "TDC",
+    "subtypes": [],
+    "supertypes": [],
+    "text": "Whenever a creature you control with flying enters, it gains haste until end of turn.\nWhenever a Dragon you control enters, it deals X damage to any target, where X is the number of Dragons you control.",
+    "type": "Enchantment",
+    "types": [
+     "Enchantment"
+    ],
+    "uuid": "e9a386a4-e099-5b8a-aea5-541033b5a96b"
+   },
+   {
+    "artist": "Danny Schwartz",
+    "availability": [
+     "arena",
+     "mtgo",
+     "paper"
+    ],
+    "boosterTypes": [
+     "default"
+    ],
+    "borderColor": "black",
+    "colorIdentity": [
+     "R"
+    ],
+    "colors": [
+     "R"
+    ],
+    "convertedManaCost": 5.0,
+    "count": 1,
+    "edhrecRank": 3742,
+    "edhrecSaltiness": 0.11,
+    "finishes": [
+     "foil",
+     "nonfoil"
+    ],
+    "frameEffects": [
+     "enchantment"
+    ],
+    "frameVersion": "2015",
+    "identifiers": {
+     "cardKingdomFoilId": "312161",
+     "cardKingdomId": "311527",
+     "cardsphereFoilId": "135434",
+     "cardsphereId": "135412",
+     "mcmId": "818161",
+     "mcmMetaId": "447443",
+     "mtgArenaId": "95621",
+     "mtgjsonV4Id": "bab69522-2f66-5e75-be09-e664005f0837",
+     "mtgoId": "139155",
+     "multiverseId": "693581",
+     "scryfallCardBackId": "0aeebaf5-8c7d-4636-9e82-8c27447861f7",
+     "scryfallId": "e2c2a069-7553-4879-abfb-b2aa3349e4b8",
+     "scryfallIllustrationId": "886952db-410d-4513-94e5-311a036c1366",
+     "scryfallOracleId": "5370ee80-0354-454f-a16e-ec133e432ecb",
+     "tcgplayerProductId": "624575"
+    },
+    "isEtched": false,
+    "isFoil": false,
+    "language": "English",
+    "layout": "normal",
+    "manaCost": "{4}{R}",
+    "manaValue": 5.0,
+    "name": "Breaching Dragonstorm",
+    "number": "101",
+    "originalType": "Enchantment",
+    "rarity": "uncommon",
+    "setCode": "TDM",
+    "subtypes": [],
+    "supertypes": [],
+    "text": "When this enchantment enters, exile cards from the top of your library until you exile a nonland card. You may cast it without paying its mana cost if that spell's mana value is 8 or less. If you don't, put that card into your hand.\nWhen a Dragon you control enters, return this enchantment to its owner's hand.",
+    "type": "Enchantment",
+    "types": [
+     "Enchantment"
+    ],
+    "uuid": "4d83e66d-0c88-5331-9d1f-25e33333bba0"
+   },
+   {
+    "artist": "Alexandr Leskinen",
+    "availability": [
+     "mtgo",
+     "paper"
+    ],
+    "borderColor": "black",
+    "colorIdentity": [],
+    "colors": [],
+    "convertedManaCost": 0.0,
+    "count": 1,
+    "edhrecRank": 2577,
+    "edhrecSaltiness": 0.1,
+    "finishes": [
+     "nonfoil"
+    ],
+    "frameVersion": "2015",
+    "identifiers": {
+     "cardKingdomId": "311719",
+     "cardsphereId": "136004",
+     "mcmId": "819285",
+     "mcmMetaId": "344109",
+     "mtgjsonV4Id": "cf2e8e82-f7a1-58b9-a2e2-0c84a71e63b9",
+     "mtgoId": "138151",
+     "multiverseId": "696193",
+     "scryfallCardBackId": "0aeebaf5-8c7d-4636-9e82-8c27447861f7",
+     "scryfallId": "91658f56-12c9-4173-94ad-dfd186b1dbae",
+     "scryfallIllustrationId": "e9dcd6fa-271e-40c5-a7c8-6d06334fbe76",
+     "scryfallOracleId": "169a26d2-7bc9-4403-9c92-98d4bd5ca4f3",
+     "tcgplayerProductId": "624970"
+    },
+    "isEtched": false,
+    "isFoil": false,
+    "isReprint": true,
+    "language": "English",
+    "layout": "normal",
+    "manaValue": 0.0,
+    "name": "Temple of the Dragon Queen",
+    "number": "104",
+    "originalType": "Land",
+    "producedMana": [
+     "B",
+     "G",
+     "R",
+     "U",
+     "W"
+    ],
+    "rarity": "uncommon",
+    "setCode": "TDC",
+    "subtypes": [],
+    "supertypes": [],
+    "text": "As this land enters, you may reveal a Dragon card from your hand. This land enters tapped unless you revealed a Dragon card this way or you control a Dragon.\nAs this land enters, choose a color.\n{T}: Add one mana of the chosen color.",
+    "type": "Land",
+    "types": [
+     "Land"
+    ],
+    "uuid": "97d68169-8e48-51ea-b77d-2e054c1b0104"
+   },
+   {
+    "artist": "Racrufi",
+    "availability": [
+     "mtgo",
+     "paper"
+    ],
+    "borderColor": "black",
+    "colorIdentity": [],
+    "colors": [],
+    "convertedManaCost": 2.0,
+    "count": 1,
+    "edhrecRank": 3,
+    "edhrecSaltiness": 0.4,
+    "finishes": [
+     "nonfoil"
+    ],
+    "frameVersion": "2015",
+    "identifiers": {
+     "cardKingdomId": "311122",
+     "cardsphereId": "135675",
+     "mcmId": "818719",
+     "mcmMetaId": "277552",
+     "mtgjsonV4Id": "f3a0983e-652f-51dc-b802-c1e5c492f76d",
+     "mtgoId": "138119",
+     "scryfallCardBackId": "0aeebaf5-8c7d-4636-9e82-8c27447861f7",
+     "scryfallId": "935644d4-a140-4f24-b8ab-d5e79a682a9b",
+     "scryfallIllustrationId": "0a7bfcd7-f676-42b2-be0c-07f003371083",
+     "scryfallOracleId": "0bc7f093-bef0-4f1a-852c-4b75ebf54838",
+     "tcgplayerProductId": "624048"
+    },
+    "isEtched": false,
+    "isFoil": false,
+    "isReprint": true,
+    "language": "English",
+    "layout": "normal",
+    "manaCost": "{2}",
+    "manaValue": 2.0,
+    "name": "Arcane Signet",
+    "number": "105",
+    "producedMana": [
+     "B",
+     "G",
+     "R",
+     "U",
+     "W"
+    ],
+    "rarity": "uncommon",
+    "setCode": "TDC",
+    "subtypes": [],
+    "supertypes": [],
+    "text": "{T}: Add one mana of any color in your commander's color identity.",
+    "type": "Artifact",
+    "types": [
+     "Artifact"
+    ],
+    "uuid": "50b20ca4-269f-5fe2-b12a-231fb1146209"
+   },
+   {
+    "artist": "Leon Tukker",
+    "availability": [
+     "mtgo",
+     "paper"
+    ],
+    "borderColor": "black",
+    "colorIdentity": [],
+    "colors": [],
+    "convertedManaCost": 1.0,
+    "count": 1,
+    "edhrecRank": 1,
+    "edhrecSaltiness": 1.59,
+    "finishes": [
+     "nonfoil"
+    ],
+    "frameVersion": "2015",
+    "identifiers": {
+     "cardKingdomId": "311123",
+     "cardsphereId": "135676",
+     "mcmId": "818720",
+     "mcmMetaId": "5359",
+     "mtgjsonV4Id": "30726ced-252f-5db9-9e33-da7d1a71f2a1",
+     "mtgoId": "138121",
+     "scryfallCardBackId": "0aeebaf5-8c7d-4636-9e82-8c27447861f7",
+     "scryfallId": "7b0ccfd4-f118-4497-9c5a-54cf12000e16",
+     "scryfallIllustrationId": "33fa9fb4-4408-4d89-bd56-10f011a1eb1c",
+     "scryfallOracleId": "6ad8011d-3471-4369-9d68-b264cc027487",
+     "tcgplayerProductId": "624049"
+    },
+    "isEtched": false,
+    "isFoil": false,
+    "isReprint": true,
+    "language": "English",
+    "layout": "normal",
+    "manaCost": "{1}",
+    "manaValue": 1.0,
+    "name": "Sol Ring",
+    "number": "106",
+    "producedMana": [
+     "C"
+    ],
+    "rarity": "uncommon",
+    "setCode": "TDC",
+    "subtypes": [],
+    "supertypes": [],
+    "text": "{T}: Add {C}{C}.",
+    "type": "Artifact",
+    "types": [
+     "Artifact"
+    ],
+    "uuid": "50e420e0-f088-59a7-8ecd-b6c18692e4f8"
+   },
+   {
+    "artist": "Marina Ortega Lorente",
+    "availability": [
+     "mtgo",
+     "paper"
+    ],
+    "borderColor": "black",
+    "colorIdentity": [],
+    "colors": [],
+    "convertedManaCost": 0.0,
+    "count": 1,
+    "edhrecRank": 2,
+    "edhrecSaltiness": 0.2,
+    "finishes": [
+     "nonfoil"
+    ],
+    "frameVersion": "2015",
+    "identifiers": {
+     "cardKingdomId": "311124",
+     "cardsphereId": "135677",
+     "mcmId": "818721",
+     "mcmMetaId": "203332",
+     "mtgjsonV4Id": "e2cef89d-51e4-5e0c-98f0-6870a1b22e2d",
+     "mtgoId": "138123",
+     "scryfallCardBackId": "0aeebaf5-8c7d-4636-9e82-8c27447861f7",
+     "scryfallId": "5fc770b6-03ac-45c3-a2ca-bd508096384e",
+     "scryfallIllustrationId": "a1797159-a81b-4672-99bc-fb962507beef",
+     "scryfallOracleId": "0895c9b7-ae7d-4bb3-af17-3b75deb50a25",
+     "tcgplayerProductId": "623982"
+    },
+    "isEtched": false,
+    "isFoil": false,
+    "isReprint": true,
+    "language": "English",
+    "layout": "normal",
+    "manaValue": 0.0,
+    "name": "Command Tower",
+    "number": "107",
+    "producedMana": [
+     "B",
+     "G",
+     "R",
+     "U",
+     "W"
+    ],
+    "rarity": "common",
+    "setCode": "TDC",
+    "subtypes": [],
+    "supertypes": [],
+    "text": "{T}: Add one mana of any color in your commander's color identity.",
+    "type": "Land",
+    "types": [
+     "Land"
+    ],
+    "uuid": "67814a63-4556-57bd-bc00-195866159dfb"
+   },
+   {
+    "artist": "Joshua Raphael",
+    "availability": [
+     "arena",
+     "mtgo",
+     "paper"
+    ],
+    "boosterTypes": [
+     "default"
+    ],
+    "borderColor": "black",
+    "colorIdentity": [
+     "R"
+    ],
+    "colors": [
+     "R"
+    ],
+    "convertedManaCost": 5.0,
+    "count": 1,
+    "edhrecRank": 6503,
+    "edhrecSaltiness": 0.0,
+    "faceConvertedManaCost": 5.0,
+    "faceManaValue": 5.0,
+    "faceName": "Stormshriek Feral",
+    "finishes": [
+     "foil",
+     "nonfoil"
+    ],
+    "frameVersion": "2015",
+    "identifiers": {
+     "cardKingdomFoilId": "312177",
+     "cardKingdomId": "311646",
+     "cardsphereFoilId": "135430",
+     "cardsphereId": "135427",
+     "mcmId": "818645",
+     "mcmMetaId": "447661",
+     "mtgArenaId": "95644",
+     "mtgjsonV4Id": "069a4f34-6734-5156-8ceb-d39e0dd85369",
+     "mtgoId": "139201",
+     "multiverseId": "693604",
+     "scryfallCardBackId": "0aeebaf5-8c7d-4636-9e82-8c27447861f7",
+     "scryfallId": "0ec92c44-7cf0-48a5-a3ca-bc633496d887",
+     "scryfallIllustrationId": "0079b464-5d14-4e52-970f-8e719d9b33c9",
+     "scryfallOracleId": "e24916ff-7566-4f27-8e31-732311a4a88c",
+     "tcgplayerProductId": "624736"
+    },
+    "isEtched": false,
+    "isFoil": false,
+    "keywords": [
+     "Flying",
+     "Haste"
+    ],
+    "language": "English",
+    "layout": "adventure",
+    "manaCost": "{4}{R}",
+    "manaValue": 5.0,
+    "name": "Stormshriek Feral // Flush Out",
+    "number": "124",
+    "originalType": "Creature – Dragon",
+    "power": "3",
+    "rarity": "common",
+    "setCode": "TDM",
+    "side": "a",
+    "subtypes": [
+     "Dragon"
+    ],
+    "supertypes": [],
+    "text": "Flying, haste\n{1}{R}: This creature gets +1/+0 until end of turn.",
+    "toughness": "3",
+    "type": "Creature — Dragon",
+    "types": [
+     "Creature"
+    ],
+    "uuid": "62d2d50b-77ba-5cca-9558-5c5ec1c9e3d4"
+   },
+   {
+    "artist": "Marco Gorlei",
+    "availability": [
+     "arena",
+     "mtgo",
+     "paper"
+    ],
+    "boosterTypes": [
+     "default"
+    ],
+    "borderColor": "black",
+    "colorIdentity": [
+     "G"
+    ],
+    "colors": [
+     "G"
+    ],
+    "convertedManaCost": 4.0,
+    "count": 1,
+    "edhrecRank": 2383,
+    "edhrecSaltiness": 0.13,
+    "finishes": [
+     "foil",
+     "nonfoil"
+    ],
+    "frameEffects": [
+     "enchantment"
+    ],
+    "frameVersion": "2015",
+    "identifiers": {
+     "cardKingdomFoilId": "312211",
+     "cardKingdomId": "311835",
+     "cardsphereFoilId": "135470",
+     "cardsphereId": "135468",
+     "mcmId": "818983",
+     "mcmMetaId": "447707",
+     "mtgArenaId": "95664",
+     "mtgjsonV4Id": "fb389996-5222-55ef-96ab-f37b1e316483",
+     "mtgoId": "139241",
+     "multiverseId": "693622",
+     "scryfallCardBackId": "0aeebaf5-8c7d-4636-9e82-8c27447861f7",
+     "scryfallId": "4ddd4477-f8c9-4d05-9177-f8344ba8f40b",
+     "scryfallIllustrationId": "2e9da1d0-2942-47de-bfa5-c1b540f0ce7f",
+     "scryfallOracleId": "1e95c273-7fec-4f8d-8be9-e21ad4b93717",
+     "tcgplayerProductId": "624951"
+    },
+    "isEtched": false,
+    "isFoil": false,
+    "language": "English",
+    "layout": "normal",
+    "manaCost": "{3}{G}",
+    "manaValue": 4.0,
+    "name": "Encroaching Dragonstorm",
+    "number": "142",
+    "originalType": "Enchantment",
+    "rarity": "uncommon",
+    "setCode": "TDM",
+    "subtypes": [],
+    "supertypes": [],
+    "text": "When this enchantment enters, search your library for up to two basic land cards, put them onto the battlefield tapped, then shuffle.\nWhen a Dragon you control enters, return this enchantment to its owner's hand.",
+    "type": "Enchantment",
+    "types": [
+     "Enchantment"
+    ],
+    "uuid": "4dab92ca-65dd-540b-bf3c-070d2b8c376b"
+   },
+   {
+    "artist": "Tom Babbey",
+    "availability": [
+     "mtgo",
+     "paper"
+    ],
+    "borderColor": "black",
+    "colorIdentity": [
+     "U"
+    ],
+    "colors": [
+     "U"
+    ],
+    "convertedManaCost": 6.0,
+    "count": 1,
+    "edhrecRank": 8010,
+    "edhrecSaltiness": 0.24,
+    "finishes": [
+     "nonfoil"
+    ],
+    "frameVersion": "2015",
+    "identifiers": {
+     "cardKingdomId": "311720",
+     "cardsphereId": "136011",
+     "mcmId": "819286",
+     "mcmMetaId": "408678",
+     "mtgjsonV4Id": "6d1876a3-0e06-53e4-96bd-8d673e254c60",
+     "mtgoId": "138239",
+     "multiverseId": "696307",
+     "scryfallCardBackId": "0aeebaf5-8c7d-4636-9e82-8c27447861f7",
+     "scryfallId": "8b3da929-eb0a-4149-9a0d-8f2b916f0e47",
+     "scryfallIllustrationId": "65922d60-0d1c-4ef2-8afb-704c5327054e",
+     "scryfallOracleId": "440881ad-48cf-4b82-8bb5-f506d1a51755",
+     "tcgplayerProductId": "624917"
+    },
+    "isEtched": false,
+    "isFoil": false,
+    "isReprint": true,
+    "language": "English",
+    "layout": "normal",
+    "manaCost": "{5}{U}",
+    "manaValue": 6.0,
+    "name": "Draconic Lore",
+    "number": "151",
+    "originalType": "Instant",
+    "rarity": "common",
+    "setCode": "TDC",
+    "subtypes": [],
+    "supertypes": [],
+    "text": "This spell costs {2} less to cast if you control a Dragon.\nDraw three cards.",
+    "type": "Instant",
+    "types": [
+     "Instant"
+    ],
+    "uuid": "01369ba8-d5e7-5689-8163-d2e549c60763"
+   },
+   {
+    "artist": "Mike Bierek",
+    "availability": [
+     "mtgo",
+     "paper"
+    ],
+    "borderColor": "black",
+    "colorIdentity": [
+     "U"
+    ],
+    "colors": [
+     "U"
+    ],
+    "convertedManaCost": 1.0,
+    "count": 1,
+    "edhrecRank": 209,
+    "edhrecSaltiness": 0.42,
+    "finishes": [
+     "nonfoil"
+    ],
+    "frameVersion": "2015",
+    "identifiers": {
+     "cardKingdomId": "311738",
+     "cardsphereId": "136016",
+     "mcmId": "819288",
+     "mcmMetaId": "207128",
+     "mtgjsonV4Id": "61cae977-603b-556d-9bdc-3bd0804b52cc",
+     "mtgoId": "138261",
+     "multiverseId": "696318",
+     "scryfallCardBackId": "0aeebaf5-8c7d-4636-9e82-8c27447861f7",
+     "scryfallId": "b6912638-b087-4754-9e7e-8bd76fbf095c",
+     "scryfallIllustrationId": "1b239cb4-a98c-4b4f-92d5-8de77427bcce",
+     "scryfallOracleId": "06692cd9-ac2f-4a32-8fd1-043ba3c0fe71",
+     "tcgplayerProductId": "624919"
+    },
+    "isEtched": false,
+    "isFoil": false,
+    "isReprint": true,
+    "language": "English",
+    "layout": "normal",
+    "manaCost": "{U}",
+    "manaValue": 1.0,
+    "name": "Rapid Hybridization",
+    "number": "162",
+    "originalType": "Instant",
+    "rarity": "uncommon",
+    "relatedCards": {
+     "tokens": [
+      "ae51167e-0159-51c3-aede-0ead05e9df5f"
+     ]
+    },
+    "setCode": "TDC",
+    "subtypes": [],
+    "supertypes": [],
+    "text": "Destroy target creature. It can't be regenerated. That creature's controller creates a 3/3 green Frog Lizard creature token.",
+    "type": "Instant",
+    "types": [
+     "Instant"
+    ],
+    "uuid": "a9f33544-1c2d-53b1-ab60-988c920167f9"
+   },
+   {
+    "artist": "Howard Lyon",
+    "availability": [
+     "mtgo",
+     "paper"
+    ],
+    "borderColor": "black",
+    "colorIdentity": [
+     "U"
+    ],
+    "colors": [
+     "U"
+    ],
+    "convertedManaCost": 2.0,
+    "count": 1,
+    "edhrecRank": 286,
+    "edhrecSaltiness": 0.28,
+    "finishes": [
+     "nonfoil"
+    ],
+    "frameVersion": "2015",
+    "identifiers": {
+     "cardKingdomId": "311768",
+     "cardsphereId": "136019",
+     "mcmId": "819289",
+     "mcmMetaId": "210855",
+     "mtgjsonV4Id": "05dd03c6-018b-54e7-ad51-f5298d8583d0",
+     "mtgoId": "138263",
+     "multiverseId": "696319",
+     "scryfallCardBackId": "0aeebaf5-8c7d-4636-9e82-8c27447861f7",
+     "scryfallId": "50c6d211-5854-4dfd-b594-8fa1efe180a1",
+     "scryfallIllustrationId": "d975663e-5b54-472a-9397-1c2b4e159217",
+     "scryfallOracleId": "70dc830e-d05b-4fc7-88dd-879e140b3fbf",
+     "tcgplayerProductId": "624920"
+    },
+    "isEtched": false,
+    "isFoil": false,
+    "isReprint": true,
+    "keywords": [
+     "Manifest"
+    ],
+    "language": "English",
+    "layout": "normal",
+    "manaCost": "{1}{U}",
+    "manaValue": 2.0,
+    "name": "Reality Shift",
+    "number": "163",
+    "originalType": "Instant",
+    "rarity": "uncommon",
+    "setCode": "TDC",
+    "subtypes": [],
+    "supertypes": [],
+    "text": "Exile target creature. Its controller manifests the top card of their library. (That player puts the top card of their library onto the battlefield face down as a 2/2 creature. If it's a creature card, it can be turned face up any time for its mana cost.)",
+    "type": "Instant",
+    "types": [
+     "Instant"
+    ],
+    "uuid": "c2f11f16-3a31-5d92-a339-9443411a6f99"
+   },
+   {
+    "artist": "Steve Prescott",
+    "availability": [
+     "mtgo",
+     "paper"
+    ],
+    "borderColor": "black",
+    "colorIdentity": [
+     "R"
+    ],
+    "colors": [
+     "R"
+    ],
+    "convertedManaCost": 2.0,
+    "count": 1,
+    "edhrecRank": 1345,
+    "edhrecSaltiness": 0.21,
+    "finishes": [
+     "nonfoil"
+    ],
+    "frameVersion": "2015",
+    "identifiers": {
+     "cardKingdomId": "311773",
+     "cardsphereId": "136026",
+     "mcmId": "819294",
+     "mcmMetaId": "211156",
+     "mtgjsonV4Id": "5b14672c-96f3-5ad5-bf88-e3374112c650",
+     "mtgoId": "138357",
+     "multiverseId": "696366",
+     "scryfallCardBackId": "0aeebaf5-8c7d-4636-9e82-8c27447861f7",
+     "scryfallId": "be6fa0dc-74e7-4fad-9bdd-8e986612577a",
+     "scryfallIllustrationId": "c8b8e65b-3030-4543-8fc5-2e76ee73b7b9",
+     "scryfallOracleId": "faf81ae0-0b35-45ef-a50d-6cecf0c0eeeb",
+     "tcgplayerProductId": "624930"
+    },
+    "isEtched": false,
+    "isFoil": false,
+    "isReprint": true,
+    "language": "English",
+    "layout": "normal",
+    "leadershipSkills": {
+     "brawl": false,
+     "commander": false,
+     "oathbreaker": false,
+     "pauper_commander": true,
+     "predh": false
+    },
+    "manaCost": "{1}{R}",
+    "manaValue": 2.0,
+    "name": "Dragonlord's Servant",
+    "number": "210",
+    "originalType": "Creature – Goblin Shaman",
+    "power": "1",
+    "rarity": "uncommon",
+    "setCode": "TDC",
+    "subtypes": [
+     "Goblin",
+     "Shaman"
+    ],
+    "supertypes": [],
+    "text": "Dragon spells you cast cost {1} less to cast.",
+    "toughness": "3",
+    "type": "Creature — Goblin Shaman",
+    "types": [
+     "Creature"
+    ],
+    "uuid": "1e612e79-c2dd-5781-9d5a-2d6d1d279afe"
+   },
+   {
+    "artist": "Johan Grenier",
+    "availability": [
+     "mtgo",
+     "paper"
+    ],
+    "borderColor": "black",
+    "colorIdentity": [
+     "R"
+    ],
+    "colors": [
+     "R"
+    ],
+    "convertedManaCost": 5.0,
+    "count": 1,
+    "edhrecRank": 3506,
+    "edhrecSaltiness": 0.06,
+    "finishes": [
+     "nonfoil"
+    ],
+    "frameVersion": "2015",
+    "identifiers": {
+     "cardKingdomId": "311783",
+     "cardsphereId": "136031",
+     "mcmId": "819304",
+     "mcmMetaId": "273504",
+     "mtgjsonV4Id": "99675994-8ea5-5680-8c73-0feb2061fa19",
+     "mtgoId": "138395",
+     "multiverseId": "696385",
+     "scryfallCardBackId": "0aeebaf5-8c7d-4636-9e82-8c27447861f7",
+     "scryfallId": "1098504a-977a-4733-a1ee-086461113a84",
+     "scryfallIllustrationId": "ef1d1be7-fb29-4158-ae65-c7c8810dadf7",
+     "scryfallOracleId": "0944ec2e-1dd9-459f-8f1d-667242cf52fe",
+     "tcgplayerProductId": "624940"
+    },
+    "isEtched": false,
+    "isFoil": false,
+    "isReprint": true,
+    "keywords": [
+     "Flying",
+     "Treasure"
+    ],
+    "language": "English",
+    "layout": "normal",
+    "leadershipSkills": {
+     "brawl": false,
+     "commander": false,
+     "oathbreaker": false,
+     "pauper_commander": true,
+     "predh": false
+    },
+    "manaCost": "{4}{R}",
+    "manaValue": 5.0,
+    "name": "Rapacious Dragon",
+    "number": "229",
+    "originalType": "Creature – Dragon",
+    "power": "3",
+    "producedMana": [
+     "B",
+     "G",
+     "R",
+     "U",
+     "W"
+    ],
+    "rarity": "uncommon",
+    "relatedCards": {
+     "tokens": [
+      "198c5204-6b23-5085-b962-e6db6c948bd6"
+     ]
+    },
+    "setCode": "TDC",
+    "subtypes": [
+     "Dragon"
+    ],
+    "supertypes": [],
+    "text": "Flying\nWhen this creature enters, create two Treasure tokens. (They're artifacts with \"{T}, Sacrifice this token: Add one mana of any color.\")",
+    "toughness": "3",
+    "type": "Creature — Dragon",
+    "types": [
+     "Creature"
+    ],
+    "uuid": "e3d737cf-d70d-5163-957b-a8273d015b53"
+   },
+   {
+    "artist": "Fajareka Setiawan",
+    "availability": [
+     "arena",
+     "mtgo",
+     "paper"
+    ],
+    "boosterTypes": [
+     "default"
+    ],
+    "borderColor": "black",
+    "colorIdentity": [
+     "G",
+     "U"
+    ],
+    "colors": [
+     "U"
+    ],
+    "convertedManaCost": 5.0,
+    "count": 1,
+    "edhrecRank": 6608,
+    "edhrecSaltiness": 0.07,
+    "faceConvertedManaCost": 5.0,
+    "faceManaValue": 5.0,
+    "faceName": "Whirlwing Stormbrood",
+    "finishes": [
+     "foil",
+     "nonfoil"
+    ],
+    "frameVersion": "2015",
+    "identifiers": {
+     "cardKingdomFoilId": "312108",
+     "cardKingdomId": "311254",
+     "cardsphereFoilId": "135324",
+     "cardsphereId": "135319",
+     "mcmId": "818281",
+     "mcmMetaId": "447500",
+     "mtgArenaId": "95761",
+     "mtgjsonV4Id": "53d5b2c8-48a1-5348-af22-f6c4ecd7d951",
+     "mtgoId": "139435",
+     "multiverseId": "693714",
+     "scryfallCardBackId": "0aeebaf5-8c7d-4636-9e82-8c27447861f7",
+     "scryfallId": "56a25eb1-bdb8-4f86-8d9a-3055ad1b2a13",
+     "scryfallIllustrationId": "c367c537-5de8-4ccc-9f00-3962261a8339",
+     "scryfallOracleId": "4fbfc814-df10-4d61-ada9-c96cc8ee8d8c",
+     "tcgplayerProductId": "624407"
+    },
+    "isEtched": false,
+    "isFoil": false,
+    "keywords": [
+     "Flash",
+     "Flying"
+    ],
+    "language": "English",
+    "layout": "adventure",
+    "leadershipSkills": {
+     "brawl": false,
+     "commander": false,
+     "oathbreaker": false,
+     "pauper_commander": true,
+     "predh": false
+    },
+    "manaCost": "{4}{U}",
+    "manaValue": 5.0,
+    "name": "Whirlwing Stormbrood // Dynamic Soar",
+    "number": "234",
+    "originalType": "Creature – Dragon",
+    "power": "4",
+    "rarity": "uncommon",
+    "setCode": "TDM",
+    "side": "a",
+    "subtypes": [
+     "Dragon"
+    ],
+    "supertypes": [],
+    "text": "Flash\nFlying\nYou may cast sorcery spells and Dragon spells as though they had flash.",
+    "toughness": "3",
+    "type": "Creature — Dragon",
+    "types": [
+     "Creature"
+    ],
+    "uuid": "8a3d21cb-9061-5413-ae3c-e5e836359427"
+   },
+   {
+    "artist": "Jesper Ejsing",
+    "availability": [
+     "mtgo",
+     "paper"
+    ],
+    "borderColor": "black",
+    "colorIdentity": [
+     "G"
+    ],
+    "colors": [
+     "G"
+    ],
+    "convertedManaCost": 3.0,
+    "count": 1,
+    "edhrecRank": 25,
+    "edhrecSaltiness": 0.3,
+    "finishes": [
+     "nonfoil"
+    ],
+    "frameVersion": "2015",
+    "identifiers": {
+     "cardKingdomId": "311794",
+     "cardsphereId": "136007",
+     "mcmId": "819315",
+     "mcmMetaId": "202743",
+     "mtgjsonV4Id": "e6f8d22a-2566-5e89-95fb-4c30d4255a43",
+     "mtgoId": "138435",
+     "multiverseId": "696405",
+     "scryfallCardBackId": "0aeebaf5-8c7d-4636-9e82-8c27447861f7",
+     "scryfallId": "79cd18e8-bffd-4937-b912-1b09bb4d2d4c",
+     "scryfallIllustrationId": "8ec245f1-fcfe-4a98-9e13-dd69e2483388",
+     "scryfallOracleId": "7735eeba-693b-47e2-bd51-414379cf1016",
+     "tcgplayerProductId": "624955"
+    },
+    "isEtched": false,
+    "isFoil": false,
+    "isReprint": true,
+    "language": "English",
+    "layout": "normal",
+    "manaCost": "{2}{G}",
+    "manaValue": 3.0,
+    "name": "Beast Within",
+    "number": "249",
+    "originalType": "Instant",
+    "rarity": "uncommon",
+    "relatedCards": {
+     "tokens": [
+      "8c1b5ba9-4583-59b2-bbed-91215db5719e"
+     ]
+    },
+    "setCode": "TDC",
+    "subtypes": [],
+    "supertypes": [],
+    "text": "Destroy target permanent. Its controller creates a 3/3 green Beast creature token.",
+    "type": "Instant",
+    "types": [
+     "Instant"
+    ],
+    "uuid": "6236729b-063d-599e-b2c5-d802e5a3bd93"
+   },
+   {
+    "artist": "David Gaillet",
+    "availability": [
+     "mtgo",
+     "paper"
+    ],
+    "borderColor": "black",
+    "colorIdentity": [
+     "G"
+    ],
+    "colors": [
+     "G"
+    ],
+    "convertedManaCost": 3.0,
+    "count": 1,
+    "edhrecRank": 547,
+    "edhrecSaltiness": 0.27,
+    "finishes": [
+     "nonfoil"
+    ],
+    "frameEffects": [
+     "enchantment"
+    ],
+    "frameVersion": "2015",
+    "identifiers": {
+     "cardKingdomId": "311795",
+     "cardsphereId": "136006",
+     "mcmId": "819316",
+     "mcmMetaId": "220193",
+     "mtgjsonV4Id": "aecd652e-d172-5ab7-b7ad-71beb9bca478",
+     "mtgoId": "138445",
+     "multiverseId": "696410",
+     "scryfallCardBackId": "0aeebaf5-8c7d-4636-9e82-8c27447861f7",
+     "scryfallId": "8efbc925-54ac-4dda-82af-9091b1cf2fda",
+     "scryfallIllustrationId": "350479b0-a02b-4dbd-915a-20465576fb9e",
+     "scryfallOracleId": "d9a7e5a6-3e41-4fc6-987a-18fe1b9d67dd",
+     "tcgplayerProductId": "624956"
+    },
+    "isEtched": false,
+    "isFoil": false,
+    "isReprint": true,
+    "language": "English",
+    "layout": "normal",
+    "manaCost": "{2}{G}",
+    "manaValue": 3.0,
+    "name": "Elemental Bond",
+    "number": "254",
+    "originalType": "Enchantment",
+    "rarity": "uncommon",
+    "setCode": "TDC",
+    "subtypes": [],
+    "supertypes": [],
+    "text": "Whenever a creature you control with power 3 or greater enters, draw a card.",
+    "type": "Enchantment",
+    "types": [
+     "Enchantment"
+    ],
+    "uuid": "fbbbaa3a-b241-5e9e-8f62-8076964051f4"
+   },
+   {
+    "artist": "Martina Pilcerova",
+    "availability": [
+     "mtgo",
+     "paper"
+    ],
+    "borderColor": "black",
+    "colorIdentity": [
+     "G"
+    ],
+    "colors": [
+     "G"
+    ],
+    "convertedManaCost": 2.0,
+    "count": 1,
+    "edhrecRank": 23,
+    "edhrecSaltiness": 0.13,
+    "finishes": [
+     "nonfoil"
+    ],
+    "frameVersion": "2015",
+    "identifiers": {
+     "cardKingdomId": "311471",
+     "cardsphereId": "135886",
+     "mcmId": "818838",
+     "mcmMetaId": "7956",
+     "mtgjsonV4Id": "2a016727-3872-5af3-9e6e-53a92ec4a52a",
+     "mtgoId": "138447",
+     "multiverseId": "696411",
+     "scryfallCardBackId": "0aeebaf5-8c7d-4636-9e82-8c27447861f7",
+     "scryfallId": "9cc7c928-2e45-4653-883d-d13166ccb0df",
+     "scryfallIllustrationId": "07fcdd82-2674-4902-a2d3-eea888141aa3",
+     "scryfallOracleId": "495e52e6-4c2b-4574-9474-eadbdcc8b4ac",
+     "tcgplayerProductId": "624453"
+    },
+    "isEtched": false,
+    "isFoil": false,
+    "isReprint": true,
+    "language": "English",
+    "layout": "normal",
+    "manaCost": "{1}{G}",
+    "manaValue": 2.0,
+    "name": "Farseek",
+    "number": "255",
+    "originalType": "Sorcery",
+    "rarity": "common",
+    "setCode": "TDC",
+    "subtypes": [],
+    "supertypes": [],
+    "text": "Search your library for a Plains, Island, Swamp, or Mountain card, put it onto the battlefield tapped, then shuffle.",
+    "type": "Sorcery",
+    "types": [
+     "Sorcery"
+    ],
+    "uuid": "bddfaa86-d74e-5c07-a6db-f1d2b5faf711"
+   },
+   {
+    "artist": "Leon Tukker",
+    "availability": [
+     "arena",
+     "mtgo",
+     "paper"
+    ],
+    "boosterTypes": [
+     "default"
+    ],
+    "borderColor": "black",
+    "colorIdentity": [],
+    "colors": [],
+    "convertedManaCost": 0.0,
+    "count": 1,
+    "edhrecRank": 19,
+    "edhrecSaltiness": 0.06,
+    "finishes": [
+     "foil",
+     "nonfoil"
+    ],
+    "frameVersion": "2015",
+    "identifiers": {
+     "cardKingdomFoilId": "312113",
+     "cardKingdomId": "311259",
+     "cardsphereFoilId": "135225",
+     "cardsphereId": "135192",
+     "mcmId": "817946",
+     "mcmMetaId": "11283",
+     "mtgArenaId": "95783",
+     "mtgjsonV4Id": "4658466f-faac-5e33-a608-ddd770433afa",
+     "mtgoId": "139479",
+     "multiverseId": "693735",
+     "scryfallCardBackId": "0aeebaf5-8c7d-4636-9e82-8c27447861f7",
+     "scryfallId": "62209251-4118-4843-895b-46afb7284c75",
+     "scryfallIllustrationId": "55d206a9-7543-4c06-a9d9-3bcb2491a32f",
+     "scryfallOracleId": "a75445d3-1303-4bb5-89ad-26ea93fecd48",
+     "tcgplayerProductId": "624263"
+    },
+    "isEtched": false,
+    "isFoil": false,
+    "isReprint": true,
+    "language": "English",
+    "layout": "normal",
+    "manaValue": 0.0,
+    "name": "Evolving Wilds",
+    "number": "255",
+    "originalType": "Land",
+    "rarity": "common",
+    "setCode": "TDM",
+    "subtypes": [],
+    "supertypes": [],
+    "text": "{T}, Sacrifice this land: Search your library for a basic land card, put it onto the battlefield tapped, then shuffle.",
+    "type": "Land",
+    "types": [
+     "Land"
+    ],
+    "uuid": "5726bb05-ea3c-5714-99f8-a009e50c27e7"
+   },
+   {
+    "artist": "Andrea Piparo",
+    "availability": [
+     "arena",
+     "mtgo",
+     "paper"
+    ],
+    "boosterTypes": [
+     "default"
+    ],
+    "borderColor": "black",
+    "colorIdentity": [
+     "G",
+     "R",
+     "U"
+    ],
+    "colors": [],
+    "convertedManaCost": 0.0,
+    "count": 1,
+    "edhrecRank": 404,
+    "edhrecSaltiness": 0.05,
+    "finishes": [
+     "foil",
+     "nonfoil"
+    ],
+    "frameVersion": "2015",
+    "identifiers": {
+     "cardKingdomFoilId": "312114",
+     "cardKingdomId": "311260",
+     "cardsphereFoilId": "135333",
+     "cardsphereId": "135304",
+     "mcmId": "818307",
+     "mcmMetaId": "210262",
+     "mtgArenaId": "95784",
+     "mtgjsonV4Id": "1a03f3cb-187e-53dc-bf35-117bcff66a7e",
+     "mtgoId": "139481",
+     "multiverseId": "693736",
+     "scryfallCardBackId": "0aeebaf5-8c7d-4636-9e82-8c27447861f7",
+     "scryfallId": "679fff07-4796-4d91-8dd6-4e294383ce88",
+     "scryfallIllustrationId": "4506767b-4817-416a-bae4-15832751c6a5",
+     "scryfallOracleId": "e4cf6c2f-0f1e-4980-9ef9-e4eabcae42a9",
+     "tcgplayerProductId": "624264"
+    },
+    "isEtched": false,
+    "isFoil": false,
+    "isReprint": true,
+    "language": "English",
+    "layout": "normal",
+    "manaValue": 0.0,
+    "name": "Frontier Bivouac",
+    "number": "256",
+    "originalType": "Land",
+    "producedMana": [
+     "G",
+     "R",
+     "U"
+    ],
+    "rarity": "uncommon",
+    "setCode": "TDM",
+    "subtypes": [],
+    "supertypes": [],
+    "text": "This land enters tapped.\n{T}: Add {G}, {U}, or {R}.",
+    "type": "Land",
+    "types": [
+     "Land"
+    ],
+    "uuid": "16fa0b8c-ad66-5fae-a10e-f721fec79d01",
+    "watermark": "temur"
+   },
+   {
+    "artist": "John Avon",
+    "availability": [
+     "mtgo",
+     "paper"
+    ],
+    "borderColor": "black",
+    "colorIdentity": [
+     "G"
+    ],
+    "colors": [
+     "G"
+    ],
+    "convertedManaCost": 3.0,
+    "count": 1,
+    "edhrecRank": 40,
+    "edhrecSaltiness": 0.12,
+    "finishes": [
+     "nonfoil"
+    ],
+    "frameVersion": "2015",
+    "identifiers": {
+     "cardKingdomId": "311797",
+     "cardsphereId": "136003",
+     "mcmId": "819318",
+     "mcmMetaId": "7061",
+     "mtgjsonV4Id": "3f56d71d-2886-5a28-b30b-7d118123cf0b",
+     "mtgoId": "138459",
+     "multiverseId": "696417",
+     "scryfallCardBackId": "0aeebaf5-8c7d-4636-9e82-8c27447861f7",
+     "scryfallId": "84c27ded-a0f6-4965-8a44-e87f0972d1d8",
+     "scryfallIllustrationId": "d4aa9534-1993-4e12-9e4b-8f0d8e815693",
+     "scryfallOracleId": "1593ea18-2f2f-4ab4-83fb-6ccc0bec8a90",
+     "tcgplayerProductId": "624958"
+    },
+    "isEtched": false,
+    "isFoil": false,
+    "isReprint": true,
+    "language": "English",
+    "layout": "normal",
+    "manaCost": "{2}{G}",
+    "manaValue": 3.0,
+    "name": "Kodama's Reach",
+    "number": "261",
+    "originalType": "Sorcery – Arcane",
+    "rarity": "common",
+    "setCode": "TDC",
+    "subtypes": [
+     "Arcane"
+    ],
+    "supertypes": [],
+    "text": "Search your library for up to two basic land cards, reveal those cards, put one onto the battlefield tapped and the other into your hand, then shuffle.",
+    "type": "Sorcery — Arcane",
+    "types": [
+     "Sorcery"
+    ],
+    "uuid": "6dbe150e-0b51-5ce6-a58a-2951ef754793"
+   },
+   {
+    "artist": "Grzegorz Rutkowski",
+    "availability": [
+     "mtgo",
+     "paper"
+    ],
+    "borderColor": "black",
+    "colorIdentity": [
+     "G"
+    ],
+    "colors": [
+     "G"
+    ],
+    "convertedManaCost": 4.0,
+    "count": 1,
+    "edhrecRank": 1247,
+    "edhrecSaltiness": 0.12,
+    "finishes": [
+     "nonfoil"
+    ],
+    "frameVersion": "2015",
+    "identifiers": {
+     "cardKingdomId": "311798",
+     "cardsphereId": "136002",
+     "mcmId": "819319",
+     "mcmMetaId": "300718",
+     "mtgjsonV4Id": "60e843f9-f67f-534b-9c56-47a02821ea6a",
+     "mtgoId": "138461",
+     "multiverseId": "696418",
+     "scryfallCardBackId": "0aeebaf5-8c7d-4636-9e82-8c27447861f7",
+     "scryfallId": "21e3dfad-69b6-416c-966b-0d9c876d22fe",
+     "scryfallIllustrationId": "e25207aa-fb82-421f-aa82-cf1f97c1e92e",
+     "scryfallOracleId": "db4907f3-4071-47c4-9329-96b4813435be",
+     "tcgplayerProductId": "624959"
+    },
+    "isEtched": false,
+    "isFoil": false,
+    "isReprint": true,
+    "keywords": [
+     "Cycling"
+    ],
+    "language": "English",
+    "layout": "normal",
+    "manaCost": "{3}{G}",
+    "manaValue": 4.0,
+    "name": "Migration Path",
+    "number": "262",
+    "originalType": "Sorcery",
+    "rarity": "uncommon",
+    "setCode": "TDC",
+    "subtypes": [],
+    "supertypes": [],
+    "text": "Search your library for up to two basic land cards, put them onto the battlefield tapped, then shuffle.\nCycling {2} ({2}, Discard this card: Draw a card.)",
+    "type": "Sorcery",
+    "types": [
+     "Sorcery"
+    ],
+    "uuid": "3d1ed92d-1d5e-543b-8ddd-eea3466f6b53"
+   },
+   {
+    "artist": "John Avon",
+    "availability": [
+     "mtgo",
+     "paper"
+    ],
+    "borderColor": "black",
+    "colorIdentity": [],
+    "colors": [],
+    "convertedManaCost": 2.0,
+    "count": 1,
+    "edhrecRank": 17,
+    "edhrecSaltiness": 0.0,
+    "finishes": [
+     "nonfoil"
+    ],
+    "frameVersion": "2015",
+    "identifiers": {
+     "cardKingdomId": "311505",
+     "cardsphereId": "135714",
+     "mcmId": "818891",
+     "mcmMetaId": "1988",
+     "mtgjsonV4Id": "cf37332d-fd28-5700-adf5-c4c25c6113b9",
+     "mtgoId": "138577",
+     "multiverseId": "696474",
+     "scryfallCardBackId": "0aeebaf5-8c7d-4636-9e82-8c27447861f7",
+     "scryfallId": "ce55e00c-cd95-48eb-986e-edf5125f3534",
+     "scryfallIllustrationId": "a3e383e7-9392-4444-8067-620277d586af",
+     "scryfallOracleId": "95560508-7ac9-4be9-8a3f-3c7d5b52807b",
+     "tcgplayerProductId": "624374"
+    },
+    "isEtched": false,
+    "isFoil": false,
+    "isReprint": true,
+    "language": "English",
+    "layout": "normal",
+    "manaCost": "{2}",
+    "manaValue": 2.0,
+    "name": "Fellwar Stone",
+    "number": "318",
+    "originalType": "Artifact",
+    "producedMana": [
+     "B",
+     "G",
+     "R",
+     "U",
+     "W"
+    ],
+    "rarity": "uncommon",
+    "setCode": "TDC",
+    "subtypes": [],
+    "supertypes": [],
+    "text": "{T}: Add one mana of any color that a land an opponent controls could produce.",
+    "type": "Artifact",
+    "types": [
+     "Artifact"
+    ],
+    "uuid": "587ac597-cb56-59d7-8023-66d8456a6ac4"
+   },
+   {
+    "artist": "Lindsey Look",
+    "availability": [
+     "mtgo",
+     "paper"
+    ],
+    "borderColor": "black",
+    "colorIdentity": [
+     "R",
+     "U"
+    ],
+    "colors": [],
+    "convertedManaCost": 2.0,
+    "count": 1,
+    "edhrecRank": 124,
+    "edhrecSaltiness": 0.0,
+    "finishes": [
+     "nonfoil"
+    ],
+    "frameVersion": "2015",
+    "identifiers": {
+     "cardKingdomId": "311808",
+     "cardsphereId": "135990",
+     "mcmId": "819342",
+     "mcmMetaId": "271239",
+     "mtgjsonV4Id": "ff2e2f6e-082d-59cb-b7dc-a07ea29b5756",
+     "mtgoId": "138601",
+     "multiverseId": "696486",
+     "scryfallCardBackId": "0aeebaf5-8c7d-4636-9e82-8c27447861f7",
+     "scryfallId": "bfe00640-e775-4b2e-91a8-081c7ec0125c",
+     "scryfallIllustrationId": "3b98077a-02a3-4502-9443-f0d1308bc58d",
+     "scryfallOracleId": "14d2979d-5728-42d7-a027-0eb1f754655d",
+     "tcgplayerProductId": "624968"
+    },
+    "isEtched": false,
+    "isFoil": false,
+    "isReprint": true,
+    "language": "English",
+    "layout": "normal",
+    "manaCost": "{2}",
+    "manaValue": 2.0,
+    "name": "Talisman of Creativity",
+    "number": "330",
+    "originalType": "Artifact",
+    "producedMana": [
+     "C",
+     "R",
+     "U"
+    ],
+    "rarity": "uncommon",
+    "setCode": "TDC",
+    "subtypes": [],
+    "supertypes": [],
+    "text": "{T}: Add {C}.\n{T}: Add {U} or {R}. This artifact deals 1 damage to you.",
+    "type": "Artifact",
+    "types": [
+     "Artifact"
+    ],
+    "uuid": "5b0d40fe-415a-54b6-afbb-617f8d2e569e"
+   },
+   {
+    "artist": "Mike Dringenberg",
+    "availability": [
+     "mtgo",
+     "paper"
+    ],
+    "borderColor": "black",
+    "colorIdentity": [
+     "G",
+     "R"
+    ],
+    "colors": [],
+    "convertedManaCost": 2.0,
+    "count": 1,
+    "edhrecRank": 590,
+    "edhrecSaltiness": 0.0,
+    "finishes": [
+     "nonfoil"
+    ],
+    "frameVersion": "2015",
+    "identifiers": {
+     "cardKingdomId": "311809",
+     "cardsphereId": "135989",
+     "mcmId": "819343",
+     "mcmMetaId": "5801",
+     "mtgjsonV4Id": "2d5a1554-c477-503b-ab4f-765466c3a057",
+     "mtgoId": "138605",
+     "multiverseId": "696488",
+     "scryfallCardBackId": "0aeebaf5-8c7d-4636-9e82-8c27447861f7",
+     "scryfallId": "5135919f-7b10-4a2e-a98a-83ed1347ad36",
+     "scryfallIllustrationId": "62fac281-b765-4e06-a80c-64bda45d285a",
+     "scryfallOracleId": "f2ccc9e8-8e92-4f8c-8728-8c748630e0dd",
+     "tcgplayerProductId": "624969"
+    },
+    "isEtched": false,
+    "isFoil": false,
+    "isReprint": true,
+    "language": "English",
+    "layout": "normal",
+    "manaCost": "{2}",
+    "manaValue": 2.0,
+    "name": "Talisman of Impulse",
+    "number": "332",
+    "originalType": "Artifact",
+    "producedMana": [
+     "C",
+     "G",
+     "R"
+    ],
+    "rarity": "uncommon",
+    "setCode": "TDC",
+    "subtypes": [],
+    "supertypes": [],
+    "text": "{T}: Add {C}.\n{T}: Add {R} or {G}. This artifact deals 1 damage to you.",
+    "type": "Artifact",
+    "types": [
+     "Artifact"
+    ],
+    "uuid": "a6859e29-91fe-5009-90d7-a3ff4baa5cdb"
+   },
+   {
+    "artist": "Mark Poole",
+    "availability": [
+     "mtgo",
+     "paper"
+    ],
+    "borderColor": "black",
+    "colorIdentity": [
+     "G",
+     "R",
+     "U"
+    ],
+    "colors": [],
+    "convertedManaCost": 0.0,
+    "count": 1,
+    "edhrecRank": 1784,
+    "edhrecSaltiness": 0.02,
+    "finishes": [
+     "nonfoil"
+    ],
+    "frameVersion": "2015",
+    "identifiers": {
+     "cardKingdomId": "311810",
+     "cardsphereId": "135988",
+     "mcmId": "819328",
+     "mcmMetaId": "435458",
+     "mtgjsonV4Id": "ff2af7cb-10c9-5740-86cf-1975a28ae113",
+     "mtgoId": "138625",
+     "multiverseId": "696498",
+     "scryfallCardBackId": "0aeebaf5-8c7d-4636-9e82-8c27447861f7",
+     "scryfallId": "f1c99617-6e38-4af7-a064-6db9a5e2cc6a",
+     "scryfallIllustrationId": "42631370-b723-4065-ab89-1d8b2aafe666",
+     "scryfallOracleId": "2eb69a8f-9456-4852-b868-85ae609d3441",
+     "tcgplayerProductId": "624971"
+    },
+    "isEtched": false,
+    "isFoil": false,
+    "isReprint": true,
+    "keywords": [
+     "Cycling"
+    ],
+    "language": "English",
+    "layout": "normal",
+    "manaValue": 0.0,
+    "name": "Bountiful Landscape",
+    "number": "342",
+    "originalType": "Land",
+    "producedMana": [
+     "C"
+    ],
+    "rarity": "common",
+    "setCode": "TDC",
+    "subtypes": [],
+    "supertypes": [],
+    "text": "{T}: Add {C}.\n{T}, Sacrifice this land: Search your library for a basic Forest, Island, or Mountain card, put it onto the battlefield tapped, then shuffle.\nCycling {G}{U}{R} ({G}{U}{R}, Discard this card: Draw a card.)",
+    "type": "Land",
+    "types": [
+     "Land"
+    ],
+    "uuid": "1fe87bc3-9923-5f73-b16b-279abc2907aa"
+   },
+   {
+    "artist": "Alayna Danner",
+    "availability": [
+     "mtgo",
+     "paper"
+    ],
+    "borderColor": "black",
+    "colorIdentity": [],
+    "colors": [],
+    "convertedManaCost": 0.0,
+    "count": 1,
+    "edhrecRank": 14,
+    "edhrecSaltiness": 0.08,
+    "finishes": [
+     "nonfoil"
+    ],
+    "frameVersion": "2015",
+    "identifiers": {
+     "cardKingdomId": "311676",
+     "cardsphereId": "135699",
+     "mcmId": "818944",
+     "mcmMetaId": "226499",
+     "mtgjsonV4Id": "95a9f456-2278-5c89-8b0c-3962b54622b2",
+     "mtgoId": "138705",
+     "multiverseId": "696538",
+     "scryfallCardBackId": "0aeebaf5-8c7d-4636-9e82-8c27447861f7",
+     "scryfallId": "b8504812-fcf5-47d3-977d-1d9a11231fd0",
+     "scryfallIllustrationId": "588f6d6f-e78a-4468-8067-dfbdf29c5a49",
+     "scryfallOracleId": "b473e293-59e3-4e04-acf2-622604aeb25f",
+     "tcgplayerProductId": "624211"
+    },
+    "isEtched": false,
+    "isFoil": false,
+    "isReprint": true,
+    "keywords": [
+     "Scry"
+    ],
+    "language": "English",
+    "layout": "normal",
+    "manaValue": 0.0,
+    "name": "Path of Ancestry",
+    "number": "382",
+    "originalType": "Land",
+    "producedMana": [
+     "B",
+     "G",
+     "R",
+     "U",
+     "W"
+    ],
+    "rarity": "common",
+    "setCode": "TDC",
+    "subtypes": [],
+    "supertypes": [],
+    "text": "This land enters tapped.\n{T}: Add one mana of any color in your commander's color identity. When that mana is spent to cast a creature spell that shares a creature type with your commander, scry 1. (Look at the top card of your library. You may put that card on the bottom.)",
+    "type": "Land",
+    "types": [
+     "Land"
+    ],
+    "uuid": "4c71ccc4-e0f7-57eb-9dc4-072134fad99c"
+   },
+   {
+    "artist": "Sam Burley",
+    "availability": [
+     "arena",
+     "mtgo",
+     "paper"
+    ],
+    "borderColor": "black",
+    "colorIdentity": [
+     "U"
+    ],
+    "colors": [],
+    "convertedManaCost": 0.0,
+    "count": 2,
+    "edhrecSaltiness": 0.9,
+    "finishes": [
+     "foil",
+     "nonfoil"
+    ],
+    "frameVersion": "2015",
+    "identifiers": {
+     "cardKingdomFoilId": "312006",
+     "cardKingdomId": "311060",
+     "cardsphereFoilId": "135068",
+     "cardsphereId": "135067",
+     "mcmId": "817909",
+     "mcmMetaId": "2923",
+     "mtgArenaId": "95802",
+     "mtgjsonV4Id": "3fabe1e9-0057-54c8-ab4e-ae4c588df164",
+     "mtgoId": "138929",
+     "multiverseId": "693322",
+     "scryfallCardBackId": "0aeebaf5-8c7d-4636-9e82-8c27447861f7",
+     "scryfallId": "1ff6acc9-581c-468f-894d-41f725da7f33",
+     "scryfallIllustrationId": "8a2def5a-39e8-411d-a175-3e7e45499ce9",
+     "scryfallOracleId": "b2c6aa39-2d2a-459c-a555-fb48ba993373",
+     "tcgplayerProductId": "623968"
+    },
+    "isEtched": false,
+    "isFoil": false,
+    "isReprint": true,
+    "language": "English",
+    "layout": "normal",
+    "manaValue": 0.0,
+    "name": "Island",
+    "number": "279",
+    "originalType": "Basic Land – Island",
+    "producedMana": [
+     "U"
+    ],
+    "rarity": "common",
+    "setCode": "TDM",
+    "subtypes": [
+     "Island"
+    ],
+    "supertypes": [
+     "Basic"
+    ],
+    "text": "({T}: Add {U}.)",
+    "type": "Basic Land — Island",
+    "types": [
+     "Land"
+    ],
+    "uuid": "f48089ee-4511-5278-ae10-02002ba23df9"
+   },
+   {
+    "artist": "Constantin Marin",
+    "availability": [
+     "arena",
+     "mtgo",
+     "paper"
+    ],
+    "borderColor": "black",
+    "colorIdentity": [
+     "U"
+    ],
+    "colors": [],
+    "convertedManaCost": 0.0,
+    "count": 1,
+    "edhrecSaltiness": 0.9,
+    "finishes": [
+     "foil",
+     "nonfoil"
+    ],
+    "frameVersion": "2015",
+    "identifiers": {
+     "cardKingdomFoilId": "312007",
+     "cardKingdomId": "311061",
+     "cardsphereFoilId": "135070",
+     "cardsphereId": "135069",
+     "mcmId": "817910",
+     "mcmMetaId": "2923",
+     "mtgArenaId": "95803",
+     "mtgjsonV4Id": "d78b4c44-f788-5e4f-b171-5e48a47a3548",
+     "mtgoId": "138931",
+     "multiverseId": "693323",
+     "scryfallCardBackId": "0aeebaf5-8c7d-4636-9e82-8c27447861f7",
+     "scryfallId": "15be7923-6efc-4650-b8d1-f61cb33ef81d",
+     "scryfallIllustrationId": "d5cd84a4-aab5-4e09-9268-0faa3fee0ed4",
+     "scryfallOracleId": "b2c6aa39-2d2a-459c-a555-fb48ba993373",
+     "tcgplayerProductId": "623969"
+    },
+    "isEtched": false,
+    "isFoil": false,
+    "isReprint": true,
+    "language": "English",
+    "layout": "normal",
+    "manaValue": 0.0,
+    "name": "Island",
+    "number": "280",
+    "originalType": "Basic Land – Island",
+    "producedMana": [
+     "U"
+    ],
+    "rarity": "common",
+    "setCode": "TDM",
+    "subtypes": [
+     "Island"
+    ],
+    "supertypes": [
+     "Basic"
+    ],
+    "text": "({T}: Add {U}.)",
+    "type": "Basic Land — Island",
+    "types": [
+     "Land"
+    ],
+    "uuid": "0e723169-35a9-5800-999f-438afb9e6773"
+   },
+   {
+    "artist": "Ralph Horsley",
+    "availability": [
+     "arena",
+     "mtgo",
+     "paper"
+    ],
+    "borderColor": "black",
+    "colorIdentity": [
+     "R"
+    ],
+    "colors": [],
+    "convertedManaCost": 0.0,
+    "count": 3,
+    "edhrecSaltiness": 0.39,
+    "finishes": [
+     "foil",
+     "nonfoil"
+    ],
+    "frameVersion": "2015",
+    "identifiers": {
+     "cardKingdomFoilId": "312014",
+     "cardKingdomId": "311068",
+     "cardsphereFoilId": "135076",
+     "cardsphereId": "135075",
+     "mcmId": "817915",
+     "mcmMetaId": "3743",
+     "mtgArenaId": "95806",
+     "mtgjsonV4Id": "280698a4-0a12-5185-8819-618fd5e2c222",
+     "mtgoId": "138937",
+     "multiverseId": "693326",
+     "scryfallCardBackId": "0aeebaf5-8c7d-4636-9e82-8c27447861f7",
+     "scryfallId": "bfa10a88-12e0-4b79-80bb-6f4620277e20",
+     "scryfallIllustrationId": "908f55b2-35cf-428c-9902-0a26bc5c7176",
+     "scryfallOracleId": "a3fb7228-e76b-4e96-a40e-20b5fed75685",
+     "tcgplayerProductId": "623975"
+    },
+    "isEtched": false,
+    "isFoil": false,
+    "isReprint": true,
+    "language": "English",
+    "layout": "normal",
+    "manaValue": 0.0,
+    "name": "Mountain",
+    "number": "283",
+    "originalType": "Basic Land – Mountain",
+    "producedMana": [
+     "R"
+    ],
+    "rarity": "common",
+    "setCode": "TDM",
+    "subtypes": [
+     "Mountain"
+    ],
+    "supertypes": [
+     "Basic"
+    ],
+    "text": "({T}: Add {R}.)",
+    "type": "Basic Land — Mountain",
+    "types": [
+     "Land"
+    ],
+    "uuid": "c56f6511-7ce6-59e6-9bd0-41dca5093249"
+   },
+   {
+    "artist": "Josu Solano",
+    "availability": [
+     "arena",
+     "mtgo",
+     "paper"
+    ],
+    "borderColor": "black",
+    "colorIdentity": [
+     "R"
+    ],
+    "colors": [],
+    "convertedManaCost": 0.0,
+    "count": 3,
+    "edhrecSaltiness": 0.39,
+    "finishes": [
+     "foil",
+     "nonfoil"
+    ],
+    "frameVersion": "2015",
+    "identifiers": {
+     "cardKingdomFoilId": "312015",
+     "cardKingdomId": "311069",
+     "cardsphereFoilId": "135078",
+     "cardsphereId": "135077",
+     "mcmId": "817916",
+     "mcmMetaId": "3743",
+     "mtgArenaId": "95807",
+     "mtgjsonV4Id": "e6f8f85c-c63a-50cf-b51d-e205f130a7a8",
+     "mtgoId": "138939",
+     "multiverseId": "693327",
+     "scryfallCardBackId": "0aeebaf5-8c7d-4636-9e82-8c27447861f7",
+     "scryfallId": "3df7c206-97b6-49d7-ba01-7a35fd8c61d9",
+     "scryfallIllustrationId": "8fa7c52f-ce6b-433b-b0ad-32734b9ab91a",
+     "scryfallOracleId": "a3fb7228-e76b-4e96-a40e-20b5fed75685",
+     "tcgplayerProductId": "623977"
+    },
+    "isEtched": false,
+    "isFoil": false,
+    "isReprint": true,
+    "language": "English",
+    "layout": "normal",
+    "manaValue": 0.0,
+    "name": "Mountain",
+    "number": "284",
+    "originalType": "Basic Land – Mountain",
+    "producedMana": [
+     "R"
+    ],
+    "rarity": "common",
+    "setCode": "TDM",
+    "subtypes": [
+     "Mountain"
+    ],
+    "supertypes": [
+     "Basic"
+    ],
+    "text": "({T}: Add {R}.)",
+    "type": "Basic Land — Mountain",
+    "types": [
+     "Land"
+    ],
+    "uuid": "c2143cb7-99b2-5cf7-a374-cb7146d46ad2"
+   },
+   {
+    "artist": "Jesper Ejsing",
+    "availability": [
+     "arena",
+     "mtgo",
+     "paper"
+    ],
+    "borderColor": "black",
+    "colorIdentity": [
+     "G"
+    ],
+    "colors": [],
+    "convertedManaCost": 0.0,
+    "count": 3,
+    "edhrecSaltiness": 0.62,
+    "finishes": [
+     "foil",
+     "nonfoil"
+    ],
+    "frameVersion": "2015",
+    "identifiers": {
+     "cardKingdomFoilId": "312018",
+     "cardKingdomId": "311072",
+     "cardsphereFoilId": "135080",
+     "cardsphereId": "135079",
+     "mcmId": "817918",
+     "mcmMetaId": "2177",
+     "mtgArenaId": "95808",
+     "mtgjsonV4Id": "7d4e4e85-6c19-532e-90a5-5fa28f011c15",
+     "mtgoId": "138941",
+     "multiverseId": "693328",
+     "scryfallCardBackId": "0aeebaf5-8c7d-4636-9e82-8c27447861f7",
+     "scryfallId": "8100bceb-ffba-487a-bb45-4fe2a156a8dc",
+     "scryfallIllustrationId": "886e8d8a-25bb-4b70-85ba-4860886fa1a0",
+     "scryfallOracleId": "b34bb2dc-c1af-4d77-b0b3-a0fb342a5fc6",
+     "tcgplayerProductId": "623978"
+    },
+    "isEtched": false,
+    "isFoil": false,
+    "isReprint": true,
+    "language": "English",
+    "layout": "normal",
+    "manaValue": 0.0,
+    "name": "Forest",
+    "number": "285",
+    "originalType": "Basic Land – Forest",
+    "producedMana": [
+     "G"
+    ],
+    "rarity": "common",
+    "setCode": "TDM",
+    "subtypes": [
+     "Forest"
+    ],
+    "supertypes": [
+     "Basic"
+    ],
+    "text": "({T}: Add {G}.)",
+    "type": "Basic Land — Forest",
+    "types": [
+     "Land"
+    ],
+    "uuid": "4699678e-00c2-57fd-9315-f4e95d0002fa"
+   },
+   {
+    "artist": "Valera Lutfullina",
+    "availability": [
+     "arena",
+     "mtgo",
+     "paper"
+    ],
+    "borderColor": "black",
+    "colorIdentity": [
+     "G"
+    ],
+    "colors": [],
+    "convertedManaCost": 0.0,
+    "count": 2,
+    "edhrecSaltiness": 0.62,
+    "finishes": [
+     "foil",
+     "nonfoil"
+    ],
+    "frameVersion": "2015",
+    "identifiers": {
+     "cardKingdomFoilId": "312019",
+     "cardKingdomId": "311073",
+     "cardsphereFoilId": "135082",
+     "cardsphereId": "135081",
+     "mcmId": "817919",
+     "mcmMetaId": "2177",
+     "mtgArenaId": "95809",
+     "mtgjsonV4Id": "2b6033e4-2bf8-575e-b08c-ae3be990fd80",
+     "mtgoId": "138943",
+     "multiverseId": "693329",
+     "scryfallCardBackId": "0aeebaf5-8c7d-4636-9e82-8c27447861f7",
+     "scryfallId": "8e3e83d2-96ba-4d5c-a1ed-6c08a90b339c",
+     "scryfallIllustrationId": "8d9bd6ed-2ba7-48e0-807d-1e1005b2478d",
+     "scryfallOracleId": "b34bb2dc-c1af-4d77-b0b3-a0fb342a5fc6",
+     "tcgplayerProductId": "623979"
+    },
+    "isEtched": false,
+    "isFoil": false,
+    "isReprint": true,
+    "language": "English",
+    "layout": "normal",
+    "manaValue": 0.0,
+    "name": "Forest",
+    "number": "286",
+    "originalType": "Basic Land – Forest",
+    "producedMana": [
+     "G"
+    ],
+    "rarity": "common",
+    "setCode": "TDM",
+    "subtypes": [
+     "Forest"
+    ],
+    "supertypes": [
+     "Basic"
+    ],
+    "text": "({T}: Add {G}.)",
+    "type": "Basic Land — Forest",
+    "types": [
+     "Land"
+    ],
+    "uuid": "96e0cf4b-a8b0-5f04-9c30-affa24189153"
+   }
+  ],
+  "name": "Temur Roar",
+  "planes": [],
+  "releaseDate": "2025-04-11",
+  "schemes": [],
+  "sealedProductUuids": [
+   "0efe1bd4-c56d-5188-b8f6-8fa4d6cef710"
+  ],
+  "sideBoard": [],
+  "source": "https://magic.wizards.com/en/news/announcements/tarkir-dragonstorm-commander-decklists#Temur",
+  "sourceSetCodes": [
+   "TDC",
+   "TDM"
+  ],
+  "tokens": [],
+  "type": "Commander Deck"
+ },
+ "meta": {
+  "date": "2026-11-08",
+  "version": "5.3.0+20261108"
+ }
+}

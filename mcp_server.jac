@@ -298,7 +298,7 @@ def search_markdown(result: dict) -> str {
 
 """Export a deck as a deck list. Formats: arena (MTGA/MTGO, the default), moxfield
 and text are lossy (main deck and sideboard names and counts only); mtgdeck1 and
-mtgjson are lossless JSON (mtgjson is export only). Clients that support MCP Apps
+mtgjson are lossless JSON. Clients that support MCP Apps
 show the export in a view with format buttons, Copy and Download; the text result
 always carries the full export too. A lossless JSON export is long: the user sees
 it in the view, so offer to show it or save it to a file rather than pasting it."""
@@ -573,7 +573,7 @@ def deck_validate(deck_id: str) -> dict {
 }
 
 """Import a deck list, replacing the deck's current cards. Accepts mtgdeck1,
-text, arena or moxfield. Lines that don't resolve to a known card are listed
+mtgjson (an MTGJSON deck file, such as a precon), text, arena or moxfield. Lines that don't resolve to a known card are listed
 under "unresolved" and never added."""
 @server.tool()
 def deck_import(deck_id: str, format: str, text: str) -> dict {

@@ -245,8 +245,8 @@ async def main() -> None:
 
         missing = await call(session, "deck_get", deck_id="nope")
         check("an unknown deck id says so", missing == {"error": "No deck with id nope.", "code": "no-such-deck"}, missing)
-        no_import = await call(session, "deck_import", deck_id=deck["id"], format="mtgjson", text="{}")
-        check("an export-only format says it cannot be imported", no_import.get("code") == "no-import", no_import)
+        no_cards = await call(session, "deck_import", deck_id=deck["id"], format="mtgjson", text="{}")
+        check("an MTGJSON deck with no cards imports nothing", no_cards.get("unresolved") == ["Nothing to import: no cards found."], no_cards)
         bad_format = await call(session, "deck_edit", deck_id=deck["id"], format="vintage")
         check("an unknown play format says so", bad_format.get("code") == "unknown-format", bad_format)
         shown_missing = await session.call_tool("deck_show", {"deck_id": "nope"})
