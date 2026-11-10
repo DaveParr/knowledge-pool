@@ -22,6 +22,8 @@ jobs:
         run: uv sync --locked
 
       - name: Check
+        env:
+          KP_REQUIRE_BROWSER: "1"
         run: uv run jac script check
 
       - name: Upload test output
