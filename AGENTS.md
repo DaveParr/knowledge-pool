@@ -16,7 +16,7 @@ the rest (`--search <keyword>` finds one by topic).
 
 ## Orchestrated work
 
-Dispatch workers into Orca worktrees, or run on the feature branch one agent at a time. The built-in `isolation: worktree` is not used here.
+Dispatch workers into Orca worktrees, or run them on the feature branch one at a time. Don't start subagents with Claude Code's `isolation: "worktree"` option: its worktrees under `.claude/worktrees/` had commands refused as "too complex to verify" and failed to start without a `WorktreeCreate` hook (#83).
 
 ## GitHub
 
