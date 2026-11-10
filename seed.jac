@@ -34,7 +34,7 @@ import from deckformats.mtgjson { is_skipped_list_note }
 import from deck_io { CreateDeckFromList, NewDeckResult, resolve_list }
 import from legality { Violation, check_lines, format_node }
 import from walker_errors { WalkerError }
-import from shared_graph { APP_DIR, run_walker, port_in_use }
+import from shared_graph { APP_DIR, run_walker, port_in_use, acquire_graph_lock }
 
 """Run a walker on the shared root (see shared_graph.run_walker). Under
 `jac run` every `report` is also echoed to stdout; keep that out of the
@@ -164,6 +164,7 @@ with entry:__main__ {
         );
         exit(1);
     }
+    acquire_graph_lock("seed script");
 
     seed = int(args.seed) if args.seed else random.SystemRandom().randrange(1000000);
     only: list[str] = (args.format or []) as list[str];

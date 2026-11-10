@@ -44,7 +44,7 @@ import from decks {
 import from deck_io { DeckExport, DeckImport }
 import from legality { GetFormatRules }
 import from walker_errors { WalkerError }
-import from shared_graph { APP_DIR, run_walker, port_in_use }
+import from shared_graph { APP_DIR, run_walker, port_in_use, acquire_graph_lock }
 
 glob LOGGED_CLIENT_UI: list[bool] = [],
      DECK_UI: str = "ui://knowledge-pool/deck-table.html",
@@ -598,6 +598,7 @@ with entry:__main__ {
     os.chdir(APP_DIR);
     # Fail before MCP takes stdout: the message goes to stderr.
     check_catalogue();
+    acquire_graph_lock("MCP server");
     if os.environ.get("KP_WEB", "1") != "0" {
         port = int(os.environ.get("KP_PORT", "8000"));
         if port_in_use(port) {
