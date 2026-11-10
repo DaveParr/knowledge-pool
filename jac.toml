@@ -31,3 +31,11 @@ base_route_app = "app"
 
 [test]
 directory = "tests"
+
+[scripts]
+check = "jac check *.jac && scripts/jac_test.sh && pytest tests"
+up = "scripts/dev.sh up"
+down = "scripts/dev.sh down"
+status = "scripts/dev.sh status"
+catalogue = "python -m catalog.ingest --if-stale"
+test-ui = "pytest tests/test_ui_smoke.py -v"

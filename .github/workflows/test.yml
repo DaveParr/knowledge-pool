@@ -21,14 +21,10 @@ jobs:
       - name: Install dependencies
         run: uv sync --locked
 
-      - name: Type-check
-        run: uv run jac check main.jac decks.sv.jac frontend.cl.jac frontend.impl.jac
-
-      - name: Run walker tests
-        run: scripts/jac_test.sh
-
-      - name: Run pytest suite
-        run: uv run pytest tests
+      - name: Check
+        env:
+          KP_REQUIRE_BROWSER: "1"
+        run: uv run jac script check
 
       - name: Upload test output
         if: failure()

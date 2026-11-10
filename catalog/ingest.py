@@ -6,9 +6,14 @@ index over name, type line and rules text, plus Scryfall's community oracle
 tags (a `tags` table and a `card_tags(oracle_id, tag)` join on the same
 oracle id), plus the MTGJSON version and build date in a meta table.
 
-    uv run python -m catalog.ingest                          # download everything, then build
+    uv run python -m catalog.ingest                          # download (or reuse the shared cache), then build
+    uv run python -m catalog.ingest --if-stale                # build only when the catalogue is missing or out of date
+    uv run python -m catalog.ingest --max-age-days N          # download again when a cached file is older (default 7)
     uv run python -m catalog.ingest --source FILE             # local AtomicCards .json or .json.xz
     uv run python -m catalog.ingest --tags-source FILE        # local oracle tags .jsonl or .jsonl.gz
+
+Downloads are kept in a cache shared by every worktree: $KP_CACHE, else
+${XDG_CACHE_HOME:-~/.cache}/knowledge-pool. --source and --tags-source bypass it.
 """
 
 from __future__ import annotations
@@ -21,8 +26,10 @@ import os
 import shutil
 import sqlite3
 import sys
+import tempfile
 import time
 import urllib.request
+from collections.abc import Callable
 from datetime import datetime, timezone
 from pathlib import Path
 
@@ -30,13 +37,12 @@ ATOMIC_URL = "https://mtgjson.com/api/v5/AtomicCards.json.xz"
 # MTGJSON answers 403 to Python's default "Python-urllib" user agent.
 USER_AGENT = "knowledge-pool-ingest/0.1 (+https://github.com/DaveParr/knowledge-pool)"
 DEFAULT_DB = Path("data/catalog.sqlite")
-DEFAULT_DOWNLOAD = Path("data/mtgjson/AtomicCards.json.xz")
+MAX_AGE_DAYS = 7
 
 # Scryfall, like MTGJSON, answers 403 to a default urllib user agent, and
 # api.scryfall.com (unlike its data.scryfall.io CDN) also 400s without an
 # Accept header: https://scryfall.com/docs/api
 SCRYFALL_BULK_DATA_URL = "https://api.scryfall.com/bulk-data"
-DEFAULT_TAGS_DOWNLOAD = Path("data/scryfall/oracle-tags.jsonl.gz")
 
 SCHEMA = """
 CREATE TABLE cards (
@@ -83,6 +89,35 @@ CREATE INDEX card_tags_oracle_id ON card_tags(oracle_id);
 def db_path() -> Path:
     """Where the catalogue lives. KP_CATALOG overrides the default."""
     return Path(os.environ.get("KP_CATALOG", DEFAULT_DB))
+
+
+def cache_dir() -> Path:
+    """The download cache shared by all worktrees. KP_CACHE overrides it."""
+    if os.environ.get("KP_CACHE"):
+        return Path(os.environ["KP_CACHE"])
+    base = os.environ.get("XDG_CACHE_HOME") or Path.home() / ".cache"
+    return Path(base) / "knowledge-pool"
+
+
+def cache_paths() -> tuple[Path, Path]:
+    """Cached (AtomicCards, oracle tags) files."""
+    root = cache_dir()
+    return root / "mtgjson" / "AtomicCards.json.xz", root / "scryfall" / "oracle-tags.jsonl.gz"
+
+
+def cached(dest: Path, fetch: Callable[[Path], Path], max_age_days: float) -> Path:
+    """`dest` if it is younger than `max_age_days`; otherwise fetch it again.
+    When the fetch fails but an older copy exists, use that and say so."""
+    age_days = (time.time() - dest.stat().st_mtime) / 86400 if dest.exists() else None
+    if age_days is not None and age_days < max_age_days:
+        return dest
+    try:
+        return fetch(dest)
+    except OSError as err:  # URLError is an OSError
+        if age_days is None:
+            raise
+        print(f"Using cached {dest} ({age_days:.0f} days old): download failed: {err}", file=sys.stderr)
+        return dest
 
 
 def load_atomic(source: Path) -> dict:
@@ -225,15 +260,29 @@ def build(atomic: dict, out: Path, tags: tuple[list[tuple], list[tuple]] | None 
     return meta
 
 
+def _fetch(req: urllib.request.Request, dest: Path) -> Path:
+    """Download to a temp file of our own in dest's folder, then rename it into place.
+
+    The shared cache can be refreshed by several worktrees at once; a name per
+    download keeps them from interleaving into one corrupt file.
+    """
+    fd, name = tempfile.mkstemp(dir=dest.parent, prefix=f"{dest.name}.", suffix=".part")
+    tmp = Path(name)
+    try:
+        with os.fdopen(fd, "wb") as out, urllib.request.urlopen(req, timeout=120) as resp:
+            shutil.copyfileobj(resp, out)
+        tmp.replace(dest)
+    except BaseException:
+        tmp.unlink(missing_ok=True)
+        raise
+    return dest
+
+
 def download(dest: Path) -> Path:
     dest.parent.mkdir(parents=True, exist_ok=True)
     print(f"Downloading {ATOMIC_URL} ...", file=sys.stderr)
     req = urllib.request.Request(ATOMIC_URL, headers={"User-Agent": USER_AGENT})
-    tmp = dest.with_suffix(".part")
-    with urllib.request.urlopen(req, timeout=120) as resp, open(tmp, "wb") as out:
-        shutil.copyfileobj(resp, out)
-    tmp.replace(dest)
-    return dest
+    return _fetch(req, dest)
 
 
 def oracle_tags_uri() -> str:
@@ -255,11 +304,7 @@ def download_oracle_tags(dest: Path) -> Path:
     dest.parent.mkdir(parents=True, exist_ok=True)
     print(f"Downloading {uri} ...", file=sys.stderr)
     req = urllib.request.Request(uri, headers={"User-Agent": USER_AGENT})
-    tmp = dest.with_suffix(".part")
-    with urllib.request.urlopen(req, timeout=120) as resp, open(tmp, "wb") as out:
-        shutil.copyfileobj(resp, out)
-    tmp.replace(dest)
-    return dest
+    return _fetch(req, dest)
 
 
 def main(argv: list[str] | None = None) -> int:
@@ -267,11 +312,25 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--source", type=Path, help="local AtomicCards .json or .json.xz")
     parser.add_argument("--tags-source", type=Path, help="local oracle tags .jsonl or .jsonl.gz")
     parser.add_argument("--out", type=Path, default=None, help="catalogue path (default data/catalog.sqlite)")
+    parser.add_argument("--max-age-days", type=float, default=MAX_AGE_DAYS, help="download again when a cached file is older than this (default 7)")
+    parser.add_argument("--if-stale", action="store_true", help="do nothing when the catalogue exists and is current")
     args = parser.parse_args(argv)
 
-    source = args.source or download(DEFAULT_DOWNLOAD)
-    tags_source = args.tags_source or download_oracle_tags(DEFAULT_TAGS_DOWNLOAD)
     out = args.out or db_path()
+    if args.if_stale and out.exists():
+        from catalog import store  # store imports this module at import time
+
+        try:
+            store.check_current()
+        except store.CatalogOutOfDate as err:
+            print(f"{err}\nRebuilding.", file=sys.stderr)
+        else:
+            print(f"Catalogue {out} is current")
+            return 0
+
+    atomic_cache, tags_cache = cache_paths()
+    source = args.source or cached(atomic_cache, download, args.max_age_days)
+    tags_source = args.tags_source or cached(tags_cache, download_oracle_tags, args.max_age_days)
     started = time.perf_counter()
     meta = build(load_atomic(source), out, tags=load_oracle_tags(tags_source))
     print(

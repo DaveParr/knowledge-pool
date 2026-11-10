@@ -1,5 +1,6 @@
 """`jac run seed.jac` against the fixture DeckList (no network) and a throwaway graph."""
 
+import fcntl
 import json
 import os
 import socket
@@ -145,3 +146,41 @@ def test_refuses_to_run_while_the_app_is_up(fixture_catalog, tmp_path):
     assert run.returncode == 1
     assert f"Port {port} is in use" in run.stderr
     assert not (graph / ".jac" / "data").exists()
+
+
+def _jac() -> str:
+    return str(Path(sys.executable).parent / "jac")
+
+
+def test_mcp_server_refuses_a_graph_another_process_holds(fixture_catalog, tmp_path):
+    graph = tmp_path / "graph"
+    (graph / ".jac" / "data").mkdir(parents=True)
+    with open(graph / ".jac" / "data" / "writer.lock", "a+") as held:
+        fcntl.flock(held, fcntl.LOCK_EX | fcntl.LOCK_NB)
+        env = {**os.environ, "KP_CATALOG": str(fixture_catalog), "JAC_DATA_PATH": str(graph), "KP_WEB": "0"}
+        run = subprocess.run(
+            [_jac(), "run", str(ROOT / "mcp_server.jac")],
+            cwd=ROOT, env=env, capture_output=True, text=True, timeout=60, stdin=subprocess.DEVNULL,
+        )
+    assert run.returncode == 1, run.stdout + run.stderr
+    assert "in use by another knowledge-pool process" in run.stderr
+    assert str(graph / ".jac" / "data") in run.stderr
+
+
+def test_seed_refuses_while_a_dev_server_holds_the_graph(fixture_catalog, tmp_path):
+    graph = tmp_path / "graph"
+    graph.mkdir()
+    script = ROOT / "scripts" / "dev.sh"
+    env = {
+        **os.environ, "KP_CATALOG": str(fixture_catalog), "JAC_DATA_PATH": str(graph),
+        "KP_DEV_DIR": str(tmp_path / "dev"),
+    }
+    try:
+        up = subprocess.run([str(script), "up"], env=env, cwd=ROOT, capture_output=True, text=True, timeout=300)
+        assert up.returncode == 0, up.stdout + up.stderr
+        run = _seed(fixture_catalog, graph)
+        assert run.returncode != 0
+        assert "in use by another knowledge-pool process" in run.stderr
+    finally:
+        subprocess.run([str(script), "down"], env=env, cwd=ROOT, timeout=60)
+    assert _decks(graph) == {}
