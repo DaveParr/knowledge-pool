@@ -98,6 +98,7 @@ cmd_up() {
     done
     echo "server did not come up; last of $LOG:" >&2
     tail -n 30 "$LOG" >&2
+    cmd_down
     return 1
 }
 

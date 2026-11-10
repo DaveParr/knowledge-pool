@@ -28,14 +28,18 @@ WAIT_MS = 30000
 
 
 def free_port_pair() -> int:
-    """A port P where both P and P + 1 are free (web app and MCP)."""
-    for _ in range(50):
-        with socket.socket() as s:
-            s.bind(("127.0.0.1", 0))
-            port = s.getsockname()[1]
-        with socket.socket() as t:
-            if t.connect_ex(("127.0.0.1", port)) != 0 and t.connect_ex(("127.0.0.1", port + 1)) != 0:
-                return port
+    """A port P where both P and P + 1 are free (web app and MCP).
+
+    Scans 9100-9898, above the kernel's ephemeral range and clear of dev.sh's 8100-8898.
+    """
+    for port in range(9100, 9900, 2):
+        try:
+            for p in (port, port + 1):
+                with socket.socket() as s:
+                    s.bind(("127.0.0.1", p))
+        except OSError:
+            continue
+        return port
     raise RuntimeError("no free port pair")
 
 
