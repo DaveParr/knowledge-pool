@@ -2,11 +2,11 @@
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
-**Goal:** A worktree has one command to run the app (`scripts/dev.sh`), one to check it (`scripts/check.sh`), a current catalogue built offline from a shared download cache, an automated UI smoke test in CI, written coding standards, a one-command board move, and an `AGENTS.md` that points at all of these instead of `jac create` boilerplate.
+**Goal:** A worktree has one command to run the app (`jac script up`), one to check it (`jac script check`), a current catalogue built offline from a shared download cache, an automated UI smoke test in CI, written coding standards, a one-command board move, and an `AGENTS.md` that points at all of these instead of `jac create` boilerplate.
 
-**Architecture:** Everything here is environment, not app behaviour: shell scripts in `scripts/`, a cache layer in `catalog/ingest.py`, one new pytest module, and steering docs. `scripts/dev.sh` is the single way to start the app: it runs `mcp_server.jac` in HTTP mode, so one process serves the web app on the worktree's port and MCP on the next port up (two Jac processes must never share a graph). The UI smoke test starts the app through `dev.sh` on a free port, so it tests the same launch path a human uses. All `AGENTS.md`/`README.md` edits are collected in one late task so the parallel tasks never conflict on them.
+**Architecture:** Everything here is environment, not app behaviour. The project's commands are exposed through the `jac` CLI: plain `jac check` / `jac run` / `jac browse` where Jac already covers the case, and `[scripts]` entries in `jac.toml` (run as `jac script <name>`, listed by `jac script --list`) where it doesn't. Logic too big for a one-liner lives in `scripts/*.sh`, which the `[scripts]` entries call. `jac script` cannot pass arguments (`jac script x a b` → "unrecognized arguments", checked 2026-11-10), so the one command that needs them, the board move, stays a direct script call. No justfile or other task runner. Around that: a cache layer in `catalog/ingest.py`, one new pytest module, and steering docs. `scripts/dev.sh` is the single way to start the app: it runs `mcp_server.jac` in HTTP mode, so one process serves the web app on the worktree's port and MCP on the next port up (two Jac processes must never share a graph). The UI smoke test starts the app through `dev.sh` on a free port, so it tests the same launch path a human uses. All `AGENTS.md`/`README.md` edits are collected in one late task so the parallel tasks never conflict on them.
 
-**Tech Stack:** Bash (`scripts/*.sh`), Python 3.12 (`catalog/`, pytest), `jac browse` (headless browser over CDP, ships with jaclang 0.16.7) for the UI smoke test, `mcp==2.3.0` client for the MCP Apps view check, `gh` CLI + GraphQL for the board script, GitHub Actions.
+**Tech Stack:** `jac script` (`[scripts]` in `jac.toml`; see `uv run jac guide jac-config`), Bash (`scripts/*.sh`), Python 3.12 (`catalog/`, pytest), `jac browse` (headless browser over CDP, ships with jaclang 0.16.7) for the UI smoke test, `mcp==2.3.0` client for the MCP Apps view check, `gh` CLI + GraphQL for the board script, GitHub Actions.
 
 **Spec:** GitHub issue #78 (Retro 1759156) and all of its sub-issues: #79 (one dev, check and steering entry point per worktree), #80 (automated UI smoke test), #81 (shared catalogue download cache), #82 (`CODING_STANDARDS.md`), #83 (dispatch workers into Orca worktrees), #84 (gh Projects-classic workaround and board script), #85 (jac run report echo, session length). All seven sub-issues are in this branch.
 
@@ -15,7 +15,10 @@
 - Read issues with `gh issue view N --json title,body,comments` (or `gh api repos/DaveParr/knowledge-pool/issues/N`); bare `gh issue view N` exits 1 with the Projects (classic) error (#84). Verified working on 2026-11-10.
 - Never use `pkill -f` / `killall` in any script or step: `dev.sh down` stops only the process group in its pidfile (#79).
 - `dev.sh` must not start a second Jac process against the same graph: it runs `mcp_server.jac` (which serves the web app itself), never `jac start` alongside it (`mcp_server.jac` docstring).
-- `scripts/check.sh` runs exactly: `uv run jac check *.jac`, `scripts/jac_test.sh`, `uv run pytest tests` — and CI calls it instead of its own steps (#79). All 23 top-level `.jac` files pass `jac check` today (verified 2026-11-10).
+- `jac script check` runs exactly, stopping at the first failure: `jac check *.jac`, `scripts/jac_test.sh`, `pytest tests` — and CI calls it instead of its own steps (#79). All 23 top-level `.jac` files pass `jac check` today (verified 2026-11-10). `scripts/jac_test.sh` stays because `jac test` exits 0 when a test raises.
+- Commands go through the `jac` CLI: no wrapper where a `jac` subcommand already does the job, a `jac.toml` `[scripts]` entry where it doesn't, and a direct `scripts/*.sh` call only when arguments are needed (`scripts/board.sh`). No justfile, Makefile or new task runner.
+- `jac script` runs its command through a shell from the project root, finds `jac.toml` from a subfolder, and returns the command's exit code (checked 2026-11-10). Run it as `uv run jac script <name>` (or with the venv active), so entries can call `jac`, `pytest` and `python` directly.
+- Script names, fixed: `check`, `up`, `down`, `status`, `catalogue`, `test-ui`.
 - Shared download cache default: `${XDG_CACHE_HOME:-$HOME/.cache}/knowledge-pool/`, overridable with `KP_CACHE`; re-download only when a cached file is older than a set age (#81). Default age: 7 days.
 - Board: project `PVT_kwHOAH-e384Boo56`, Status field `PVTSSF_lAHOAH-e384Boo56zhnIDMM`, options Backlog `f75ad846`, Ready `61e4505c`, In progress `47fc9ee4`, In review `df73e18b`, Done `98236657` (read from the board 2026-11-10).
 - No new runtime or dev dependency (`pyproject.toml` unchanged). If the UI smoke test truly needs one, add it with `uv add --dev`, pinned.
@@ -28,7 +31,7 @@ Sub-issues map to tasks; waves can run in parallel Orca worktrees (#83's own adv
 
 | Wave | Task | Sub-issue | Depends on |
 |---|---|---|---|
-| 1 | 1 `check.sh` + CI | #79 | — |
+| 1 | 1 `jac.toml` `[scripts]` + CI | #79 | — |
 | 1 | 2 `dev.sh` | #79 | — |
 | 1 | 3 Download cache + `--if-stale` | #81 | — |
 | 1 | 4 `CODING_STANDARDS.md` | #82 | — |
@@ -37,7 +40,7 @@ Sub-issues map to tasks; waves can run in parallel Orca worktrees (#83's own adv
 | 2 | 7 `dev.sh up` builds the catalogue | #81 | 2, 3 |
 | 3 | 8 Steering: `AGENTS.md`, README, run skill, `qa-mvp.md` | #79, #81, #82, #83, #84, #85 | all |
 
-Wave-1 tasks must not touch `AGENTS.md`, `README.md` or `docs/`; Task 8 owns those.
+Wave-1 tasks must not touch `AGENTS.md`, `README.md` or `docs/`; Task 8 owns those. Task 1 owns `jac.toml`: it adds all six `[scripts]` entries at once, so no other task edits that file. Entries whose target doesn't exist yet (`up`/`down`/`status` before Task 2, `catalogue` before Task 3, `test-ui` before Task 6) fail until their task lands; each of those tasks ends by running its entry.
 
 ## Review Focus
 
@@ -51,8 +54,8 @@ Wave-1 tasks must not touch `AGENTS.md`, `README.md` or `docs/`; Task 8 owns tho
 
 ## File Structure
 
-- Create `scripts/check.sh` — the one validate command.
-- Modify `.github/workflows/test.yml` — call `scripts/check.sh`; make the UI test mandatory in CI.
+- Modify `jac.toml` — a `[scripts]` section: the project's command list.
+- Modify `.github/workflows/test.yml` — call `jac script check`; make the UI test mandatory in CI.
 - Create `scripts/dev.sh` — `up|down|status|port` per worktree.
 - Create `tests/test_dev_script.py` — `dev.sh` lifecycle tests.
 - Modify `catalog/ingest.py` — shared cache, max age, `--if-stale`.
@@ -64,31 +67,46 @@ Wave-1 tasks must not touch `AGENTS.md`, `README.md` or `docs/`; Task 8 owns tho
 
 ---
 
-### Task 1: `scripts/check.sh` and CI (#79)
+### Task 1: `jac.toml` `[scripts]` and CI (#79)
 
 **Files:**
-- Create: `scripts/check.sh`
+- Modify: `jac.toml` (new `[scripts]` section; read `uv run jac guide jac-config` first)
 - Modify: `.github/workflows/test.yml` (replace the "Type-check", "Run walker tests" and "Run pytest suite" steps)
 
 **Interfaces:**
-- Produces: `scripts/check.sh [pytest args...]` — exits non-zero on the first failing stage; extra args go to pytest only. Task 6 and Task 8 rely on this name.
+- Produces (Tasks 2, 3, 6, 7 and 8 rely on these names; no other task edits `jac.toml`):
 
-- [ ] **Step 1: Write `scripts/check.sh`** — `#!/usr/bin/env bash`, `set -euo pipefail`, `cd` to the repo root (`$(dirname "$0")/..`), then print a `== <stage>` header before each of: `uv run jac check *.jac`, `scripts/jac_test.sh`, `uv run pytest tests "$@"`. `chmod +x`.
+```toml
+[scripts]
+check = "jac check *.jac && scripts/jac_test.sh && pytest tests"
+up = "scripts/dev.sh up"
+down = "scripts/dev.sh down"
+status = "scripts/dev.sh status"
+catalogue = "python -m catalog.ingest --if-stale"
+test-ui = "pytest tests/test_ui_smoke.py -v"
+```
 
-- [ ] **Step 2: Run it**
+- [ ] **Step 1: Add the `[scripts]` section** above to `jac.toml`.
 
-Run: `scripts/check.sh`
+- [ ] **Step 2: Check the list**
+
+Run: `uv run jac script --list`
+Expected: all six names with their commands.
+
+- [ ] **Step 3: Run the check**
+
+Run: `uv run jac script check`
 Expected: `23 passed` from `jac check`, `jac test` passes, pytest passes; exit 0.
 
-- [ ] **Step 3: Prove it fails** — temporarily add a type error to a scratch copy (e.g. `echo 'with entry { x: int = "a"; }' > zz_broken.jac`), run `scripts/check.sh`, expect a non-zero exit at the `jac check` stage; delete `zz_broken.jac`.
+- [ ] **Step 4: Prove it fails at the first stage** — add a type error (`echo 'with entry { x: int = "a"; }' > zz_broken.jac`), run `uv run jac script check; echo $?`, expect a non-zero exit with no `jac test` output after the `jac check` errors; delete `zz_broken.jac`.
 
-- [ ] **Step 4: CI calls it** — in `test.yml`, replace the three steps with one step `name: Check`, `run: scripts/check.sh`. Keep install and artifact-upload steps as they are.
+- [ ] **Step 5: CI calls it** — in `test.yml`, replace the three steps with one step `name: Check`, `run: uv run jac script check`. Keep the install and artifact-upload steps as they are.
 
-- [ ] **Step 5: Commit**
+- [ ] **Step 6: Commit**
 
 ```bash
-git add scripts/check.sh .github/workflows/test.yml
-git commit -m "Add scripts/check.sh and run it in CI (#79)"
+git add jac.toml .github/workflows/test.yml
+git commit -m "Expose the project's commands as jac scripts; CI runs jac script check (#79)"
 ```
 
 ---
@@ -151,7 +169,7 @@ Expected: FAIL (`scripts/dev.sh` not found).
 Run: `uv run pytest tests/test_dev_script.py -v`
 Expected: 6 passed.
 
-- [ ] **Step 5: Manual check against the real catalogue** — `scripts/dev.sh up`, open the printed web URL with `uv run jac browse open <url>` and `snapshot` (Decks view renders), `scripts/dev.sh down`. Confirm `pgrep -f mcp_server.jac` lists nothing from this worktree.
+- [ ] **Step 5: Manual check through the jac scripts against the real catalogue** — `uv run jac script up`, open the printed web URL with `uv run jac browse open <url>` and `snapshot` (Decks view renders), `uv run jac script status` (exit 0), `uv run jac script down`. Confirm `pgrep -f mcp_server.jac` lists nothing from this worktree.
 
 - [ ] **Step 6: Commit**
 
@@ -202,7 +220,7 @@ Expected: FAIL (`cache_dir`/`cached` not defined).
 Run: `uv run pytest tests/test_ingest_cache.py tests/test_catalog.py tests/test_catalog_schema.py -v`
 Expected: all pass.
 
-- [ ] **Step 5: Real run** — `KP_CATALOG=/tmp/x.sqlite uv run python -m catalog.ingest` (downloads into `~/.cache/knowledge-pool/`), then run it again with the network unavailable to you or with `time`: the second build uses the cache and takes about 7 s. Then `--if-stale` prints "is current".
+- [ ] **Step 5: Real run** — `KP_CATALOG=/tmp/x.sqlite uv run python -m catalog.ingest` (downloads into `~/.cache/knowledge-pool/`), then run it again with the network unavailable to you or with `time`: the second build uses the cache and takes about 7 s. Then `uv run jac script catalogue` (the `--if-stale` entry from Task 1) prints "is current".
 
 - [ ] **Step 6: Commit**
 
@@ -227,7 +245,7 @@ git commit -m "Keep catalogue downloads in a shared cache; add --if-stale (#81)"
   - Use the named constant when one exists (`CHECKED_ZONES`, `ZONES`), never a hand-written copy of its list (`["main", "companion"]` in `legality.sv.jac`).
   - Share fixtures (symlink or one source), don't copy fixture files (#75).
   - A test name states what it asserts (`test_<subject>_<expected behaviour>`), as in `test_down_frees_both_ports`.
-  - One line on scope: these are the judgement calls a reviewer checks every time; mechanical checks belong in `scripts/check.sh`.
+  - One line on scope: these are the judgement calls a reviewer checks every time; mechanical checks belong in `jac script check`.
 
 - [ ] **Step 2: Check the examples are still true** — `grep -n '"main", "companion"' legality.sv.jac`; `grep -rn '214\|298' README.md tests/*.py`; `ls -l tests/fixtures` for the #75 symlinks. Reword any example that no longer matches the code.
 
@@ -275,7 +293,7 @@ git commit -m "Add scripts/board.sh to move issues on the Knowledge Pool board (
 - Modify: `.github/workflows/test.yml` (env `KP_REQUIRE_BROWSER: "1"` on the Check step; a browser install step only if Step 1 shows CI needs one)
 
 **Interfaces:**
-- Consumes: `scripts/dev.sh up|down|port` with `KP_DEV_DIR`, `KP_DEV_PORT`, `KP_CATALOG`, `JAC_DATA_PATH` (Task 2); `scripts/check.sh` runs it via pytest (Task 1).
+- Consumes: `scripts/dev.sh up|down|port` with `KP_DEV_DIR`, `KP_DEV_PORT`, `KP_CATALOG`, `JAC_DATA_PATH` (Task 2); `jac script check` runs it via pytest, and `jac script test-ui` runs it alone (Task 1).
 - Produces: `tests/test_ui_smoke.py` with a module fixture `app` that runs `dev.sh up` with a free `KP_DEV_PORT`, the `fixture_catalog` and a throwaway `JAC_DATA_PATH`, yields the web and MCP URLs, and runs `dev.sh down` at teardown. Browser calls go through a helper `browse(*args) -> str` running `jac browse -s kp-smoke-<port> ...` (own session so it never touches an agent's browser) and closing the session at teardown. Output and a final `screenshot` go to `test-artifacts/ui_smoke/` on failure, like `tests/test_mcp.py`'s log.
 
 `app` is module-scoped but `fixture_catalog` is function-scoped and autouse: build the module's own catalogue with `catalog.ingest.build` from the same fixtures (via `tmp_path_factory`) rather than widening `conftest.py`.
@@ -316,7 +334,7 @@ Expected: 2 passed, in under ~2 minutes.
 
 - [ ] **Step 5: Prove it catches a break** — temporarily make `search_cards` in `cards.sv.jac` return `[]` (the #65 failure), rerun, expect `test_build_a_deck_through_the_web_app` to FAIL; revert.
 
-- [ ] **Step 6: CI** — set `KP_REQUIRE_BROWSER: "1"` on the Check step (plus a browser step if Step 1 needed one). Run `scripts/check.sh` locally: all green.
+- [ ] **Step 6: CI** — set `KP_REQUIRE_BROWSER: "1"` on the Check step (plus a browser step if Step 1 needed one). Run `uv run jac script test-ui`, then `uv run jac script check`: all green.
 
 - [ ] **Step 7: Commit**
 
@@ -360,7 +378,9 @@ Expected: FAIL (server refuses to start: no catalogue).
 Run: `uv run pytest tests/test_dev_script.py -v`
 Expected: 7 passed.
 
-- [ ] **Step 5: Commit**
+- [ ] **Step 5: Through the jac script** — with no `data/catalog.sqlite` in the worktree and a warm cache, `uv run jac script up` builds the catalogue and starts the app; `uv run jac script down`.
+
+- [ ] **Step 6: Commit**
 
 ```bash
 git add scripts/dev.sh tests/test_dev_script.py
@@ -379,22 +399,23 @@ git commit -m "dev.sh up builds a missing or stale catalogue from the shared cac
 - Consumes: every script and flag above, by the names in their Interfaces blocks.
 
 - [ ] **Step 1: Rewrite `AGENTS.md`** (use the `writing-for-agents` skill). Keep the Jac pointers (`jac guide`, `jac guide jac-core-cheatsheet`). Replace the generic "Validate your work" section with pointers, one line each:
-  - Validate: `scripts/check.sh` (what CI runs). (#79)
-  - Run: `scripts/dev.sh up|status|down` — never `jac start` by hand, never `pkill -f`. (#79)
-  - Catalogue: built from `~/.cache/knowledge-pool/` by `dev.sh up` or `uv run python -m catalog.ingest --if-stale`; don't hunt for `AtomicCards.json.xz`. (#81)
+  - Commands: `uv run jac script --list` lists this repo's commands; don't restate the list in `AGENTS.md`. (#79)
+  - Validate: `jac script check` (what CI runs). (#79)
+  - Run: `jac script up|status|down` — never `jac start` by hand, never `pkill -f`. (#79)
+  - Catalogue: built from `~/.cache/knowledge-pool/` by `jac script up` or `jac script catalogue`; don't hunt for `AtomicCards.json.xz`. (#81)
   - Fixtures: grow `tests/fixtures/atomic_small.json` with `scripts/fixture_cards.py`. (#79)
   - Review standards: `CODING_STANDARDS.md`. (#82)
   - Orchestrated work: dispatch workers into Orca worktrees (or run on the feature branch one agent at a time), not the built-in `isolation: worktree`. (#83)
   - GitHub: read issues with `gh issue view N --json title,body,comments`; update PR bodies with `gh api -X PATCH repos/DaveParr/knowledge-pool/pulls/N -F body=@file`; move board cards with `scripts/board.sh <issue> <status>`. (#84)
   - Jac gotcha: `jac run` prints every walker `report` to stdout; wrap walker calls in `redirect_stdout` as `seed.jac`'s `walk` helper does. (#85)
 
-- [ ] **Step 2: README** — Setup: replace the "point `KP_CATALOG` at the main checkout's" tip with the shared cache and `--if-stale` (#81). Run: lead with `scripts/dev.sh up`. Test: `scripts/check.sh`, and replace "214 real cards" with wording that carries no count (#82). Layout: add `scripts/dev.sh`, `scripts/check.sh`, `scripts/board.sh`.
+- [ ] **Step 2: README** — Setup: replace the "point `KP_CATALOG` at the main checkout's" tip with the shared cache and `--if-stale` (#81). Run: lead with `uv run jac script up`. Test: `uv run jac script check`, and replace "214 real cards" with wording that carries no count (#82). Layout: add the `[scripts]` section of `jac.toml` (`jac script --list`), `scripts/dev.sh`, `scripts/board.sh`.
 
-- [ ] **Step 3: `docs/qa-mvp.md`** — it still names branch `27-claude-mcp` and old test counts. Replace sections 1–3 with "`scripts/dev.sh up`, then `scripts/check.sh`"; keep the per-slice manual checks if they still match the app, else delete the file and drop its README link. Decide by running through section 4 against `dev.sh up`.
+- [ ] **Step 3: `docs/qa-mvp.md`** — it still names branch `27-claude-mcp` and old test counts. Replace sections 1–3 with "`uv run jac script up`, then `uv run jac script check`"; keep the per-slice manual checks if they still match the app, else delete the file and drop its README link. Decide by running through section 4 against `jac script up`.
 
-- [ ] **Step 4: Run skill** — `.claude/skills/run-knowledge-pool/SKILL.md`: frontmatter `name: run-knowledge-pool`, a description that triggers on "run/start/test the app" in this repo; body: `scripts/dev.sh up`, open the web URL with `jac browse`, `scripts/dev.sh down` when finished. Under 20 lines.
+- [ ] **Step 4: Run skill** — `.claude/skills/run-knowledge-pool/SKILL.md`: frontmatter `name: run-knowledge-pool`, a description that triggers on "run/start/test the app" in this repo; body: `uv run jac script up`, open the web URL with `jac browse`, `uv run jac script down` when finished. Under 20 lines.
 
-- [ ] **Step 5: Verify every pointer** — run each command named in `AGENTS.md` and the skill once (`scripts/check.sh`, `scripts/dev.sh up/status/down`, `scripts/board.sh 78 nonsense`, `gh issue view 78 --json title`); check `grep -rn '27-claude-mcp\|214 real' README.md docs AGENTS.md` returns nothing.
+- [ ] **Step 5: Verify every pointer** — run each command named in `AGENTS.md` and the skill once (`uv run jac script --list`, `jac script check`, `jac script up/status/down`, `jac script catalogue`, `scripts/board.sh 78 nonsense`, `gh issue view 78 --json title`); check `grep -rn 'check\.sh\|27-claude-mcp\|214 real' README.md AGENTS.md docs .claude .github --exclude-dir=superpowers` returns nothing.
 
 - [ ] **Step 6: Commit**
 
@@ -405,7 +426,8 @@ git commit -m "Point AGENTS.md, README and a run skill at the new dev, check and
 
 ## Done when
 
-- `scripts/check.sh` passes locally and is the CI's only test step; CI runs the UI smoke test with a browser.
-- `scripts/dev.sh up` in a fresh worktree with no `data/` gives a running app and an MCP line, offline when the cache is warm.
+- `uv run jac script --list` shows `check`, `up`, `down`, `status`, `catalogue`, `test-ui`; no justfile or `scripts/check.sh` exists.
+- `jac script check` passes locally and is the CI's only test step; CI runs the UI smoke test with a browser.
+- `jac script up` in a fresh worktree with no `data/` gives a running app and an MCP line, offline when the cache is warm.
 - `AGENTS.md` points at check, dev, catalogue, fixtures, standards, Orca dispatch, the gh workaround, the board script and the report-echo gotcha.
 - Not done in this branch, by design: #83's user-level `CLAUDE.md`/memory copy (outside the repo — Dave can add one line by hand), and #85's "re-check session length after these land", which is an observation for the next retro, not code.
