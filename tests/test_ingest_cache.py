@@ -174,3 +174,62 @@ def test_source_flags_bypass_the_cache(tmp_path, cache, fetches):
         ]
     )
     assert fetches == []
+
+
+class _Body:
+    """A urlopen() result that lists the cache folder while its body is being read."""
+
+    def __init__(self, folder: Path, seen: list[set[str]], fail: bool = False):
+        self.folder, self.seen, self.fail, self.sent = folder, seen, fail, False
+
+    def __enter__(self):
+        return self
+
+    def __exit__(self, *exc):
+        return False
+
+    def read(self, n=-1):
+        if self.sent:
+            return b""
+        self.sent = True
+        self.seen.append({p.name for p in self.folder.iterdir()})
+        if self.fail:
+            raise OSError("connection reset")
+        return b"data"
+
+
+def test_concurrent_downloads_use_separate_temp_files(tmp_path, monkeypatch):
+    folder = tmp_path / "dl"
+    folder.mkdir()
+    seen: list[set[str]] = []
+    dest = folder / "AtomicCards.json.xz"
+    opened = []
+
+    def urlopen(req, timeout):
+        opened.append(1)
+        body = _Body(folder, seen)
+        if len(opened) == 1:
+            original = body.read
+
+            def read(n=-1):
+                if not body.sent:
+                    ingest.download(dest)  # a second worktree downloads while this one is mid-body
+                return original(n)
+
+            body.read = read
+        return body
+
+    monkeypatch.setattr(ingest.urllib.request, "urlopen", urlopen)
+    ingest.download(dest)
+    inner_view, outer_view = ({n for n in names if n.endswith(".part")} for names in seen)
+    assert len(inner_view) == 2  # the outer's temp file was still there, and the inner used another
+    assert inner_view == outer_view or outer_view < inner_view
+    assert [p.name for p in folder.iterdir()] == [dest.name]
+
+
+def test_a_failed_download_leaves_no_part_file(tmp_path, monkeypatch):
+    folder = tmp_path / "dl"
+    monkeypatch.setattr(ingest.urllib.request, "urlopen", lambda req, timeout: _Body(folder, [], fail=True))
+    with pytest.raises(OSError):
+        ingest.download(folder / "AtomicCards.json.xz")
+    assert list(folder.iterdir()) == []

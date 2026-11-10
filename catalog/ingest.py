@@ -26,6 +26,7 @@ import os
 import shutil
 import sqlite3
 import sys
+import tempfile
 import time
 import urllib.request
 from collections.abc import Callable
@@ -259,15 +260,29 @@ def build(atomic: dict, out: Path, tags: tuple[list[tuple], list[tuple]] | None 
     return meta
 
 
+def _fetch(req: urllib.request.Request, dest: Path) -> Path:
+    """Download to a temp file of our own in dest's folder, then rename it into place.
+
+    The shared cache can be refreshed by several worktrees at once; a name per
+    download keeps them from interleaving into one corrupt file.
+    """
+    fd, name = tempfile.mkstemp(dir=dest.parent, prefix=f"{dest.name}.", suffix=".part")
+    tmp = Path(name)
+    try:
+        with os.fdopen(fd, "wb") as out, urllib.request.urlopen(req, timeout=120) as resp:
+            shutil.copyfileobj(resp, out)
+        tmp.replace(dest)
+    except BaseException:
+        tmp.unlink(missing_ok=True)
+        raise
+    return dest
+
+
 def download(dest: Path) -> Path:
     dest.parent.mkdir(parents=True, exist_ok=True)
     print(f"Downloading {ATOMIC_URL} ...", file=sys.stderr)
     req = urllib.request.Request(ATOMIC_URL, headers={"User-Agent": USER_AGENT})
-    tmp = dest.with_suffix(".part")
-    with urllib.request.urlopen(req, timeout=120) as resp, open(tmp, "wb") as out:
-        shutil.copyfileobj(resp, out)
-    tmp.replace(dest)
-    return dest
+    return _fetch(req, dest)
 
 
 def oracle_tags_uri() -> str:
@@ -289,11 +304,7 @@ def download_oracle_tags(dest: Path) -> Path:
     dest.parent.mkdir(parents=True, exist_ok=True)
     print(f"Downloading {uri} ...", file=sys.stderr)
     req = urllib.request.Request(uri, headers={"User-Agent": USER_AGENT})
-    tmp = dest.with_suffix(".part")
-    with urllib.request.urlopen(req, timeout=120) as resp, open(tmp, "wb") as out:
-        shutil.copyfileobj(resp, out)
-    tmp.replace(dest)
-    return dest
+    return _fetch(req, dest)
 
 
 def main(argv: list[str] | None = None) -> int:
