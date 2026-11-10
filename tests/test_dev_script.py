@@ -109,3 +109,20 @@ def test_status_when_not_running_exits_3(env):
     assert result.returncode == 3
     assert "not running" in result.stdout
     assert dev("down", env=env).returncode == 0
+
+
+def test_down_ignores_a_pidfile_naming_someone_elses_process(env):
+    state = Path(env["KP_DEV_DIR"])
+    state.mkdir(parents=True)
+    stranger = subprocess.Popen(["sleep", "300"], start_new_session=True)
+    try:
+        (state / "server.pid").write_text(str(stranger.pid))
+        (state / "port").write_text("8999")
+        assert dev("down", env=env).returncode == 0
+        assert stranger.poll() is None
+        assert not (state / "server.pid").exists()
+        assert not (state / "port").exists()
+        assert dev("status", env=env).returncode == 3
+    finally:
+        stranger.kill()
+        stranger.wait()

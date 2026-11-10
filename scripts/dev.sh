@@ -23,8 +23,12 @@ is_running() {
     [ -n "$pgid" ] && group_alive "$pgid"
 }
 
-# True while any member of the group is not a zombie (a killed leader lingers as one).
-group_alive() { ps -o stat= -g "$1" 2>/dev/null | grep -qv '^Z'; }
+# True while the group holds a live (non-zombie) mcp_server.jac process, so a stale
+# pidfile whose number was reused by someone else's group is never treated as ours.
+group_alive() {
+    ps -eo pgid=,stat=,args= 2>/dev/null |
+        awk -v g="$1" '$1 == g && $2 !~ /^Z/ && index($0, "mcp_server.jac") { f = 1 } END { exit !f }'
+}
 
 choose_port() {
     if [ -n "${KP_DEV_PORT:-}" ]; then
