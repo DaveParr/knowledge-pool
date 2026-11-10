@@ -59,8 +59,14 @@ print_urls() {
     echo "log: $LOG"
 }
 
-# Task 7 builds the catalogue here when it is missing.
-ensure_catalogue() { :; }
+# Build the catalogue at $KP_CATALOG from the shared download cache when it is
+# missing or out of date (downloads only if the cached files are old or absent).
+ensure_catalogue() {
+    if ! (cd "$REPO" && uv run python -m catalog.ingest --if-stale); then
+        echo "dev.sh: could not build the catalogue (see above)" >&2
+        return 1
+    fi
+}
 
 cmd_up() {
     if is_running; then

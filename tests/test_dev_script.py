@@ -1,5 +1,7 @@
 """scripts/dev.sh: one app per worktree, on its own port pair, with a pidfile."""
 
+import gzip
+import lzma
 import os
 import signal
 import socket
@@ -9,8 +11,11 @@ from urllib.request import urlopen
 
 import pytest
 
+from catalog.ingest import cache_paths
+
 ROOT = Path(__file__).resolve().parent.parent
 SCRIPT = ROOT / "scripts" / "dev.sh"
+FIXTURES = ROOT / "tests" / "fixtures"
 
 
 @pytest.fixture
@@ -126,3 +131,19 @@ def test_down_ignores_a_pidfile_naming_someone_elses_process(env):
     finally:
         stranger.kill()
         stranger.wait()
+
+
+def test_up_builds_a_missing_catalogue_from_the_cache(env, tmp_path, monkeypatch):
+    monkeypatch.setenv("KP_CACHE", str(tmp_path / "cache"))
+    atomic, tags = cache_paths()
+    atomic.parent.mkdir(parents=True)
+    tags.parent.mkdir(parents=True)
+    atomic.write_bytes(lzma.compress((FIXTURES / "atomic_small.json").read_bytes()))
+    tags.write_bytes(gzip.compress((FIXTURES / "oracle_tags_small.jsonl").read_bytes()))
+    built = tmp_path / "built" / "catalog.sqlite"
+    env = {**env, "KP_CACHE": str(tmp_path / "cache"), "KP_CATALOG": str(built)}
+    assert not built.exists()
+    result = dev("up", env=env)
+    assert result.returncode == 0, result.stdout + result.stderr
+    assert built.exists()
+    assert healthy(int(dev("port", env=env).stdout))
