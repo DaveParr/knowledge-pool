@@ -1,0 +1,8 @@
+[project]
+name = "sharedcard"
+version = "0.0.1"
+entry-point = "main"
+kind = "service"
+
+[serve.workers]
+count = "1"

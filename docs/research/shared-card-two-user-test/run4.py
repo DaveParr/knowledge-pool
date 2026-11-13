@@ -1,0 +1,13 @@
+from lib import *
+a, ar = user("alicer1"); b, br = user("bobr1")
+F = lambda name, body, tok=None: call("/function/" + name, body, tok)
+card = open(sys.argv[1].replace("port", "g2card")).read()
+ad = show("alice make_deck", F("make_deck", {"tag": "G2", "name": "a-final", "count": 7}, a))
+bd = show("bob make_deck", F("make_deck", {"tag": "G2", "name": "b-final", "count": 1}, b))
+show("carol-like: bob delete Holds edges into card (loop form), no share", F("delete_in_edges_loop", {"node_id": card}, b))
+show("alice my_deck", F("my_deck", {"deck_id": ad["deck"]}, a))
+show("bob my_deck (own edge gone)", F("my_deck", {"deck_id": bd["deck"]}, b))
+show("alice share deck+edges READ with bob", F("share", {"deck_id": ad["deck"], "target_root": br, "with_edges": True, "with_all": False}, a))
+show("bob delete Holds edges into card (loop form), alice edge readable", F("delete_in_edges_loop", {"node_id": card}, b))
+show("bob edit alice's edge count with READ", F("edit_own", {"deck_id": ad["deck"], "count": 99}, b))
+show("alice my_deck after", F("my_deck", {"deck_id": ad["deck"]}, a))
