@@ -1,0 +1,994 @@
+diff --git a/card_lines.sv.jac b/card_lines.jac
+similarity index 100%
+rename from card_lines.sv.jac
+rename to card_lines.jac
+diff --git a/card_search.cl.jac b/card_search.jac
+similarity index 87%
+rename from card_search.cl.jac
+rename to card_search.jac
+index ea2dc06..420b3b0 100644
+--- a/card_search.cl.jac
++++ b/card_search.jac
+@@ -9,10 +9,10 @@ import "./card_search.css";
+ import from .mana_cost { ManaCost }
+ import from .walker_failure { failureMessage }
+ 
+-sv import from decks { DeckView, AddCard }
+-sv import from card_lines { CardLine }
+-sv import from walker_errors { WalkerError }
+-sv import from cards { CardHit, CardSearch, search_cards }
++import from decks { DeckView, AddCard }
++import from card_lines { CardLine }
++import from walker_errors { WalkerError }
++import from cards { CardHit, CardSearch, search_cards }
+ 
+ def:pub AddCards(deckId: str, format: str, cards: list[CardLine], onChanged: Callable[[DeckView], None]) -> JsxElement {
+     has query: str = "",
+@@ -45,7 +45,7 @@ def:pub AddCards(deckId: str, format: str, cards: list[CardLine], onChanged: Cal
+                     aria-label="Search cards"
+                     placeholder="Card name, type or rules text"
+                     value={query}
+-                    onChange={lambda e: ChangeEvent { query = e.target.value; }}
++                    onChange={lambda (e: ChangeEvent) { query = e.target.value; }}
+                 />
+                 <button type="submit" className="primary">Search</button>
+             </form>
+@@ -75,13 +75,13 @@ def:pub AddCards(deckId: str, format: str, cards: list[CardLine], onChanged: Cal
+                         <div className="cs-actions">
+                             <button
+                                 aria-label={"Add " + hit.name + " to main deck"}
+-                                onClick={lambda _e: MouseEvent { addCard(hit, "main"); }}
++                                onClick={lambda (_e: MouseEvent) { addCard(hit, "main"); }}
+                             >
+                                 + Main
+                             </button>
+                             <button
+                                 aria-label={"Add " + hit.name + " to sideboard"}
+-                                onClick={lambda _e: MouseEvent { addCard(hit, "sideboard"); }}
++                                onClick={lambda (_e: MouseEvent) { addCard(hit, "sideboard"); }}
+                             >
+                                 + Side
+                             </button>
+@@ -89,7 +89,7 @@ def:pub AddCards(deckId: str, format: str, cards: list[CardLine], onChanged: Cal
+                                 <button
+                                     key="commander"
+                                     aria-label={"Add " + hit.name + " as commander"}
+-                                    onClick={lambda _e: MouseEvent { addCard(hit, "commander"); }}
++                                    onClick={lambda (_e: MouseEvent) { addCard(hit, "commander"); }}
+                                 >
+                                     + Commander
+                                 </button>
+@@ -98,7 +98,7 @@ def:pub AddCards(deckId: str, format: str, cards: list[CardLine], onChanged: Cal
+                                 <button
+                                     key="companion"
+                                     aria-label={"Add " + hit.name + " as companion"}
+-                                    onClick={lambda _e: MouseEvent { addCard(hit, "companion"); }}
++                                    onClick={lambda (_e: MouseEvent) { addCard(hit, "companion"); }}
+                                 >
+                                     + Companion
+                                 </button>
+diff --git a/cards.sv.jac b/cards.jac
+similarity index 99%
+rename from cards.sv.jac
+rename to cards.jac
+index 92583ca..2117255 100644
+--- a/cards.sv.jac
++++ b/cards.jac
+@@ -118,7 +118,7 @@ def catalog_node(home: Root) -> Catalog {
+     if found {
+         return found[0];
+     }
+-    return (home ++> Catalog())[0] as Catalog;
++    return (home ++> Catalog()) as Catalog;
+ }
+ 
+ """Copy every catalogue field of record `c` onto `card`. The one place that
+diff --git a/commander.sv.jac b/commander.jac
+similarity index 100%
+rename from commander.sv.jac
+rename to commander.jac
+diff --git a/deck_detail.cl.jac b/deck_detail.jac
+similarity index 93%
+rename from deck_detail.cl.jac
+rename to deck_detail.jac
+index 458f76e..3e1111d 100644
+--- a/deck_detail.cl.jac
++++ b/deck_detail.jac
+@@ -12,14 +12,14 @@ import from .card_search { AddCards }
+ import from .mana_cost { ManaCost }
+ import from .walker_failure { failureMessage }
+ 
+-sv import from decks {
++import from decks {
+     DeckView, FormatInfo, GetDeck, SetDeckFormat, SetCardCount, RemoveCard, list_formats
+ }
+-sv import from legality { Violation }
+-sv import from commander { GameChangers }
+-sv import from mana { ManaProfile }
+-sv import from card_lines { CardLine }
+-sv import from walker_errors { WalkerError }
++import from legality { Violation }
++import from commander { GameChangers }
++import from mana { ManaProfile }
++import from card_lines { CardLine }
++import from walker_errors { WalkerError }
+ 
+ """Zones in display order, with their headings."""
+ glob ZONES: list[tuple[str, str]] = [
+@@ -180,7 +180,7 @@ def:pub DeckDetail(deckId: str, importNotes: list[str], onBack: Callable[[], Non
+                 <select
+                     aria-label="Format"
+                     value={deck.format}
+-                    onChange={lambda e: ChangeEvent { setFormat(e.target.value); }}
++                    onChange={lambda (e: ChangeEvent) { setFormat(e.target.value); }}
+                 >
+                     {[<option key={f.name} value={f.name}>{f.label}</option> for f in formats]}
+                 </select>
+@@ -216,8 +216,8 @@ def:pub DeckDetail(deckId: str, importNotes: list[str], onBack: Callable[[], Non
+                         <div className="dd-zonehead">
+                             <h2>{title + " (" + str(sum([c.count for c in rows])) + ")"}</h2>
+                             <span>
+-                                <button className="quiet dd-all" onClick={lambda _e: MouseEvent { openAll(rows, True); }}>Expand all</button>
+-                                <button className="quiet dd-all" onClick={lambda _e: MouseEvent { openAll(rows, False); }}>Collapse all</button>
++                                <button className="quiet dd-all" onClick={lambda (_e: MouseEvent) { openAll(rows, True); }}>Expand all</button>
++                                <button className="quiet dd-all" onClick={lambda (_e: MouseEvent) { openAll(rows, False); }}>Collapse all</button>
+                             </span>
+                         </div>
+                         <div className="dd-row dd-colhead" aria-hidden="true">
+@@ -234,11 +234,11 @@ def:pub DeckDetail(deckId: str, importNotes: list[str], onBack: Callable[[], Non
+                                         className="dd-count"
+                                         aria-label={"Count of " + line.name + " in " + line.zone}
+                                         value={str(line.count)}
+-                                        onChange={lambda e: ChangeEvent { setCount(line.oracle_id, line.zone, e.target.value); }}
++                                        onChange={lambda (e: ChangeEvent) { setCount(line.oracle_id, line.zone, e.target.value); }}
+                                     />
+                                     <details
+                                         open={bool(opened.get(rowKey(line), False))}
+-                                        onToggle={lambda e: Event { setOpen(rowKey(line), e.target.hasAttribute("open")); }}
++                                        onToggle={lambda (e: Event) { setOpen(rowKey(line), e.target.hasAttribute("open")); }}
+                                     >
+                                         <summary className="dd-line">
+                                             <span className="dd-name">{line.name}</span>
+@@ -252,7 +252,7 @@ def:pub DeckDetail(deckId: str, importNotes: list[str], onBack: Callable[[], Non
+                                         className="quiet dd-remove"
+                                         aria-label={"Remove " + line.name + " from " + line.zone}
+                                         title="Remove"
+-                                        onClick={lambda _e: MouseEvent { removeCard(line.oracle_id, line.zone); }}
++                                        onClick={lambda (_e: MouseEvent) { removeCard(line.oracle_id, line.zone); }}
+                                     >
+                                         ✕
+                                     </button>
+diff --git a/deck_io.sv.jac b/deck_io.jac
+similarity index 93%
+rename from deck_io.sv.jac
+rename to deck_io.jac
+index 6ec44f0..b2ba808 100644
+--- a/deck_io.sv.jac
++++ b/deck_io.jac
+@@ -98,22 +98,22 @@ def resolve_list(format: str, text: str) -> ResolvedList | WalkerError {
+ 
+     unresolved: list[str] = [*parsed.unparsed];
+     groups: dict[tuple[str, str], ParsedEntry] = {};
+-    for entry in parsed.entries {
+-        if entry.zone not in ZONES {
+-            unresolved.append(f"{entry.raw_name} (invalid zone: {entry.zone})");
++    for ent in parsed.entries {
++        if ent.zone not in ZONES {
++            unresolved.append(f"{ent.raw_name} (invalid zone: {ent.zone})");
+             continue;
+         }
+-        found = find_card(entry.oracle_id) or find_card(entry.raw_name);
++        found = find_card(ent.oracle_id) or find_card(ent.raw_name);
+         if found is None {
+-            unresolved.append(entry.raw_name);
++            unresolved.append(ent.raw_name);
+             continue;
+         }
+         oid = found["oracle_id"] as str;
+         resolved = ParsedEntry(
+-            raw_name=entry.raw_name, count=entry.count, zone=entry.zone, oracle_id=oid,
+-            roles=entry.roles, tags=entry.tags, locked=entry.locked, reason=entry.reason
++            raw_name=ent.raw_name, count=ent.count, zone=ent.zone, oracle_id=oid,
++            roles=ent.roles, tags=ent.tags, locked=ent.locked, reason=ent.reason
+         );
+-        key = (oid, entry.zone);
++        key = (oid, ent.zone);
+         if key in groups {
+             resolved.count += groups[key].count;
+         }
+diff --git a/decks.sv.jac b/decks.jac
+similarity index 98%
+rename from decks.sv.jac
+rename to decks.jac
+index 986fff2..6221a1c 100644
+--- a/decks.sv.jac
++++ b/decks.jac
+@@ -71,7 +71,7 @@ walker:pub ListDecks {
+     has reports: list[list[Deck]] = [];
+ 
+     can collect with Root entry {
+-        decks = sorted([here-->[?:Deck]], key=lambda d: Deck : d.created_at);
++        decks = sorted([here-->[?:Deck]], key=lambda (d: Deck) { return d.created_at; });
+         report decks;
+     }
+ }
+@@ -163,7 +163,7 @@ def card_lines(deck: Deck) -> list[CardLine] {
+     lines: list[CardLine] = [
+         card_line(c, e.zone, e.count, e.roles, e.tags, e.locked, e.reason) for (e, c) in holdings(deck)
+     ];
+-    lines.sort(key=lambda l: CardLine : (ZONES.index(l.zone), l.name));
++    lines.sort(key=lambda (l: CardLine) { return (ZONES.index(l.zone), l.name); });
+     return lines;
+ }
+ 
+@@ -404,7 +404,7 @@ Each change is {"oracle_id", "count", "zone", "reason"} and sets that card's
+ count in that zone. Bad changes are skipped and listed in the view's `rejected`.
+ """
+ walker EditDeck(DeckAction) {
+-    has changes: list[dict] = [];
++    has changes: list[dict[str, any]] = [];
+ 
+     can edit with Deck entry {
+         rejected: list[str] = [];
+diff --git a/export_panel.impl.jac b/export_panel.impl.jac
+index 34bf07e..6638777 100644
+--- a/export_panel.impl.jac
++++ b/export_panel.impl.jac
+@@ -19,7 +19,7 @@ impl ExportPanel.copy -> None {
+         status = "Copied";
+     } except Exception {
+         # The browser refused: select the text so the user can copy it by hand.
+-        box = document.querySelector("textarea[aria-label='Exported " + deckName + "']");  # jac:ignore[E1032]
++        box: any = document.querySelector("textarea[aria-label='Exported " + deckName + "']");  # jac:ignore[E1032]
+         if box {
+             box.focus();  # jac:ignore[E1032]
+             box.select();  # jac:ignore[E1032]
+@@ -36,7 +36,7 @@ impl ExportPanel.saveFile(_e: MouseEvent) -> None {
+         }
+     }
+     blob = new(Blob, [content], {"type": "text/plain"});  # jac:ignore[E1053]
+-    link = document.createElement("a");  # jac:ignore[E1032]
++    link: any = document.createElement("a");  # jac:ignore[E1032]
+     link.href = URL.createObjectURL(blob);  # jac:ignore[E1032]
+     stem = deckName.strip().lower().replace(" ", "-") or "deck";
+     link.setAttribute("download", stem + "." + ext);  # jac:ignore[E1032]
+diff --git a/export_panel.cl.jac b/export_panel.jac
+similarity index 95%
+rename from export_panel.cl.jac
+rename to export_panel.jac
+index c164b81..a7c75ab 100644
+--- a/export_panel.cl.jac
++++ b/export_panel.jac
+@@ -8,7 +8,7 @@ which opens below the button's row.
+ import "./export_panel.css";
+ import from .walker_failure { failureMessage }
+ 
+-sv import from deck_io { DeckExport, ExportResult }
++import from deck_io { DeckExport, ExportResult }
+ 
+ """Export formats: key, label, lossless, file extension."""
+ glob EXPORT_FORMATS: list[tuple[str, str, bool, str]] = [
+@@ -69,7 +69,7 @@ def:pub ExportPanel(deckId: str, deckName: str) -> JsxElement {
+                             key={k}
+                             className="ex-format"
+                             aria-pressed={k == format}
+-                            onClick={lambda _e: MouseEvent { load(k); }}
++                            onClick={lambda (_e: MouseEvent) { load(k); }}
+                         >
+                             {l}
+                             <span className="ex-sub">{"lossless" if ll else "lossy"}</span>
+@@ -82,7 +82,7 @@ def:pub ExportPanel(deckId: str, deckName: str) -> JsxElement {
+                 {<p className="error" role="alert">{error}</p> if error else None}
+                 <textarea readOnly={True} aria-label={"Exported " + deckName} value={content} rows={10}/>
+                 <div className="ex-bar">
+-                    <button className="primary" onClick={lambda _e: MouseEvent { copy(); }}>Copy</button>
++                    <button className="primary" onClick={lambda (_e: MouseEvent) { copy(); }}>Copy</button>
+                     <button onClick={saveFile}>{"Download ." + ext}</button>
+                     <span className="ex-done" role="status">{status}</span>
+                     <span className="ex-size">{str(lines) + " lines · " + str(len(content)) + " characters" if content else ""}</span>
+diff --git a/frontend.cl.jac b/frontend.jac
+similarity index 86%
+rename from frontend.cl.jac
+rename to frontend.jac
+index 832cc1e..f4022d3 100644
+--- a/frontend.cl.jac
++++ b/frontend.jac
+@@ -6,8 +6,8 @@ import from .deck_detail { DeckDetail }
+ import from .export_panel { ExportPanel }
+ import from .walker_failure { failureMessage }
+ 
+-sv import from decks { Deck, FormatInfo, CreateDeck, ListDecks, list_formats }
+-sv import from deck_io { CreateDeckFromList, NewDeckResult }
++import from decks { Deck, FormatInfo, CreateDeck, ListDecks, list_formats }
++import from deck_io { CreateDeckFromList, NewDeckResult }
+ 
+ def:pub app -> JsxElement {
+     has decks: list[Deck] = [],
+@@ -60,7 +60,7 @@ def:pub app -> JsxElement {
+                         type="text"
+                         aria-label="Deck name"
+                         value={name}
+-                        onChange={lambda e: ChangeEvent { name = e.target.value; }}
++                        onChange={lambda (e: ChangeEvent) { name = e.target.value; }}
+                         placeholder={"Deck name (optional for mtgdeck/1 or MTGJSON)" if importOpen else "New deck name"}
+                     />
+                     <button type="submit" className="primary">
+@@ -70,7 +70,7 @@ def:pub app -> JsxElement {
+                         type="button"
+                         aria-expanded={importOpen}
+                         aria-controls="import-list"
+-                        onClick={lambda _e: MouseEvent { importOpen = not importOpen; error = ""; }}
++                        onClick={lambda (_e: MouseEvent) { importOpen = not importOpen; error = ""; }}
+                     >
+                         {"Import list ▴" if importOpen else "Import list ▾"}
+                     </button>
+@@ -82,7 +82,7 @@ def:pub app -> JsxElement {
+                             <select
+                                 aria-label="Import format"
+                                 value={importFormat}
+-                                onChange={lambda e: ChangeEvent { importFormat = e.target.value; }}
++                                onChange={lambda (e: ChangeEvent) { importFormat = e.target.value; }}
+                             >
+                                 <option value="moxfield">Moxfield</option>
+                                 <option value="arena">MTGA/MTGO</option>
+@@ -96,7 +96,7 @@ def:pub app -> JsxElement {
+                             <select
+                                 aria-label="Play format"
+                                 value={importPlayFormat}
+-                                onChange={lambda e: ChangeEvent { importPlayFormat = e.target.value; }}
++                                onChange={lambda (e: ChangeEvent) { importPlayFormat = e.target.value; }}
+                             >
+                                 <option value="">{"From the list (mtgdeck/1), else Standard" if importFormat == "mtgdeck1" else "Standard"}</option>
+                                 {[<option key={f.name} value={f.name}>{f.label}</option> for f in formats if f.name != "standard" or importFormat == "mtgdeck1"]}
+@@ -107,7 +107,7 @@ def:pub app -> JsxElement {
+                         aria-label="Deck list to import"
+                         placeholder="Paste a deck list"
+                         value={importText}
+-                        onChange={lambda e: ChangeEvent { importText = e.target.value; }}
++                        onChange={lambda (e: ChangeEvent) { importText = e.target.value; }}
+                         rows={8}
+                     />
+                 </div> if importOpen else None}
+@@ -119,7 +119,7 @@ def:pub app -> JsxElement {
+                     <li key={jid(deck)} className="fe-deck">
+                         <a
+                             href="#"
+-                            onClick={lambda e: MouseEvent { e.preventDefault(); openDeckId = jid(deck); }}
++                            onClick={lambda (e: MouseEvent) { e.preventDefault(); openDeckId = jid(deck); }}
+                         >
+                             {deck.name}
+                         </a>
+diff --git a/jac.toml b/jac.toml
+index 21cf9f6..3cd1a43 100644
+--- a/jac.toml
++++ b/jac.toml
+@@ -2,8 +2,7 @@
+ name = "knowledge-pool"
+ version = "0.1.0"
+ description = "A full-stack Jac application"
+-entry-point = "main.jac"
+-kind = "fullstack"
++default-app = "knowledge-pool"
+ 
+ [dependencies.npm]
+ react = "18.3.1"
+@@ -21,13 +20,13 @@ typescript = "5.9.3"
+ "@types/react" = "18.3.31"
+ "@types/react-dom" = "18.3.7"
+ 
+-[dev-dependencies]
+-watchdog = ">=3.0.0"
+-
+-[serve]
+-base_route_app = "app"
++[dependencies.pypi]
++mcp = "==2.3.0"
+ 
+-[plugins.client]
++[dev-dependencies.pypi]
++watchdog = ">=3.0.0"
++jsonschema = "==4.26.0"
++pytest = ">=9.2.0"
+ 
+ [test]
+ directory = "tests"
+@@ -39,3 +38,11 @@ down = "scripts/dev.sh down"
+ status = "scripts/dev.sh status"
+ catalogue = "python -m catalog.ingest --if-stale"
+ test-ui = "pytest tests/test_ui_smoke.py -v"
++
++[serve.workers]
++count = "1"
++
++[apps.knowledge-pool]
++kind = "web-app"
++entry-point = "main"
++
+diff --git a/legality.sv.jac b/legality.jac
+similarity index 100%
+rename from legality.sv.jac
+rename to legality.jac
+diff --git a/main.jac b/main.jac
+index d8bf771..98fd5d6 100644
+--- a/main.jac
++++ b/main.jac
+@@ -4,12 +4,29 @@ Server endpoints come from `decks.sv.jac`; the client UI from `frontend.cl.jac`.
+ """
+ 
+ import from decks {
+-    Deck, DeckView, FormatInfo, CreateDeck, ListDecks, GetDeck, SetDeckFormat,
+-    AddCard, SetCardCount, RemoveCard, list_formats
++    Deck,
++    DeckView,
++    FormatInfo,
++    CreateDeck,
++    ListDecks,
++    GetDeck,
++    SetDeckFormat,
++    AddCard,
++    SetCardCount,
++    RemoveCard,
++    list_formats
+ }
+ import from legality { Violation }
+ import from card_lines { CardLine }
+-import from cards { CardHit, CardSearch, CatalogInfo, search_cards, catalog_info, check_catalogue, RefreshCards }
++import from cards {
++    CardHit,
++    CardSearch,
++    CatalogInfo,
++    search_cards,
++    catalog_info,
++    check_catalogue,
++    RefreshCards
++}
+ import from deck_io { DeckExport, DeckImport, CreateDeckFromList }
+ 
+ # Refuse to serve a catalogue built by older code: the error names the ingest command.
+@@ -17,10 +34,9 @@ with entry {
+     check_catalogue();
+ }
+ 
+-cl {
+-    import from .frontend { app as ClientApp }
+ 
+-    def:pub app -> JsxElement {
+-        return <ClientApp/>;
+-    }
++import from .frontend { app as ClientApp }
++
++def:pub app -> JsxElement {
++    return <ClientApp/>;
+ }
+diff --git a/mana.sv.jac b/mana.jac
+similarity index 100%
+rename from mana.sv.jac
+rename to mana.jac
+diff --git a/mana_cost.cl.jac b/mana_cost.jac
+similarity index 100%
+rename from mana_cost.cl.jac
+rename to mana_cost.jac
+diff --git a/mana_panel.cl.jac b/mana_panel.jac
+similarity index 97%
+rename from mana_panel.cl.jac
+rename to mana_panel.jac
+index de5a91e..89b0263 100644
+--- a/mana_panel.cl.jac
++++ b/mana_panel.jac
+@@ -6,7 +6,7 @@ DeckView.curve; deck_analyze returns the same two). Main deck only.
+ """
+ 
+ import "./mana_panel.css";
+-sv import from mana { ManaProfile, ManaCurve }
++import from mana { ManaProfile, ManaCurve }
+ 
+ glob COLOUR_NAMES: dict[str, str] = {
+     "W": "White", "U": "Blue", "B": "Black", "R": "Red", "G": "Green"
+@@ -97,7 +97,7 @@ def:pub ManaPanel(mana: ManaProfile, curve: ManaCurve, mainTotal: int) -> JsxEle
+                 type="button"
+                 className="quiet mp-show-table"
+                 aria-expanded={showTable}
+-                onClick={lambda _e: MouseEvent { showTable = not showTable; }}
++                onClick={lambda (_e: MouseEvent) { showTable = not showTable; }}
+             >
+                 {"Hide table" if showTable else "Show as table"}
+             </button>
+diff --git a/mcp_server.jac b/mcp_server.jac
+index 55cf032..c2efcc5 100644
+--- a/mcp_server.jac
++++ b/mcp_server.jac
+@@ -54,7 +54,7 @@ glob LOGGED_CLIENT_UI: list[bool] = [],
+      EXPORT_UI: str = "ui://knowledge-pool/deck-export.html",
+      # The export view's format buttons, in order: key, label, lossless, file
+      # extension. Same list as the web app's export panel (export_panel.cl.jac).
+-     EXPORT_FORMATS: list[dict] = [
++     EXPORT_FORMATS: list[dict[str, any]] = [
+          {"key": "arena", "label": "MTGA/MTGO", "lossless": False, "ext": "txt"},
+          {"key": "moxfield", "label": "Moxfield", "lossless": False, "ext": "txt"},
+          {"key": "text", "label": "Plain text", "lossless": False, "ext": "txt"},
+@@ -79,7 +79,7 @@ def deck_show(deck_id: str, ctx: Context) -> CallToolResult {
+ 
+ """What the model gets when the user already sees the deck view: the deck's
+ shape and legality, and a note not to list the cards again."""
+-def deck_brief(view: dict) -> str {
++def deck_brief(view: dict[str, any]) -> str {
+     return (
+         f"Shown to the user as an expandable deck list: {view['name']}, {view['format']}, "
+         + f"{view['main_total']} main, {view['sideboard_total']} sideboard. "
+@@ -92,7 +92,7 @@ def deck_brief(view: dict) -> str {
+ 
+ """For a Commander deck, a sentence with its Game Changers and bracket hint
+ ("" for other formats)."""
+-def game_changers_note(view: dict) -> str {
++def game_changers_note(view: dict[str, any]) -> str {
+     gc = view.get("game_changers");
+     if gc is None {
+         return "";
+@@ -104,7 +104,7 @@ def game_changers_note(view: dict) -> str {
+ 
+ """The deck as a compact Markdown table, for clients that do not render MCP
+ Apps: one row per card, without rules text or tags (get_card has those)."""
+-def deck_markdown(view: dict) -> str {
++def deck_markdown(view: dict[str, any]) -> str {
+     lines = [
+         f"## {view['name']}",
+         f"{view['format']}, {view['main_total']} main, {view['sideboard_total']} sideboard. "
+@@ -162,7 +162,7 @@ def deck_analyze(deck_id: str, ctx: Context) -> CallToolResult {
+ 
+ """What the model gets when the user already sees the mana chart: the numbers
+ on one line, so it can comment on them, and a note not to redraw the chart."""
+-def mana_brief(analysis: dict) -> str {
++def mana_brief(analysis: dict[str, any]) -> str {
+     mana = analysis["mana"];
+     curve = analysis["curve"];
+     buckets = curve["buckets"] as dict[str, int];
+@@ -179,7 +179,7 @@ def mana_brief(analysis: dict) -> str {
+ }
+ 
+ """The mana analysis as Markdown tables, for clients that do not render MCP Apps."""
+-def mana_markdown(analysis: dict) -> str {
++def mana_markdown(analysis: dict[str, any]) -> str {
+     mana = analysis["mana"];
+     curve = analysis["curve"];
+     buckets = curve["buckets"] as dict[str, int];
+@@ -228,7 +228,7 @@ def card_search(deck_id: str, query: str, ctx: Context, limit: int = 20) -> Call
+ """What the model gets when the user already sees the search panel: the hits
+ on one line with oracle ids (so it can still add one when asked in chat), and
+ a note not to list them again."""
+-def search_brief(result: dict) -> str {
++def search_brief(result: dict[str, any]) -> str {
+     hits = result["hits"] as list[dict[str, any]];
+     query = result["query"] as str;
+     if not hits {
+@@ -250,7 +250,7 @@ def search_brief(result: dict) -> str {
+ """Search hits for one deck, each with the copies that deck holds per zone
+ (`in_deck`, e.g. {"main": 2}), plus a short summary of the deck. A catalogue
+ failure comes back as `error` with no hits."""
+-def search_with_holdings(view: dict, query: str, limit: int) -> dict {
++def search_with_holdings(view: dict[str, any], query: str, limit: int) -> dict[str, any] {
+     held: dict[str, dict[str, int]] = {};
+     for c in view["cards"] as list[dict[str, any]] {
+         oid = c["oracle_id"] as str;
+@@ -284,7 +284,7 @@ def md_cell(value: str) -> str {
+ """Search hits as a Markdown table with an In deck column, for clients that do not
+ render MCP Apps (and for the model). The oracle ids are there so the model can pass
+ them straight to deck_edit."""
+-def search_markdown(result: dict) -> str {
++def search_markdown(result: dict[str, any]) -> str {
+     hits = result["hits"] as list[dict[str, any]];
+     query = result["query"] as str;
+     if not hits {
+@@ -333,7 +333,7 @@ def deck_export(deck_id: str, ctx: Context, format: str = "arena") -> CallToolRe
+ 
+ """The lead-in the model gets when the user already sees the export view. The
+ export text still follows it, so the model can answer questions about it."""
+-def export_brief(result: dict) -> str {
++def export_brief(result: dict[str, any]) -> str {
+     return (
+         "Shown to the user in the export view, with a button per format, Copy and Download. "
+         + "The export below is for your reference only: do not paste it into the chat unless the user asks "
+@@ -361,7 +361,7 @@ def view_text(ctx: Context, full: str, brief: str) -> str {
+ Apps. A lossy list goes in a code block with what it drops. A lossless JSON export
+ leads with a short summary and a hint not to paste it unprompted, then the full
+ JSON, so a client without the view (Claude Code) can still show or save it."""
+-def export_text(result: dict) -> str {
++def export_text(result: dict[str, any]) -> str {
+     label = result["format"];
+     lossless = False;
+     for f in EXPORT_FORMATS {
+@@ -430,33 +430,39 @@ glob server: MCPServer = MCPServer(
+ 
+ """Plain JSON-ready data from walker reports (objs and nodes become dicts)."""
+ def plain(value: any) -> any {
+-    if is_dataclass(value) and not isinstance(value, type) {
+-        out = asdict(value);  # jac:ignore[E1054]
++    if isinstance(value, (list, tuple)) {
++        return [plain(v) for v in value];
++    }
++    if isinstance(value, dict) {
++        return {k: plain(v) for (k, v) in value.items()};
++    }
++    if value is None or isinstance(value, (str, int, float, bool)) {
++        return value;
++    }
++    if hasattr(value, "__dict__") {
++        out: dict[str, any] = {k: plain(v) for (k, v) in vars(value).items() if not k.startswith("_")};
+         if isinstance(value, Deck) {
+             out["id"] = jid(value);
+         }
+         return out;
+     }
+-    if isinstance(value, list) {
+-        return [plain(v) for v in value];
+-    }
+     return value;
+ }
+ 
+ """A finished walker's result as tool output: its first report as plain data,
+ or {"error": message, "code": code} when it reported a WalkerError. The
+ walker says why it failed, so no tool has to guess."""
+-def outcome(w: any) -> dict {
++def outcome(w: any) -> dict[str, any] {
+     first = w.reports[0];
+     if isinstance(first, WalkerError) {
+         return {"error": first.message, "code": first.code};
+     }
+-    return plain(first) as dict;
++    return plain(first) as dict[str, any];
+ }
+ 
+ """Search card names, type lines and rules text. Every word must match, as a prefix."""
+ @server.tool()
+-def search_cards(query: str, limit: int = 20) -> list[dict] {
++def search_cards(query: str, limit: int = 20) -> list[dict[str, any]] {
+     found = catalog_search(query, limit);
+     if found.error {
+         raise RuntimeError(found.error);
+@@ -469,7 +475,7 @@ power/toughness, loyalty and defence (front face), keywords, each face of a
+ multi-face card (name, cost, type, text, stats), format legalities and Scryfall
+ oracle tags."""
+ @server.tool()
+-def get_card(oracle_id_or_name: str) -> dict {
++def get_card(oracle_id_or_name: str) -> dict[str, any] {
+     card = find_card(oracle_id_or_name);
+     if card is None {
+         return {"error": f"No card matches {oracle_id_or_name}. Try resolve_names or search_cards."};
+@@ -481,19 +487,19 @@ def get_card(oracle_id_or_name: str) -> dict {
+ candidates to choose from, and `unknown` names. Only exact matches (or a candidate
+ the user confirms) should go into a deck."""
+ @server.tool()
+-def resolve_names(names: list[str]) -> dict {
++def resolve_names(names: list[str]) -> dict[str, any] {
+     return catalog_resolve_names(names);
+ }
+ 
+ """Deck-construction rules for a format: standard, pioneer, modern or commander."""
+ @server.tool()
+-def get_format_rules(format: str) -> dict {
++def get_format_rules(format: str) -> dict[str, any] {
+     return outcome(run_walker(GetFormatRules(format=format)));
+ }
+ 
+ """List the user's decks (id, name, format)."""
+ @server.tool()
+-def deck_list() -> list[dict] {
++def deck_list() -> list[dict[str, any]] {
+     decks = plain(run_walker(ListDecks()).reports[0]);
+     return [{"id": d["id"], "name": d["name"], "format": d["format"]} for d in decks];
+ }
+@@ -502,7 +508,7 @@ def deck_list() -> list[dict] {
+ {"oracle_id": ..., "count": n, "zone": "main" | "sideboard" | "commander" | "companion" | "maybeboard", "reason": ...};
+ get oracle ids from resolve_names first. Returns the deck with its legality."""
+ @server.tool()
+-def deck_create(name: str, format: str = "standard", cards: list[dict] = []) -> dict {
++def deck_create(name: str, format: str = "standard", cards: list[dict[str, any]] = []) -> dict[str, any] {
+     made = outcome(run_walker(CreateDeck(name=name, format=format)));
+     if "error" in made {
+         return made;
+@@ -517,7 +523,7 @@ def deck_create(name: str, format: str = "standard", cards: list[dict] = []) ->
+ 
+ """A deck: its cards, totals, legality and recent change history."""
+ @server.tool()
+-def deck_get(deck_id: str) -> dict {
++def deck_get(deck_id: str) -> dict[str, any] {
+     return outcome(run_walker(GetDeck(deck_id=deck_id)));
+ }
+ 
+@@ -527,7 +533,7 @@ and sets that card's count in that zone (0 removes it). Every change needs a rea
+ Pass "format" to change the deck's format. Changes with an unknown oracle id or no
+ reason are rejected and listed under "rejected"; the rest are applied."""
+ @server.tool()
+-def deck_edit(deck_id: str, changes: list[dict] = [], format: str = "") -> dict {
++def deck_edit(deck_id: str, changes: list[dict[str, any]] = [], format: str = "") -> dict[str, any] {
+     if format {
+         reformatted = outcome(run_walker(SetDeckFormat(deck_id=deck_id, format=format)));
+         if "error" in reformatted {
+@@ -540,7 +546,7 @@ def deck_edit(deck_id: str, changes: list[dict] = [], format: str = "") -> dict
+ """Check a deck against its format. Returns legal (true or false), each violation and, for a
+ Commander deck, game_changers (count, cards and a bracket hint; null for other formats)."""
+ @server.tool()
+-def deck_validate(deck_id: str) -> dict {
++def deck_validate(deck_id: str) -> dict[str, any] {
+     view = deck_get(deck_id);
+     if "error" in view {
+         return view;
+@@ -558,7 +564,7 @@ def deck_validate(deck_id: str) -> dict {
+ mtgjson (an MTGJSON deck file, such as a precon), text, arena or moxfield. Lines that don't resolve to a known card are listed
+ under "unresolved" and never added."""
+ @server.tool()
+-def deck_import(deck_id: str, format: str, text: str) -> dict {
++def deck_import(deck_id: str, format: str, text: str) -> dict[str, any] {
+     return outcome(run_walker(DeckImport(deck_id=deck_id, format=format, text=text)));
+ }
+ 
+@@ -606,7 +612,7 @@ with entry:__main__ {
+                 f"Port {port} is in use. If `jac start` is running, stop it: this MCP server serves the app itself, "
+                 + "and two processes writing one graph overwrite each other's decks. Or set KP_PORT.\n"
+             );
+-            exit(1);
++            sys.exit(1);
+         }
+         start_web(port);
+     }
+@@ -614,13 +620,15 @@ with entry:__main__ {
+     if os.environ.get("KP_TRANSPORT", "stdio") == "http" {
+         http_host = os.environ.get("KP_HTTP_HOST", "127.0.0.1");
+         http_port = int(os.environ.get("KP_HTTP_PORT", "8020"));
+-        anyio.run(serve_http, http_host, http_port);  # jac:ignore[E1053]
++        run_any: any = anyio.run;
++        run_any(serve_http, http_host, http_port);  # jac:ignore[E1053]
+     } else {
+         # stdout carries the MCP protocol, so keep a handle to it and send all
+         # other output (walker reports, server logs) to stderr.
+         mcp_out = io.TextIOWrapper(os.fdopen(os.dup(1), "wb"), encoding="utf-8", line_buffering=True);
+         os.dup2(2, 1);
+         sys.stdout = sys.stderr;
+-        anyio.run(serve_stdio, mcp_out);  # jac:ignore[E1053]
++        run_any2: any = anyio.run;
++        run_any2(serve_stdio, mcp_out);  # jac:ignore[E1053]
+     }
+ }
+diff --git a/seed.jac b/seed.jac
+index c396bb3..3a9fa82 100644
+--- a/seed.jac
++++ b/seed.jac
+@@ -147,8 +147,8 @@ def seed_format(source: DeckSource, deck_list: list[dict[str, str]], play_format
+ 
+ with entry:__main__ {
+     parser = argparse.ArgumentParser(prog="jac run seed.jac", description="Add one random MTGJSON precon per format to this checkout's graph.");
+-    parser.add_argument("--from-dir", default="", help="read DeckList.json and deck files from this directory instead of mtgjson.com");
+-    parser.add_argument("--seed", default="", help="random seed, to repeat a set of picks on a fresh graph");
++    parser.add_argument("--from-dir", `default="", help="read DeckList.json and deck files from this directory instead of mtgjson.com");
++    parser.add_argument("--seed", `default="", help="random seed, to repeat a set of picks on a fresh graph");
+     parser.add_argument("--format", action="append", choices=list(DECK_TYPES), help="only this format (repeatable)");
+     args = parser.parse_args(sys.argv[1:]);
+     # Resolve --from-dir before moving to the app's directory, where the graph lives.
+@@ -162,7 +162,7 @@ with entry:__main__ {
+             f"Port {port} is in use. If `jac start` or the MCP server is running, stop it first: "
+             + "two processes writing one graph overwrite each other's decks. Or set KP_PORT.\n"
+         );
+-        exit(1);
++        sys.exit(1);
+     }
+     acquire_graph_lock("seed script");
+ 
+@@ -177,6 +177,6 @@ with entry:__main__ {
+         }
+     } except URLError as err {
+         sys.stderr.write(f"Could not download from mtgjson.com: {err.reason}. Use --from-dir for offline use.\n");  # jac:ignore[E1099]
+-        exit(1);
++        sys.exit(1);
+     }
+ }
+diff --git a/shared_graph.jac b/shared_graph.jac
+index 0d1f313..8842ac6 100644
+--- a/shared_graph.jac
++++ b/shared_graph.jac
+@@ -7,14 +7,17 @@ the saved graph at a time (two overwrite each other's changes): take
+ `acquire_graph_lock` before writing (the port check only catches a web app).
+ """
+ 
++import copy;
++import time;
+ import fcntl;
+ import os;
+ import socket;
+ import sys;
+ import threading;
+ import from jaclang { JacRuntime as Jac }
+-import from jaclang.runtimelib.context { ExecutionContext }
+-import from jaclang.jac0core.constant { Constants as Con }
++import from jaclang.runtime.context { ExecutionContext }
++import from jaclang.server.session { transient_db_error }
++import from jaclang.runtime.constants { Constants as Con }
+ 
+ glob APP_DIR: str = os.path.dirname(os.path.abspath(__file__)),
+      LOCK: threading.Lock = threading.Lock(),
+@@ -25,9 +28,7 @@ glob APP_DIR: str = os.path.dirname(os.path.abspath(__file__)),
+ def guest_root_id -> str {
+     if not GUEST_ROOT {
+         um = Jac.get_user_manager(base_path=APP_DIR);
+-        if not um.user_exists(Con.GUEST.value) {
+-            um.create_user(Con.GUEST.value, "__no_password__");
+-        }
++        um.ensure_internal_user(Con.GUEST.value, "__no_password__");
+         GUEST_ROOT.append(str(um.get_root_id(Con.GUEST.value)));
+     }
+     return GUEST_ROOT[0];
+@@ -40,15 +41,26 @@ context, so both share one in-memory graph and one database connection.
+ """
+ def run_walker(w: any) -> any {
+     with LOCK {
+-        ctx = ExecutionContext(_parent=Jac.get_context());
+-        ctx.set_user_root(guest_root_id());
+-        token = Jac.push_request_context(ctx);
+-        try {
+-            done = Jac.spawn(ctx.get_root(), w);  # jac:ignore[E1053]
+-            Jac.commit();
+-            return done;
+-        } finally {
+-            Jac.reset_request_context(token);
++        attempt = 0;
++        while True {
++            attempt += 1;
++            ctx = ExecutionContext(_parent=Jac.get_context());
++            ctx.set_user_root(guest_root_id());
++            token = Jac.push_request_context(ctx);
++            try {
++                done = Jac.spawn(ctx.get_root(), copy.deepcopy(w));
++                Jac.commit();
++                return done;
++            } except Exception as e {
++                ctx.mem.abort();
++                if attempt >= 8 or not (transient_db_error(e) or type(e).__name__ == "WriteConflict") {
++                    raise;
++                }
++                sys.stderr.write(f"run_walker: {type(e).__name__}, replay {attempt}\n");
++                time.sleep(0.02 * attempt);
++            } finally {
++                Jac.reset_request_context(token);
++            }
+         }
+     }
+ }
+@@ -72,28 +84,6 @@ Exits 1 with a message when another process (MCP server, `jac script up`, seed)
+ holds it. The lock is an flock, so it goes when the process does, even on a crash.
+ """
+ def acquire_graph_lock(owner: str) -> None {
+-    if LOCK_FILES {
+-        return;
+-    }
+-    gdir = graph_dir();
+-    os.makedirs(gdir, exist_ok=True);
+-    handle = open(os.path.join(gdir, "writer.lock"), "a+");
+-    try {
+-        fcntl.flock(handle.fileno(), fcntl.LOCK_EX | fcntl.LOCK_NB);
+-    } except OSError {
+-        handle.seek(0);
+-        holder = handle.read().strip() or "unknown";
+-        handle.close();
+-        sys.stderr.write(  # jac:ignore[E1099]
+-            f"The graph in {gdir} is in use by another knowledge-pool process ({holder}): "
+-            + "an MCP server, `jac script up`, or the seed script. Stop it first "
+-            + "(`jac script down` for a dev server): two processes writing one graph overwrite each other's decks.\n"
+-        );
+-        exit(1);
+-    }
+-    handle.seek(0);
+-    handle.truncate();
+-    handle.write(f"pid {os.getpid()}, {owner}");
+-    handle.flush();
+-    LOCK_FILES.append(handle);
++    # scratch port: Postgres graph has no single-writer rule, so no lock.
++    return;
+ }
+diff --git a/tests/test_api.py b/tests/test_api.py
+index 62d956f..41bf8ac 100644
+--- a/tests/test_api.py
++++ b/tests/test_api.py
+@@ -1,6 +1,6 @@
+ """API tests: decks over REST, and decks survive a server restart."""
+ 
+-from jaclang.runtimelib.testing import JacTestClient
++from jaclang.testing.testing import JacTestClient
+ 
+ 
+ def _deck_names(client: JacTestClient) -> list[str]:
+diff --git a/tests/test_commander.py b/tests/test_commander.py
+index d3e8113..09e0ff7 100644
+--- a/tests/test_commander.py
++++ b/tests/test_commander.py
+@@ -4,7 +4,7 @@ import json
+ from pathlib import Path
+ 
+ import pytest
+-from jaclang.runtimelib.testing import JacTestClient
++from jaclang.testing.testing import JacTestClient
+ 
+ FIXTURES = Path(__file__).parent / "fixtures"
+ DECKS = json.loads((FIXTURES / "commander_decks.json").read_text())
+diff --git a/tests/test_deck_cards.py b/tests/test_deck_cards.py
+index c6313b9..6757fae 100644
+--- a/tests/test_deck_cards.py
++++ b/tests/test_deck_cards.py
+@@ -3,7 +3,7 @@
+ import copy
+ import sqlite3
+ 
+-from jaclang.runtimelib.testing import JacTestClient
++from jaclang.testing.testing import JacTestClient
+ 
+ from catalog import store
+ from catalog.ingest import build, load_atomic, load_oracle_tags
+diff --git a/tests/test_deck_io.py b/tests/test_deck_io.py
+index 795faf4..607e53e 100644
+--- a/tests/test_deck_io.py
++++ b/tests/test_deck_io.py
+@@ -3,7 +3,7 @@ from pathlib import Path
+ 
+ import pytest
+ 
+-from jaclang.runtimelib.testing import JacTestClient
++from jaclang.testing.testing import JacTestClient
+ 
+ from catalog import store
+ 
+diff --git a/tests/test_legality.py b/tests/test_legality.py
+index 024626c..62bc8a7 100644
+--- a/tests/test_legality.py
++++ b/tests/test_legality.py
+@@ -8,7 +8,7 @@ import json
+ from pathlib import Path
+ 
+ import pytest
+-from jaclang.runtimelib.testing import JacTestClient
++from jaclang.testing.testing import JacTestClient
+ 
+ from catalog import store
+ 
+diff --git a/tests/test_mana_curve.py b/tests/test_mana_curve.py
+index 39a4929..a27c322 100644
+--- a/tests/test_mana_curve.py
++++ b/tests/test_mana_curve.py
+@@ -3,7 +3,7 @@
+ Every walker that reports a deck reports its curve, so the deck view needs one
+ request per edit."""
+ 
+-from jaclang.runtimelib.testing import JacTestClient
++from jaclang.testing.testing import JacTestClient
+ 
+ from catalog import store
+ 
+diff --git a/tests/test_seed.py b/tests/test_seed.py
+index 839f389..067bf6c 100644
+--- a/tests/test_seed.py
++++ b/tests/test_seed.py
+@@ -8,7 +8,7 @@ import subprocess
+ import sys
+ from pathlib import Path
+ 
+-from jaclang.runtimelib.testing import JacTestClient
++from jaclang.testing.testing import JacTestClient
+ 
+ from catalog import precons
+ 
+diff --git a/walker_errors.sv.jac b/walker_errors.jac
+similarity index 100%
+rename from walker_errors.sv.jac
+rename to walker_errors.jac
+diff --git a/walker_failure.cl.jac b/walker_failure.jac
+similarity index 92%
+rename from walker_failure.cl.jac
+rename to walker_failure.jac
+index a1f6a20..8aadcad 100644
+--- a/walker_failure.cl.jac
++++ b/walker_failure.jac
+@@ -4,7 +4,7 @@ A walker that fails reports one WalkerError (see walker_errors.sv.jac) and
+ nothing else. Reports reach the client as plain JSON, so isinstance cannot
+ tell a WalkerError apart; its `code` field can, since no success report has one."""
+ 
+-sv import from walker_errors { WalkerError }
++import from walker_errors { WalkerError }
+ 
+ """The message of the WalkerError a failed walker reported, or "" if it succeeded."""
+ def:pub failureMessage(reports: Sequence[object]) -> str {
