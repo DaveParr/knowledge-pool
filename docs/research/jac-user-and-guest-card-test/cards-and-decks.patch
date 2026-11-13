@@ -1,0 +1,91 @@
+--- cards.jac
++++ cards.jac
+@@ -10,6 +10,10 @@
+ """
+ 
+ import sqlite3;
++import os;
++import time;
++import from uuid { UUID }
++import from jaclang { JacRuntime as Jac }
+ import catalog.store as store;
+ import from card_lines { CardFace }
+ 
+@@ -159,7 +163,29 @@
+     );
+ }
+ 
+-"""The Card node for an oracle id, created from the catalogue on first use. None if the id is unknown."""
++"""Run `f` with the guest as the acting identity, then put the caller back."""
++def as_guest(f: any) -> any {
++    ctx = Jac.get_context();
++    prev = ctx._user_root;
++    ctx._user_root = ctx._get_anchor(str(Jac.shared_root_id()));
++    try {
++        return f();
++    } finally {
++        ctx._user_root = prev;
++    }
++}
++
++"""Create the Card node under the catalogue as whoever is acting, open to every user at CONNECT."""
++def make_card(cat: Catalog, oid: str, c: dict[str, any]) -> Card {
++    card = Card(oracle_id=oid, name=c["name"] as str);
++    fill_card(card, c);
++    cat ++> card;
++    grant(card, level=AccessLevel.CONNECT);
++    return card;
++}
++
++"""The Card node for an oracle id, created from the catalogue on first use. None if the id is unknown.
++KP110_MODE=switch creates it as the guest whoever the caller is; otherwise as the caller."""
+ def card_node(home: Root, oid: str) -> Card | None {
+     cat = catalog_node(home);
+     found = [cat-->[?:Card, oracle_id == oid]];
+@@ -170,10 +196,14 @@
+     if c is None {
+         return None;
+     }
+-    card = Card(oracle_id=oid, name=c["name"] as str);
+-    fill_card(card, c);
+-    cat ++> card;
+-    return card;
++    delay = float(os.environ.get("KP110_DELAY", "0"));
++    if delay > 0 {
++        time.sleep(delay);
++    }
++    if os.environ.get("KP110_MODE", "") == "switch" {
++        return as_guest(lambda () { return make_card(cat, oid, c); });
++    }
++    return make_card(cat, oid, c);
+ }
+ 
+ """Refresh every Card node from the catalogue, after `catalog/ingest.py` has
+--- decks.jac
++++ decks.jac
+@@ -12,6 +12,7 @@
+ import from commander { GameChangers, game_changers }
+ import from mana { ManaProfile, ManaCurve, mana_profile, mana_curve }
+ import from walker_errors { WalkerError }
++import from jaclang { JacRuntime as Jac }
+ 
+ """One change to how many copies of a card a zone of a deck holds, with the
+ reason given for it. Every holdings change writes one (see change_holding)."""
+@@ -169,7 +170,7 @@
+ 
+ """What a deck's lines break in its format. An unknown format is itself a violation."""
+ def deck_violations(deck: Deck, lines: list[CardLine]) -> list[Violation] {
+-    fmt = format_node(root, deck.format);
++    fmt = format_node(root.shared, deck.format);
+     if fmt is None {
+         return [Violation(rule="unknown-format", message=f"Unknown format: {deck.format}.")];
+     }
+@@ -257,7 +258,7 @@
+         if after == 0 {
+             return "";
+         }
+-        card = card_node(root, oid);
++        card = card_node(root.shared, oid);
+         if card is None {
+             return f"{oid} is not a known oracle id.";
+         }
