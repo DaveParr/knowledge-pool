@@ -17,14 +17,10 @@ SEED_DIR = Path(__file__).parent / "fixtures" / "mtgjson_seed"
 ILLEGAL = {"Gruul Stompy", "Bolt Burn", "Pioneer Iteration", "Modern Mox"}
 
 
-def _jac() -> str:
-    return str(Path(sys.executable).parent / "jac")
-
-
 def _seed(catalog: Path, db_url: str, *args: str) -> subprocess.CompletedProcess:
     env = {**os.environ, "KP_CATALOG": str(catalog), "JAC_DB_URL": db_url}
     return subprocess.run(
-        [_jac(), "run", "--no-serve", str(ROOT / "seed.jac"), "--from-dir", str(SEED_DIR), *args],
+        [sys.executable, "run", "--no-serve", str(ROOT / "seed.jac"), "--from-dir", str(SEED_DIR), *args],
         cwd=ROOT, env=env, capture_output=True, text=True, timeout=300,
     )
 

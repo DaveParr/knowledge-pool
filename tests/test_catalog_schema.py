@@ -59,7 +59,7 @@ def test_catalogue_from_before_card_details_names_the_new_columns(fixture_catalo
     assert "jac x catalogue" in message
 
 
-def _run_entry_point(args, catalog, tmp_path):
+def _run_entry_point(args, catalog):
     """Run `jac <args>` against `catalog`. A server that starts anyway is killed after 60s."""
     env = {**os.environ, "KP_CATALOG": str(catalog)}
     return subprocess.run(
@@ -68,15 +68,17 @@ def _run_entry_point(args, catalog, tmp_path):
     )
 
 
-def test_mcp_server_refuses_to_start_on_an_old_catalogue_and_keeps_stdout_clean(old_catalog, jac_db_url, tmp_path):
-    run = _run_entry_point(["run", "--no-serve", "mcp_server.jac"], old_catalog, tmp_path)
+@pytest.mark.usefixtures("jac_db_url")
+def test_mcp_server_refuses_to_start_on_an_old_catalogue_and_keeps_stdout_clean(old_catalog):
+    run = _run_entry_point(["run", "--no-serve", "mcp_server.jac"], old_catalog)
     assert run.returncode != 0
     assert "jac x catalogue" in run.stderr
     assert run.stdout == ""  # stdout is the MCP protocol channel
 
 
-def test_web_server_refuses_to_start_on_an_old_catalogue(old_catalog, jac_db_url, tmp_path):
-    run = _run_entry_point(["run", "--host", "127.0.0.1", "--port", str(_free_port()), "--no-client", "main.jac"], old_catalog, tmp_path)
+@pytest.mark.usefixtures("jac_db_url")
+def test_web_server_refuses_to_start_on_an_old_catalogue(old_catalog):
+    run = _run_entry_point(["run", "--host", "127.0.0.1", "--port", str(_free_port()), "--no-client", "main.jac"], old_catalog)
     assert run.returncode != 0
     assert "jac x catalogue" in run.stdout + run.stderr
 

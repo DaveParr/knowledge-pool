@@ -33,7 +33,7 @@ pytest = ">=9.2.0"
 directory = "tests"
 
 [scripts]
-check = "export JAC_STRICT_PERMISSIONS=1 && jac check *.jac && scripts/jac_test.sh && jac x pytest tests && jac db prune -y"
+check = "export JAC_STRICT_PERMISSIONS=1; (jac check *.jac && scripts/jac_test.sh && jac x pytest tests); status=$?; jac db prune -y; exit $status"
 up = "scripts/dev.sh up"
 down = "scripts/dev.sh down"
 status = "scripts/dev.sh status"

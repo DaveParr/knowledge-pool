@@ -64,7 +64,7 @@ claude mcp add knowledge-pool -- jac run --no-serve "$PWD/mcp_server.jac"
 
 `deck_export` defaults to MTGA/MTGO (`arena`); the other formats are `moxfield`, `text` (both lossy, like `arena`), `mtgdeck1` and `mtgjson` (lossless JSON). In clients that render MCP Apps (Claude Desktop, claude.ai) the export shows in a view (`ui/deck_export.html`) with a button per format, **Copy** and **Download**; changing format there calls `deck_export` again through the host. Other clients, such as Claude Code, get the export as text: a lossy list in a code block, or a short summary followed by the full JSON for a lossless format. `deck_import` and the app's **Import list** read the same formats; `mtgjson` also takes a deck file from MTGJSON (`https://mtgjson.com/api/v5/decks/`), such as a Commander precon, and lists any tokens, planes or schemes it skips.
 
-The MCP server and the web app are separate processes on the same database, so decks made in either place show up in the other straight away, and any number of them can run at once. A write that loses a race with another process is rolled back and run again.
+The MCP server and the web app are separate processes on the same database, so decks made in either place show up in the other straight away, and any number of them can run at once. A call that loses a write race with another process is rolled back and fails; repeat it.
 
 `jac run --no-serve scripts/mcp_smoke.py` starts the web app and runs a full stdio session against your local data as a check.
 
