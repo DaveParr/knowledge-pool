@@ -118,7 +118,7 @@ def catalog_node(home: Root) -> Catalog {
     if found {
         return found[0];
     }
-    return (home ++> Catalog())[0] as Catalog;
+    return (home ++> Catalog()) as Catalog;
 }
 
 """Copy every catalogue field of record `c` onto `card`. The one place that

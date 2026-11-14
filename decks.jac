@@ -71,7 +71,7 @@ walker:pub ListDecks {
     has reports: list[list[Deck]] = [];
 
     can collect with Root entry {
-        decks = sorted([here-->[?:Deck]], key=lambda d: Deck : d.created_at);
+        decks = sorted([here-->[?:Deck]], key=lambda (d: Deck) { return d.created_at; });
         report decks;
     }
 }
@@ -158,12 +158,12 @@ def card_line(
 }
 
 """The deck's card lines, sorted by zone (ZONES order) then name: the one read
-model every analysis and export works from (see card_lines.sv.jac)."""
+model every analysis and export works from (see card_lines.jac)."""
 def card_lines(deck: Deck) -> list[CardLine] {
     lines: list[CardLine] = [
         card_line(c, e.zone, e.count, e.roles, e.tags, e.locked, e.reason) for (e, c) in holdings(deck)
     ];
-    lines.sort(key=lambda l: CardLine : (ZONES.index(l.zone), l.name));
+    lines.sort(key=lambda (l: CardLine) { return (ZONES.index(l.zone), l.name); });
     return lines;
 }
 
@@ -270,6 +270,8 @@ def apply_holding(deck: Deck, oid: str, zone: str, count: int, reason: str, add:
         (hold, held_card) = found;
         name = held_card.name;
         if after == 0 {
+            # Delete this one edge. A typed-edge delete (`del [edge deck ->:Holds:->]`)
+            # does nothing on current Jac, and would take the card's other zones too.
             del hold;
         } else {
             hold.count = after;
@@ -404,7 +406,7 @@ Each change is {"oracle_id", "count", "zone", "reason"} and sets that card's
 count in that zone. Bad changes are skipped and listed in the view's `rejected`.
 """
 walker EditDeck(DeckAction) {
-    has changes: list[dict] = [];
+    has changes: list[dict[str, any]] = [];
 
     can edit with Deck entry {
         rejected: list[str] = [];

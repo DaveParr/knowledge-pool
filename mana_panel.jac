@@ -6,7 +6,7 @@ DeckView.curve; deck_analyze returns the same two). Main deck only.
 """
 
 import "./mana_panel.css";
-sv import from mana { ManaProfile, ManaCurve }
+import from mana { ManaProfile, ManaCurve }
 
 glob COLOUR_NAMES: dict[str, str] = {
     "W": "White", "U": "Blue", "B": "Black", "R": "Red", "G": "Green"
@@ -97,7 +97,7 @@ def:pub ManaPanel(mana: ManaProfile, curve: ManaCurve, mainTotal: int) -> JsxEle
                 type="button"
                 className="quiet mp-show-table"
                 aria-expanded={showTable}
-                onClick={lambda _e: MouseEvent { showTable = not showTable; }}
+                onClick={lambda (_e: MouseEvent) { showTable = not showTable; }}
             >
                 {"Hide table" if showTable else "Show as table"}
             </button>

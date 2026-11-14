@@ -7,10 +7,13 @@ the rest (`--search <keyword>` finds one by topic).
 
 ## Commands
 
-- `uv run jac script --list` lists this repo's commands. Run them as `uv run jac script <name>`.
-- Validate with `jac script check` (type-check, walker tests, pytest: what CI runs). `jac check <file>` links diagnostics to guides; follow the `-> run 'jac guide ...'` hints.
-- Run the app with `jac script up|status|down`: one server per worktree, web and MCP URLs printed. Leave `jac start` and `pkill -f` alone; `down` stops only this worktree's server. QA the running app with `jac browse` (see the `run-knowledge-pool` skill).
-- The catalogue is built from `~/.cache/knowledge-pool/` by `jac script up` or `jac script catalogue`; do not hunt for `AtomicCards.json.xz`.
+- `jac` is the binary at the version `jac.toml` pins (`[project] jac-version`); `scripts/install_jac.sh` installs it and `jac install --dev` the packages. There is no `uv`.
+- `jac x` lists this repo's commands. Run them as `jac x <name>`; it cannot pass arguments.
+- Validate with `jac x check` (type-check, walker tests, pytest, then `jac db prune -y`: what CI runs). `jac check <file>` links diagnostics to guides; follow the `-> run 'jac guide ...'` hints. Run one test file with `jac x pytest tests/<file>` (`jac x pytest` takes arguments; scripts do not).
+- Run the app with `jac x up|status|down`: the web app and the MCP server as two processes, one pair per worktree, web and MCP URLs printed. Leave `pkill -f` alone; `down` stops only this worktree's pair. QA the running app with `jac browse` (see the `run-knowledge-pool` skill).
+- The deck graph is in Postgres: locally, the server Jac starts itself, with one database per worktree path. `jac db status` names this worktree's. Tests that start Jac processes take the `jac_db_url` fixture, never this worktree's database.
+- Strict permissions are on in every app process (`shared_graph.jac` sets them): a write Jac refuses fails the call.
+- The catalogue is built from `~/.cache/knowledge-pool/` by `jac x up` or `jac x catalogue`; do not hunt for `AtomicCards.json.xz`.
 - Grow `tests/fixtures/atomic_small.json` with `scripts/fixture_cards.py`.
 - Review against `CODING_STANDARDS.md`.
 
@@ -26,7 +29,7 @@ Dispatch workers into Orca worktrees, or run them on the feature branch one at a
 
 ## Jac gotcha
 
-`jac run` prints every walker `report` to stdout. Wrap walker calls in `redirect_stdout`, as `seed.jac`'s `walk` helper does.
+`jac run` prints every walker `report` to stdout, and `jac run <file>` serves the app unless given `--no-serve`. Wrap walker calls in `redirect_stdout`, as `seed.jac`'s `walk` helper does.
 
 ## Agent skills
 

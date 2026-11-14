@@ -98,22 +98,22 @@ def resolve_list(format: str, text: str) -> ResolvedList | WalkerError {
 
     unresolved: list[str] = [*parsed.unparsed];
     groups: dict[tuple[str, str], ParsedEntry] = {};
-    for entry in parsed.entries {
-        if entry.zone not in ZONES {
-            unresolved.append(f"{entry.raw_name} (invalid zone: {entry.zone})");
+    for ent in parsed.entries {
+        if ent.zone not in ZONES {
+            unresolved.append(f"{ent.raw_name} (invalid zone: {ent.zone})");
             continue;
         }
-        found = find_card(entry.oracle_id) or find_card(entry.raw_name);
+        found = find_card(ent.oracle_id) or find_card(ent.raw_name);
         if found is None {
-            unresolved.append(entry.raw_name);
+            unresolved.append(ent.raw_name);
             continue;
         }
         oid = found["oracle_id"] as str;
         resolved = ParsedEntry(
-            raw_name=entry.raw_name, count=entry.count, zone=entry.zone, oracle_id=oid,
-            roles=entry.roles, tags=entry.tags, locked=entry.locked, reason=entry.reason
+            raw_name=ent.raw_name, count=ent.count, zone=ent.zone, oracle_id=oid,
+            roles=ent.roles, tags=ent.tags, locked=ent.locked, reason=ent.reason
         );
-        key = (oid, entry.zone);
+        key = (oid, ent.zone);
         if key in groups {
             resolved.count += groups[key].count;
         }

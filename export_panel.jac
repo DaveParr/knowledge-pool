@@ -8,7 +8,7 @@ which opens below the button's row.
 import "./export_panel.css";
 import from .walker_failure { failureMessage }
 
-sv import from deck_io { DeckExport, ExportResult }
+import from deck_io { DeckExport, ExportResult }
 
 """Export formats: key, label, lossless, file extension."""
 glob EXPORT_FORMATS: list[tuple[str, str, bool, str]] = [
@@ -69,7 +69,7 @@ def:pub ExportPanel(deckId: str, deckName: str) -> JsxElement {
                             key={k}
                             className="ex-format"
                             aria-pressed={k == format}
-                            onClick={lambda _e: MouseEvent { load(k); }}
+                            onClick={lambda (_e: MouseEvent) { load(k); }}
                         >
                             {l}
                             <span className="ex-sub">{"lossless" if ll else "lossy"}</span>
@@ -82,7 +82,7 @@ def:pub ExportPanel(deckId: str, deckName: str) -> JsxElement {
                 {<p className="error" role="alert">{error}</p> if error else None}
                 <textarea readOnly={True} aria-label={"Exported " + deckName} value={content} rows={10}/>
                 <div className="ex-bar">
-                    <button className="primary" onClick={lambda _e: MouseEvent { copy(); }}>Copy</button>
+                    <button className="primary" onClick={lambda (_e: MouseEvent) { copy(); }}>Copy</button>
                     <button onClick={saveFile}>{"Download ." + ext}</button>
                     <span className="ex-done" role="status">{status}</span>
                     <span className="ex-size">{str(lines) + " lines · " + str(len(content)) + " characters" if content else ""}</span>

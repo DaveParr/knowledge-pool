@@ -3,7 +3,7 @@
 Every walker that reports a deck reports its curve, so the deck view needs one
 request per edit."""
 
-from jaclang.runtimelib.testing import JacTestClient
+from jaclang.testing.testing import JacTestClient
 
 from catalog import store
 

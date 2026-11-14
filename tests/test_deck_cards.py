@@ -3,7 +3,7 @@
 import copy
 import sqlite3
 
-from jaclang.runtimelib.testing import JacTestClient
+from jaclang.testing.testing import JacTestClient
 
 from catalog import store
 from catalog.ingest import build, load_atomic, load_oracle_tags
@@ -242,6 +242,27 @@ def test_cards_in_a_deck_survive_restart(tmp_path):
     try:
         view = _reports(second.post("/walker/GetDeck", json={"deck_id": deck_id}))[0]
         assert _lines(view) == {"Goblin Guide": 4}
+    finally:
+        second.close()
+
+
+def test_a_removed_card_stays_removed_after_restart(tmp_path):
+    """Removing a card deletes its Holds edge from the database, not just from memory."""
+    first = JacTestClient.from_file("main.jac", base_path=str(tmp_path))
+    deck_id = _new_deck(first)
+    bolt, guide = _oracle_id("Lightning Bolt"), _oracle_id("Goblin Guide")
+    _reports(first.post("/walker/AddCard", json={"deck_id": deck_id, "oracle_id": bolt, "count": 4}))
+    _reports(first.post("/walker/AddCard", json={"deck_id": deck_id, "oracle_id": guide, "count": 4}))
+    _reports(first.post("/walker/AddCard", json={"deck_id": deck_id, "oracle_id": bolt, "count": 2, "zone": "sideboard"}))
+    _reports(first.post("/walker/RemoveCard", json={"deck_id": deck_id, "oracle_id": bolt}))
+    first.close()
+
+    second = JacTestClient.from_file("main.jac", base_path=str(tmp_path))
+    try:
+        view = _reports(second.post("/walker/GetDeck", json={"deck_id": deck_id}))[0]
+        assert {(c["name"], c["zone"]): c["count"] for c in view["cards"]} == {
+            ("Goblin Guide", "main"): 4, ("Lightning Bolt", "sideboard"): 2,
+        }
     finally:
         second.close()
 

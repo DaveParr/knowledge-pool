@@ -27,7 +27,7 @@ def _connect(path: str) -> sqlite3.Connection:
 def connection() -> sqlite3.Connection:
     path = db_path()
     if not path.exists():
-        raise FileNotFoundError(f"No card catalogue at {path}. Run: uv run python -m catalog.ingest")
+        raise FileNotFoundError(f"No card catalogue at {path}. Run: jac x catalogue")
     return _connect(str(path.resolve()))
 
 
@@ -64,7 +64,7 @@ def check_current() -> None:
     if missing:
         raise CatalogOutOfDate(
             f"The card catalogue at {path} is out of date for this code (missing: {', '.join(missing)}). "
-            "Rebuild it with: uv run jac script catalogue (or uv run python -m catalog.ingest)"
+            "Rebuild it with: jac x catalogue"
         )
 
 

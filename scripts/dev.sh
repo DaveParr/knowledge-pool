@@ -1,6 +1,9 @@
 #!/usr/bin/env bash
-# Run the app (web + MCP over HTTP) for this worktree: one process group, its own
-# port pair, a pidfile. Never kills by name; `down` signals the recorded group only.
+# Run the app for this worktree: the web app and the MCP server (over HTTP) as two
+# processes in one process group, on their own port pair, with a pidfile. Both use
+# this worktree's own database (or JAC_DB_URL when set). When either process
+# exits, the other is stopped too. Never kills by name; `down` signals the
+# recorded group only.
 #
 #   scripts/dev.sh up|down|status|port
 set -u
@@ -12,7 +15,7 @@ PIDFILE="$STATE/server.pid"
 PORTFILE="$STATE/port"
 LOG="$STATE/server.log"
 export KP_CATALOG="${KP_CATALOG:-$REPO/data/catalog.sqlite}"
-export JAC_DATA_PATH="${JAC_DATA_PATH:-$REPO}"
+export JAC_STRICT_PERMISSIONS=1
 
 port_taken() { (exec 3<>"/dev/tcp/127.0.0.1/$1") 2>/dev/null; }
 
@@ -62,7 +65,7 @@ print_urls() {
 # Build the catalogue at $KP_CATALOG from the shared download cache when it is
 # missing or out of date (downloads only if the cached files are old or absent).
 ensure_catalogue() {
-    if ! (cd "$REPO" && uv run python -m catalog.ingest --if-stale); then
+    if ! (cd "$REPO" && jac x catalogue); then
         echo "dev.sh: could not build the catalogue (see above)" >&2
         return 1
     fi
@@ -80,14 +83,16 @@ cmd_up() {
     p="$(choose_port)"
     echo "$p" >"$PORTFILE"
     cd "$REPO" || return 1
-    setsid env KP_PORT="$p" KP_TRANSPORT=http KP_HTTP_PORT=$((p + 1)) \
-        KP_CATALOG="$KP_CATALOG" JAC_DATA_PATH="$JAC_DATA_PATH" \
-        uv run jac run mcp_server.jac >>"$LOG" 2>&1 &
+    setsid bash -c '
+        jac run --no-dev --host 127.0.0.1 --port "$1" main.jac &
+        KP_TRANSPORT=http KP_HTTP_PORT="$2" jac run --no-serve mcp_server.jac &
+        wait -n
+        kill 0' dev.sh "$p" $((p + 1)) >>"$LOG" 2>&1 &
     echo $! >"$PIDFILE"
 
     local i
     for ((i = 0; i < 120; i++)); do
-        if curl -fs -o /dev/null --max-time 2 "http://127.0.0.1:$p/healthz"; then
+        if curl -fs -o /dev/null --max-time 2 "http://127.0.0.1:$p/healthz" && port_taken $((p + 1)); then
             print_urls
             return 0
         fi

@@ -3,7 +3,7 @@ from pathlib import Path
 
 import pytest
 
-from jaclang.runtimelib.testing import JacTestClient
+from jaclang.testing.testing import JacTestClient
 
 from catalog import store
 

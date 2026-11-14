@@ -19,7 +19,7 @@ impl ExportPanel.copy -> None {
         status = "Copied";
     } except Exception {
         # The browser refused: select the text so the user can copy it by hand.
-        box = document.querySelector("textarea[aria-label='Exported " + deckName + "']");  # jac:ignore[E1032]
+        box: any = document.querySelector("textarea[aria-label='Exported " + deckName + "']");  # jac:ignore[E1032]
         if box {
             box.focus();  # jac:ignore[E1032]
             box.select();  # jac:ignore[E1032]
@@ -36,7 +36,7 @@ impl ExportPanel.saveFile(_e: MouseEvent) -> None {
         }
     }
     blob = new(Blob, [content], {"type": "text/plain"});  # jac:ignore[E1053]
-    link = document.createElement("a");  # jac:ignore[E1032]
+    link: any = document.createElement("a");  # jac:ignore[E1032]
     link.href = URL.createObjectURL(blob);  # jac:ignore[E1032]
     stem = deckName.strip().lower().replace(" ", "-") or "deck";
     link.setAttribute("download", stem + "." + ext);  # jac:ignore[E1032]

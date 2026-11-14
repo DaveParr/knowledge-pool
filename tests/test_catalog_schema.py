@@ -41,7 +41,7 @@ def test_old_schema_catalogue_names_what_is_missing_and_the_ingest_command(old_c
     assert str(old_catalog) in message
     assert "cards.produced_mana" in message
     assert "card_tags" in message
-    assert "uv run python -m catalog.ingest" in message
+    assert "jac x catalogue" in message
 
 
 def test_catalogue_from_before_card_details_names_the_new_columns(fixture_catalog):
@@ -56,30 +56,29 @@ def test_catalogue_from_before_card_details_names_the_new_columns(fixture_catalo
     for column in ("power", "toughness", "loyalty", "defense", "keywords", "faces"):
         assert f"cards.{column}" in message
     assert "cards.produced_mana" not in message
-    assert "uv run python -m catalog.ingest" in message
+    assert "jac x catalogue" in message
 
 
 def _run_entry_point(args, catalog, tmp_path):
     """Run `jac <args>` against `catalog`. A server that starts anyway is killed after 60s."""
-    env = {**os.environ, "KP_CATALOG": str(catalog), "JAC_DATA_PATH": str(tmp_path), "KP_WEB": "0"}
-    jac = Path(sys.executable).parent / "jac"
+    env = {**os.environ, "KP_CATALOG": str(catalog)}
     return subprocess.run(
-        [str(jac), *args],
+        [sys.executable, *args],
         cwd=ROOT, env=env, capture_output=True, text=True, timeout=60, stdin=subprocess.DEVNULL,
     )
 
 
-def test_mcp_server_refuses_to_start_on_an_old_catalogue_and_keeps_stdout_clean(old_catalog, tmp_path):
-    run = _run_entry_point(["run", "mcp_server.jac"], old_catalog, tmp_path)
+def test_mcp_server_refuses_to_start_on_an_old_catalogue_and_keeps_stdout_clean(old_catalog, jac_db_url, tmp_path):
+    run = _run_entry_point(["run", "--no-serve", "mcp_server.jac"], old_catalog, tmp_path)
     assert run.returncode != 0
-    assert "uv run python -m catalog.ingest" in run.stderr
+    assert "jac x catalogue" in run.stderr
     assert run.stdout == ""  # stdout is the MCP protocol channel
 
 
-def test_web_server_refuses_to_start_on_an_old_catalogue(old_catalog, tmp_path):
-    run = _run_entry_point(["start", "main.jac", "--port", str(_free_port()), "--no_client"], old_catalog, tmp_path)
+def test_web_server_refuses_to_start_on_an_old_catalogue(old_catalog, jac_db_url, tmp_path):
+    run = _run_entry_point(["run", "--host", "127.0.0.1", "--port", str(_free_port()), "--no-client", "main.jac"], old_catalog, tmp_path)
     assert run.returncode != 0
-    assert "uv run python -m catalog.ingest" in run.stdout + run.stderr
+    assert "jac x catalogue" in run.stdout + run.stderr
 
 
 def _free_port() -> int:
