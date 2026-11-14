@@ -12,7 +12,7 @@ the rest (`--search <keyword>` finds one by topic).
 - Validate with `jac x check` (type-check, walker tests, pytest, then `jac db prune -y`: what CI runs). `jac check <file>` links diagnostics to guides; follow the `-> run 'jac guide ...'` hints. Run one test file with `jac x pytest tests/<file>` (`jac x pytest` takes arguments; scripts do not).
 - Run the app with `jac x up|status|down`: the web app and the MCP server as two processes, one pair per worktree, web and MCP URLs printed. Leave `pkill -f` alone; `down` stops only this worktree's pair. QA the running app with `jac browse` (see the `run-knowledge-pool` skill).
 - The deck graph is in Postgres: locally, the server Jac starts itself, with one database per worktree path. `jac db status` names this worktree's. Tests that start Jac processes take the `jac_db_url` fixture, never this worktree's database.
-- Strict permissions are on in every app process (`shared_graph.jac` sets them): a write Jac refuses fails the call.
+- Strict permissions are on in every app process (`graph_runner.jac` sets them): a write Jac refuses fails the call.
 - The catalogue is built from `~/.cache/knowledge-pool/` by `jac x up` or `jac x catalogue`; do not hunt for `AtomicCards.json.xz`.
 - Grow `tests/fixtures/atomic_small.json` with `scripts/fixture_cards.py`.
 - Review against `CODING_STANDARDS.md`.

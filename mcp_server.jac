@@ -1,14 +1,17 @@
 """MCP server for Claude Code and Claude Desktop (local stdio or HTTP).
 
 The MCP SDK's MCPServer (FastMCP before mcp 2.0) runs in the same process as
-the Jac graph. Deck and format tools each spawn a walker against the app's
-shared root, the same root the web app's `:pub` walkers use. Card search,
+the Jac graph. Every tool goes through the runner (`graph_runner.jac`) as whoever
+is asking: in local mode, the local user, so `deck_list` lists the local
+user's decks. Deck and format tools each spawn a walker; card search,
 lookup and name resolution go through the card catalogue module (`cards`).
-No tool calls a model.
+No tool calls a model. Hosted mode is refused until the front door's
+sign-in names a caller.
 
-The web app is a separate process (`jac run`); both share one graph in
-Postgres, so decks made in one show in the other at once.
-`jac x up` runs both for this worktree.
+The web app is a separate process (`jac run`) on the same graph in
+Postgres. Until the front door runs the web page's deck calls through the
+runner, Jac's own server runs them as the guest, so the web page shows the
+guest's decks, not the local user's. `jac x up` runs both for this worktree.
 
     claude mcp add knowledge-pool -- jac run --no-serve <repo>/mcp_server.jac
 
@@ -31,7 +34,7 @@ import from mcp.server.apps { Apps, ResourcePermissions, client_supports_apps }
 import from mcp_types { CallToolResult, TextContent }
 import from mcp.server.stdio { stdio_server }
 import from mcp.server.streamable_http { TransportSecuritySettings }
-import from cards { search_cards as catalog_search, find_card, resolve_names as catalog_resolve_names, check_catalogue }
+import from cards { CardSearch, search_cards as catalog_search, find_card, resolve_names as catalog_resolve_names, check_catalogue }
 import from decks {
     Deck, DeckView, CreateDeck, ListDecks, GetDeck, SetDeckFormat, EditDeck
 }
@@ -39,7 +42,7 @@ import from deck_io { DeckExport, DeckImport }
 import from legality { GetFormatRules }
 import from walker_errors { WalkerError }
 import from json_object { JsonObject }
-import from shared_graph { APP_DIR, run_walker }
+import from graph_runner { APP_DIR, HOSTED, app_mode, check_bind, request_caller, run_walker, call_function, start }
 import from jaclang.runtime.constructs { WalkerArchetype }
 
 glob LOGGED_CLIENT_UI: list[bool] = [],
@@ -64,7 +67,7 @@ Clients that support MCP Apps (Claude Desktop and claude.ai) render it as an HTM
 where each card expands to its rules text, stats, keywords, deck notes and tags; others
 get a compact Markdown table. Use deck_get when you only need the data."""
 def deck_show(deck_id: str, ctx: Context) -> CallToolResult {  # jac:ignore[W1036]: the SDK finds the context by this bare annotation
-    view = outcome(run_walker(GetDeck(deck_id=deck_id)));
+    view = outcome(walk(GetDeck(deck_id=deck_id)));
     if "error" in view {
         return CallToolResult(content=[TextContent(text=view["error"])], is_error=True);
     }
@@ -203,7 +206,7 @@ already holds in main and sideboard. Every word must match, as a prefix. Clients
 support MCP Apps render a search panel where the user can add hits to the deck
 themselves; others get a Markdown table. Use search_cards when no deck is involved."""
 def card_search(deck_id: str, query: str, ctx: Context, limit: int = 20) -> CallToolResult {  # jac:ignore[W1036]: the SDK finds the context by this bare annotation
-    view = outcome(run_walker(GetDeck(deck_id=deck_id)));
+    view = outcome(walk(GetDeck(deck_id=deck_id)));
     if "error" in view {
         return CallToolResult(content=[TextContent(text=view["error"])], is_error=True);
     }
@@ -311,7 +314,7 @@ show the export in a view with format buttons, Copy and Download; the text resul
 always carries the full export too. A lossless JSON export is long: the user sees
 it in the view, so offer to show it or save it to a file rather than pasting it."""
 def deck_export(deck_id: str, ctx: Context, format: str = "arena") -> CallToolResult {  # jac:ignore[W1036]: the SDK finds the context by this bare annotation
-    done = outcome(run_walker(DeckExport(deck_id=deck_id, format=format)));
+    done = outcome(walk(DeckExport(deck_id=deck_id, format=format)));
     if "error" in done {
         return CallToolResult(content=[TextContent(text=done["error"])], structured_content=done, is_error=True);
     }
@@ -424,6 +427,18 @@ glob server: MCPServer[object] = MCPServer(
     extensions=[make_apps()]
 );
 
+"""Run walker `w` through the runner as whoever is asking (see
+graph_runner.request_caller): every deck tool's one way onto the graph."""
+def walk(w: WalkerArchetype) -> WalkerArchetype {
+    return run_walker(request_caller(), w);
+}
+
+"""Call `f` through the runner as whoever is asking, for the tools that
+read only the card catalogue."""
+def ask(f: Callable[[], object]) -> object {
+    return call_function(request_caller(), f);
+}
+
 """Plain JSON-ready data from walker reports (objs and nodes become dicts)."""
 def plain(value: object) -> object {
     if isinstance(value, (list, tuple)) {
@@ -459,7 +474,7 @@ def outcome(w: WalkerArchetype) -> JsonObject {
 """Search card names, type lines and rules text. Every word must match, as a prefix."""
 @server.tool()
 def search_cards(query: str, limit: int = 20) -> list[JsonObject] {
-    found = catalog_search(query, limit);
+    found = ask(lambda () -> object { return catalog_search(query, limit); }) as CardSearch;
     if found.error {
         raise RuntimeError(found.error);
     }
@@ -472,7 +487,7 @@ multi-face card (name, cost, type, text, stats), format legalities and Scryfall
 oracle tags."""
 @server.tool()
 def get_card(oracle_id_or_name: str) -> JsonObject {
-    card = find_card(oracle_id_or_name);
+    card = ask(lambda () -> object { return find_card(oracle_id_or_name); }) as JsonObject | None;
     if card is None {
         return {"error": f"No card matches {oracle_id_or_name}. Try resolve_names or search_cards."};
     }
@@ -484,19 +499,19 @@ candidates to choose from, and `unknown` names. Only exact matches (or a candida
 the user confirms) should go into a deck."""
 @server.tool()
 def resolve_names(names: list[str]) -> JsonObject {
-    return catalog_resolve_names(names);
+    return ask(lambda () -> object { return catalog_resolve_names(names); }) as JsonObject;
 }
 
 """Deck-construction rules for a format: standard, pioneer, modern or commander."""
 @server.tool()
 def get_format_rules(format: str) -> JsonObject {
-    return outcome(run_walker(GetFormatRules(format=format)));
+    return outcome(walk(GetFormatRules(format=format)));
 }
 
 """List the user's decks (id, name, format)."""
 @server.tool()
 def deck_list -> list[JsonObject] {
-    decks = plain(run_walker(ListDecks()).reports[0]) as list[JsonObject];
+    decks = plain(walk(ListDecks()).reports[0]) as list[JsonObject];
     return [{"id": d["id"], "name": d["name"], "format": d["format"]} for d in decks];
 }
 
@@ -505,7 +520,7 @@ def deck_list -> list[JsonObject] {
 get oracle ids from resolve_names first. Returns the deck with its legality."""
 @server.tool()
 def deck_create(name: str, format: str = "standard", cards: list[JsonObject] | None = None) -> JsonObject {
-    made = outcome(run_walker(CreateDeck(name=name, format=format)));
+    made = outcome(walk(CreateDeck(name=name, format=format)));
     if "error" in made {
         return made;
     }
@@ -520,7 +535,7 @@ def deck_create(name: str, format: str = "standard", cards: list[JsonObject] | N
 """A deck: its cards, totals, legality and recent change history."""
 @server.tool()
 def deck_get(deck_id: str) -> JsonObject {
-    return outcome(run_walker(GetDeck(deck_id=deck_id)));
+    return outcome(walk(GetDeck(deck_id=deck_id)));
 }
 
 """Change a deck. Each change is
@@ -531,12 +546,12 @@ reason are rejected and listed under "rejected"; the rest are applied."""
 @server.tool()
 def deck_edit(deck_id: str, changes: list[JsonObject] | None = None, format: str = "") -> JsonObject {
     if format {
-        reformatted = outcome(run_walker(SetDeckFormat(deck_id=deck_id, format=format)));
+        reformatted = outcome(walk(SetDeckFormat(deck_id=deck_id, format=format)));
         if "error" in reformatted {
             return reformatted;
         }
     }
-    return outcome(run_walker(EditDeck(deck_id=deck_id, changes=changes or [])));
+    return outcome(walk(EditDeck(deck_id=deck_id, changes=changes or [])));
 }
 
 """Check a deck against its format. Returns legal (true or false), each violation and, for a
@@ -561,7 +576,7 @@ mtgjson (an MTGJSON deck file, such as a precon), text, arena or moxfield. Lines
 under "unresolved" and never added."""
 @server.tool()
 def deck_import(deck_id: str, format: str, text: str) -> JsonObject {
-    return outcome(run_walker(DeckImport(deck_id=deck_id, format=format, text=text)));
+    return outcome(walk(DeckImport(deck_id=deck_id, format=format, text=text)));
 }
 
 """Run MCP over the real stdout; everything else this process prints goes to stderr."""
@@ -592,10 +607,17 @@ with entry:__main__ {
     os.chdir(APP_DIR);
     # Fail before MCP takes stdout: the message goes to stderr.
     check_catalogue();
+    if app_mode() == HOSTED {
+        sys.stderr.write("Hosted mode needs the front door's sign-in, which this server does not have yet. Run with KP_MODE=local.\n");  # jac:ignore[E1099]
+        sys.exit(1);
+    }
+    # The guest makes the shared Catalog and Format nodes before any user call.
+    start();
 
     if os.environ.get("KP_TRANSPORT", "stdio") == "http" {
         http_host = os.environ.get("KP_HTTP_HOST", "127.0.0.1");
         http_port = int(os.environ.get("KP_HTTP_PORT", "8020"));
+        check_bind(http_host);
         anyio.run(serve_http, http_host, http_port);  # jac:ignore[E1054,W1051]: anyio.run takes *args the checker cannot match
     } else {
         # stdout carries the MCP protocol, so keep a handle to it and send all

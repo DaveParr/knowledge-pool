@@ -4,12 +4,14 @@ import json
 import os
 import subprocess
 import sys
-import urllib.request
 from pathlib import Path
 
-from jaclang.testing.testing import JacTestClient
+import anyio
+from mcp.client.session import ClientSession
+from mcp.client.streamable_http import streamable_http_client
 
 from catalog import precons
+from tests.local_user import local_user_decks
 
 ROOT = Path(__file__).resolve().parent.parent
 SEED_DIR = Path(__file__).parent / "fixtures" / "mtgjson_seed"
@@ -31,21 +33,15 @@ def _ok(run: subprocess.CompletedProcess) -> str:
 
 
 def _decks(tmp_path: Path) -> dict[str, dict]:
-    """Every deck in the shared root of the database `JAC_DB_URL` names, by
+    """Every deck the local user owns in the database `JAC_DB_URL` names, by
     name: its play format and card counts per zone."""
-    client = JacTestClient.from_file("main.jac", base_path=str(tmp_path))
-    try:
-        listed = client.post("/walker/ListDecks").json()["data"]["reports"][0]
-        out = {}
-        for d in listed:
-            view = client.post("/walker/GetDeck", json={"deck_id": d["_jac_id"]}).json()["data"]["reports"][0]
-            zones: dict[str, int] = {}
-            for c in view["cards"]:
-                zones[c["zone"]] = zones.get(c["zone"], 0) + c["count"]
-            out[view["name"]] = {"format": view["format"], "zones": zones, "legal": view["legal"]}
-        return out
-    finally:
-        client.close()
+    out = {}
+    for view in local_user_decks(tmp_path):
+        zones: dict[str, int] = {}
+        for c in view.cards:
+            zones[c.zone] = zones.get(c.zone, 0) + c.count
+        out[view.name] = {"format": view.format, "zones": zones, "legal": view.legal}
+    return out
 
 
 def _fixture_counts(name: str) -> dict[str, int]:
@@ -125,23 +121,25 @@ def test_format_flag_limits_the_run(fixture_catalog, jac_db_url, tmp_path):
     assert sorted(d["format"] for d in _decks(tmp_path).values()) == ["modern", "pioneer"]
 
 
-def _web_deck_names(port: int) -> list[str]:
-    req = urllib.request.Request(
-        f"http://127.0.0.1:{port}/walker/ListDecks", data=b"{}", headers={"Content-Type": "application/json"},
-    )
-    return [d["name"] for d in json.load(urllib.request.urlopen(req, timeout=30))["data"]["reports"][0]]
+async def _mcp_deck_names(port: int) -> list[str]:
+    """The deck names `deck_list` gives over the running dev server's MCP endpoint."""
+    async with streamable_http_client(f"http://127.0.0.1:{port + 1}/mcp") as (read, write), ClientSession(read, write) as session:
+        await session.initialize()
+        listed = await session.call_tool("deck_list", {})
+        return [d["name"] for d in listed.structured_content["result"]]
 
 
-def test_seed_runs_while_the_dev_server_is_up_and_the_web_app_sees_its_decks(fixture_catalog, jac_db_url, tmp_path):
+def test_seed_runs_while_the_dev_server_is_up_and_the_mcp_server_sees_its_decks(fixture_catalog, jac_db_url, tmp_path):
     script = ROOT / "scripts" / "dev.sh"
     env = {**os.environ, "KP_CATALOG": str(fixture_catalog), "KP_DEV_DIR": str(tmp_path / "dev")}
     try:
         up = subprocess.run([str(script), "up"], env=env, cwd=ROOT, capture_output=True, text=True, timeout=300)
         assert up.returncode == 0, up.stdout + up.stderr
         port = int((tmp_path / "dev" / "port").read_text())
-        assert _web_deck_names(port) == []
+        assert anyio.run(_mcp_deck_names, port) == []
         _ok(_seed(fixture_catalog, jac_db_url, "--seed", "5", "--format", "modern"))
-        assert _web_deck_names(port) == list(_decks(tmp_path))
-        assert len(_web_deck_names(port)) == 1
+        names = anyio.run(_mcp_deck_names, port)
+        assert names == list(_decks(tmp_path))
+        assert len(names) == 1
     finally:
         subprocess.run([str(script), "down"], env=env, cwd=ROOT, timeout=60)

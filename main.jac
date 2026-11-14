@@ -1,10 +1,10 @@
 """Knowledge Pool - entry point.
 
 Server endpoints come from `decks.jac`; the client UI from `frontend.jac`.
-Importing `shared_graph` turns on strict permissions in this process too.
+Importing `graph_runner` turns on strict permissions in this process too.
 """
 
-import shared_graph;
+import graph_runner;
 
 import from decks {
     Deck,

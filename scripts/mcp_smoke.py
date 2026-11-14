@@ -1,19 +1,16 @@
-"""End-to-end check of the MCP server over stdio, and of sharing decks with the web app.
+"""End-to-end check of the MCP server over stdio, in local mode.
 
-    jac run --no-serve scripts/mcp_smoke.py [port]
+    jac run --no-serve scripts/mcp_smoke.py
 
-Starts the web app on `port` and `jac run mcp_server.jac` as an MCP client
-would: two processes on one database (this worktree's, or `JAC_DB_URL`).
-Builds a deck through the tools, checks it through the web app's REST API,
-then makes a deck in the web app and finds it through MCP.
+Starts `jac run mcp_server.jac` as an MCP client would, on this worktree's
+database (or `JAC_DB_URL`), and builds a deck through the tools. Then a
+second MCP server process on the same database finds the deck: both run
+every call as the local user.
 """
 
 import json
 import os
-import subprocess
 import sys
-import time
-import urllib.request
 from pathlib import Path
 
 import anyio
@@ -21,30 +18,10 @@ from mcp.client.session import ClientSession
 from mcp.client.stdio import StdioServerParameters, stdio_client
 
 ROOT = Path(__file__).resolve().parent.parent
-PORT = int(sys.argv[1]) if len(sys.argv) > 1 else 8828
 JAC = sys.executable  # the jac binary runs this script
 MCP_SERVER = StdioServerParameters(
     command=JAC, args=["run", "--no-serve", "mcp_server.jac"], cwd=str(ROOT), env=dict(os.environ),
 )
-
-
-def web(path: str, body: dict | None = None) -> dict:
-    req = urllib.request.Request(
-        f"http://127.0.0.1:{PORT}{path}",
-        data=json.dumps(body or {}).encode(),
-        headers={"Content-Type": "application/json"},
-    )
-    return json.load(urllib.request.urlopen(req, timeout=30))
-
-
-def wait_for_web() -> None:
-    for _ in range(120):
-        try:
-            urllib.request.urlopen(f"http://127.0.0.1:{PORT}/healthz", timeout=2)
-            return
-        except OSError:
-            time.sleep(1)
-    raise SystemExit("web app did not come up")
 
 
 async def call(session: ClientSession, tool: str, **args):
@@ -294,22 +271,17 @@ async def main() -> None:
         analysed_missing = await session.call_tool("deck_analyze", {"deck_id": "nope"})
         check("deck_analyze gives the reason as a tool error", analysed_missing.is_error and analysed_missing.content[0].text == "No deck with id nope.", analysed_missing.content)
 
-        wait_for_web()
-        web_decks = web("/walker/ListDecks")["data"]["reports"][0]
-        check("deck made over MCP shows in the web app", "MCP Burn" in [d["name"] for d in web_decks], web_decks)
-        web_view = web("/walker/GetDeck", {"deck_id": deck["id"]})["data"]["reports"][0]
-        check("web app sees the same cards", web_view["main_total"] == 60, web_view)
-
-        web("/walker/CreateDeck", {"name": "Made in the app", "format": "pioneer"})
         listed = await call(session, "deck_list")
-        check("deck made in the web app shows over MCP", "Made in the app" in [d["name"] for d in listed], listed)
+        check("deck_list lists the deck", "MCP Burn" in [d["name"] for d in listed], listed)
 
     # A client that renders MCP Apps already shows the view, so the model gets a
     # short brief instead of the full Markdown (otherwise it repeats the view).
-    # A second MCP server process on the same database.
+    # A second MCP server process on the same database, as the same local user.
     apps_ext = {"io.modelcontextprotocol/ui": {"mimeTypes": ["text/html;profile=mcp-app"]}}
     async with stdio_client(MCP_SERVER) as (read, write), ClientSession(read, write, extensions=apps_ext) as session:
         await session.initialize()
+        listed = await call(session, "deck_list")
+        check("a second MCP server process lists the local user's deck", "MCP Burn" in [d["name"] for d in listed], listed)
         shown = await session.call_tool("deck_show", {"deck_id": deck["id"]})
         check(
             "deck_show gives an Apps client a brief, not the table",
@@ -344,12 +316,4 @@ async def main() -> None:
     print("all checks passed")
 
 
-web_app = subprocess.Popen(
-    [JAC, "run", "--no-dev", "--host", "127.0.0.1", "--port", str(PORT), "main.jac"],
-    cwd=ROOT, stdout=sys.stderr, stderr=sys.stderr,
-)
-try:
-    anyio.run(main)
-finally:
-    web_app.terminate()
-    web_app.wait(timeout=30)
+anyio.run(main)

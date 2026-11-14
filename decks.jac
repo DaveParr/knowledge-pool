@@ -170,7 +170,7 @@ def card_lines(deck: Deck) -> list[CardLine] {
 
 """What a deck's lines break in its format. An unknown format is itself a violation."""
 def deck_violations(deck: Deck, lines: list[CardLine]) -> list[Violation] {
-    fmt = format_node(root, deck.format);
+    fmt = format_node(root.shared, deck.format);
     if fmt is None {
         return [Violation(rule="unknown-format", message=f"Unknown format: {deck.format}.")];
     }
@@ -258,7 +258,7 @@ def apply_holding(deck: Deck, oid: str, zone: str, count: int, reason: str, add:
         if after == 0 {
             return "";
         }
-        card = card_node(root, oid);
+        card = card_node(root.shared, oid);
         if card is None {
             return f"{oid} is not a known oracle id.";
         }
@@ -338,20 +338,33 @@ def refused_change(why: str) -> WalkerError {
     return WalkerError(code="refused-change", message=f"Change refused: {why}");
 }
 
-"""Base for walkers that act on one deck. An id that names no deck is handled
-here, once: the walker reports a no-such-deck WalkerError and stops."""
+"""The caller's own deck with id `deck_id`: one that hangs off the caller's
+root. None for an id that names no deck, or names another user's deck even
+when Jac would let the caller read it."""
+def own_deck(deck_id: str) -> Deck | None {
+    try {
+        target = jobj(deck_id);
+    } except ValueError {
+        return None;
+    }
+    if not isinstance(target, Deck) {
+        return None;
+    }
+    if jid(target) not in [jid(d) for d in [root-->[?:Deck]]] {
+        return None;
+    }
+    return target;
+}
+
+"""Base for walkers that act on one deck. An id that names no deck of the
+caller's is handled here, once: the walker reports a no-such-deck
+WalkerError and stops. Another user's deck answers the same way."""
 walker DeckAction {
     has deck_id: str,
         reports: list[DeckView | WalkerError] = [];
 
     can locate with Root entry {
-        deck: Deck | None = None;
-        try {
-            target = jobj(self.deck_id);
-            if isinstance(target, Deck) {
-                deck = target;
-            }
-        } except ValueError {}
+        deck = own_deck(self.deck_id);
         if deck is None {
             report WalkerError(code="no-such-deck", message=f"No deck with id {self.deck_id}.");
             disengage;
