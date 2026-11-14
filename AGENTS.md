@@ -27,3 +27,17 @@ Dispatch workers into Orca worktrees, or run them on the feature branch one at a
 ## Jac gotcha
 
 `jac run` prints every walker `report` to stdout. Wrap walker calls in `redirect_stdout`, as `seed.jac`'s `walk` helper does.
+
+## Agent skills
+
+### Issue tracker
+
+GitHub issues in `DaveParr/knowledge-pool`, with work prepared on the Knowledge Pool project board. See `docs/agents/issue-tracker.md`.
+
+### Triage labels
+
+The default five: `needs-triage`, `needs-info`, `ready-for-agent`, `ready-for-human`, `wontfix`. See `docs/agents/triage-labels.md`.
+
+### Domain docs
+
+Single-context: `CONTEXT.md` and `docs/adr/` at the repo root. See `docs/agents/domain.md`.
