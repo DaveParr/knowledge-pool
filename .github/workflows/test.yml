@@ -5,7 +5,7 @@ on:
     branches: [main, planning-deployment]
     types: [opened, synchronize, reopened]
   push:
-    branches: [main]
+    branches: [main, DaveParr/planning-deployment]
 
 jobs:
   test:
