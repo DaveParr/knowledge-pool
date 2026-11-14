@@ -28,19 +28,19 @@ with entry {
 }
 
 test "card_node pulls oracle tags from the catalogue" {
-    card = card_node(root, BOLT);
+    card = card_node(BOLT);
     assert isinstance(card, Card);
     assert sorted(card.oracle_tags) == ["burn", "removal"];
 }
 
 test "a card with no taggings gets an empty oracle_tags list" {
-    card = card_node(root, "a3fb7228-e76b-4e96-a40e-20b5fed75685");  # Mountain
+    card = card_node("a3fb7228-e76b-4e96-a40e-20b5fed75685");  # Mountain
     assert isinstance(card, Card);
     assert card.oracle_tags == [];
 }
 
 test "card_node copies stats, keywords and each face of a double-faced card" {
-    card = card_node(root, "edd531b9-f615-4399-8c8c-1c5e18c4acbf");  # Delver of Secrets
+    card = card_node("edd531b9-f615-4399-8c8c-1c5e18c4acbf");  # Delver of Secrets
     assert isinstance(card, Card);
     assert (card.power, card.toughness, card.loyalty, card.defense) == ("1", "1", "", "");
     assert card.keywords == ["Flying", "Transform"];
@@ -51,7 +51,7 @@ test "card_node copies stats, keywords and each face of a double-faced card" {
 }
 
 test "a one-face card has no faces; its row holds the rules text" {
-    card = card_node(root, BOLT);
+    card = card_node(BOLT);
     assert isinstance(card, Card);
     assert card.faces == [];
     assert card.power == "";
@@ -59,7 +59,7 @@ test "a one-face card has no faces; its row holds the rules text" {
 }
 
 test "card_node returns None for an unknown oracle id" {
-    assert card_node(root, "no-such-oracle-id") is None;
+    assert card_node("no-such-oracle-id") is None;
 }
 
 test "find_card looks up by oracle id, exact name or either face" {
@@ -79,7 +79,7 @@ test "search_cards and resolve_names read the catalogue" {
 }
 
 test "re-ingest then one RefreshCards updates every field on existing Card nodes" {
-    card = card_node(root, BOLT);
+    card = card_node(BOLT);
     assert isinstance(card, Card);
     changed: dict[str, any] = copy.deepcopy(ATOMIC);
     face: dict[str, any] = changed["data"]["Lightning Bolt"][0] as dict[str, any];
@@ -134,7 +134,7 @@ test "re-ingest then one RefreshCards updates every field on existing Card nodes
 }
 
 test "RefreshCards leaves a card the new catalogue no longer has untouched" {
-    card = card_node(root, BOLT);
+    card = card_node(BOLT);
     assert isinstance(card, Card);
     without: dict[str, any] = copy.deepcopy(ATOMIC);
     without["data"].pop("Lightning Bolt");

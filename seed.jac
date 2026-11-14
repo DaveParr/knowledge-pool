@@ -11,9 +11,9 @@ the first that is legal in that format today, else the last one tried. A
 precon whose name is already a deck in the graph is never picked again, so
 each run adds new decks.
 
-Decks are made by `CreateDeckFromList` on the shared guest root, the same
-graph the web app and MCP server use; they may keep running. The card
-catalogue must be built first (or KP_CATALOG pointed at one).
+Decks are made by `CreateDeckFromList` as the local user, through the runner,
+like the MCP server's; it may keep running. The card catalogue must be built
+first (or KP_CATALOG pointed at one).
 """
 
 import argparse;
@@ -32,10 +32,10 @@ import from deckformats.mtgjson { is_skipped_list_note }
 import from deck_io { CreateDeckFromList, NewDeckResult, resolve_list }
 import from legality { Violation, check_lines, format_node }
 import from walker_errors { WalkerError }
-import from shared_graph { APP_DIR, run_walker }
+import from runner { APP_DIR, run_walker, start }
 import from jaclang.runtime.constructs { WalkerArchetype }
 
-"""Run a walker on the shared root (see shared_graph.run_walker). Under
+"""Run a walker for this run's caller, the local user (see runner.run_walker). Under
 `jac run` every `report` is also echoed to stdout; keep that out of the
 script's own output."""
 def walk(w: WalkerArchetype) -> WalkerArchetype {
@@ -60,14 +60,14 @@ walker CheckList {
             report rl;
             disengage;
         }
-        fmt = format_node(here, self.play_format);
+        fmt = format_node(self.play_format);
         if fmt is None {
             report WalkerError(code="unknown-format", message=f"Unknown format {self.play_format}.");
             disengage;
         }
         lines: list[CardLine] = [];
         for e in rl.entries {
-            card = card_node(here, e.oracle_id);
+            card = card_node(e.oracle_id);
             if card is not None {
                 lines.append(card_line(card, e.zone, e.count));
             }
@@ -83,7 +83,7 @@ def is_legal(source: DeckSource, precon: dict[str, str], play_format: str) -> bo
     return not isinstance(found, WalkerError) and len(found as list[Violation]) == 0;
 }
 
-"""Names of every deck already in the shared graph."""
+"""Names of every deck the local user already has."""
 def deck_names -> set[str] {
     decks = walk(ListDecks()).reports[0] as list[Deck];
     return {d.name for d in decks};
@@ -155,6 +155,7 @@ with entry:__main__ {
     os.chdir(APP_DIR);
 
     check_catalogue();
+    start();
 
     seed = int(args.seed) if args.seed else random.SystemRandom().randrange(1000000);
     only: list[str] = (args.format or []) as list[str];

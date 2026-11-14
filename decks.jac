@@ -1,8 +1,9 @@
 """Decks - server side.
 
-Each deck is a `Deck` node hung off `root`, so it persists across restarts in
-`.jac/data`. The walkers are `:pub`: this is a local, single-user app, so every
-caller shares one graph and nobody has to log in.
+Each deck is a `Deck` node hung off its owner's root: every walker runs as a
+caller on that caller's own root (see `runner.jac`), so a user sees and
+changes only their own decks. The cards and formats a deck refers to live on
+the shared root (see `cards.shared_root`).
 """
 
 import from datetime { datetime, timezone }
@@ -170,7 +171,7 @@ def card_lines(deck: Deck) -> list[CardLine] {
 
 """What a deck's lines break in its format. An unknown format is itself a violation."""
 def deck_violations(deck: Deck, lines: list[CardLine]) -> list[Violation] {
-    fmt = format_node(root, deck.format);
+    fmt = format_node(deck.format);
     if fmt is None {
         return [Violation(rule="unknown-format", message=f"Unknown format: {deck.format}.")];
     }
@@ -258,7 +259,7 @@ def apply_holding(deck: Deck, oid: str, zone: str, count: int, reason: str, add:
         if after == 0 {
             return "";
         }
-        card = card_node(root, oid);
+        card = card_node(oid);
         if card is None {
             return f"{oid} is not a known oracle id.";
         }
@@ -338,20 +339,21 @@ def refused_change(why: str) -> WalkerError {
     return WalkerError(code="refused-change", message=f"Change refused: {why}");
 }
 
-"""Base for walkers that act on one deck. An id that names no deck is handled
-here, once: the walker reports a no-such-deck WalkerError and stops."""
+"""Base for walkers that act on one deck. An id that names no deck hanging off
+the caller's root is handled here, once: the walker reports a no-such-deck
+WalkerError and stops. Another user's deck answers the same, so it is
+neither seen nor changed."""
 walker DeckAction {
     has deck_id: str,
         reports: list[DeckView | WalkerError] = [];
 
     can locate with Root entry {
         deck: Deck | None = None;
-        try {
-            target = jobj(self.deck_id);
-            if isinstance(target, Deck) {
-                deck = target;
+        for d in [here-->[?:Deck]] {
+            if jid(d) == self.deck_id {
+                deck = d;
             }
-        } except ValueError {}
+        }
         if deck is None {
             report WalkerError(code="no-such-deck", message=f"No deck with id {self.deck_id}.");
             disengage;

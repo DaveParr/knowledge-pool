@@ -4,12 +4,10 @@ import json
 import os
 import subprocess
 import sys
-import urllib.request
 from pathlib import Path
 
-from jaclang.testing.testing import JacTestClient
-
 from catalog import precons
+from tests.local_decks import local_user_decks
 
 ROOT = Path(__file__).resolve().parent.parent
 SEED_DIR = Path(__file__).parent / "fixtures" / "mtgjson_seed"
@@ -28,24 +26,6 @@ def _seed(catalog: Path, db_url: str, *args: str) -> subprocess.CompletedProcess
 def _ok(run: subprocess.CompletedProcess) -> str:
     assert run.returncode == 0, run.stdout + run.stderr
     return run.stdout
-
-
-def _decks(tmp_path: Path) -> dict[str, dict]:
-    """Every deck in the shared root of the database `JAC_DB_URL` names, by
-    name: its play format and card counts per zone."""
-    client = JacTestClient.from_file("main.jac", base_path=str(tmp_path))
-    try:
-        listed = client.post("/walker/ListDecks").json()["data"]["reports"][0]
-        out = {}
-        for d in listed:
-            view = client.post("/walker/GetDeck", json={"deck_id": d["_jac_id"]}).json()["data"]["reports"][0]
-            zones: dict[str, int] = {}
-            for c in view["cards"]:
-                zones[c["zone"]] = zones.get(c["zone"], 0) + c["count"]
-            out[view["name"]] = {"format": view["format"], "zones": zones, "legal": view["legal"]}
-        return out
-    finally:
-        client.close()
 
 
 def _fixture_counts(name: str) -> dict[str, int]:
@@ -83,7 +63,7 @@ def test_seed_adds_one_precon_per_format_then_different_ones(fixture_catalog, ja
     assert list(lines) == ["standard", "pioneer", "modern", "commander"]
     assert len(out.splitlines()) == 5  # the seed, then one line per format and nothing else
 
-    decks = _decks(tmp_path)
+    decks = local_user_decks(jac_db_url, tmp_path)
     assert len(decks) == 4
     for name, deck in decks.items():
         assert deck["zones"] == _fixture_counts(name), name
@@ -107,7 +87,7 @@ def test_seed_adds_one_precon_per_format_then_different_ones(fixture_catalog, ja
 
     # The same seed again: decks already in the graph are skipped, so new ones are added.
     _ok(_seed(fixture_catalog, jac_db_url, "--seed", str(SEED)))
-    again = _decks(tmp_path)
+    again = local_user_decks(jac_db_url, tmp_path)
     assert len(again) == 8
     assert set(decks) < set(again)
     for name in set(again) - set(decks):
@@ -116,32 +96,22 @@ def test_seed_adds_one_precon_per_format_then_different_ones(fixture_catalog, ja
     # not released yet, so a third run has no commander left to add.
     third = _ok(_seed(fixture_catalog, jac_db_url, "--seed", str(SEED), "--format", "commander"))
     assert "no precon left" in _format_lines(third)["commander"]
-    assert "Future Commander" not in _decks(tmp_path)
+    assert "Future Commander" not in local_user_decks(jac_db_url, tmp_path)
 
 
 def test_format_flag_limits_the_run(fixture_catalog, jac_db_url, tmp_path):
     out = _ok(_seed(fixture_catalog, jac_db_url, "--seed", "5", "--format", "modern", "--format", "pioneer"))
     assert set(_format_lines(out)) == {"pioneer", "modern"}
-    assert sorted(d["format"] for d in _decks(tmp_path).values()) == ["modern", "pioneer"]
+    assert sorted(d["format"] for d in local_user_decks(jac_db_url, tmp_path).values()) == ["modern", "pioneer"]
 
 
-def _web_deck_names(port: int) -> list[str]:
-    req = urllib.request.Request(
-        f"http://127.0.0.1:{port}/walker/ListDecks", data=b"{}", headers={"Content-Type": "application/json"},
-    )
-    return [d["name"] for d in json.load(urllib.request.urlopen(req, timeout=30))["data"]["reports"][0]]
-
-
-def test_seed_runs_while_the_dev_server_is_up_and_the_web_app_sees_its_decks(fixture_catalog, jac_db_url, tmp_path):
+def test_seed_runs_while_the_dev_server_is_up_and_adds_the_local_users_deck(fixture_catalog, jac_db_url, tmp_path):
     script = ROOT / "scripts" / "dev.sh"
     env = {**os.environ, "KP_CATALOG": str(fixture_catalog), "KP_DEV_DIR": str(tmp_path / "dev")}
     try:
         up = subprocess.run([str(script), "up"], env=env, cwd=ROOT, capture_output=True, text=True, timeout=300)
         assert up.returncode == 0, up.stdout + up.stderr
-        port = int((tmp_path / "dev" / "port").read_text())
-        assert _web_deck_names(port) == []
         _ok(_seed(fixture_catalog, jac_db_url, "--seed", "5", "--format", "modern"))
-        assert _web_deck_names(port) == list(_decks(tmp_path))
-        assert len(_web_deck_names(port)) == 1
+        assert len(local_user_decks(jac_db_url, tmp_path)) == 1
     finally:
         subprocess.run([str(script), "down"], env=env, cwd=ROOT, timeout=60)

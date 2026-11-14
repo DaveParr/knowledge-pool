@@ -38,7 +38,7 @@ In a new worktree, fill the graph with real decks to look at and test against:
 jac run --no-serve seed.jac
 ```
 
-It adds one random MTGJSON precon for each format (a Challenger Deck for Standard, a Pioneer Challenger Deck, a Modern Event Deck and a Commander Deck) to the shared graph the web app and MCP server use, and prints one line per format: the deck, its type and release date, whether it is legal, and any unresolved cards. For Standard, Pioneer and Modern it tries up to 3 precons and keeps the first legal one, else the last tried (old Challenger Decks have rotated out of Standard). A precon already in the graph is never picked again, so run it again for more decks. The seed is printed every run; `--seed N` repeats a set of picks on a fresh graph, `--format X` (repeatable) limits the formats, and `--from-dir DIR` reads `DeckList.json` and deck files from DIR instead of mtgjson.com. Downloads are cached in `data/mtgjson/decks/`. The app and the MCP server may keep running: decks the seed adds show up in them at once.
+It adds one random MTGJSON precon for each format (a Challenger Deck for Standard, a Pioneer Challenger Deck, a Modern Event Deck and a Commander Deck) to the local user's decks, the ones the MCP server uses, and prints one line per format: the deck, its type and release date, whether it is legal, and any unresolved cards. For Standard, Pioneer and Modern it tries up to 3 precons and keeps the first legal one, else the last tried (old Challenger Decks have rotated out of Standard). A precon already in the graph is never picked again, so run it again for more decks. The seed is printed every run; `--seed N` repeats a set of picks on a fresh graph, `--format X` (repeatable) limits the formats, and `--from-dir DIR` reads `DeckList.json` and deck files from DIR instead of mtgjson.com. Downloads are cached in `data/mtgjson/decks/`. The MCP server may keep running: decks the seed adds show up in it at once.
 
 ### Run
 
@@ -64,9 +64,11 @@ claude mcp add knowledge-pool -- jac run --no-serve "$PWD/mcp_server.jac"
 
 `deck_export` defaults to MTGA/MTGO (`arena`); the other formats are `moxfield`, `text` (both lossy, like `arena`), `mtgdeck1` and `mtgjson` (lossless JSON). In clients that render MCP Apps (Claude Desktop, claude.ai) the export shows in a view (`ui/deck_export.html`) with a button per format, **Copy** and **Download**; changing format there calls `deck_export` again through the host. Other clients, such as Claude Code, get the export as text: a lossy list in a code block, or a short summary followed by the full JSON for a lossless format. `deck_import` and the app's **Import list** read the same formats; `mtgjson` also takes a deck file from MTGJSON (`https://mtgjson.com/api/v5/decks/`), such as a Commander precon, and lists any tokens, planes or schemes it skips.
 
-The MCP server and the web app are separate processes on the same database, so decks made in either place show up in the other straight away, and any number of them can run at once. A call that loses a write race with another process is rolled back and fails; repeat it.
+Every tool runs through the runner (`runner.jac`) as a caller, on that caller's own decks. `KP_MODE` sets the mode: `local` (the default) runs every call as the one **local user** and serves on `127.0.0.1` only; `hosted` takes the caller from the front door's sign-in, which is not built yet, so for now every hosted call is refused. Any number of MCP server processes (and `seed.jac`) can run at once on one database, and decks made in one show up in the others straight away. A call that loses a write race with another process is rolled back and fails; repeat it.
 
-`jac run --no-serve scripts/mcp_smoke.py` starts the web app and runs a full stdio session against your local data as a check.
+Until the front door runs the web page's calls, the web app acts as the guest on Jac's own server, so it does not show the local user's decks made over MCP or by `seed.jac`, and decks made in the web app do not show over MCP.
+
+`jac run --no-serve scripts/mcp_smoke.py` runs a full stdio session as the local user against your local data, then checks a second MCP server process sees the same decks.
 
 ### QA
 
@@ -96,7 +98,7 @@ jac x test-ui   # browser smoke test of the web app; skips without a browser (CI
 - `global.css` app-wide style tokens, shared with the MCP Apps views in `ui/`
 - `legality.jac` `Format` nodes and the deck-construction rules
 - `mcp_server.jac` the MCP server (a process of its own, beside the web app)
-- `shared_graph.jac` runs walkers on the shared (guest) root from outside the web app, for the MCP server and the seed script
+- `runner.jac` runs every walker as a caller on that caller's own root (in local mode, always the local user), and the app's own work as the guest, whose root holds the shared cards and formats
 - `seed.jac`, `catalog/precons.py` the seed script: one random MTGJSON precon per format
 - `ui/` the MCP Apps views: `deck_table.html` (`deck_show`), `mana_analysis.html` (`deck_analyze`), `card_search.html` (`card_search`) and `deck_export.html` (`deck_export`); `ui/mockups/` holds the signed-off static mockups
 - `scripts/mcp_smoke.py` an MCP client session that checks the tools end to end

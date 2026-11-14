@@ -69,7 +69,7 @@ print("strict" if Jac.strict_permissions else "lax")
 """
 
 
-@pytest.mark.parametrize("module", ["main", "shared_graph"])  # mcp_server and seed import shared_graph
+@pytest.mark.parametrize("module", ["main", "runner"])  # mcp_server and seed import runner
 def test_app_processes_run_with_strict_permissions(module, tmp_path):
     """A write Jac refuses must fail the call, even with JAC_STRICT_PERMISSIONS unset."""
     probe = tmp_path / "probe.py"
@@ -80,3 +80,12 @@ def test_app_processes_run_with_strict_permissions(module, tmp_path):
         cwd=tmp_path, env=env, capture_output=True, text=True, timeout=300,
     )
     assert run.stdout.strip().splitlines()[-1:] == ["strict"], run.stdout + run.stderr
+
+
+def test_no_code_reads_a_nodes_raw_anchor_edges():
+    """A node's raw anchor edges (`__jac__.edges`) hold every user's edges on a
+    shared card, so no app code may read or serialise them."""
+    sources = [*ROOT.glob("*.jac"), *ROOT.glob("*.py"), *ROOT.glob("catalog/*.py"), *ROOT.glob("deckformats/*.py")]
+    texts = {p.name: p.read_text() for p in sources if p.is_file()}
+    readers = [name for name, text in texts.items() if "__jac__.edges" in text or "__jac__.all_edges" in text]
+    assert readers == []

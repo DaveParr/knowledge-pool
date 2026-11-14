@@ -11,6 +11,7 @@ catalogue record: after `catalog/ingest.py` rebuilds the catalogue, one
 
 import sqlite3;
 import catalog.store as store;
+import from jaclang { JacRuntime as Jac }
 import from card_lines { CardFace }
 import from json_object { JsonObject }
 
@@ -113,13 +114,35 @@ def:pub resolve_names(names: list[str]) -> JsonObject {
     return store.resolve_names(names);
 }
 
-"""The Catalog node under `home`, created on first use."""
+"""The root that holds the shared cards and formats: the guest's root, which
+the runner registers as Jac's shared root. With none registered (a walker
+test), the current root."""
+def shared_root -> Root {
+    return root.shared;
+}
+
+"""Run `work` with `home`, the shared root, as the acting root, so what it
+saves is owned by the guest, not the caller. Switches back in a `finally`.
+Relies on Jac's private `_user_root` context field; `runner_tests.jac` fails
+if Jac renames it."""
+def as_owner_of(home: Root, work: Callable[[], object]) -> object {
+    ctx = Jac.get_context();
+    acting = ctx._user_root;
+    ctx._user_root = home.__jac__;
+    try {
+        return work();
+    } finally {
+        ctx._user_root = acting;
+    }
+}
+
+"""The Catalog node under `home`, created on first use (by `home`'s owner)."""
 def catalog_node(home: Root) -> Catalog {
     found = [home-->[?:Catalog]];
     if found {
         return found[0];
     }
-    return (home ++> Catalog()) as Catalog;
+    return as_owner_of(home, lambda -> Catalog { return (home ++> Catalog()) as Catalog; }) as Catalog;
 }
 
 """Copy every catalogue field of record `c` onto `card`. The one place that
@@ -160,8 +183,12 @@ def card_face(f: dict[str, str]) -> CardFace {
     );
 }
 
-"""The Card node for an oracle id, created from the catalogue on first use. None if the id is unknown."""
-def card_node(home: Root, oid: str) -> Card | None {
+"""The Card node for an oracle id, from the shared Catalog, created from the
+catalogue on first use. None if the id is unknown. A new card is created and
+linked by the guest and opened at CONNECT: every user's deck can hold it, and
+no user can change it."""
+def card_node(oid: str) -> Card | None {
+    home = shared_root();
     cat = catalog_node(home);
     found = [cat-->[?:Card, oracle_id == oid]];  # jac:ignore[W1051]: the checker cannot resolve a filter field
     if found {
@@ -173,7 +200,7 @@ def card_node(home: Root, oid: str) -> Card | None {
     }
     card = Card(oracle_id=oid, name=c["name"] as str);
     fill_card(card, c);
-    cat ++> card;
+    as_owner_of(home, lambda { cat ++> card; grant(card, level=AccessLevel.CONNECT); });
     return card;
 }
 
@@ -187,7 +214,7 @@ walker:pub RefreshCards {
     can refresh with Root entry {
         store.reset();
         updated = 0;
-        for card in [catalog_node(here)-->[?:Card]] {
+        for card in [catalog_node(shared_root())-->[?:Card]] {
             c = store.get_card(card.oracle_id);
             if c is not None {
                 fill_card(card, c);

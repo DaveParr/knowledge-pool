@@ -1,10 +1,12 @@
 """Knowledge Pool - entry point.
 
 Server endpoints come from `decks.jac`; the client UI from `frontend.jac`.
-Importing `shared_graph` turns on strict permissions in this process too.
+Importing `runner` turns on strict permissions in this process too. Until the
+front door runs the page's calls (#129), the page's `:pub` walkers run on Jac's
+own server as the guest, so its decks are not the local user's.
 """
 
-import shared_graph;
+import runner;
 
 import from decks {
     Deck,

@@ -1,19 +1,23 @@
 """MCP server for Claude Code and Claude Desktop (local stdio or HTTP).
 
 The MCP SDK's MCPServer (FastMCP before mcp 2.0) runs in the same process as
-the Jac graph. Deck and format tools each spawn a walker against the app's
-shared root, the same root the web app's `:pub` walkers use. Card search,
-lookup and name resolution go through the card catalogue module (`cards`).
-No tool calls a model.
+the Jac graph. Every deck and format tool runs its walker through the runner
+(`runner.jac`), as the caller on the caller's own root: in local mode
+(KP_MODE unset or "local") always the local user. Card search, lookup and
+name resolution go through the card catalogue module (`cards`). No tool
+calls a model.
 
-The web app is a separate process (`jac run`); both share one graph in
-Postgres, so decks made in one show in the other at once.
-`jac x up` runs both for this worktree.
+Any number of MCP server processes share one graph in Postgres, so a deck
+made in one shows in the others at once. The web app is a separate process
+(`jac run`); until the front door runs its calls (#129) it acts as the guest,
+so it does not see the local user's decks. `jac x up` runs both for this
+worktree.
 
     claude mcp add knowledge-pool -- jac run --no-serve <repo>/mcp_server.jac
 
 KP_TRANSPORT=http switches the MCP endpoint from stdio to streamable HTTP
-(KP_HTTP_HOST, default 127.0.0.1; KP_HTTP_PORT, default 8020), for clients
+(KP_HTTP_HOST, default 127.0.0.1, the only host local mode allows;
+KP_HTTP_PORT, default 8020), for clients
 (e.g. a remote/custom connector) that need a URL instead of a local command.
 That endpoint is plain HTTP: it has no TLS of its own, so putting it behind
 something that terminates HTTPS (a tunnel like `cloudflared` or `ngrok`, or a
@@ -31,7 +35,7 @@ import from mcp.server.apps { Apps, ResourcePermissions, client_supports_apps }
 import from mcp_types { CallToolResult, TextContent }
 import from mcp.server.stdio { stdio_server }
 import from mcp.server.streamable_http { TransportSecuritySettings }
-import from cards { search_cards as catalog_search, find_card, resolve_names as catalog_resolve_names, check_catalogue }
+import from cards { CardSearch, search_cards as catalog_search, find_card, resolve_names as catalog_resolve_names, check_catalogue }
 import from decks {
     Deck, DeckView, CreateDeck, ListDecks, GetDeck, SetDeckFormat, EditDeck
 }
@@ -39,7 +43,7 @@ import from deck_io { DeckExport, DeckImport }
 import from legality { GetFormatRules }
 import from walker_errors { WalkerError }
 import from json_object { JsonObject }
-import from shared_graph { APP_DIR, run_walker }
+import from runner { APP_DIR, LOOPBACK, call_function, check_bind, run_walker, start }
 import from jaclang.runtime.constructs { WalkerArchetype }
 
 glob LOGGED_CLIENT_UI: list[bool] = [],
@@ -412,7 +416,7 @@ def make_apps -> Apps {
 glob server: MCPServer[object] = MCPServer(
     "knowledge-pool",
     instructions=(
-        "Build and edit Magic: The Gathering decks in the user's local Knowledge Pool app. "
+        "Build and edit Magic: The Gathering decks in the user's own Knowledge Pool. "
         + "Card data comes only from the MTGJSON catalogue: turn card names into oracle ids with "
         + "resolve_names (or search_cards) before adding them, and never add a card that was not "
         + "resolved. Give a short reason for every deck change. Finish with deck_validate. "
@@ -459,7 +463,7 @@ def outcome(w: WalkerArchetype) -> JsonObject {
 """Search card names, type lines and rules text. Every word must match, as a prefix."""
 @server.tool()
 def search_cards(query: str, limit: int = 20) -> list[JsonObject] {
-    found = catalog_search(query, limit);
+    found = call_function(lambda -> CardSearch { return catalog_search(query, limit); }) as CardSearch;
     if found.error {
         raise RuntimeError(found.error);
     }
@@ -472,7 +476,7 @@ multi-face card (name, cost, type, text, stats), format legalities and Scryfall
 oracle tags."""
 @server.tool()
 def get_card(oracle_id_or_name: str) -> JsonObject {
-    card = find_card(oracle_id_or_name);
+    card = call_function(lambda -> JsonObject | None { return find_card(oracle_id_or_name); }) as JsonObject | None;
     if card is None {
         return {"error": f"No card matches {oracle_id_or_name}. Try resolve_names or search_cards."};
     }
@@ -484,7 +488,7 @@ candidates to choose from, and `unknown` names. Only exact matches (or a candida
 the user confirms) should go into a deck."""
 @server.tool()
 def resolve_names(names: list[str]) -> JsonObject {
-    return catalog_resolve_names(names);
+    return call_function(lambda -> JsonObject { return catalog_resolve_names(names); }) as JsonObject;
 }
 
 """Deck-construction rules for a format: standard, pioneer, modern or commander."""
@@ -592,9 +596,11 @@ with entry:__main__ {
     os.chdir(APP_DIR);
     # Fail before MCP takes stdout: the message goes to stderr.
     check_catalogue();
+    start();
 
     if os.environ.get("KP_TRANSPORT", "stdio") == "http" {
-        http_host = os.environ.get("KP_HTTP_HOST", "127.0.0.1");
+        http_host = os.environ.get("KP_HTTP_HOST", LOOPBACK);
+        check_bind(http_host);
         http_port = int(os.environ.get("KP_HTTP_PORT", "8020"));
         anyio.run(serve_http, http_host, http_port);  # jac:ignore[E1054,W1051]: anyio.run takes *args the checker cannot match
     } else {

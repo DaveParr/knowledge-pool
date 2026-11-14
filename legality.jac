@@ -9,6 +9,7 @@ import re;
 import from card_lines { CardLine, main_deck }
 import from commander { DECK_ZONES, CHECKED_ZONES, commanders, can_lead, identity, identity_label, commander_names, partner_abilities, is_background, pair_problem }
 import from walker_errors { WalkerError }
+import from cards { shared_root }
 
 """Deck-construction rules for one format."""
 node Format {
@@ -67,8 +68,9 @@ def format_nodes(home: Root) -> list[Format] {
     return found;
 }
 
-def format_node(home: Root, key: str) -> Format | None {
-    for f in format_nodes(home) {
+"""The Format node for `key`, from the shared root (see cards.shared_root). None if unknown."""
+def format_node(key: str) -> Format | None {
+    for f in format_nodes(shared_root()) {
         if f.name == key {
             return f;
         }
@@ -293,7 +295,7 @@ walker GetFormatRules {
         reports: list[FormatRules | WalkerError] = [];
 
     can show with Root entry {
-        fmt = format_node(here, self.format);
+        fmt = format_node(self.format);
         if fmt is None {
             report unknown_format(self.format);
             disengage;
