@@ -9,7 +9,7 @@ set -uo pipefail
 log=$(mktemp)
 trap 'rm -f "$log"' EXIT
 
-uv run jac test "$@" 2>&1 | tee "$log"
+jac test "$@" 2>&1 | tee "$log"
 status=${PIPESTATUS[0]}
 
 if [ "$status" -ne 0 ]; then

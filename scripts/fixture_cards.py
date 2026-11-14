@@ -1,7 +1,7 @@
 """Grow the hand-trimmed MTGJSON test fixtures from real MTGJSON data.
 
-    uv run python scripts/fixture_cards.py precon SRC DEST
-    uv run python scripts/fixture_cards.py cards --atomic AtomicCards.json.xz \
+    .jac/venv/bin/python scripts/fixture_cards.py precon SRC DEST
+    .jac/venv/bin/python scripts/fixture_cards.py cards --atomic AtomicCards.json.xz \
         [--deck tests/fixtures/mtgjson_decks/X.json ...] [NAME ...]
 
 `precon` trims a downloaded MTGJSON deck file to names, counts and oracle ids.

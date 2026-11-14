@@ -12,6 +12,7 @@ import from legality { Violation, FORMAT_LABELS, format_node, check_lines, unkno
 import from commander { GameChangers, game_changers }
 import from mana { ManaProfile, ManaCurve, mana_profile, mana_curve }
 import from walker_errors { WalkerError }
+import from json_object { JsonObject }
 
 """One change to how many copies of a card a zone of a deck holds, with the
 reason given for it. Every holdings change writes one (see change_holding)."""
@@ -71,7 +72,7 @@ walker:pub ListDecks {
     has reports: list[list[Deck]] = [];
 
     can collect with Root entry {
-        decks = sorted([here-->[?:Deck]], key=lambda d: Deck : d.created_at);
+        decks = sorted([here-->[?:Deck]], key=lambda (d: Deck) { return d.created_at; });
         report decks;
     }
 }
@@ -127,7 +128,7 @@ def holdings(deck: Deck) -> list[tuple[Holds, Card]] {
 """A card line for `count` copies of catalogue card `c` in `zone`, with the
 holding's roles, tags, lock and reason."""
 def card_line(
-    c: Card, zone: str, count: int, roles: list[str] = [], tags: list[str] = [], locked: bool = False, reason: str = ""
+    c: Card, zone: str, count: int, roles: list[str] | None = None, tags: list[str] | None = None, locked: bool = False, reason: str = ""
 ) -> CardLine {
     return CardLine(
         oracle_id=c.oracle_id,
@@ -150,20 +151,20 @@ def card_line(
         colour_identity=c.colour_identity,
         leadership=c.leadership,
         game_changer=c.game_changer,
-        roles=roles,
-        tags=tags,
+        roles=roles or [],
+        tags=tags or [],
         locked=locked,
         reason=reason
     );
 }
 
 """The deck's card lines, sorted by zone (ZONES order) then name: the one read
-model every analysis and export works from (see card_lines.sv.jac)."""
+model every analysis and export works from (see card_lines.jac)."""
 def card_lines(deck: Deck) -> list[CardLine] {
     lines: list[CardLine] = [
         card_line(c, e.zone, e.count, e.roles, e.tags, e.locked, e.reason) for (e, c) in holdings(deck)
     ];
-    lines.sort(key=lambda l: CardLine : (ZONES.index(l.zone), l.name));
+    lines.sort(key=lambda (l: CardLine) { return (ZONES.index(l.zone), l.name); });
     return lines;
 }
 
@@ -270,6 +271,8 @@ def apply_holding(deck: Deck, oid: str, zone: str, count: int, reason: str, add:
         (hold, held_card) = found;
         name = held_card.name;
         if after == 0 {
+            # Delete this one edge. A typed-edge delete (`del [edge deck ->:Holds:->]`)
+            # does nothing on current Jac, and would take the card's other zones too.
             del hold;
         } else {
             hold.count = after;
@@ -404,7 +407,7 @@ Each change is {"oracle_id", "count", "zone", "reason"} and sets that card's
 count in that zone. Bad changes are skipped and listed in the view's `rejected`.
 """
 walker EditDeck(DeckAction) {
-    has changes: list[dict] = [];
+    has changes: list[JsonObject] = [];
 
     can edit with Deck entry {
         rejected: list[str] = [];
@@ -461,6 +464,6 @@ obj FormatInfo {
         label: str;
 }
 
-def:pub list_formats() -> list[FormatInfo] {
+def:pub list_formats -> list[FormatInfo] {
     return [FormatInfo(name=k, label=v) for (k, v) in FORMAT_LABELS.items()];
 }

@@ -9,10 +9,10 @@ import "./card_search.css";
 import from .mana_cost { ManaCost }
 import from .walker_failure { failureMessage }
 
-sv import from decks { DeckView, AddCard }
-sv import from card_lines { CardLine }
-sv import from walker_errors { WalkerError }
-sv import from cards { CardHit, CardSearch, search_cards }
+import from decks { DeckView, AddCard }
+import from card_lines { CardLine }
+import from walker_errors { WalkerError }
+import from cards { CardHit, CardSearch, search_cards }
 
 def:pub AddCards(deckId: str, format: str, cards: list[CardLine], onChanged: Callable[[DeckView], None]) -> JsxElement {
     has query: str = "",
@@ -45,7 +45,7 @@ def:pub AddCards(deckId: str, format: str, cards: list[CardLine], onChanged: Cal
                     aria-label="Search cards"
                     placeholder="Card name, type or rules text"
                     value={query}
-                    onChange={lambda e: ChangeEvent { query = e.target.value; }}
+                    onChange={lambda (e: ChangeEvent) { query = e.target.value; }}
                 />
                 <button type="submit" className="primary">Search</button>
             </form>
@@ -75,13 +75,13 @@ def:pub AddCards(deckId: str, format: str, cards: list[CardLine], onChanged: Cal
                         <div className="cs-actions">
                             <button
                                 aria-label={"Add " + hit.name + " to main deck"}
-                                onClick={lambda _e: MouseEvent { addCard(hit, "main"); }}
+                                onClick={lambda (_e: MouseEvent) { addCard(hit, "main"); }}
                             >
                                 + Main
                             </button>
                             <button
                                 aria-label={"Add " + hit.name + " to sideboard"}
-                                onClick={lambda _e: MouseEvent { addCard(hit, "sideboard"); }}
+                                onClick={lambda (_e: MouseEvent) { addCard(hit, "sideboard"); }}
                             >
                                 + Side
                             </button>
@@ -89,7 +89,7 @@ def:pub AddCards(deckId: str, format: str, cards: list[CardLine], onChanged: Cal
                                 <button
                                     key="commander"
                                     aria-label={"Add " + hit.name + " as commander"}
-                                    onClick={lambda _e: MouseEvent { addCard(hit, "commander"); }}
+                                    onClick={lambda (_e: MouseEvent) { addCard(hit, "commander"); }}
                                 >
                                     + Commander
                                 </button>
@@ -98,7 +98,7 @@ def:pub AddCards(deckId: str, format: str, cards: list[CardLine], onChanged: Cal
                                 <button
                                     key="companion"
                                     aria-label={"Add " + hit.name + " as companion"}
-                                    onClick={lambda _e: MouseEvent { addCard(hit, "companion"); }}
+                                    onClick={lambda (_e: MouseEvent) { addCard(hit, "companion"); }}
                                 >
                                     + Companion
                                 </button>

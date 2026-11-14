@@ -1,4 +1,4 @@
-"""scripts/dev.sh: one app per worktree, on its own port pair, with a pidfile."""
+"""scripts/dev.sh: one app (web app and MCP server) per worktree, on its own port pair, with a pidfile."""
 
 import gzip
 import lzma
@@ -19,12 +19,12 @@ FIXTURES = ROOT / "tests" / "fixtures"
 
 
 @pytest.fixture
-def env(fixture_catalog, tmp_path):
+def env(fixture_catalog, jac_db_url, tmp_path):
     return {
         **os.environ,
         "KP_DEV_DIR": str(tmp_path / "dev"),
         "KP_CATALOG": str(fixture_catalog),
-        "JAC_DATA_PATH": str(tmp_path),
+        "JAC_DB_URL": jac_db_url,
     }
 
 

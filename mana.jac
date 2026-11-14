@@ -9,7 +9,7 @@ Phyrexian symbol like {W/P} adds one pip to W. Generic numbers, {X}, {C} and
 The curve buckets non-land cards by mana value (0..6, 7+).
 
 Every analysis here is a pure function of a deck's card lines (see
-`card_lines.sv.jac`) and counts only the main deck (`main_deck`): the
+`card_lines.jac`) and counts only the main deck (`main_deck`): the
 sideboard is not part of the game's starting mana base. A land is
 `CardLine.is_land`, the same for the land count and the curve.
 """

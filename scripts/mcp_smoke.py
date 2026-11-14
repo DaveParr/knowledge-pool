@@ -1,14 +1,16 @@
 """End-to-end check of the MCP server over stdio, and of sharing decks with the web app.
 
-    uv run python scripts/mcp_smoke.py [port]
+    jac run --no-serve scripts/mcp_smoke.py [port]
 
-Starts `jac run mcp_server.jac` as an MCP client would, builds a deck through
-the tools, checks it through the web app's REST API in the same process, then
-makes a deck in the web app and finds it through MCP.
+Starts the web app on `port` and `jac run mcp_server.jac` as an MCP client
+would: two processes on one database (this worktree's, or `JAC_DB_URL`).
+Builds a deck through the tools, checks it through the web app's REST API,
+then makes a deck in the web app and finds it through MCP.
 """
 
 import json
 import os
+import subprocess
 import sys
 import time
 import urllib.request
@@ -20,6 +22,10 @@ from mcp.client.stdio import StdioServerParameters, stdio_client
 
 ROOT = Path(__file__).resolve().parent.parent
 PORT = int(sys.argv[1]) if len(sys.argv) > 1 else 8828
+JAC = sys.executable  # the jac binary runs this script
+MCP_SERVER = StdioServerParameters(
+    command=JAC, args=["run", "--no-serve", "mcp_server.jac"], cwd=str(ROOT), env=dict(os.environ),
+)
 
 
 def web(path: str, body: dict | None = None) -> dict:
@@ -57,13 +63,7 @@ def check(label: str, ok: bool, detail="") -> None:
 
 
 async def main() -> None:
-    params = StdioServerParameters(
-        command="uv",
-        args=["run", "jac", "run", "mcp_server.jac"],
-        cwd=str(ROOT),
-        env={**os.environ, "KP_PORT": str(PORT)},
-    )
-    async with stdio_client(params) as (read, write), ClientSession(read, write) as session:
+    async with stdio_client(MCP_SERVER) as (read, write), ClientSession(read, write) as session:
         await session.initialize()
         tools = sorted(t.name for t in (await session.list_tools()).tools)
         print("tools:", ", ".join(tools))
@@ -306,15 +306,9 @@ async def main() -> None:
 
     # A client that renders MCP Apps already shows the view, so the model gets a
     # short brief instead of the full Markdown (otherwise it repeats the view).
-    # A second server process on the same saved graph, without the web app.
-    apps_params = StdioServerParameters(
-        command="uv",
-        args=["run", "jac", "run", "mcp_server.jac"],
-        cwd=str(ROOT),
-        env={**os.environ, "KP_WEB": "0"},
-    )
+    # A second MCP server process on the same database.
     apps_ext = {"io.modelcontextprotocol/ui": {"mimeTypes": ["text/html;profile=mcp-app"]}}
-    async with stdio_client(apps_params) as (read, write), ClientSession(read, write, extensions=apps_ext) as session:
+    async with stdio_client(MCP_SERVER) as (read, write), ClientSession(read, write, extensions=apps_ext) as session:
         await session.initialize()
         shown = await session.call_tool("deck_show", {"deck_id": deck["id"]})
         check(
@@ -350,4 +344,12 @@ async def main() -> None:
     print("all checks passed")
 
 
-anyio.run(main)
+web_app = subprocess.Popen(
+    [JAC, "run", "--no-dev", "--host", "127.0.0.1", "--port", str(PORT), "main.jac"],
+    cwd=ROOT, stdout=sys.stderr, stderr=sys.stderr,
+)
+try:
+    anyio.run(main)
+finally:
+    web_app.terminate()
+    web_app.wait(timeout=30)

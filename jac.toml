@@ -2,8 +2,8 @@
 name = "knowledge-pool"
 version = "0.1.0"
 description = "A full-stack Jac application"
-entry-point = "main.jac"
-kind = "fullstack"
+default-app = "knowledge-pool"
+jac-version = "==0.39.2"
 
 [dependencies.npm]
 react = "18.3.1"
@@ -21,21 +21,29 @@ typescript = "5.9.3"
 "@types/react" = "18.3.31"
 "@types/react-dom" = "18.3.7"
 
-[dev-dependencies]
+[dependencies.pypi]
+mcp = "==2.3.0"
+
+[dev-dependencies.pypi]
 watchdog = ">=3.0.0"
-
-[serve]
-base_route_app = "app"
-
-[plugins.client]
+jsonschema = "==4.26.0"
+pytest = ">=9.2.0"
 
 [test]
 directory = "tests"
 
 [scripts]
-check = "jac check *.jac && scripts/jac_test.sh && pytest tests"
+check = "export JAC_STRICT_PERMISSIONS=1; (jac check *.jac && scripts/jac_test.sh && jac x pytest tests); status=$?; jac db prune -y; exit $status"
 up = "scripts/dev.sh up"
 down = "scripts/dev.sh down"
 status = "scripts/dev.sh status"
 catalogue = "python -m catalog.ingest --if-stale"
-test-ui = "pytest tests/test_ui_smoke.py -v"
+test-ui = "jac x pytest tests/test_ui_smoke.py -v"
+
+[serve.workers]
+count = "1"
+
+[apps.knowledge-pool]
+kind = "web-app"
+entry-point = "main"
+

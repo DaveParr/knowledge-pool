@@ -6,8 +6,8 @@ import from .deck_detail { DeckDetail }
 import from .export_panel { ExportPanel }
 import from .walker_failure { failureMessage }
 
-sv import from decks { Deck, FormatInfo, CreateDeck, ListDecks, list_formats }
-sv import from deck_io { CreateDeckFromList, NewDeckResult }
+import from decks { Deck, FormatInfo, CreateDeck, ListDecks, list_formats }
+import from deck_io { CreateDeckFromList, NewDeckResult }
 
 def:pub app -> JsxElement {
     has decks: list[Deck] = [],
@@ -60,7 +60,7 @@ def:pub app -> JsxElement {
                         type="text"
                         aria-label="Deck name"
                         value={name}
-                        onChange={lambda e: ChangeEvent { name = e.target.value; }}
+                        onChange={lambda (e: ChangeEvent) { name = e.target.value; }}
                         placeholder={"Deck name (optional for mtgdeck/1 or MTGJSON)" if importOpen else "New deck name"}
                     />
                     <button type="submit" className="primary">
@@ -70,7 +70,7 @@ def:pub app -> JsxElement {
                         type="button"
                         aria-expanded={importOpen}
                         aria-controls="import-list"
-                        onClick={lambda _e: MouseEvent { importOpen = not importOpen; error = ""; }}
+                        onClick={lambda (_e: MouseEvent) { importOpen = not importOpen; error = ""; }}
                     >
                         {"Import list ▴" if importOpen else "Import list ▾"}
                     </button>
@@ -82,7 +82,7 @@ def:pub app -> JsxElement {
                             <select
                                 aria-label="Import format"
                                 value={importFormat}
-                                onChange={lambda e: ChangeEvent { importFormat = e.target.value; }}
+                                onChange={lambda (e: ChangeEvent) { importFormat = e.target.value; }}
                             >
                                 <option value="moxfield">Moxfield</option>
                                 <option value="arena">MTGA/MTGO</option>
@@ -96,7 +96,7 @@ def:pub app -> JsxElement {
                             <select
                                 aria-label="Play format"
                                 value={importPlayFormat}
-                                onChange={lambda e: ChangeEvent { importPlayFormat = e.target.value; }}
+                                onChange={lambda (e: ChangeEvent) { importPlayFormat = e.target.value; }}
                             >
                                 <option value="">{"From the list (mtgdeck/1), else Standard" if importFormat == "mtgdeck1" else "Standard"}</option>
                                 {[<option key={f.name} value={f.name}>{f.label}</option> for f in formats if f.name != "standard" or importFormat == "mtgdeck1"]}
@@ -107,7 +107,7 @@ def:pub app -> JsxElement {
                         aria-label="Deck list to import"
                         placeholder="Paste a deck list"
                         value={importText}
-                        onChange={lambda e: ChangeEvent { importText = e.target.value; }}
+                        onChange={lambda (e: ChangeEvent) { importText = e.target.value; }}
                         rows={8}
                     />
                 </div> if importOpen else None}
@@ -119,7 +119,7 @@ def:pub app -> JsxElement {
                     <li key={jid(deck)} className="fe-deck">
                         <a
                             href="#"
-                            onClick={lambda e: MouseEvent { e.preventDefault(); openDeckId = jid(deck); }}
+                            onClick={lambda (e: MouseEvent) { e.preventDefault(); openDeckId = jid(deck); }}
                         >
                             {deck.name}
                         </a>

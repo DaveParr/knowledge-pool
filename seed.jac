@@ -1,9 +1,9 @@
 """Seed this checkout's graph with one random MTGJSON precon per format.
 
-    uv run jac run seed.jac                       # one precon each: standard, pioneer, modern, commander
-    uv run jac run seed.jac --seed 42             # repeatable picks (the seed is printed every run)
-    uv run jac run seed.jac --format modern       # only some formats (repeatable)
-    uv run jac run seed.jac --from-dir DIR        # DeckList.json and deck files from DIR, no network
+    jac run --no-serve seed.jac                       # one precon each: standard, pioneer, modern, commander
+    jac run --no-serve seed.jac --seed 42             # repeatable picks (the seed is printed every run)
+    jac run --no-serve seed.jac --format modern       # only some formats (repeatable)
+    jac run --no-serve seed.jac --from-dir DIR        # DeckList.json and deck files from DIR, no network
 
 Picks come from MTGJSON's DeckList.json (catalog/precons.py maps each deck type
 to a play format). For each format it tries up to 3 random precons and takes
@@ -12,10 +12,8 @@ precon whose name is already a deck in the graph is never picked again, so
 each run adds new decks.
 
 Decks are made by `CreateDeckFromList` on the shared guest root, the same
-graph the web app and MCP server use, so stop those first: two processes
-writing one graph overwrite each other's decks. KP_PORT (default 8000) is the
-port checked. The card catalogue must be built first (or KP_CATALOG pointed
-at one).
+graph the web app and MCP server use; they may keep running. The card
+catalogue must be built first (or KP_CATALOG pointed at one).
 """
 
 import argparse;
@@ -34,12 +32,13 @@ import from deckformats.mtgjson { is_skipped_list_note }
 import from deck_io { CreateDeckFromList, NewDeckResult, resolve_list }
 import from legality { Violation, check_lines, format_node }
 import from walker_errors { WalkerError }
-import from shared_graph { APP_DIR, run_walker, port_in_use, acquire_graph_lock }
+import from shared_graph { APP_DIR, run_walker }
+import from jaclang.runtime.constructs { WalkerArchetype }
 
 """Run a walker on the shared root (see shared_graph.run_walker). Under
 `jac run` every `report` is also echoed to stdout; keep that out of the
 script's own output."""
-def walk(w: any) -> any {
+def walk(w: WalkerArchetype) -> WalkerArchetype {
     with redirect_stdout(io.StringIO()) {
         return run_walker(w);
     }
@@ -146,9 +145,9 @@ def seed_format(source: DeckSource, deck_list: list[dict[str, str]], play_format
 }
 
 with entry:__main__ {
-    parser = argparse.ArgumentParser(prog="jac run seed.jac", description="Add one random MTGJSON precon per format to this checkout's graph.");
-    parser.add_argument("--from-dir", default="", help="read DeckList.json and deck files from this directory instead of mtgjson.com");
-    parser.add_argument("--seed", default="", help="random seed, to repeat a set of picks on a fresh graph");
+    parser = argparse.ArgumentParser(prog="jac run --no-serve seed.jac", description="Add one random MTGJSON precon per format to this checkout's graph.");
+    parser.add_argument("--from-dir", `default="", help="read DeckList.json and deck files from this directory instead of mtgjson.com");
+    parser.add_argument("--seed", `default="", help="random seed, to repeat a set of picks on a fresh graph");
     parser.add_argument("--format", action="append", choices=list(DECK_TYPES), help="only this format (repeatable)");
     args = parser.parse_args(sys.argv[1:]);
     # Resolve --from-dir before moving to the app's directory, where the graph lives.
@@ -156,15 +155,6 @@ with entry:__main__ {
     os.chdir(APP_DIR);
 
     check_catalogue();
-    port = int(os.environ.get("KP_PORT", "8000"));
-    if port_in_use(port) {
-        sys.stderr.write(  # jac:ignore[E1099]
-            f"Port {port} is in use. If `jac start` or the MCP server is running, stop it first: "
-            + "two processes writing one graph overwrite each other's decks. Or set KP_PORT.\n"
-        );
-        exit(1);
-    }
-    acquire_graph_lock("seed script");
 
     seed = int(args.seed) if args.seed else random.SystemRandom().randrange(1000000);
     only: list[str] = (args.format or []) as list[str];
@@ -177,6 +167,6 @@ with entry:__main__ {
         }
     } except URLError as err {
         sys.stderr.write(f"Could not download from mtgjson.com: {err.reason}. Use --from-dir for offline use.\n");  # jac:ignore[E1099]
-        exit(1);
+        sys.exit(1);
     }
 }

@@ -12,14 +12,14 @@ import from .card_search { AddCards }
 import from .mana_cost { ManaCost }
 import from .walker_failure { failureMessage }
 
-sv import from decks {
+import from decks {
     DeckView, FormatInfo, GetDeck, SetDeckFormat, SetCardCount, RemoveCard, list_formats
 }
-sv import from legality { Violation }
-sv import from commander { GameChangers }
-sv import from mana { ManaProfile }
-sv import from card_lines { CardLine }
-sv import from walker_errors { WalkerError }
+import from legality { Violation }
+import from commander { GameChangers }
+import from mana { ManaProfile }
+import from card_lines { CardLine }
+import from walker_errors { WalkerError }
 
 """Zones in display order, with their headings."""
 glob ZONES: list[tuple[str, str]] = [
@@ -180,7 +180,7 @@ def:pub DeckDetail(deckId: str, importNotes: list[str], onBack: Callable[[], Non
                 <select
                     aria-label="Format"
                     value={deck.format}
-                    onChange={lambda e: ChangeEvent { setFormat(e.target.value); }}
+                    onChange={lambda (e: ChangeEvent) { setFormat(e.target.value); }}
                 >
                     {[<option key={f.name} value={f.name}>{f.label}</option> for f in formats]}
                 </select>
@@ -216,8 +216,8 @@ def:pub DeckDetail(deckId: str, importNotes: list[str], onBack: Callable[[], Non
                         <div className="dd-zonehead">
                             <h2>{title + " (" + str(sum([c.count for c in rows])) + ")"}</h2>
                             <span>
-                                <button className="quiet dd-all" onClick={lambda _e: MouseEvent { openAll(rows, True); }}>Expand all</button>
-                                <button className="quiet dd-all" onClick={lambda _e: MouseEvent { openAll(rows, False); }}>Collapse all</button>
+                                <button className="quiet dd-all" onClick={lambda (_e: MouseEvent) { openAll(rows, True); }}>Expand all</button>
+                                <button className="quiet dd-all" onClick={lambda (_e: MouseEvent) { openAll(rows, False); }}>Collapse all</button>
                             </span>
                         </div>
                         <div className="dd-row dd-colhead" aria-hidden="true">
@@ -234,11 +234,11 @@ def:pub DeckDetail(deckId: str, importNotes: list[str], onBack: Callable[[], Non
                                         className="dd-count"
                                         aria-label={"Count of " + line.name + " in " + line.zone}
                                         value={str(line.count)}
-                                        onChange={lambda e: ChangeEvent { setCount(line.oracle_id, line.zone, e.target.value); }}
+                                        onChange={lambda (e: ChangeEvent) { setCount(line.oracle_id, line.zone, e.target.value); }}
                                     />
                                     <details
                                         open={bool(opened.get(rowKey(line), False))}
-                                        onToggle={lambda e: Event { setOpen(rowKey(line), e.target.hasAttribute("open")); }}
+                                        onToggle={lambda (e: Event) { setOpen(rowKey(line), e.target.hasAttribute("open")); }}
                                     >
                                         <summary className="dd-line">
                                             <span className="dd-name">{line.name}</span>
@@ -252,7 +252,7 @@ def:pub DeckDetail(deckId: str, importNotes: list[str], onBack: Callable[[], Non
                                         className="quiet dd-remove"
                                         aria-label={"Remove " + line.name + " from " + line.zone}
                                         title="Remove"
-                                        onClick={lambda _e: MouseEvent { removeCard(line.oracle_id, line.zone); }}
+                                        onClick={lambda (_e: MouseEvent) { removeCard(line.oracle_id, line.zone); }}
                                     >
                                         ✕
                                     </button>

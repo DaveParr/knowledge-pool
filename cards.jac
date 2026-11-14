@@ -12,6 +12,7 @@ catalogue record: after `catalog/ingest.py` rebuilds the catalogue, one
 import sqlite3;
 import catalog.store as store;
 import from card_lines { CardFace }
+import from json_object { JsonObject }
 
 node Catalog {}
 
@@ -84,11 +85,11 @@ def:pub search_cards(query: str, limit: int = 25) -> CardSearch {
 
 """Raise if the catalogue was built by older code; the error names the ingest
 command. Run at startup so the app refuses to serve a stale catalogue."""
-def check_catalogue() -> None {
+def check_catalogue {
     store.check_current();
 }
 
-def:pub catalog_info() -> CatalogInfo {
+def:pub catalog_info -> CatalogInfo {
     m = store.meta();
     return CatalogInfo(
         mtgjson_version=m["mtgjson_version"] as str,
@@ -99,7 +100,7 @@ def:pub catalog_info() -> CatalogInfo {
 
 """The full catalogue record for an oracle id or an exact card name (ignoring
 case; a double-faced card also matches by either face). None if nothing matches."""
-def:pub find_card(oracle_id_or_name: str) -> dict[str, any] | None {
+def:pub find_card(oracle_id_or_name: str) -> JsonObject | None {
     key = oracle_id_or_name.strip();
     if not key {
         return None;
@@ -108,7 +109,7 @@ def:pub find_card(oracle_id_or_name: str) -> dict[str, any] | None {
 }
 
 """Sort names into `exact` matches, `fuzzy` candidates and `unknown` names. Never guesses."""
-def:pub resolve_names(names: list[str]) -> dict[str, any] {
+def:pub resolve_names(names: list[str]) -> JsonObject {
     return store.resolve_names(names);
 }
 
@@ -118,12 +119,12 @@ def catalog_node(home: Root) -> Catalog {
     if found {
         return found[0];
     }
-    return (home ++> Catalog())[0] as Catalog;
+    return (home ++> Catalog()) as Catalog;
 }
 
 """Copy every catalogue field of record `c` onto `card`. The one place that
 maps a catalogue record to a Card node, so a new field can't be missed by the refresh."""
-def fill_card(card: Card, c: dict[str, any]) {
+def fill_card(card: Card, c: JsonObject) {
     card.name = c["name"] as str;
     card.mana_cost = c["mana_cost"] as str;
     card.mana_value = c["mana_value"] as float;
@@ -162,7 +163,7 @@ def card_face(f: dict[str, str]) -> CardFace {
 """The Card node for an oracle id, created from the catalogue on first use. None if the id is unknown."""
 def card_node(home: Root, oid: str) -> Card | None {
     cat = catalog_node(home);
-    found = [cat-->[?:Card, oracle_id == oid]];
+    found = [cat-->[?:Card, oracle_id == oid]];  # jac:ignore[W1051]: the checker cannot resolve a filter field
     if found {
         return found[0];
     }

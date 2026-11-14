@@ -4,7 +4,7 @@ import json
 from pathlib import Path
 
 import pytest
-from jaclang.runtimelib.testing import JacTestClient
+from jaclang.testing.testing import JacTestClient
 
 FIXTURES = Path(__file__).parent / "fixtures"
 DECKS = json.loads((FIXTURES / "commander_decks.json").read_text())
