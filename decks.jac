@@ -12,6 +12,7 @@ import from legality { Violation, FORMAT_LABELS, format_node, check_lines, unkno
 import from commander { GameChangers, game_changers }
 import from mana { ManaProfile, ManaCurve, mana_profile, mana_curve }
 import from walker_errors { WalkerError }
+import from json_object { JsonObject }
 
 """One change to how many copies of a card a zone of a deck holds, with the
 reason given for it. Every holdings change writes one (see change_holding)."""
@@ -127,7 +128,7 @@ def holdings(deck: Deck) -> list[tuple[Holds, Card]] {
 """A card line for `count` copies of catalogue card `c` in `zone`, with the
 holding's roles, tags, lock and reason."""
 def card_line(
-    c: Card, zone: str, count: int, roles: list[str] = [], tags: list[str] = [], locked: bool = False, reason: str = ""
+    c: Card, zone: str, count: int, roles: list[str] | None = None, tags: list[str] | None = None, locked: bool = False, reason: str = ""
 ) -> CardLine {
     return CardLine(
         oracle_id=c.oracle_id,
@@ -150,8 +151,8 @@ def card_line(
         colour_identity=c.colour_identity,
         leadership=c.leadership,
         game_changer=c.game_changer,
-        roles=roles,
-        tags=tags,
+        roles=roles or [],
+        tags=tags or [],
         locked=locked,
         reason=reason
     );
@@ -406,7 +407,7 @@ Each change is {"oracle_id", "count", "zone", "reason"} and sets that card's
 count in that zone. Bad changes are skipped and listed in the view's `rejected`.
 """
 walker EditDeck(DeckAction) {
-    has changes: list[dict[str, any]] = [];
+    has changes: list[JsonObject] = [];
 
     can edit with Deck entry {
         rejected: list[str] = [];
@@ -463,6 +464,6 @@ obj FormatInfo {
         label: str;
 }
 
-def:pub list_formats() -> list[FormatInfo] {
+def:pub list_formats -> list[FormatInfo] {
     return [FormatInfo(name=k, label=v) for (k, v) in FORMAT_LABELS.items()];
 }

@@ -33,11 +33,12 @@ import from deck_io { CreateDeckFromList, NewDeckResult, resolve_list }
 import from legality { Violation, check_lines, format_node }
 import from walker_errors { WalkerError }
 import from shared_graph { APP_DIR, run_walker }
+import from jaclang.runtime.constructs { WalkerArchetype }
 
 """Run a walker on the shared root (see shared_graph.run_walker). Under
 `jac run` every `report` is also echoed to stdout; keep that out of the
 script's own output."""
-def walk(w: any) -> any {
+def walk(w: WalkerArchetype) -> WalkerArchetype {
     with redirect_stdout(io.StringIO()) {
         return run_walker(w);
     }

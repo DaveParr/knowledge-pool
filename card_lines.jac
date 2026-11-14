@@ -55,7 +55,7 @@ obj CardLine {
     a spell on the front and a land on the back (Valakut Awakening) is a
     spell: it is cast from hand at its front face's mana value. Dryad Arbor
     (Land Creature) is a land."""
-    def is_land() -> bool {
+    def is_land -> bool {
         front = self.type_line.split(" // ")[0];
         return "Land" in front.split("—")[0].split();
     }

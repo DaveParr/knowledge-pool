@@ -13,6 +13,7 @@ import threading;
 import from jaclang { JacRuntime as Jac }
 import from jaclang.runtime.context { ExecutionContext }
 import from jaclang.runtime.constants { Constants as Con }
+import from jaclang.runtime.constructs { WalkerArchetype }
 
 glob APP_DIR: str = os.path.dirname(os.path.abspath(__file__)),
      LOCK: threading.Lock = threading.Lock(),
@@ -41,13 +42,13 @@ context. On any error the request's writes are rolled back and the error is
 raised, so a failed call (a lost write race, say) never leaves the process
 holding an open transaction that blocks every later call.
 """
-def run_walker(w: any) -> any {
+def run_walker(w: WalkerArchetype) -> WalkerArchetype {
     with LOCK {
         ctx = ExecutionContext(_parent=Jac.get_context());
         ctx.set_user_root(guest_root_id());
         token = Jac.push_request_context(ctx);
         try {
-            done = Jac.spawn(ctx.get_root(), copy.deepcopy(w));
+            done = Jac.spawn(ctx.get_root(), copy.deepcopy(w)) as WalkerArchetype;  # a sync walker, so never a coroutine
             Jac.commit();
             return done;
         } except Exception {
