@@ -3,9 +3,12 @@
 Every walker that reports a deck reports its curve, so the deck view needs one
 request per edit."""
 
-from jaclang.testing.testing import JacTestClient
+import pytest
 
 from catalog import store
+from tests.front_door_client import FrontDoorClient
+
+pytestmark = pytest.mark.usefixtures("jac_db_url")
 
 
 def _reports(resp):
@@ -30,7 +33,7 @@ def _buckets(**counts) -> dict:
 
 
 def test_curve_excludes_lands_and_sideboard_counts_x_spells_and_mdfcs(tmp_path):
-    client = JacTestClient.from_file("main.jac", base_path=str(tmp_path))
+    client = FrontDoorClient(tmp_path)
     try:
         deck_id = _new_deck(client)
         bolt = _oracle_id("Lightning Bolt")
@@ -58,7 +61,7 @@ def test_curve_excludes_lands_and_sideboard_counts_x_spells_and_mdfcs(tmp_path):
 
 
 def test_curve_is_zero_for_an_all_land_deck(tmp_path):
-    client = JacTestClient.from_file("main.jac", base_path=str(tmp_path))
+    client = FrontDoorClient(tmp_path)
     try:
         deck_id = _new_deck(client, "All land")
         mountain = _oracle_id("Mountain")
@@ -73,7 +76,7 @@ def test_curve_is_zero_for_an_all_land_deck(tmp_path):
 
 
 def test_every_edit_reports_the_curve_after_that_edit(tmp_path):
-    client = JacTestClient.from_file("main.jac", base_path=str(tmp_path))
+    client = FrontDoorClient(tmp_path)
     try:
         deck_id = _new_deck(client)
         bolt = _oracle_id("Lightning Bolt")
@@ -111,7 +114,7 @@ def test_every_edit_reports_the_curve_after_that_edit(tmp_path):
 
 
 def test_the_analyze_deck_walker_is_gone(tmp_path):
-    client = JacTestClient.from_file("main.jac", base_path=str(tmp_path))
+    client = FrontDoorClient(tmp_path)
     try:
         deck_id = _new_deck(client)
         resp = client.post("/walker/AnalyzeDeck", json={"deck_id": deck_id})

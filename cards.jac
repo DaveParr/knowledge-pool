@@ -69,7 +69,7 @@ obj CardSearch {
 
 """Search card names, type lines and rules text. Every word must match.
 A missing or out-of-date catalogue comes back as `error`, not an exception."""
-def:pub search_cards(query: str, limit: int = 25) -> CardSearch {
+def:protect search_cards(query: str, limit: int = 25) -> CardSearch {
     try {
         found = store.search(query, limit);
     } except (sqlite3.Error, FileNotFoundError) as e {
@@ -96,7 +96,7 @@ def check_catalogue {
     store.check_current();
 }
 
-def:pub catalog_info -> CatalogInfo {
+def catalog_info -> CatalogInfo {
     m = store.meta();
     return CatalogInfo(
         mtgjson_version=m["mtgjson_version"] as str,
@@ -107,7 +107,7 @@ def:pub catalog_info -> CatalogInfo {
 
 """The full catalogue record for an oracle id or an exact card name (ignoring
 case; a double-faced card also matches by either face). None if nothing matches."""
-def:pub find_card(oracle_id_or_name: str) -> JsonObject | None {
+def find_card(oracle_id_or_name: str) -> JsonObject | None {
     key = oracle_id_or_name.strip();
     if not key {
         return None;
@@ -116,7 +116,7 @@ def:pub find_card(oracle_id_or_name: str) -> JsonObject | None {
 }
 
 """Sort names into `exact` matches, `fuzzy` candidates and `unknown` names. Never guesses."""
-def:pub resolve_names(names: list[str]) -> JsonObject {
+def resolve_names(names: list[str]) -> JsonObject {
     return store.resolve_names(names);
 }
 

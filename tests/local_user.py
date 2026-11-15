@@ -1,8 +1,8 @@
 """The local user's decks, read in process through the runner (`graph_runner.jac`).
 
-The MCP server and the seed script run every call as the local user. Jac's
-own server runs the web page's calls as the guest, so a test reads the local
-user's decks here, not over the web app's REST API.
+The MCP server, the front door's page calls and the seed script run every call
+as the local user, so a test that checks what they stored reads the local
+user's decks here, in process, through the runner.
 """
 
 import sys

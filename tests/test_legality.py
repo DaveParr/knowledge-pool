@@ -8,9 +8,11 @@ import json
 from pathlib import Path
 
 import pytest
-from jaclang.testing.testing import JacTestClient
 
 from catalog import store
+from tests.front_door_client import FrontDoorClient
+
+pytestmark = pytest.mark.usefixtures("jac_db_url")
 
 DECKS = json.loads((Path(__file__).parent / "fixtures" / "legality_decks.json").read_text())
 
@@ -27,7 +29,7 @@ def _oracle_id(name: str) -> str:
 
 @pytest.fixture
 def client(tmp_path):
-    c = JacTestClient.from_file("main.jac", base_path=str(tmp_path))
+    c = FrontDoorClient(tmp_path)
     yield c
     c.close()
 

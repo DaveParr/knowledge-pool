@@ -31,7 +31,7 @@ WAIT_MS = 30000
 
 
 def free_port_pair() -> int:
-    """A port P where both P and P + 1 are free (web app and MCP).
+    """A port P where both P and P + 1 are free (the front door and its child, Jac's server).
 
     Scans 9100-9898, above the kernel's ephemeral range and clear of dev.sh's 8100-8898.
     """
@@ -148,7 +148,7 @@ def _served(env: dict, session: str, log: Path, port: int, request):
     try:
         up = subprocess.run([str(SCRIPT), "up"], env=env, cwd=ROOT, capture_output=True, text=True, timeout=300)
         assert up.returncode == 0, up.stdout + up.stderr
-        the_app = App(f"http://127.0.0.1:{port}", f"http://127.0.0.1:{port + 1}/mcp", session, env)
+        the_app = App(f"http://127.0.0.1:{port}", f"http://127.0.0.1:{port}/mcp", session, env)
         yield the_app
         if request.session.testsfailed:
             save_artifacts(the_app, log)

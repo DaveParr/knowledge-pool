@@ -123,7 +123,7 @@ def test_format_flag_limits_the_run(fixture_catalog, jac_db_url, tmp_path):
 
 async def _mcp_deck_names(port: int) -> list[str]:
     """The deck names `deck_list` gives over the running dev server's MCP endpoint."""
-    async with streamable_http_client(f"http://127.0.0.1:{port + 1}/mcp") as (read, write), ClientSession(read, write) as session:
+    async with streamable_http_client(f"http://127.0.0.1:{port}/mcp") as (read, write), ClientSession(read, write) as session:
         await session.initialize()
         listed = await session.call_tool("deck_list", {})
         return [d["name"] for d in listed.structured_content["result"]]

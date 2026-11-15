@@ -8,10 +8,10 @@ lookup and name resolution go through the card catalogue module (`cards`).
 No tool calls a model. Hosted mode is refused until the front door's
 sign-in names a caller.
 
-The web app is a separate process (`jac run`) on the same graph in
-Postgres. Until the front door runs the web page's deck calls through the
-runner, Jac's own server runs them as the guest, so the web page shows the
-guest's decks, not the local user's. `jac x up` runs both for this worktree.
+Over HTTP this process is also the front door (`front_door.jac`): the one
+listener, which answers `/mcp`, runs the web page's deck calls through the
+runner as the same caller, and hands the page out from Jac's server, its
+child on 127.0.0.1. `jac x up` runs it for this worktree.
 
     claude mcp add knowledge-pool -- jac run --no-serve <repo>/mcp_server.jac
 
@@ -28,6 +28,8 @@ import io;
 import os;
 import sys;
 import anyio;
+import httpx2;
+import uvicorn;
 import from datetime { datetime, timezone }
 import from mcp.server.mcpserver { MCPServer, Context }
 import from mcp.server.apps { Apps, ResourcePermissions, client_supports_apps }
@@ -42,6 +44,7 @@ import from deck_io { DeckExport, DeckImport }
 import from legality { GetFormatRules }
 import from walker_errors { WalkerError }
 import from json_object { JsonObject }
+import from front_door { FrontDoorConfig, front_door_app, start_upstream, stop_upstream, exit_when_upstream_dies, expect_upstream_to_stop }
 import from graph_runner { APP_DIR, HOSTED, app_mode, check_bind, request_caller, run_walker, call_function, start, refresh_cards }
 import from jaclang.runtime.constructs { WalkerArchetype }
 
@@ -588,19 +591,26 @@ async def serve_stdio(mcp_out: io.TextIOWrapper[io.BufferedWriter]) {
     }
 }
 
-"""Run MCP over streamable HTTP instead of stdio, for clients that need a URL.
+"""Run the front door over HTTP instead of MCP over stdio, for clients that need a URL.
+
+The one listener answers `/mcp` for MCP, the web page's deck calls and the
+page itself (`front_door.jac`); `upstream` is Jac's server, the page's child.
 
 The transport rejects any Host/Origin it doesn't recognize (DNS-rebinding
 protection), so a host sitting in front of this (e.g. a tunnel) must be
 listed in KP_HTTP_ALLOWED_HOSTS, a comma-separated list of hostnames
 (with port, if any) such as "my-tunnel.trycloudflare.com".
 """
-async def serve_http(host: str, port: int) {
+async def serve_http(host: str, port: int, upstream: str) {
     extra_hosts = [h.strip() for h in os.environ.get("KP_HTTP_ALLOWED_HOSTS", "").split(",") if h.strip()];
     hosts = [f"127.0.0.1:{port}", f"localhost:{port}"] + extra_hosts;
     origins = [f"https://{h}" for h in extra_hosts] + [f"http://{h}" for h in extra_hosts];
     security = TransportSecuritySettings(allowed_hosts=hosts, allowed_origins=origins);
-    await server.run_streamable_http_async(host=host, port=port, transport_security=security);  # jac:ignore[E1053]
+    mcp_app = server.streamable_http_app(host=host, transport_security=security);
+    own_origins = [f"http://127.0.0.1:{port}", f"http://localhost:{port}"] + origins;
+    config = FrontDoorConfig(upstream=upstream, origins=own_origins, client=httpx2.AsyncClient());
+    listener = uvicorn.Server(uvicorn.Config(front_door_app(mcp_app, config), host=host, port=port, log_level="info"));
+    await listener.serve();
 }
 
 with entry:__main__ {
@@ -620,7 +630,15 @@ with entry:__main__ {
         http_host = os.environ.get("KP_HTTP_HOST", "127.0.0.1");
         http_port = int(os.environ.get("KP_HTTP_PORT", "8020"));
         check_bind(http_host);
-        anyio.run(serve_http, http_host, http_port);  # jac:ignore[E1054,W1051]: anyio.run takes *args the checker cannot match
+        # Jac's server hands out the page from a child on 127.0.0.1; if it dies, this process exits.
+        (child, upstream) = start_upstream(int(os.environ.get("KP_UPSTREAM_PORT", "0")));
+        exit_when_upstream_dies(child);
+        try {
+            anyio.run(serve_http, http_host, http_port, upstream);  # jac:ignore[E1054,W1051]: anyio.run takes *args the checker cannot match
+        } finally {
+            expect_upstream_to_stop();
+            stop_upstream(child);
+        }
     } else {
         # stdout carries the MCP protocol, so keep a handle to it and send all
         # other output (walker reports, server logs) to stderr.

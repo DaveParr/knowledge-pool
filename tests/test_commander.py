@@ -4,7 +4,10 @@ import json
 from pathlib import Path
 
 import pytest
-from jaclang.testing.testing import JacTestClient
+
+from tests.front_door_client import FrontDoorClient
+
+pytestmark = pytest.mark.usefixtures("jac_db_url")
 
 FIXTURES = Path(__file__).parent / "fixtures"
 DECKS = json.loads((FIXTURES / "commander_decks.json").read_text())
@@ -18,7 +21,7 @@ def _reports(resp):
 
 @pytest.fixture
 def client(tmp_path):
-    c = JacTestClient.from_file("main.jac", base_path=str(tmp_path))
+    c = FrontDoorClient(tmp_path)
     yield c
     c.close()
 

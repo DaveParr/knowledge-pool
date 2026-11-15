@@ -32,7 +32,7 @@ def list_format(format: str) -> DeckFormat | WalkerError {
 """Export a deck in the given format (mtgdeck1, mtgjson, text, arena or
 moxfield). An unknown format reports an unknown-list-format WalkerError, and
 one that cannot be exported a no-export one."""
-walker:pub DeckExport(DeckAction) {
+walker:protect DeckExport(DeckAction) {
     has format: str = "mtgdeck1",
         reports: list[ExportResult | WalkerError] = [];
 
@@ -142,7 +142,7 @@ added (see resolve_list). If the text can't be parsed at all, has no cards
 in it, or nothing in it resolves, the deck is left exactly as it was.
 Every count that changes is logged in the deck's history. A list format
 that cannot be imported reports a WalkerError (see resolve_list)."""
-walker:pub DeckImport(DeckAction) {
+walker:protect DeckImport(DeckAction) {
     has format: str = "mtgdeck1",
         text: str = "",
         reports: list[ImportResult | WalkerError] = [];
@@ -174,7 +174,7 @@ list's own name (mtgdeck/1 or MTGJSON), then "Imported deck". The play format is
 (mtgdeck/1, or commander for an MTGJSON Commander Deck) when known, else standard. When nothing in the list
 resolves, no deck is created and `deck_id` is empty. An unknown or
 import-less list format reports a WalkerError (see resolve_list)."""
-walker:pub CreateDeckFromList {
+walker:protect CreateDeckFromList {
     has name: str = "",
         format: str = "mtgdeck1",
         text: str = "",
