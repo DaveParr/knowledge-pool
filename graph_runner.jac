@@ -59,6 +59,10 @@ glob APP_DIR: str = os.path.dirname(os.path.abspath(__file__)),
      LOCAL: str = "local",
      HOSTED: str = "hosted",
      MODES: list[str] = [LOCAL, HOSTED],
+     HOSTED_SETTINGS: list[str] = [
+         "KP_AUTHKIT_DOMAIN", "KP_MCP_URL", "WORKOS_CLIENT_ID", "WORKOS_API_KEY", "WORKOS_COOKIE_PASSWORD",
+         "JAC_DB_URL"
+     ],
      STARTED_FOR_GUEST: list[str] = [],
      RERUNS: int = 3,
      RERUN_WAIT_S: tuple[float, float] = (0.01, 0.05),
@@ -110,6 +114,22 @@ mode binds 127.0.0.1 only."""
 def check_bind(host: str) {
     if app_mode() == LOCAL and host != LOOPBACK {
         raise ValueError(f"Local mode listens on {LOOPBACK} only, not {host}.");
+    }
+}
+
+"""Refuse to start in hosted mode when a setting is missing or empty, naming
+every one that is: the AuthKit domain (issuer), the public MCP URL (audience),
+the WorkOS client id, the WorkOS API key, the cookie password and the
+database address (without it Jac would start a Postgres of its own and lose
+every deck on the next deploy). A misconfigured deploy fails closed instead of
+opening up."""
+def check_hosted_settings {
+    if app_mode() != HOSTED {
+        return;
+    }
+    missing = [name for name in HOSTED_SETTINGS if not os.environ.get(name, "").strip()];
+    if missing {
+        raise ValueError(f"Hosted mode needs these settings, which are missing or empty: {', '.join(missing)}.");
     }
 }
 

@@ -5,8 +5,8 @@ the Jac graph. Every tool goes through the runner (`graph_runner.jac`) as whoeve
 is asking: in local mode, the local user, so `deck_list` lists the local
 user's decks. Deck and format tools each spawn a walker; card search,
 lookup and name resolution go through the card catalogue module (`cards`).
-No tool calls a model. Hosted mode is refused until the front door's
-sign-in names a caller.
+No tool calls a model. Hosted mode starts only with its WorkOS settings;
+until the front door's sign-in names a caller, every call in it is refused.
 
 Over HTTP this process is also the front door (`front_door.jac`): the one
 listener, which answers `/mcp`, runs the web page's deck calls through the
@@ -27,6 +27,7 @@ is not reachable from a connector that calls in from outside this machine.
 import io;
 import os;
 import sys;
+import from urllib.parse { urlsplit }
 import anyio;
 import httpx2;
 import uvicorn;
@@ -45,7 +46,7 @@ import from legality { GetFormatRules }
 import from walker_errors { WalkerError }
 import from json_object { JsonObject }
 import from front_door { FrontDoorConfig, front_door_app, start_upstream, stop_upstream, stop_child_on_sigterm, exit_when_upstream_dies, expect_upstream_to_stop }
-import from graph_runner { APP_DIR, HOSTED, app_mode, check_bind, request_caller, run_walker, call_function, start, refresh_cards }
+import from graph_runner { APP_DIR, check_bind, check_hosted_settings, request_caller, run_walker, call_function, start, refresh_cards }
 import from jaclang.runtime.constructs { WalkerArchetype }
 
 glob LOGGED_CLIENT_UI: list[bool] = [],
@@ -603,6 +604,11 @@ listed in KP_HTTP_ALLOWED_HOSTS, a comma-separated list of hostnames
 """
 async def serve_http(host: str, port: int, upstream: str) {
     extra_hosts = [h.strip() for h in os.environ.get("KP_HTTP_ALLOWED_HOSTS", "").split(",") if h.strip()];
+    # The host in the public MCP URL is the front door's own address in hosted mode.
+    public_host = urlsplit(os.environ.get("KP_MCP_URL", "")).netloc;
+    if public_host and public_host not in extra_hosts {
+        extra_hosts.append(public_host);
+    }
     hosts = [f"127.0.0.1:{port}", f"localhost:{port}"] + extra_hosts;
     origins = [f"https://{h}" for h in extra_hosts] + [f"http://{h}" for h in extra_hosts];
     security = TransportSecuritySettings(allowed_hosts=hosts, allowed_origins=origins);
@@ -617,8 +623,10 @@ with entry:__main__ {
     os.chdir(APP_DIR);
     # Fail before MCP takes stdout: the message goes to stderr.
     check_catalogue();
-    if app_mode() == HOSTED {
-        sys.stderr.write("Hosted mode needs the front door's sign-in, which this server does not have yet. Run with KP_MODE=local.\n");  # jac:ignore[E1099]
+    try {
+        check_hosted_settings();
+    } except ValueError as e {
+        sys.stderr.write(f"{e}\n");  # jac:ignore[E1099]
         sys.exit(1);
     }
     # The guest makes the shared Catalog and Format nodes before any user call.

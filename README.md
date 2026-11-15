@@ -81,6 +81,20 @@ jac x test-ui   # browser smoke test of the web app; skips without a browser (CI
 
 `tests/fixtures/legality_decks.json` holds 27 known legal and illegal decks that the validator is tested against, and `tests/fixtures/commander_decks.json` holds known Commander decks, including real MTGJSON precons in `tests/fixtures/mtgjson_decks/` (trimmed, MIT). Tests build their catalogue from `tests/fixtures/atomic_small.json`, real cards taken from MTGJSON (legalities as of 2 Nov 2026); `scripts/fixture_cards.py` adds cards to it. `jac x check` also type-checks. Tests that start Jac processes get a database of their own from the `jac_db_url` fixture (`tests/conftest.py`), on a Postgres server the test run starts on 127.0.0.1 from Jac's own embedded distribution; in-process tests use `JacTestClient.from_file(..., base_path=tmp_path)`, which gives each its own database. Run `jac guide` for Jac's own reference guides (see `AGENTS.md`).
 
+### Container image
+
+The `Dockerfile` builds the hosted image on `jaseci/jaclang:<the version jac.toml pins>`: the app, the web bundle and the card catalogue, started in hosted mode (`KP_MODE=hosted`, listening on `$PORT`). The build never starts a Postgres (each Jac step is given an address nothing listens on); `catalogue_date.txt` is copied before the catalogue step, so changing it rebuilds the catalogue. Hosted mode refuses to start unless these are set, and names the missing ones: `KP_AUTHKIT_DOMAIN`, `KP_MCP_URL`, `WORKOS_CLIENT_ID`, `WORKOS_API_KEY`, `WORKOS_COOKIE_PASSWORD` and `JAC_DB_URL`. To try it locally:
+
+```bash
+docker build -t knowledge-pool .
+docker run --rm -p 8080:8080 -e PORT=8080 -e JAC_DB_URL=postgresql://... \
+  -e KP_AUTHKIT_DOMAIN=https://x.authkit.app -e KP_MCP_URL=https://x.example/mcp \
+  -e WORKOS_CLIENT_ID=x -e WORKOS_API_KEY=x -e WORKOS_COOKIE_PASSWORD=<32+ characters> knowledge-pool
+curl localhost:8080/healthz   # ok
+```
+
+Until the browser sign-in lands, hosted mode answers the health path and refuses every data call.
+
 ### Layout
 
 - `main.jac` entry point, joins server and client
@@ -106,6 +120,7 @@ jac x test-ui   # browser smoke test of the web app; skips without a browser (CI
 - `tests/` walker, REST and UI smoke tests
 - `jac.toml` the Jac version pin, dependencies, and `[scripts]`, the repo's commands (`jac x` lists them): `check`, `up`, `down`, `status`, `catalogue`, `test-ui`
 - `scripts/dev.sh` runs the front door (and its child) for this worktree (`up|down|status|port`)
+- `Dockerfile`, `.dockerignore`, `catalogue_date.txt` the hosted container image
 - `scripts/install_jac.sh` installs the Jac version `jac.toml` pins
 - `scripts/board.sh` moves an issue on the project board (`scripts/board.sh <issue> <status>`)
 - `scripts/fixture_cards.py` adds cards to `tests/fixtures/atomic_small.json`

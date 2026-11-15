@@ -8,6 +8,7 @@ import socket
 import subprocess
 import sys
 import time
+from contextlib import contextmanager
 from pathlib import Path
 from urllib.error import HTTPError
 from urllib.request import Request, urlopen
@@ -15,6 +16,7 @@ from urllib.request import Request, urlopen
 import pytest
 
 import front_door
+from tests.hosted_settings import HOSTED_SETTINGS
 
 ROOT = Path(__file__).resolve().parent.parent
 LOOPBACK = front_door.LOOPBACK
@@ -31,12 +33,14 @@ def _get(url: str, data: bytes | None = None, headers: dict | None = None) -> tu
         return refused.code, refused.read()
 
 
-@pytest.fixture
-def front_door(fixture_catalog, jac_db_url):
+@contextmanager
+def _running(fixture_catalog, jac_db_url, **settings: str):
+    """The front door as a process on a free port, once it answers its health
+    path; `settings` go into its environment on top of local mode's."""
     port, upstream_port = _free_port(), _free_port()
     env = {
         **os.environ, "KP_CATALOG": str(fixture_catalog), "JAC_DB_URL": jac_db_url, "KP_MODE": "local",
-        "KP_TRANSPORT": "http", "KP_HTTP_PORT": str(port), "KP_UPSTREAM_PORT": str(upstream_port),
+        "KP_TRANSPORT": "http", "KP_HTTP_PORT": str(port), "KP_UPSTREAM_PORT": str(upstream_port), **settings,
     }
     log = ROOT / "test-artifacts" / "front_door_process.log"
     log.parent.mkdir(exist_ok=True)
@@ -63,6 +67,20 @@ def front_door(fixture_catalog, jac_db_url):
                 proc.wait(timeout=30)
             except subprocess.TimeoutExpired:
                 proc.kill()
+
+
+@pytest.fixture
+def front_door(fixture_catalog, jac_db_url):
+    with _running(fixture_catalog, jac_db_url) as running:
+        yield running
+
+
+def test_hosted_mode_starts_with_its_settings_and_answers_health_but_no_data_call(fixture_catalog, jac_db_url):
+    with _running(fixture_catalog, jac_db_url, KP_MODE="hosted", **HOSTED_SETTINGS) as (_, base, _):
+        reply = _get(base + "/healthz")
+        assert reply == (200, b"ok")
+        refused = _get(base + "/walker/ListDecks", b"{}", {"Origin": base, "Content-Type": "application/json"})
+        assert refused[0] == 401
 
 
 def test_page_loads_through_the_front_door_and_a_deck_can_be_read(front_door):
