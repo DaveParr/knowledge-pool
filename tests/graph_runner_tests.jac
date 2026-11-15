@@ -6,16 +6,21 @@ They also guard Jac itself: if a Jac upgrade reopens a read or write across
 users, or lets a user change a shared card, a test here fails.
 """
 
+import logging;
 import os;
-import from uuid { UUID }
+import from logging.handlers { BufferingHandler }
+import from unittest.mock { patch }
+import from uuid { UUID, uuid4 }
 import from jaclang { JacRuntime as Jac }
-import from jaclang.runtime.constructs { WalkerArchetype }
+import from jaclang.runtime.constructs { Anchor, WalkerArchetype }
+import from jaclang.runtime.exceptions { WriteConflict }
+import from jaclang.server.session { Session }
 import from pathlib { Path }
 import from catalog.ingest { build, load_atomic, load_oracle_tags }
 import catalog.store as store;
 import from decks { Deck, DeckView, CreateDeck, ListDecks, GetDeck, AddCard, holdings }
 import from walker_errors { WalkerError }
-import from graph_runner { guest_root_id, user_root_id, run_walker, call_function, run_as_guest, in_context, start, request_caller, check_bind, LOCAL_USER }
+import from graph_runner { guest_root_id, user_root_id, run_walker, call_function, run_as_guest, in_context, start, request_caller, check_bind, LOCAL_USER, RERUNS, CallFailed, LOG }
 import from cards { Card, RefreshCards, new_card }
 import from json_object { JsonObject }
 import from legality { Format, FormatRules, GetFormatRules }
@@ -106,12 +111,13 @@ test "two users' decks hold the one shared card node" {
     assert _card_ids(BOB, bobs) == shared;
 }
 
-"""Whether `change` as `caller` was refused: Jac raised and nothing was written."""
+"""Whether `change` as `caller` was refused: Jac raised, the runner rolled the
+call back and gave the caller its internal error."""
 def _refused(caller: str, change: Callable[[], object]) -> bool {
     try {
         call_function(caller, change);
-    } except PermissionError {
-        return True;
+    } except CallFailed as failed {
+        return failed.error.code == "internal-error";
     }
     return False;
 }
@@ -286,4 +292,145 @@ test "the guest's own work runs on the guest's root: it can refresh the shared c
     updated = run_as_guest(RefreshCards()).reports[0] as int;
     assert updated >= 1;
     assert "Alice's refresh deck" not in [d.name for d in run_as_guest(ListDecks()).reports[0] as list[Deck]];
+}
+
+"""Run `check` with every commit to the graph failing, with the error
+`failure()`, until the runner has rolled back `failures` times: the first
+`failures` tries at a call conflict. Return what `check` returned and how
+many failing tries were left unused."""
+def _with_failing_commits(failures: int, failure: Callable[[], Exception], check: Callable[[], object]) -> tuple[object, int] {
+    # Set up the guest and both users first: their roots are committed too.
+    start();
+    user_root_id(ALICE);
+    user_root_id(BOB);
+    real_commit = Session.commit;
+    real_abort = Session.abort;
+    left = failures;
+    def flaky_commit(mem: Session, anchor: Anchor | None = None) {
+        if left > 0 {
+            raise failure();
+        }
+        real_commit(mem, anchor);
+    }
+    def counted_abort(mem: Session) {
+        left = max(0, left - 1);
+        real_abort(mem);
+    }
+    with patch.object(Session, "commit", flaky_commit), patch.object(Session, "abort", counted_abort) {
+        done = check();
+    }
+    return (done, left);
+}
+
+def _write_conflict -> Exception {
+    return WriteConflict(anchor_id=uuid4());
+}
+
+"""A Postgres serialization failure as the driver raises it: SQLSTATE 40001
+in the error's fields."""
+def _serialization_failure -> Exception {
+    return RuntimeError({"C": "40001", "M": "could not serialize access due to concurrent update"});
+}
+
+"""Create deck `name` as Alice while the first `failures` tries meet the
+error `failure()`, and check the deck was made, and made only once: each
+failed try was rolled back before the re-run."""
+def _lands_once(name: str, failures: int, failure: Callable[[], Exception]) {
+    (made, unused_failures) = _with_failing_commits(
+        failures, failure, lambda () -> object { return run_walker(ALICE, CreateDeck(name=name)).reports[0]; }
+    );
+    assert unused_failures == 0;
+    assert isinstance(made, Deck);
+    assert _deck_names(ALICE).count(name) == 1;
+}
+
+test "a call whose commit hits a write conflict is rolled back and re-run, and lands once" {
+    _lands_once("Alice's conflicted deck", RERUNS, _write_conflict);
+}
+
+test "a serialization failure at commit is re-run like a write conflict" {
+    _lands_once("Alice's serialized deck", 1, _serialization_failure);
+}
+
+test "a call still conflicting after its re-runs gets try-again, and writes nothing" {
+    name = "Alice's given-up deck";
+    (code, unused_failures) = _with_failing_commits(
+        RERUNS + 1, _write_conflict, lambda () -> object { return _error_code(ALICE, CreateDeck(name=name)); }
+    );
+    assert unused_failures == 0;
+    assert code == "try-again";
+    assert name not in _deck_names(ALICE);
+}
+
+test "a function call still conflicting after its re-runs fails with try-again" {
+    (code, _) = _with_failing_commits(
+        RERUNS + 1, _write_conflict, lambda () -> object {
+            try {
+                call_function(ALICE, lambda () -> object { return None; });
+            } except CallFailed as failed {
+                return failed.error.code;
+            }
+            return "";
+        }
+    );
+    assert code == "try-again";
+}
+
+test "an error that is not a conflict is not re-run" {
+    (_, unused_failures) = _with_failing_commits(
+        2, lambda () -> Exception { return RuntimeError("not a conflict"); }, lambda () -> object {
+            try {
+                run_walker(ALICE, ListDecks());
+            } except RuntimeError {}
+            return None;
+        }
+    );
+    assert unused_failures == 1;
+}
+
+test "the guest's own work that cannot finish raises, so work at start fails the start" {
+    (_, unused_failures) = _with_failing_commits(
+        RERUNS + 1, _write_conflict, lambda () -> object {
+            try {
+                run_as_guest(ListDecks());
+                assert False, "the guest's failed work returned";
+            } except CallFailed as failed {
+                assert failed.error.code == "try-again";
+            }
+            return None;
+        }
+    );
+    assert unused_failures == 0;
+}
+
+"""Renames any deck by id, with none of the app's ownership checks: a stand-in
+for a walker whose check passed but whose write Jac still refuses."""
+walker RenameAnyDeck {
+    has deck_id: str,
+        name: str;
+
+    can rename with Root entry {
+        deck = jobj(self.deck_id) as Deck;
+        deck.name = self.name;
+        report deck.name;
+    }
+}
+
+test "a write Jac refuses after the app's checks gives an internal error, logged with the walker and caller" {
+    alices = _new_deck(ALICE, "Alice's refused-write deck");
+    call_function(ALICE, lambda () -> object { grant(jobj(alices), level=AccessLevel.READ); return None; });
+    seen = BufferingHandler(100);
+    LOG.addHandler(seen);
+    try {
+        first = run_walker(BOB, RenameAnyDeck(deck_id=alices, name="Renamed by Bob")).reports[0];
+    } finally {
+        LOG.removeHandler(seen);
+    }
+    assert isinstance(first, WalkerError);
+    assert first.code == "internal-error";
+    assert alices not in first.message;
+    logged = [r.getMessage() for r in seen.buffer];
+    assert any("RenameAnyDeck" in line and BOB in line for line in logged), logged;
+    view = run_walker(ALICE, GetDeck(deck_id=alices)).reports[0] as DeckView;
+    assert view.name == "Alice's refused-write deck";
 }

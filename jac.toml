@@ -31,6 +31,10 @@ pytest = ">=9.2.0"
 
 [test]
 directory = "tests"
+# The runner registers the guest as Jac's shared root for the whole process,
+# and `jac test` does not clear it between files. A file that walks without
+# the runner, after it in the same worker, would find a guest root that is gone.
+isolate = ["tests/graph_runner_tests.jac"]
 
 [scripts]
 check = "export JAC_STRICT_PERMISSIONS=1; (jac check *.jac && scripts/jac_test.sh && jac x pytest tests); status=$?; jac db prune -y; exit $status"
