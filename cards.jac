@@ -17,6 +17,12 @@ import from json_object { JsonObject }
 
 node Catalog {}
 
+"""Which catalogue build the `Card` nodes were last refreshed against. One
+sits under the guest's root; users never read it."""
+node CatalogueRefresh {
+    has version: str = "";
+}
+
 node Card {
     has oracle_id: str,
         name: str,
@@ -193,6 +199,16 @@ def as_guest(make: Callable[[], object]) -> object {
     }
 }
 
+"""Every Card node for oracle id `oid` under `home`'s Catalog: one, or more
+when two processes made the card at once."""
+def card_nodes_for(home: Root, oid: str) -> list[Card] {
+    found: list[Card] = [];
+    for cat in [home-->[?:Catalog]] {
+        found.extend([cat-->[?:Card, oracle_id == oid]]);  # jac:ignore[W1051]: the checker cannot resolve a filter field
+    }
+    return found;
+}
+
 """The Card node for an oracle id under `home`'s Catalog (`home` is the
 guest's root, `root.shared`). On first use the guest creates it from the
 catalogue, open to every user at CONNECT so their decks can hold it. None if
@@ -201,10 +217,7 @@ the id is unknown.
 Duplicate cards are not prevented (two processes can both create one), so
 with more than one Card node for the id this always picks the lowest id."""
 def card_node(home: Root, oid: str) -> Card | None {
-    found: list[Card] = [];
-    for cat in [home-->[?:Catalog]] {
-        found.extend([cat-->[?:Card, oracle_id == oid]]);  # jac:ignore[W1051]: the checker cannot resolve a filter field
-    }
+    found = card_nodes_for(home, oid);
     if found {
         return min(found, key=jid);
     }
@@ -225,17 +238,67 @@ def new_card(home: Root, oid: str, c: JsonObject) -> Card {
     return card;
 }
 
-"""Refresh every Card node from the catalogue, after `catalog/ingest.py` has
+"""How many Card nodes one `RefreshCards` batch brings up to date."""
+glob REFRESH_BATCH: int = 500;
+
+"""Which catalogue build is open: the MTGJSON version and when this file was
+built, so a rebuild from the same MTGJSON release still counts as new."""
+def catalogue_version -> str {
+    m = store.meta();
+    return f"{m['mtgjson_version']} @ {m['ingested_at']}";
+}
+
+"""The catalogue version the Card nodes under `home` (the guest's root) were
+last refreshed against, or "" if they never were."""
+def refreshed_version(home: Root) -> str {
+    marker = refresh_marker(home);
+    return marker.version if marker else "";
+}
+
+"""The CatalogueRefresh node under `home`, or None before the first refresh."""
+def refresh_marker(home: Root) -> CatalogueRefresh | None {
+    found = [home-->[?:CatalogueRefresh]];
+    return found[0] if found else None;
+}
+
+"""Record under `home` that the Card nodes are now refreshed against `version`."""
+def record_refresh(home: Root, version: str) {
+    marker = refresh_marker(home);
+    if marker {
+        marker.version = version;
+    } else {
+        home ++> CatalogueRefresh(version=version);
+    }
+}
+
+"""The oracle ids with more than one Card node under `home`'s Catalog, sorted."""
+def duplicate_oracle_ids(home: Root) -> list[str] {
+    seen: dict[str, int] = {};
+    for card in [catalog_node(home)-->[?:Card]] {
+        seen[card.oracle_id] = seen.get(card.oracle_id, 0) + 1;
+    }
+    return sorted([oid for (oid, n) in seen.items() if n > 1]);
+}
+
+"""Refresh Card nodes from the catalogue, after `catalog/ingest.py` has
 rebuilt it. Reopens the catalogue first (a rebuild replaces the file), then
-re-copies every field. A card the new catalogue no longer has is left as it
-was, so decks that hold it keep working. Reports how many cards were updated."""
-walker:pub RefreshCards {
-    has reports: list[int] = [];
+re-copies every field of `size` cards, in id order, from the `offset`th. A
+card the new catalogue no longer has is left as it was, so decks that hold
+it keep working. Reports how many cards were updated, then how many were
+in the batch (fewer than `size` means the last batch). Safe to re-run.
+Only the app runs it, as the guest, at start (`graph_runner.refresh_cards`);
+no request reaches it."""
+walker RefreshCards {
+    has offset: int = 0,
+        size: int = REFRESH_BATCH,
+        reports: list[int] = [];
 
     can refresh with Root entry {
         store.reset();
+        cards = sorted([catalog_node(here)-->[?:Card]], key=jid);
+        in_batch = cards[self.offset:self.offset + self.size];
         updated = 0;
-        for card in [catalog_node(here)-->[?:Card]] {
+        for card in in_batch {
             c = store.get_card(card.oracle_id);
             if c is not None {
                 fill_card(card, c);
@@ -243,5 +306,6 @@ walker:pub RefreshCards {
             }
         }
         report updated;
+        report len(in_batch);
     }
 }

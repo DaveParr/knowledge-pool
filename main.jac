@@ -27,8 +27,7 @@ import from cards {
     CatalogInfo,
     search_cards,
     catalog_info,
-    check_catalogue,
-    RefreshCards
+    check_catalogue
 }
 import from deck_io { DeckExport, DeckImport, CreateDeckFromList }
 

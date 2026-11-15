@@ -2,7 +2,7 @@
 
 Terms used in this codebase.
 
-- **Card catalogue** (`cards.jac`): the one module that looks cards up, resolves card names and keeps `Card` nodes as a cache of the SQLite catalogue; `RefreshCards` updates that cache after a re-ingest. Only it calls `catalog.store`.
+- **Card catalogue** (`cards.jac`): the one module that looks cards up, resolves card names and keeps `Card` nodes as a cache of the SQLite catalogue; `RefreshCards` updates that cache, run as the guest at start (`refresh_cards` in `graph_runner.jac`) when the catalogue is a different build from the one last refreshed against. Only it calls `catalog.store`.
 - **Deck holdings**: the cards a deck holds, as `Holds` edges (a count in one zone, plus entry metadata). They change only through `change_holding` (one card in one zone) or `replace_holdings` (the whole list) in `decks.jac`, which check the zone, count and reason and log each count change as a `ChangeNote`.
 - **Commander**: the format where a deck is the commander zone plus the main deck, exactly 100 cards, singleton, led by one eligible commander. Its rules are `check_commander` in `legality.jac`; the commander zone helpers and eligibility live in `commander.jac`.
 - **Partner pair**: two commanders that may lead one Commander deck together (Partner, Partner with, Partner—quality, Choose a Background with a Background, Doctor's companion with a Time Lord Doctor). `pair_problem` in `commander.jac` returns why a pair is illegal, or `""`.

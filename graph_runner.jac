@@ -46,7 +46,7 @@ import from jaclang.runtime.constructs { WalkerArchetype }
 import from jaclang.runtime.exceptions { WriteConflict }
 import from jaclang.server.session { transient_db_error }
 import from jaclang.server.identity.user_manager { UserManager }
-import from cards { open_catalog }
+import from cards { open_catalog, RefreshCards, REFRESH_BATCH, catalogue_version, refreshed_version, record_refresh, duplicate_oracle_ids }
 import from legality { open_formats }
 import from walker_errors { WalkerError }
 
@@ -263,4 +263,38 @@ def run_as_guest(w: WalkerArchetype) -> WalkerArchetype {
 """Spawn a copy of `w` on the acting root (a sync walker, so never a coroutine)."""
 def spawn_on_root(w: WalkerArchetype) -> WalkerArchetype {
     return Jac.spawn(Jac.get_context().get_root(), copy.deepcopy(w)) as WalkerArchetype;
+}
+
+"""At start, bring the Card nodes up to date with the card catalogue, as the
+guest, if it is a different build from the one they were last refreshed
+against. Runs in batches of `batch` cards, each its own commit, and records
+the version only after the last, so a refresh that fails part way runs again
+at the next start. Names every oracle id with more than one Card node in a
+warning. A failure raises, which fails the start. Returns whether it ran."""
+def refresh_cards(batch: int = REFRESH_BATCH) -> bool {
+    start();
+    version = catalogue_version();
+    guest = guest_root_id();
+    last_version = in_context(
+        guest, lambda () -> object { return refreshed_version(root); }, name="refresh_cards", caller=Con.GUEST.value
+    ) as str;
+    if last_version == version {
+        return False;
+    }
+    offset = 0;
+    while True {
+        reports = run_as_guest(RefreshCards(offset=offset, size=batch)).reports;
+        offset += batch;
+        if reports[1] as int < batch {
+            break;
+        }
+    }
+    duplicated = in_context(
+        guest, lambda () -> object { record_refresh(root, version); return duplicate_oracle_ids(root); },
+        name="refresh_cards", caller=Con.GUEST.value
+    ) as list[str];
+    for oid in duplicated {
+        LOG.warning("More than one Card node for oracle id %s: the catalogue always uses the lowest id", oid);
+    }
+    return True;
 }
