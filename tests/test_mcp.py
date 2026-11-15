@@ -74,7 +74,8 @@ def test_local_mode_refuses_to_listen_beyond_loopback(fixture_catalog, jac_db_ur
     assert "Local mode listens on 127.0.0.1 only, not 0.0.0.0." in run.stderr
 
 
-def test_hosted_mode_refuses_to_start_without_a_sign_in(fixture_catalog, jac_db_url):
-    run = _start_mcp(fixture_catalog, jac_db_url, KP_MODE="hosted")
+def test_hosted_mode_refuses_to_start_without_its_settings(fixture_catalog, jac_db_url):
+    settings = ("KP_AUTHKIT_DOMAIN", "KP_PUBLIC_MCP_URL", "WORKOS_CLIENT_ID", "WORKOS_API_KEY", "WORKOS_COOKIE_PASSWORD")
+    run = _start_mcp(fixture_catalog, jac_db_url, KP_MODE="hosted", KP_TRANSPORT="http", **{name: "" for name in settings})
     assert run.returncode != 0
-    assert "Hosted mode needs the front door's sign-in" in run.stderr
+    assert all(name in run.stderr for name in settings)
