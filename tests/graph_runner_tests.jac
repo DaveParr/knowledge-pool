@@ -20,8 +20,8 @@ import from catalog.ingest { build, load_atomic, load_oracle_tags }
 import catalog.store as store;
 import from decks { Deck, DeckView, CreateDeck, ListDecks, GetDeck, AddCard, holdings }
 import from walker_errors { WalkerError }
-import from graph_runner { guest_root_id, user_root_id, run_walker, call_function, run_as_guest, in_context, start, request_caller, check_bind, LOCAL_USER, RERUNS, CallFailed, LOG }
-import from cards { Card, RefreshCards, new_card }
+import from graph_runner { refresh_cards, guest_root_id, user_root_id, run_walker, call_function, run_as_guest, in_context, start, request_caller, check_bind, LOCAL_USER, RERUNS, CallFailed, LOG }
+import from cards { Card, RefreshCards, new_card, card_nodes_for }
 import from json_object { JsonObject }
 import from legality { Format, FormatRules, GetFormatRules }
 
@@ -433,4 +433,112 @@ test "a write Jac refuses after the app's checks gives an internal error, logged
     assert any("RenameAnyDeck" in line and BOB in line for line in logged), logged;
     view = run_walker(ALICE, GetDeck(deck_id=alices)).reports[0] as DeckView;
     assert view.name == "Alice's refused-write deck";
+}
+
+"""Rebuild the runner's catalogue with Lightning Bolt's rules text set to
+`text`, as a new MTGJSON build would, and reopen it."""
+def _rebuild_catalogue(text: str) {
+    atomic: dict[str, any] = load_atomic(Path("tests/fixtures/atomic_small.json"));
+    face: dict[str, any] = atomic["data"]["Lightning Bolt"][0] as dict[str, any];
+    face["text"] = text;
+    build(atomic, CATALOG, tags=load_oracle_tags(Path("tests/fixtures/oracle_tags_small.jsonl")));
+    store.reset();
+}
+
+"""Put the runner's catalogue back as the fixture has it."""
+def _restore_catalogue {
+    build(
+        load_atomic(Path("tests/fixtures/atomic_small.json")),
+        CATALOG,
+        tags=load_oracle_tags(Path("tests/fixtures/oracle_tags_small.jsonl"))
+    );
+    store.reset();
+}
+
+"""The rules text on the one Card node for card `name`."""
+def _card_text(name: str) -> str {
+    oid = _oracle_id(name);
+    return _as_guest(
+        lambda () -> object { return min(card_nodes_for(root, oid), key=jid).text; }
+    ) as str;
+}
+
+"""Overwrite the rules text of the Card node for `name`, as a stale copy has it."""
+def _make_stale(name: str, text: str) {
+    oid = _oracle_id(name);
+    _as_guest(lambda () -> object { min(card_nodes_for(root, oid), key=jid).text = text; return None; });
+}
+
+test "the first start refreshes the card nodes and records the catalogue version" {
+    _deck_with(ALICE, "Alice's first-start deck", "Lightning Bolt");
+    _make_stale("Lightning Bolt", "Stale text.");
+    assert refresh_cards();
+    assert _card_text("Lightning Bolt") != "Stale text.";
+}
+
+test "a start with the same catalogue version skips the refresh" {
+    _deck_with(ALICE, "Alice's skipped deck", "Lightning Bolt");
+    assert refresh_cards();
+    _make_stale("Lightning Bolt", "Stale text.");
+    assert not refresh_cards();
+    assert _card_text("Lightning Bolt") == "Stale text.";
+}
+
+test "a start with a new catalogue refreshes the card nodes, and skips again after" {
+    _deck_with(ALICE, "Alice's new-build deck", "Lightning Bolt");
+    assert refresh_cards();
+    try {
+        _rebuild_catalogue("Lightning Bolt deals 9 damage to any target.");
+        assert refresh_cards();
+        assert _card_text("Lightning Bolt") == "Lightning Bolt deals 9 damage to any target.";
+        assert not refresh_cards();
+    } finally {
+        _restore_catalogue();
+    }
+}
+
+test "the refresh runs in batches, and every card node is brought up to date" {
+    for name in ["Lightning Bolt", "Counterspell", "Shock"] {
+        _deck_with(ALICE, f"Alice's {name} batch deck", name);
+        _make_stale(name, "Stale text.");
+    }
+    assert refresh_cards(batch=2);
+    for name in ["Lightning Bolt", "Counterspell", "Shock"] {
+        assert _card_text(name) != "Stale text.";
+    }
+}
+
+test "a refresh that fails fails the start, and the next start runs it again" {
+    _deck_with(ALICE, "Alice's failed-refresh deck", "Lightning Bolt");
+    (failed, _) = _with_failing_commits(
+        RERUNS + 1, _write_conflict, lambda () -> object {
+            try {
+                refresh_cards();
+            } except CallFailed {
+                return True;
+            }
+            return False;
+        }
+    );
+    assert failed;
+    assert refresh_cards();
+}
+
+test "the refresh warns, naming the oracle id of each card with more than one node" {
+    _duplicate_cards("Counterspell");
+    _deck_with(ALICE, "Alice's single-card deck", "Lightning Bolt");
+    with patch.object(LOG, "warning") as warned {
+        assert refresh_cards();
+    }
+    messages = [str(call.args) for call in warned.call_args_list];
+    assert any(_oracle_id("Counterspell") in m for m in messages);
+    assert not any(_oracle_id("Lightning Bolt") in m for m in messages);
+}
+
+test "a refresh with no duplicate cards logs no warning" {
+    _deck_with(ALICE, "Alice's no-duplicate deck", "Lightning Bolt");
+    with patch.object(LOG, "warning") as warned {
+        assert refresh_cards();
+    }
+    assert warned.call_count == 0;
 }

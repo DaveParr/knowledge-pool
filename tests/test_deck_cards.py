@@ -191,34 +191,6 @@ def test_card_details_survive_a_restart_including_each_face(tmp_path):
         second.close()
 
 
-def test_refresh_cards_over_rest_brings_card_details_to_existing_cards(tmp_path, fixture_catalog):
-    """A deck made before the catalogue had card details gets them after a
-    re-ingest and one POST /walker/RefreshCards."""
-    from tests.conftest import FIXTURE, TAGS_FIXTURE
-
-    full = load_atomic(FIXTURE)
-    old = copy.deepcopy(full)
-    for face in old["data"]["Goblin Guide"]:
-        for key in ("power", "toughness", "keywords"):
-            face.pop(key, None)
-    build(old, fixture_catalog, tags=load_oracle_tags(TAGS_FIXTURE))
-    store.reset()
-
-    client = JacTestClient.from_file("main.jac", base_path=str(tmp_path))
-    try:
-        deck_id = _new_deck(client)
-        view = _reports(client.post("/walker/AddCard", json={"deck_id": deck_id, "oracle_id": _oracle_id("Goblin Guide")}))[0]
-        assert view["cards"][0]["power"] == ""
-
-        build(full, fixture_catalog, tags=load_oracle_tags(TAGS_FIXTURE))
-        assert _reports(client.post("/walker/RefreshCards"))[0] >= 1
-
-        guide = _reports(client.post("/walker/GetDeck", json={"deck_id": deck_id}))[0]["cards"][0]
-        assert (guide["power"], guide["toughness"], guide["keywords"]) == ("2", "2", ["Haste"])
-    finally:
-        client.close()
-
-
 def test_two_decks_share_one_card_node(tmp_path):
     client = JacTestClient.from_file("main.jac", base_path=str(tmp_path))
     try:

@@ -42,7 +42,7 @@ import from deck_io { DeckExport, DeckImport }
 import from legality { GetFormatRules }
 import from walker_errors { WalkerError }
 import from json_object { JsonObject }
-import from graph_runner { APP_DIR, HOSTED, app_mode, check_bind, request_caller, run_walker, call_function, start }
+import from graph_runner { APP_DIR, HOSTED, app_mode, check_bind, request_caller, run_walker, call_function, start, refresh_cards }
 import from jaclang.runtime.constructs { WalkerArchetype }
 
 glob LOGGED_CLIENT_UI: list[bool] = [],
@@ -613,6 +613,8 @@ with entry:__main__ {
     }
     # The guest makes the shared Catalog and Format nodes before any user call.
     start();
+    # A new catalogue build brings the shared Card nodes up to date; a failure fails the start.
+    refresh_cards();
 
     if os.environ.get("KP_TRANSPORT", "stdio") == "http" {
         http_host = os.environ.get("KP_HTTP_HOST", "127.0.0.1");
