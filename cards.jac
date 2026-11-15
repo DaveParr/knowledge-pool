@@ -196,13 +196,17 @@ def as_guest(make: Callable[[], object]) -> object {
 """The Card node for an oracle id under `home`'s Catalog (`home` is the
 guest's root, `root.shared`). On first use the guest creates it from the
 catalogue, open to every user at CONNECT so their decks can hold it. None if
-the id is unknown."""
+the id is unknown.
+
+Duplicate cards are not prevented (two processes can both create one), so
+with more than one Card node for the id this always picks the lowest id."""
 def card_node(home: Root, oid: str) -> Card | None {
+    found: list[Card] = [];
     for cat in [home-->[?:Catalog]] {
-        found = [cat-->[?:Card, oracle_id == oid]];  # jac:ignore[W1051]: the checker cannot resolve a filter field
-        if found {
-            return found[0];
-        }
+        found.extend([cat-->[?:Card, oracle_id == oid]]);  # jac:ignore[W1051]: the checker cannot resolve a filter field
+    }
+    if found {
+        return min(found, key=jid);
     }
     c = store.get_card(oid);
     if c is None {
