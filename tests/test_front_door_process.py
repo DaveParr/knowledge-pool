@@ -14,14 +14,13 @@ from urllib.request import Request, urlopen
 
 import pytest
 
+import front_door
+
 ROOT = Path(__file__).resolve().parent.parent
-LOOPBACK = "127.0.0.1"
+LOOPBACK = front_door.LOOPBACK
 
 
-def _free_port() -> int:
-    with socket.socket() as s:
-        s.bind((LOOPBACK, 0))
-        return s.getsockname()[1]
+_free_port = front_door.free_port
 
 
 def _get(url: str, data: bytes | None = None, headers: dict | None = None) -> tuple[int, bytes]:

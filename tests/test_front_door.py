@@ -98,6 +98,7 @@ def test_unknown_walker_or_function_answers_404(client):
     ("/walker/CreateDeck", {}),
     ("/function/search_cards", {"nope": 1}),
     ("/walker/ListDecks", [1, 2]),
+    ("/walker/ListDecks", {"reports": ["planted"]}),
 ])
 def test_fields_that_do_not_fit_answer_422(client, path, body):
     assert client.post(path, json=body).status_code == 422

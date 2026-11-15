@@ -133,8 +133,12 @@ async def read_fields(request: Request) -> dict[str, any] | None {  # jac:ignore
     return fields if isinstance(fields, dict) else None;
 }
 
-"""Whether `fields` fit `target`'s parameters: no unknown field, none missing."""
+"""Whether `fields` fit `target`'s parameters: no unknown field, none missing,
+and no `reports` (a walker's output is not the caller's to set)."""
 def fits(target: any, fields: dict[str, any]) -> bool {  # jac:ignore[W1037]
+    if "reports" in fields {
+        return False;
+    }
     try {
         inspect.signature(target).bind(**fields);
     } except TypeError {
@@ -236,7 +240,7 @@ def web_app(config: FrontDoorConfig) -> Starlette {
     }
     return Starlette(
         routes=[
-            Route(HEALTH_PATH, health, methods=["GET"]),
+            Route(HEALTH_PATH, health, methods=["GET", "HEAD"]),
             Route("/walker/{name}", walker_route, methods=["POST"]),
             Route("/function/{name}", function_route, methods=["POST"]),
             Route("/{path:path}", other_route, methods=["GET", "HEAD", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"])
@@ -246,7 +250,7 @@ def web_app(config: FrontDoorConfig) -> Starlette {
 
 """Whether `path` is one the MCP SDK's app answers."""
 def is_mcp_path(path: str) -> bool {
-    return path == "/mcp" or path.startswith("/mcp/") or path.startswith("/.well-known/");
+    return any(path == p.rstrip("/") or path.startswith(p if p.endswith("/") else p + "/") for p in MCP_PREFIXES);
 }
 
 """The one ASGI app: the MCP SDK's app (`mcp_app`) answers the connector's
