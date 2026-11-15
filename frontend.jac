@@ -29,13 +29,13 @@ def:pub app -> JsxElement {
     async def createDeck(e: FormEvent) -> None;
     async def createFromList -> None;
 
-    def formatLabel(name: str) -> str {
+    def formatLabel(format_name: str) -> str {
         for f in formats {
-            if f.name == name {
+            if f.name == format_name {
                 return f.label;
             }
         }
-        return name;
+        return format_name;
     }
 
     def closeDeck {

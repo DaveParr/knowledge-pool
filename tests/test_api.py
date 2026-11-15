@@ -6,22 +6,23 @@ import sys
 from pathlib import Path
 
 import pytest
-from jaclang.testing.testing import JacTestClient
+from tests.front_door_client import FrontDoorClient
 
 ROOT = Path(__file__).resolve().parent.parent
+pytestmark = pytest.mark.usefixtures("jac_db_url")
 
 
 def _deck_names(client: JacTestClient) -> list[str]:
     resp = client.post("/walker/ListDecks")
-    assert resp.ok, resp.json()
+    assert resp.is_success, resp.json()
     return [d["name"] for d in resp.json()["data"]["reports"][0]]
 
 
 def test_create_and_list_decks(tmp_path):
-    client = JacTestClient.from_file("main.jac", base_path=str(tmp_path))
+    client = FrontDoorClient(tmp_path)
     try:
         resp = client.post("/walker/CreateDeck", json={"name": "Izzet Tempo"})
-        assert resp.ok, resp.json()
+        assert resp.is_success, resp.json()
         assert _deck_names(client) == ["Izzet Tempo"]
     finally:
         client.close()
@@ -32,7 +33,7 @@ def _error(report: dict) -> dict:
 
 
 def test_blank_name_creates_nothing_and_says_why(tmp_path):
-    client = JacTestClient.from_file("main.jac", base_path=str(tmp_path))
+    client = FrontDoorClient(tmp_path)
     try:
         resp = client.post("/walker/CreateDeck", json={"name": "   "})
         assert [_error(r) for r in resp.json()["data"]["reports"]] == [
@@ -47,11 +48,11 @@ def test_blank_name_creates_nothing_and_says_why(tmp_path):
 
 
 def test_decks_survive_restart(tmp_path):
-    first = JacTestClient.from_file("main.jac", base_path=str(tmp_path))
+    first = FrontDoorClient(tmp_path)
     first.post("/walker/CreateDeck", json={"name": "Golgari Food"})
     first.close()
 
-    second = JacTestClient.from_file("main.jac", base_path=str(tmp_path))
+    second = FrontDoorClient(tmp_path)
     try:
         assert _deck_names(second) == ["Golgari Food"]
     finally:

@@ -44,6 +44,16 @@ status = "scripts/dev.sh status"
 catalogue = "python -m catalog.ingest --if-stale"
 test-ui = "jac x pytest tests/test_ui_smoke.py -v"
 
+# Jac's own server is the front door's child, on 127.0.0.1: it hands out the
+# page and its files and nothing else (ADR 0004). No docs, no graph view, no
+# sign-up: no Jac token is ever issued.
+[serve]
+docs_enabled = false
+graph_enabled = false
+
+[serve.auth.registration]
+enabled = false
+
 [serve.workers]
 count = "1"
 

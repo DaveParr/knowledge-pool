@@ -46,7 +46,7 @@ It adds one random MTGJSON precon for each format (a Challenger Deck for Standar
 jac x up
 ```
 
-This runs the web app and the MCP server, as two processes sharing one database (for now the MCP server works on the local user's decks and the web page on the guest's; see `graph_runner.jac`), one pair per worktree, on ports chosen for the worktree, and prints `web:`, `mcp:` and `log:` lines. If either process stops, the other is stopped too. Open the `web:` URL (the examples below say http://localhost:8000, the port a bare `jac run` uses). `jac x status` reprints them and `jac x down` stops both. `jac x` lists every repo command; it cannot pass arguments, so call `scripts/dev.sh` directly for `KP_DEV_PORT` and similar overrides.
+This runs the **front door** (`front_door.jac`, started by `mcp_server.jac`) on a port chosen for the worktree, and prints `web:`, `mcp:` and `log:` lines. The front door is the only listener: it answers `/mcp`, runs the web page's deck calls itself as the local user, and hands the page and its static files out from Jac's server, which it starts as a child on `127.0.0.1` (the next port up). Every other path, Jac's `/docs`, `/graph`, `/admin` and `/user/*` among them, answers 404; `/healthz` answers `ok`. If the child stops, the front door exits. Open the `web:` URL (the examples below say http://localhost:8000, the port a bare `jac run` used to use). `jac x status` reprints them and `jac x down` stops both. `jac x` lists every repo command; it cannot pass arguments, so call `scripts/dev.sh` directly for `KP_DEV_PORT` and similar overrides.
 
 Open the `web:` URL. The Decks view lists your decks and creates new ones. Open a deck to search cards by name or rules text, add them to the main deck or sideboard, change counts and remove them. Each card is one compact line (count, name, cost, type, and power/toughness for creatures); click it to expand its rules text (face by face for double-faced and split cards), loyalty or defence, keywords, this deck's notes for it, and its Scryfall tags. Each zone has Expand all and Collapse all. Each deck has a format (`get_format_rules` lists them), and the deck view shows straight away whether it is legal and lists each rule it breaks. For the 60-card formats that is at least 60 main-deck cards, at most 15 in the sideboard, at most 4 copies of a card across both (basic lands and "any number" cards are exempt, and cards like Seven Dwarves use their own limit), and every card legal in the format according to MTGJSON. Legality is worked out on every view and edit; it is never stored. Decks are stored in Postgres and survive a restart. Locally that is the Postgres server Jac starts itself, shared by the whole machine, with one database per worktree (keyed to the worktree's path), so each worktree has its own decks with no setting. `jac db status` names this worktree's database; `jac db drop <name> -y` (with `jac x down` first) starts fresh. Set `JAC_DB_URL` to use another Postgres server instead.
 
@@ -64,7 +64,7 @@ claude mcp add knowledge-pool -- jac run --no-serve "$PWD/mcp_server.jac"
 
 `deck_export` defaults to MTGA/MTGO (`arena`); the other formats are `moxfield`, `text` (both lossy, like `arena`), `mtgdeck1` and `mtgjson` (lossless JSON). In clients that render MCP Apps (Claude Desktop, claude.ai) the export shows in a view (`ui/deck_export.html`) with a button per format, **Copy** and **Download**; changing format there calls `deck_export` again through the host. Other clients, such as Claude Code, get the export as text: a lossy list in a code block, or a short summary followed by the full JSON for a lossless format. `deck_import` and the app's **Import list** read the same formats; `mtgjson` also takes a deck file from MTGJSON (`https://mtgjson.com/api/v5/decks/`), such as a Commander precon, and lists any tokens, planes or schemes it skips.
 
-The MCP server and the web app are separate processes on the same database, so decks made in either place show up in the other straight away, and any number of them can run at once. A call that loses a write race with another process is rolled back and fails; repeat it.
+The MCP tools and the web page's deck calls run through the same runner as the local user, so decks made in either place show up in the other straight away. Another process on the same database (a second front door, the seed script) can win a write race; the runner rolls the call back and re-runs it, and answers `try-again` if it still conflicts.
 
 `jac run --no-serve scripts/mcp_smoke.py` starts the web app and runs a full stdio session against your local data as a check.
 
@@ -95,7 +95,8 @@ jac x test-ui   # browser smoke test of the web app; skips without a browser (CI
 - `mana_cost.jac` mana costs as symbol pills (the MCP views draw the same)
 - `global.css` app-wide style tokens, shared with the MCP Apps views in `ui/`
 - `legality.jac` `Format` nodes and the deck-construction rules
-- `mcp_server.jac` the MCP server (a process of its own, beside the web app)
+- `mcp_server.jac` the MCP server and, over HTTP, the process that starts the front door
+- `front_door.jac` the front door: the page's deck calls through the runner in Jac's own envelope, the page and its static files forwarded from Jac's server (a child on `127.0.0.1`), everything else 404, a health path
 - `graph_runner.jac` the runner: runs every deck call as a caller on that caller's own root (the local user in local mode, `KP_MODE`), and the app's own work as the guest, for the MCP server and the seed script
 - `seed.jac`, `catalog/precons.py` the seed script: one random MTGJSON precon per format
 - `ui/` the MCP Apps views: `deck_table.html` (`deck_show`), `mana_analysis.html` (`deck_analyze`), `card_search.html` (`card_search`) and `deck_export.html` (`deck_export`); `ui/mockups/` holds the signed-off static mockups
@@ -104,7 +105,7 @@ jac x test-ui   # browser smoke test of the web app; skips without a browser (CI
 - `deck_detail.jac`, `deck_detail.impl.jac` one deck: search, add, change, remove
 - `tests/` walker, REST and UI smoke tests
 - `jac.toml` the Jac version pin, dependencies, and `[scripts]`, the repo's commands (`jac x` lists them): `check`, `up`, `down`, `status`, `catalogue`, `test-ui`
-- `scripts/dev.sh` runs the web app and MCP server for this worktree (`up|down|status|port`)
+- `scripts/dev.sh` runs the front door (and its child) for this worktree (`up|down|status|port`)
 - `scripts/install_jac.sh` installs the Jac version `jac.toml` pins
 - `scripts/board.sh` moves an issue on the project board (`scripts/board.sh <issue> <status>`)
 - `scripts/fixture_cards.py` adds cards to `tests/fixtures/atomic_small.json`

@@ -60,7 +60,7 @@ def test_up_serves_the_app_and_prints_its_urls(env):
     assert result.returncode == 0, result.stdout + result.stderr
     port = int(dev("port", env=env).stdout)
     assert f"web: http://127.0.0.1:{port}" in result.stdout
-    assert f"http://127.0.0.1:{port + 1}/mcp" in result.stdout
+    assert f"http://127.0.0.1:{port}/mcp" in result.stdout
     assert f"log: {env['KP_DEV_DIR']}/server.log" in result.stdout
     assert healthy(port)
 

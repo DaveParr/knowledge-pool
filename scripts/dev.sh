@@ -1,9 +1,9 @@
 #!/usr/bin/env bash
-# Run the app for this worktree: the web app and the MCP server (over HTTP) as two
-# processes in one process group, on their own port pair, with a pidfile. Both use
-# this worktree's own database (or JAC_DB_URL when set). When either process
-# exits, the other is stopped too. Never kills by name; `down` signals the
-# recorded group only.
+# Run the app for this worktree: the front door (the MCP server over HTTP, which also
+# answers the web page's calls) and Jac's server for the page, its child, on their own
+# port pair, with a pidfile. Both use this worktree's own database (or JAC_DB_URL
+# when set). When the child exits, the front door exits too. Never kills by name;
+# `down` signals the recorded group only.
 #
 #   scripts/dev.sh up|down|status|port
 set -u
@@ -58,7 +58,7 @@ print_urls() {
     local p
     p="$(cat "$PORTFILE")"
     echo "web: http://127.0.0.1:$p"
-    echo "mcp: claude mcp add --transport http knowledge-pool-$SLUG http://127.0.0.1:$((p + 1))/mcp"
+    echo "mcp: claude mcp add --transport http knowledge-pool-$SLUG http://127.0.0.1:$p/mcp"
     echo "log: $LOG"
 }
 
@@ -83,11 +83,9 @@ cmd_up() {
     p="$(choose_port)"
     echo "$p" >"$PORTFILE"
     cd "$REPO" || return 1
-    setsid bash -c '
-        jac run --no-dev --host 127.0.0.1 --port "$1" main.jac &
-        KP_TRANSPORT=http KP_HTTP_PORT="$2" jac run --no-serve mcp_server.jac &
-        wait -n
-        kill 0' dev.sh "$p" $((p + 1)) >>"$LOG" 2>&1 &
+    # The front door listens on $p; it starts Jac's server for the page on $p + 1.
+    KP_TRANSPORT=http KP_HTTP_PORT="$p" KP_UPSTREAM_PORT=$((p + 1)) \
+        setsid jac run --no-serve mcp_server.jac >>"$LOG" 2>&1 &
     echo $! >"$PIDFILE"
 
     local i

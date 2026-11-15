@@ -1,8 +1,10 @@
 """Decks - server side.
 
 Each deck is a `Deck` node hung off `root`, so it persists across restarts in
-`.jac/data`. The walkers are `:pub`: this is a local, single-user app, so every
-caller shares one graph and nobody has to log in.
+the graph. The walkers the web page calls are `:protect`, never `:pub`: the page
+needs them as endpoints to compile, Jac's server refuses a call without a Jac
+token, and no Jac token is issued. The front door (`front_door.jac`) runs those
+calls itself, as the caller, through the runner.
 """
 
 import from datetime { datetime, timezone }
@@ -41,7 +43,7 @@ glob ZONES: list[str] = ["commander", "companion", "main", "sideboard", "maybebo
 
 """Create a deck and report it. A blank name or an unknown format creates
 nothing and reports a WalkerError (blank-name, unknown-format)."""
-walker:pub CreateDeck {
+walker:protect CreateDeck {
     has name: str,
         format: str = "standard",
         reports: list[Deck | WalkerError] = [];
@@ -68,7 +70,7 @@ def new_deck(owner: Root, name: str, format: str) -> Deck {
 }
 
 """Report every deck, oldest first."""
-walker:pub ListDecks {
+walker:protect ListDecks {
     has reports: list[list[Deck]] = [];
 
     can collect with Root entry {
@@ -374,14 +376,14 @@ walker DeckAction {
 }
 
 """Report a deck, its cards and its legality."""
-walker:pub GetDeck(DeckAction) {
+walker:protect GetDeck(DeckAction) {
     can show with Deck entry {
         report deck_view(here);
     }
 }
 
 """Change the format a deck is checked against."""
-walker:pub SetDeckFormat(DeckAction) {
+walker:protect SetDeckFormat(DeckAction) {
     has format: str;
 
     can set_format with Deck entry {
@@ -399,7 +401,7 @@ glob WEB_EDIT_REASON: str = "Edited in the app";
 
 """Add copies of a card to a zone of a deck (on top of any already there).
 A refused change (see change_holding) reports a refused-change WalkerError."""
-walker:pub AddCard(DeckAction) {
+walker:protect AddCard(DeckAction) {
     has oracle_id: str,
         count: int = 1,
         zone: str = "main";
@@ -441,7 +443,7 @@ walker EditDeck(DeckAction) {
 
 """Set how many copies of a card a zone holds. Zero removes the card from that
 zone. A refused change (see change_holding) reports a refused-change WalkerError."""
-walker:pub SetCardCount(DeckAction) {
+walker:protect SetCardCount(DeckAction) {
     has oracle_id: str,
         count: int,
         zone: str = "main";
@@ -457,7 +459,7 @@ walker:pub SetCardCount(DeckAction) {
 }
 
 """Take a card out of one zone of a deck. An unknown zone reports a refused-change WalkerError."""
-walker:pub RemoveCard(DeckAction) {
+walker:protect RemoveCard(DeckAction) {
     has oracle_id: str,
         zone: str = "main";
 
@@ -477,6 +479,6 @@ obj FormatInfo {
         label: str;
 }
 
-def:pub list_formats -> list[FormatInfo] {
+def:protect list_formats -> list[FormatInfo] {
     return [FormatInfo(name=k, label=v) for (k, v) in FORMAT_LABELS.items()];
 }

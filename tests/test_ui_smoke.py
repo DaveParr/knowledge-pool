@@ -31,7 +31,7 @@ WAIT_MS = 30000
 
 
 def free_port_pair() -> int:
-    """A port P where both P and P + 1 are free (web app and MCP).
+    """A port P where both P and P + 1 are free (the front door and its child, Jac's server).
 
     Scans 9100-9898, above the kernel's ephemeral range and clear of dev.sh's 8100-8898.
     """
@@ -148,7 +148,7 @@ def _served(env: dict, session: str, log: Path, port: int, request):
     try:
         up = subprocess.run([str(SCRIPT), "up"], env=env, cwd=ROOT, capture_output=True, text=True, timeout=300)
         assert up.returncode == 0, up.stdout + up.stderr
-        the_app = App(f"http://127.0.0.1:{port}", f"http://127.0.0.1:{port + 1}/mcp", session, env)
+        the_app = App(f"http://127.0.0.1:{port}", f"http://127.0.0.1:{port}/mcp", session, env)
         yield the_app
         if request.session.testsfailed:
             save_artifacts(the_app, log)
@@ -179,6 +179,19 @@ def test_build_a_deck_through_the_web_app(app):
     # Expanding the card line shows its rules text in the deck (the search hit has it too).
     app.js("document.querySelector('ul.dd-cards summary').click()")
     assert "deals 3 damage" in app.wait_text("deals 3 damage", within="ul.dd-cards")
+
+
+def test_a_decks_format_pill_ignores_what_is_typed_in_the_name_box(app):
+    app.browse("open", app.web)
+    app.fill("input[aria-label='Deck name']", "Pill Deck")
+    app.click("button", "Create deck")
+    app.wait_text("Pill Deck", within="ul.fe-decks")
+    shown = app.wait_text("Standard", within="ul.fe-decks .pill")
+
+    app.fill("input[aria-label='Deck name']", "qa deck")
+    pills = app.js("JSON.stringify([...document.querySelectorAll('ul.fe-decks .pill')].map(p => p.innerText))")
+    assert "qa deck" not in pills, pills
+    assert shown == "Standard"
 
 
 async def deck_show_result(url: str) -> dict:

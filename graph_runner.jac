@@ -34,11 +34,13 @@ from the front door's sign-in.
 """
 
 import copy;
+import io;
 import logging;
 import os;
 import random;
 import threading;
 import time;
+import from contextlib { redirect_stdout }
 import from jaclang { JacRuntime as Jac }
 import from jaclang.runtime.context { ExecutionContext }
 import from jaclang.runtime.constants { Constants as Con }
@@ -210,11 +212,13 @@ def attempt(root_id: str, work: Callable[[], object]) -> object {
 """Register the guest root as Jac's shared root, and have the guest create
 the Catalog and Format nodes, open to every user for reading. Runs before
 the first call, and again only if the guest's root changes (`jac test`
-starts each test on an empty graph)."""
+starts each test on an empty graph) or the registration was cleared."""
 def start {
     with LOCK {
         guest = guest_root_id();
-        if STARTED_FOR_GUEST == [guest] {
+        # The shared root is also registered again when something cleared it (Jac's test
+        # client does on close) while the guest stayed the same.
+        if STARTED_FOR_GUEST == [guest] and Jac.shared_root_id() is not None {
             return;
         }
         Jac.set_shared_root_resolver(lambda () -> str | None { return guest; });
@@ -260,9 +264,13 @@ def run_as_guest(w: WalkerArchetype) -> WalkerArchetype {
     ) as WalkerArchetype;
 }
 
-"""Spawn a copy of `w` on the acting root (a sync walker, so never a coroutine)."""
+"""Spawn a copy of `w` on the acting root (a sync walker, so never a coroutine).
+Under `jac run` every `report` is also echoed to stdout; that stays out of the
+process's output, which carries a deck's contents and, for stdio MCP, the protocol."""
 def spawn_on_root(w: WalkerArchetype) -> WalkerArchetype {
-    return Jac.spawn(Jac.get_context().get_root(), copy.deepcopy(w)) as WalkerArchetype;
+    with redirect_stdout(io.StringIO()) {
+        return Jac.spawn(Jac.get_context().get_root(), copy.deepcopy(w)) as WalkerArchetype;
+    }
 }
 
 """At start, bring the Card nodes up to date with the card catalogue, as the

@@ -3,11 +3,14 @@
 import copy
 import sqlite3
 
-from jaclang.testing.testing import JacTestClient
+import pytest
 
 from catalog import store
 from catalog.ingest import build, load_atomic, load_oracle_tags
+from tests.front_door_client import FrontDoorClient
 from tests.old_catalog import drop_produced_mana
+
+pytestmark = pytest.mark.usefixtures("jac_db_url")
 
 
 def _reports(resp):
@@ -30,7 +33,7 @@ def _lines(view) -> dict[str, int]:
 
 
 def test_search_endpoint_finds_real_cards(tmp_path):
-    client = JacTestClient.from_file("main.jac", base_path=str(tmp_path))
+    client = FrontDoorClient(tmp_path)
     try:
         resp = client.post("/function/search_cards", json={"query": "deals 3 damage"})
         result = resp.json()["data"]["result"]
@@ -41,7 +44,7 @@ def test_search_endpoint_finds_real_cards(tmp_path):
 
 
 def test_search_endpoint_reports_a_catalogue_failure(tmp_path, fixture_catalog):
-    client = JacTestClient.from_file("main.jac", base_path=str(tmp_path))
+    client = FrontDoorClient(tmp_path)
     try:
         # A catalogue built before `produced_mana` existed (#61).
         con = sqlite3.connect(fixture_catalog)
@@ -59,7 +62,7 @@ def test_search_endpoint_reports_a_catalogue_failure(tmp_path, fixture_catalog):
 
 
 def test_add_change_remove(tmp_path):
-    client = JacTestClient.from_file("main.jac", base_path=str(tmp_path))
+    client = FrontDoorClient(tmp_path)
     try:
         deck_id = _new_deck(client)
         bolt, mountain = _oracle_id("Lightning Bolt"), _oracle_id("Mountain")
@@ -97,7 +100,7 @@ def _error(reports: list) -> dict:
 def test_a_refused_change_reports_why(tmp_path):
     # Which changes are refused is tested on change_holding (tests/holdings_tests.jac);
     # this only checks the walkers pass the refusal on as their one report.
-    client = JacTestClient.from_file("main.jac", base_path=str(tmp_path))
+    client = FrontDoorClient(tmp_path)
     try:
         deck_id = _new_deck(client)
         assert _error(_reports(client.post("/walker/AddCard", json={"deck_id": deck_id, "oracle_id": "not-a-card"}))) == {
@@ -114,7 +117,7 @@ def test_a_refused_change_reports_why(tmp_path):
 
 
 def test_every_deck_walker_says_when_there_is_no_such_deck(tmp_path):
-    client = JacTestClient.from_file("main.jac", base_path=str(tmp_path))
+    client = FrontDoorClient(tmp_path)
     try:
         bolt = _oracle_id("Lightning Bolt")
         for walker, body in [
@@ -134,7 +137,7 @@ def test_every_deck_walker_says_when_there_is_no_such_deck(tmp_path):
 
 
 def test_deck_view_carries_each_cards_oracle_tags(tmp_path):
-    client = JacTestClient.from_file("main.jac", base_path=str(tmp_path))
+    client = FrontDoorClient(tmp_path)
     try:
         deck_id = _new_deck(client)
         bolt, mountain = _oracle_id("Lightning Bolt"), _oracle_id("Mountain")
@@ -150,7 +153,7 @@ def test_deck_view_carries_each_cards_oracle_tags(tmp_path):
 
 
 def test_deck_view_carries_commander_facts_for_each_card(tmp_path):
-    client = JacTestClient.from_file("main.jac", base_path=str(tmp_path))
+    client = FrontDoorClient(tmp_path)
     try:
         deck_id = _new_deck(client)
         krenko, study = _oracle_id("Krenko, Mob Boss"), _oracle_id("Rhystic Study")
@@ -167,16 +170,13 @@ def test_deck_view_carries_commander_facts_for_each_card(tmp_path):
         client.close()
 
 
-def test_card_details_survive_a_restart_including_each_face(tmp_path):
-    first = JacTestClient.from_file("main.jac", base_path=str(tmp_path))
-    deck_id = _new_deck(first)
+def test_card_details_come_back_from_the_database_including_each_face(tmp_path):
+    client = FrontDoorClient(tmp_path)
+    deck_id = _new_deck(client)
     for name in ("Goblin Guide", "Delver of Secrets // Insectile Aberration", "Jace, the Mind Sculptor"):
-        _reports(first.post("/walker/AddCard", json={"deck_id": deck_id, "oracle_id": _oracle_id(name)}))
-    first.close()
-
-    second = JacTestClient.from_file("main.jac", base_path=str(tmp_path))
+        _reports(client.post("/walker/AddCard", json={"deck_id": deck_id, "oracle_id": _oracle_id(name)}))
     try:
-        view = _reports(second.post("/walker/GetDeck", json={"deck_id": deck_id}))[0]
+        view = _reports(client.post("/walker/GetDeck", json={"deck_id": deck_id}))[0]
         by_name = {c["name"]: c for c in view["cards"]}
         guide = by_name["Goblin Guide"]
         assert (guide["power"], guide["toughness"], guide["keywords"], guide["faces"]) == ("2", "2", ["Haste"], [])
@@ -188,11 +188,11 @@ def test_card_details_survive_a_restart_including_each_face(tmp_path):
             ("Insectile Aberration", "", "3", "2"),
         ]
     finally:
-        second.close()
+        client.close()
 
 
 def test_two_decks_share_one_card_node(tmp_path):
-    client = JacTestClient.from_file("main.jac", base_path=str(tmp_path))
+    client = FrontDoorClient(tmp_path)
     try:
         bolt = _oracle_id("Lightning Bolt")
         first = _new_deck(client, "First")
@@ -204,43 +204,40 @@ def test_two_decks_share_one_card_node(tmp_path):
         client.close()
 
 
-def test_cards_in_a_deck_survive_restart(tmp_path):
-    first = JacTestClient.from_file("main.jac", base_path=str(tmp_path))
-    deck_id = _new_deck(first)
-    _reports(first.post("/walker/AddCard", json={"deck_id": deck_id, "oracle_id": _oracle_id("Goblin Guide"), "count": 4}))
-    first.close()
-
-    second = JacTestClient.from_file("main.jac", base_path=str(tmp_path))
+# Every call runs in a fresh context that reads the graph from the database, so a
+# call after another reads back what was committed (a second Jac test client in
+# one process would load the app's modules again, and its nodes would not match).
+def test_cards_in_a_deck_come_back_from_the_database(tmp_path):
+    client = FrontDoorClient(tmp_path)
+    deck_id = _new_deck(client)
+    _reports(client.post("/walker/AddCard", json={"deck_id": deck_id, "oracle_id": _oracle_id("Goblin Guide"), "count": 4}))
     try:
-        view = _reports(second.post("/walker/GetDeck", json={"deck_id": deck_id}))[0]
+        view = _reports(client.post("/walker/GetDeck", json={"deck_id": deck_id}))[0]
         assert _lines(view) == {"Goblin Guide": 4}
     finally:
-        second.close()
+        client.close()
 
 
-def test_a_removed_card_stays_removed_after_restart(tmp_path):
+def test_a_removed_card_stays_removed_when_read_back(tmp_path):
     """Removing a card deletes its Holds edge from the database, not just from memory."""
-    first = JacTestClient.from_file("main.jac", base_path=str(tmp_path))
-    deck_id = _new_deck(first)
+    client = FrontDoorClient(tmp_path)
+    deck_id = _new_deck(client)
     bolt, guide = _oracle_id("Lightning Bolt"), _oracle_id("Goblin Guide")
-    _reports(first.post("/walker/AddCard", json={"deck_id": deck_id, "oracle_id": bolt, "count": 4}))
-    _reports(first.post("/walker/AddCard", json={"deck_id": deck_id, "oracle_id": guide, "count": 4}))
-    _reports(first.post("/walker/AddCard", json={"deck_id": deck_id, "oracle_id": bolt, "count": 2, "zone": "sideboard"}))
-    _reports(first.post("/walker/RemoveCard", json={"deck_id": deck_id, "oracle_id": bolt}))
-    first.close()
-
-    second = JacTestClient.from_file("main.jac", base_path=str(tmp_path))
+    _reports(client.post("/walker/AddCard", json={"deck_id": deck_id, "oracle_id": bolt, "count": 4}))
+    _reports(client.post("/walker/AddCard", json={"deck_id": deck_id, "oracle_id": guide, "count": 4}))
+    _reports(client.post("/walker/AddCard", json={"deck_id": deck_id, "oracle_id": bolt, "count": 2, "zone": "sideboard"}))
+    _reports(client.post("/walker/RemoveCard", json={"deck_id": deck_id, "oracle_id": bolt}))
     try:
-        view = _reports(second.post("/walker/GetDeck", json={"deck_id": deck_id}))[0]
+        view = _reports(client.post("/walker/GetDeck", json={"deck_id": deck_id}))[0]
         assert {(c["name"], c["zone"]): c["count"] for c in view["cards"]} == {
             ("Goblin Guide", "main"): 4, ("Lightning Bolt", "sideboard"): 2,
         }
     finally:
-        second.close()
+        client.close()
 
 
 def test_mana_analysis_in_deck_view(tmp_path):
-    client = JacTestClient.from_file("main.jac", base_path=str(tmp_path))
+    client = FrontDoorClient(tmp_path)
     try:
         deck_id = _new_deck(client)
         mountain = _oracle_id("Mountain")
