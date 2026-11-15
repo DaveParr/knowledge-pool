@@ -35,6 +35,8 @@ def test_the_catalogue_step_comes_after_the_date_file_is_copied():
     copy = next(n for n, (i, a) in enumerate(instructions) if i == "COPY" and "catalogue_date.txt" in a)
     catalogue = next(n for n, (i, a) in enumerate(instructions) if i == "RUN" and "jac x catalogue" in a)
     assert copy < catalogue
+    # The app's own source comes after it, so editing the app does not rebuild the catalogue.
+    assert ("COPY", "--chown=jac:jac . .") in instructions[catalogue:]
     assert (ROOT / "catalogue_date.txt").read_text().strip()
 
 

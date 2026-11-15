@@ -8,7 +8,7 @@ from pathlib import Path
 
 import pytest
 
-from tests.hosted_settings import HOSTED_SETTINGS
+from tests.hosted_settings import ALL_HOSTED_SETTINGS, HOSTED_SETTINGS
 from tests.local_user import local_user_decks
 
 ROOT = Path(__file__).resolve().parent.parent
@@ -78,16 +78,16 @@ def test_local_mode_refuses_to_listen_beyond_loopback(fixture_catalog, jac_db_ur
 
 
 def test_hosted_mode_refuses_to_start_without_any_of_its_settings(fixture_catalog, jac_db_url):
-    run = _start_mcp(fixture_catalog, jac_db_url, KP_MODE="hosted", **{name: "" for name in [*HOSTED_SETTINGS, "JAC_DB_URL"]})
+    run = _start_mcp(fixture_catalog, jac_db_url, KP_MODE="hosted", **{name: "" for name in ALL_HOSTED_SETTINGS})
     assert run.returncode != 0
-    for name in [*HOSTED_SETTINGS, "JAC_DB_URL"]:
+    for name in ALL_HOSTED_SETTINGS:
         assert name in run.stderr
 
 
-@pytest.mark.parametrize("missing", [*sorted(HOSTED_SETTINGS), "JAC_DB_URL"])
+@pytest.mark.parametrize("missing", ALL_HOSTED_SETTINGS)
 def test_hosted_mode_refuses_to_start_when_one_setting_is_missing(fixture_catalog, jac_db_url, missing):
     settings = {**HOSTED_SETTINGS, "KP_TRANSPORT": "http", "KP_HTTP_PORT": "0", missing: ""}
     run = _start_mcp(fixture_catalog, jac_db_url, KP_MODE="hosted", **settings)
     assert run.returncode != 0
     assert missing in run.stderr
-    assert all(other not in run.stderr for other in [*HOSTED_SETTINGS, "JAC_DB_URL"] if other != missing)
+    assert all(other not in run.stderr for other in ALL_HOSTED_SETTINGS if other != missing)

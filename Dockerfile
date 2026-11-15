@@ -27,21 +27,24 @@ ARG BUILD_DB_URL=postgresql://build:build@127.0.0.1:1/none
 COPY --chown=jac:jac jac.toml ./
 RUN JAC_DB_URL=$BUILD_DB_URL jac install
 
+# The card catalogue, from MTGJSON and Scryfall. Only its own code and the date
+# file are copied first, so it depends on the date file and not on the app's
+# source: changing the file always rebuilds it (the weekly rebuild writes
+# today's date), and an edit to the app does not re-download the cards.
+COPY --chown=jac:jac catalog ./catalog
+COPY --chown=jac:jac catalogue_date.txt ./
+RUN JAC_DB_URL=$BUILD_DB_URL KP_CACHE=/tmp/kp-cache jac x catalogue && rm -rf /tmp/kp-cache
+
 COPY --chown=jac:jac . .
 
 # The web bundle.
 RUN JAC_DB_URL=$BUILD_DB_URL jac build --as client
 
-# The card catalogue, from MTGJSON and Scryfall. It depends on the date file,
-# so changing the file always rebuilds it (the weekly rebuild writes today's date).
-COPY --chown=jac:jac catalogue_date.txt ./
-RUN JAC_DB_URL=$BUILD_DB_URL KP_CACHE=/tmp/kp-cache jac x catalogue && rm -rf /tmp/kp-cache
-
 # Compile the app's modules into the cache now. Started without its settings the
 # app compiles, refuses hosted mode and exits, which is all this step wants;
 # without it the first start spends over a minute compiling before it can answer
 # its health check.
-RUN JAC_DB_URL=$BUILD_DB_URL KP_MODE=hosted jac run --no-serve mcp_server.jac 2>&1 | tail -3; test -d /app/.cache/state/jir/modules
+RUN JAC_DB_URL=$BUILD_DB_URL KP_MODE=hosted jac run --no-serve mcp_server.jac 2>&1 | grep -q 'Hosted mode needs these settings'
 
 # Hosted mode: the app refuses to start without its WorkOS settings
 # (KP_AUTHKIT_DOMAIN, KP_MCP_URL, WORKOS_CLIENT_ID, WORKOS_API_KEY and

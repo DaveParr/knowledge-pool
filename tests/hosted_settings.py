@@ -8,3 +8,6 @@ HOSTED_SETTINGS = {
     "WORKOS_API_KEY": "sk_stand_in",
     "WORKOS_COOKIE_PASSWORD": "a-stand-in-cookie-password-of-32-or-more-characters",
 }
+
+# Every setting hosted mode requires: the stand-ins above and the database address.
+ALL_HOSTED_SETTINGS = [*sorted(HOSTED_SETTINGS), "JAC_DB_URL"]
