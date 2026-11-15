@@ -1,5 +1,37 @@
 {
   "enabledPlugins": {
     "superpowers@claude-plugins-official": false
+  },
+  "permissions": {
+    "allow": [
+      "Bash(gh issue list *)",
+      "Bash(gh issue view *)",
+      "Bash(gh issue edit *)",
+      "Bash(gh issue comment *)",
+      "Bash(gh api repos/DaveParr/knowledge-pool/issues/*)",
+      "Bash(gh pr create *)",
+      "Bash(gh pr view *)",
+      "Bash(gh pr list *)",
+      "Bash(gh pr checks *)",
+      "Bash(scripts/board.sh *)",
+      "Bash(jac guide *)",
+      "Bash(uv run jac *)",
+      "Bash(scripts/jac_test.sh *)",
+      "Bash(git status *)",
+      "Bash(git diff *)",
+      "Bash(git log *)",
+      "Bash(git add *)",
+      "Bash(git commit *)",
+      "Bash(git push -u origin *)",
+      "Bash(git push origin *)",
+      "Bash(git push)"
+    ],
+    "deny": [
+      "Bash(git push --force *)",
+      "Bash(git push -f *)",
+      "Bash(git push origin main)",
+      "Bash(git push origin main *)",
+      "Bash(git push origin * main)"
+    ]
   }
 }
