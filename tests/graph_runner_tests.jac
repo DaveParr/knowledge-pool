@@ -163,16 +163,23 @@ test "no user can change a shared card, even one their own deck holds" {
     assert view.cards[0].text == store.find_by_name("Lightning Bolt")["text"];
 }
 
+"""Call `f` in process as the guest, on the guest's root, as the app's own
+work on the shared cards does."""
+def _as_guest(f: Callable[[], object]) -> object {
+    start();
+    return in_context(guest_root_id(), f);
+}
+
 """The ids of Card nodes the guest makes for the card `name`, in the order
 made: at least two, and the first is not the lowest, so taking the first
 match would pick a different card than taking the lowest id."""
 def _duplicate_cards(name: str) -> list[str] {
-    start();
     oid = _oracle_id(name);
     c = store.get_card(oid) as JsonObject;
     ids: list[str] = [];
     while len(ids) < 2 or min(ids) == ids[0] {
-        ids.append(in_context(guest_root_id(), lambda () -> object { return jid(new_card(root, oid, c)); }) as str);
+        assert len(ids) < 50, "card ids came out in rising order every time";
+        ids.append(_as_guest(lambda () -> object { return jid(new_card(root, oid, c)); }) as str);
     }
     return ids;
 }
@@ -194,7 +201,7 @@ test "the guest can change a shared card in process, and every deck holding it s
         card.text = "Changed by the guest.";
         return None;
     }
-    in_context(guest_root_id(), rewrite);
+    _as_guest(rewrite);
     for (caller, deck_id) in [(ALICE, alices), (BOB, bobs)] {
         view = run_walker(caller, GetDeck(deck_id=deck_id)).reports[0] as DeckView;
         assert view.cards[0].text == "Changed by the guest.";
