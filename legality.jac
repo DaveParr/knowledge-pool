@@ -67,6 +67,14 @@ def format_nodes(home: Root) -> list[Format] {
     return found;
 }
 
+"""Every Format node under `home` (the guest's root), open to every user for
+reading. The guest calls it before any user call, so no user ever makes one."""
+def open_formats(home: Root) {
+    for f in format_nodes(home) {
+        grant(f, level=AccessLevel.READ);
+    }
+}
+
 def format_node(home: Root, key: str) -> Format | None {
     for f in format_nodes(home) {
         if f.name == key {
@@ -293,7 +301,7 @@ walker GetFormatRules {
         reports: list[FormatRules | WalkerError] = [];
 
     can show with Root entry {
-        fmt = format_node(here, self.format);
+        fmt = format_node(root.shared, self.format);
         if fmt is None {
             report unknown_format(self.format);
             disengage;

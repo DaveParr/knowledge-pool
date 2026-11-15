@@ -11,8 +11,8 @@ the first that is legal in that format today, else the last one tried. A
 precon whose name is already a deck in the graph is never picked again, so
 each run adds new decks.
 
-Decks are made by `CreateDeckFromList` on the shared guest root, the same
-graph the web app and MCP server use; they may keep running. The card
+Decks are made by `CreateDeckFromList` as the local user, the same user
+the MCP server runs every call as in local mode; it may keep running. The card
 catalogue must be built first (or KP_CATALOG pointed at one).
 """
 
@@ -32,15 +32,15 @@ import from deckformats.mtgjson { is_skipped_list_note }
 import from deck_io { CreateDeckFromList, NewDeckResult, resolve_list }
 import from legality { Violation, check_lines, format_node }
 import from walker_errors { WalkerError }
-import from shared_graph { APP_DIR, run_walker }
+import from graph_runner { APP_DIR, LOCAL_USER, run_walker }
 import from jaclang.runtime.constructs { WalkerArchetype }
 
-"""Run a walker on the shared root (see shared_graph.run_walker). Under
-`jac run` every `report` is also echoed to stdout; keep that out of the
-script's own output."""
+"""Run a walker as the local user, through the runner. Under `jac run`
+every `report` is also echoed to stdout; keep that out of the script's own
+output."""
 def walk(w: WalkerArchetype) -> WalkerArchetype {
     with redirect_stdout(io.StringIO()) {
-        return run_walker(w);
+        return run_walker(LOCAL_USER, w);
     }
 }
 
@@ -60,14 +60,14 @@ walker CheckList {
             report rl;
             disengage;
         }
-        fmt = format_node(here, self.play_format);
+        fmt = format_node(root.shared, self.play_format);
         if fmt is None {
             report WalkerError(code="unknown-format", message=f"Unknown format {self.play_format}.");
             disengage;
         }
         lines: list[CardLine] = [];
         for e in rl.entries {
-            card = card_node(here, e.oracle_id);
+            card = card_node(root.shared, e.oracle_id);
             if card is not None {
                 lines.append(card_line(card, e.zone, e.count));
             }

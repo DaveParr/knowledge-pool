@@ -11,6 +11,7 @@ catalogue record: after `catalog/ingest.py` rebuilds the catalogue, one
 
 import sqlite3;
 import catalog.store as store;
+import from jaclang { JacRuntime as Jac }
 import from card_lines { CardFace }
 import from json_object { JsonObject }
 
@@ -122,6 +123,14 @@ def catalog_node(home: Root) -> Catalog {
     return (home ++> Catalog()) as Catalog;
 }
 
+"""The Catalog node under `home` (the guest's root), open to every user for
+reading. The guest calls it before any user call, so no user ever makes one."""
+def open_catalog(home: Root) -> Catalog {
+    cat = catalog_node(home);
+    grant(cat, level=AccessLevel.READ);
+    return cat;
+}
+
 """Copy every catalogue field of record `c` onto `card`. The one place that
 maps a catalogue record to a Card node, so a new field can't be missed by the refresh."""
 def fill_card(card: Card, c: JsonObject) {
@@ -160,20 +169,55 @@ def card_face(f: dict[str, str]) -> CardFace {
     );
 }
 
-"""The Card node for an oracle id, created from the catalogue on first use. None if the id is unknown."""
+"""Call `make` with the guest as the acting root, then put the caller back.
+Whatever `make` links into the graph is owned by the guest, so the guest can
+refresh it and no user can change it. Every user has CONNECT on the guest's
+root but no more, so this is the only way a user's call adds to it.
+
+Jac has no public way to act as another root inside a call, so this sets
+the context's private `_user_root` field (tests/graph_runner_tests.jac guards it).
+With no shared root registered (`jac test`), the caller already acts on
+the root everything hangs off, and `make` runs as it is."""
+def as_guest(make: Callable[[], object]) -> object {
+    shared = Jac.shared_root_id();
+    if shared is None {
+        return make();
+    }
+    ctx = Jac.get_context();
+    caller = ctx._user_root;
+    ctx._user_root = ctx._get_anchor(str(shared));
+    try {
+        return make();
+    } finally {
+        ctx._user_root = caller;
+    }
+}
+
+"""The Card node for an oracle id under `home`'s Catalog (`home` is the
+guest's root, `root.shared`). On first use the guest creates it from the
+catalogue, open to every user at CONNECT so their decks can hold it. None if
+the id is unknown."""
 def card_node(home: Root, oid: str) -> Card | None {
-    cat = catalog_node(home);
-    found = [cat-->[?:Card, oracle_id == oid]];  # jac:ignore[W1051]: the checker cannot resolve a filter field
-    if found {
-        return found[0];
+    for cat in [home-->[?:Catalog]] {
+        found = [cat-->[?:Card, oracle_id == oid]];  # jac:ignore[W1051]: the checker cannot resolve a filter field
+        if found {
+            return found[0];
+        }
     }
     c = store.get_card(oid);
     if c is None {
         return None;
     }
+    return as_guest(lambda () -> object { return new_card(home, oid, c); }) as Card;
+}
+
+"""Create the Card node for `oid` from catalogue record `c` under `home`'s
+Catalog, open to every user at CONNECT. The guest calls it (see as_guest)."""
+def new_card(home: Root, oid: str, c: JsonObject) -> Card {
     card = Card(oracle_id=oid, name=c["name"] as str);
     fill_card(card, c);
-    cat ++> card;
+    catalog_node(home) ++> card;
+    grant(card, level=AccessLevel.CONNECT);
     return card;
 }
 

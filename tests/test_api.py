@@ -69,7 +69,7 @@ print("strict" if Jac.strict_permissions else "lax")
 """
 
 
-@pytest.mark.parametrize("module", ["main", "shared_graph"])  # mcp_server and seed import shared_graph
+@pytest.mark.parametrize("module", ["main", "graph_runner"])  # mcp_server and seed import graph_runner
 def test_app_processes_run_with_strict_permissions(module, tmp_path):
     """A write Jac refuses must fail the call, even with JAC_STRICT_PERMISSIONS unset."""
     probe = tmp_path / "probe.py"
