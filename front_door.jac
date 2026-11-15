@@ -28,6 +28,7 @@ handing it to the MCP SDK's app.
 import inspect;
 import json;
 import os;
+import signal;
 import socket;
 import subprocess;
 import sys;
@@ -314,6 +315,18 @@ def stop_upstream(child: subprocess.Popen) {  # jac:ignore[W1036]
             child.kill();
         }
     }
+}
+
+"""Stop the child when the front door is told to stop (SIGTERM). Uvicorn shuts down
+and then re-raises the signal with the handler it found, which by default ends the
+process without running `finally` or `atexit`; this handler is the one it finds."""
+def stop_child_on_sigterm(child: subprocess.Popen) {  # jac:ignore[W1036]
+    def stop(signum: int, frame: object) {  # jac:ignore[W1036,W1037,W2003]
+        expect_upstream_to_stop();
+        stop_upstream(child);
+        raise SystemExit(128 + signum);
+    }
+    signal.signal(signal.SIGTERM, stop);
 }
 
 """If the child dies while the front door serves, the front door exits (the
