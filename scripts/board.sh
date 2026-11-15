@@ -3,25 +3,20 @@
 #
 #   scripts/board.sh <issue-number> <status>
 #
-# <status>: Backlog | Ready | In progress | In review | Done (case-insensitive;
-# "in-progress" / "in-review" accepted). Uses `gh api graphql` for the lookup because
-# bare `gh issue view` fails here with the Projects (classic) deprecation error.
+# <status> is any option of the board's Status field, fetched from GitHub at run time
+# (case-insensitive; "-" and "_" read as spaces, so "in-progress" matches "In progress").
+# Uses `gh api graphql` for the lookups because bare `gh issue view` fails here with the
+# Projects (classic) deprecation error.
 set -euo pipefail
 
 REPO_OWNER="DaveParr"
 REPO_NAME="knowledge-pool"
 PROJECT_ID="PVT_kwHOAH-e384Boo56"
-STATUS_FIELD_ID="PVTSSF_lAHOAH-e384Boo56zhnIDMM"
-OPT_BACKLOG="f75ad846"
-OPT_READY="61e4505c"
-OPT_IN_PROGRESS="47fc9ee4"
-OPT_IN_REVIEW="df73e18b"
-OPT_DONE="98236657"
-VALID="Backlog, Ready, In progress, In review, Done"
+STATUS_FIELD_NAME="Status"
 
 if [ "$#" -ne 2 ]; then
     echo "usage: scripts/board.sh <issue-number> <status>" >&2
-    echo "status: $VALID" >&2
+    echo "status: any option of the board's $STATUS_FIELD_NAME field" >&2
     exit 2
 fi
 
@@ -30,19 +25,40 @@ case "$issue" in
     '' | *[!0-9]*) echo "issue number must be numeric, got: $issue" >&2; exit 2 ;;
 esac
 
-norm="$(printf '%s' "$2" | tr '[:upper:]' '[:lower:]' | tr '_-' '  ')"
-case "$norm" in
-    backlog) status="Backlog"; option="$OPT_BACKLOG" ;;
-    ready) status="Ready"; option="$OPT_READY" ;;
-    "in progress") status="In progress"; option="$OPT_IN_PROGRESS" ;;
-    "in review") status="In review"; option="$OPT_IN_REVIEW" ;;
-    done) status="Done"; option="$OPT_DONE" ;;
-    *)
-        echo "unknown status: $2" >&2
-        echo "valid statuses: $VALID" >&2
-        exit 2
-        ;;
-esac
+normalise() { printf '%s' "$1" | tr '[:upper:]' '[:lower:]' | tr '_-' '  '; }
+
+# One TSV line per option: <field id> <option id> <option name>
+options="$(gh api graphql -F id="$PROJECT_ID" -F field="$STATUS_FIELD_NAME" \
+    -f query='query($id: ID!, $field: String!) {
+      node(id: $id) {
+        ... on ProjectV2 {
+          field(name: $field) {
+            ... on ProjectV2SingleSelectField { id options { id name } }
+          }
+        }
+      }
+    }' \
+    --jq '.data.node.field | select(.options != null) | .id as $f | .options[] | [$f, .id, .name] | @tsv')"
+
+if [ -z "$options" ]; then
+    echo "could not read the $STATUS_FIELD_NAME options of project $PROJECT_ID" >&2
+    exit 1
+fi
+
+want="$(normalise "$2")"
+field_id="" option="" status="" valid=""
+while IFS=$'\t' read -r f id name; do
+    valid="${valid:+$valid, }$name"
+    if [ -z "$option" ] && [ "$(normalise "$name")" = "$want" ]; then
+        field_id="$f"; option="$id"; status="$name"
+    fi
+done <<< "$options"
+
+if [ -z "$option" ]; then
+    echo "unknown status: $2" >&2
+    echo "valid statuses: $valid" >&2
+    exit 2
+fi
 
 item="$(gh api graphql \
     -F owner="$REPO_OWNER" -F name="$REPO_NAME" -F number="$issue" \
@@ -63,5 +79,5 @@ if [ -z "$item" ]; then
 fi
 
 gh project item-edit --id "$item" --project-id "$PROJECT_ID" \
-    --field-id "$STATUS_FIELD_ID" --single-select-option-id "$option" >/dev/null
+    --field-id "$field_id" --single-select-option-id "$option" >/dev/null
 echo "#$issue -> $status"
