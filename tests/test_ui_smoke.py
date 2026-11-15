@@ -181,6 +181,19 @@ def test_build_a_deck_through_the_web_app(app):
     assert "deals 3 damage" in app.wait_text("deals 3 damage", within="ul.dd-cards")
 
 
+def test_a_decks_format_pill_ignores_what_is_typed_in_the_name_box(app):
+    app.browse("open", app.web)
+    app.fill("input[aria-label='Deck name']", "Pill Deck")
+    app.click("button", "Create deck")
+    app.wait_text("Pill Deck", within="ul.fe-decks")
+    shown = app.wait_text("Standard", within="ul.fe-decks .pill")
+
+    app.fill("input[aria-label='Deck name']", "qa deck")
+    pills = app.js("JSON.stringify([...document.querySelectorAll('ul.fe-decks .pill')].map(p => p.innerText))")
+    assert "qa deck" not in pills, pills
+    assert shown == "Standard"
+
+
 async def deck_show_result(url: str) -> dict:
     """deck_show's structuredContent for the "Smoke Burn" deck (created if missing)."""
 
