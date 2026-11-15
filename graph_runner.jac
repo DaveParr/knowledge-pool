@@ -275,10 +275,10 @@ def refresh_cards(batch: int = REFRESH_BATCH) -> bool {
     start();
     version = catalogue_version();
     guest = guest_root_id();
-    done = in_context(
+    last_version = in_context(
         guest, lambda () -> object { return refreshed_version(root); }, name="refresh_cards", caller=Con.GUEST.value
     ) as str;
-    if done == version {
+    if last_version == version {
         return False;
     }
     offset = 0;

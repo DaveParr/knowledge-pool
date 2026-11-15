@@ -251,15 +251,21 @@ def catalogue_version -> str {
 """The catalogue version the Card nodes under `home` (the guest's root) were
 last refreshed against, or "" if they never were."""
 def refreshed_version(home: Root) -> str {
+    marker = refresh_marker(home);
+    return marker.version if marker else "";
+}
+
+"""The CatalogueRefresh node under `home`, or None before the first refresh."""
+def refresh_marker(home: Root) -> CatalogueRefresh | None {
     found = [home-->[?:CatalogueRefresh]];
-    return found[0].version if found else "";
+    return found[0] if found else None;
 }
 
 """Record under `home` that the Card nodes are now refreshed against `version`."""
 def record_refresh(home: Root, version: str) {
-    found = [home-->[?:CatalogueRefresh]];
-    if found {
-        found[0].version = version;
+    marker = refresh_marker(home);
+    if marker {
+        marker.version = version;
     } else {
         home ++> CatalogueRefresh(version=version);
     }
@@ -290,9 +296,9 @@ walker RefreshCards {
     can refresh with Root entry {
         store.reset();
         cards = sorted([catalog_node(here)-->[?:Card]], key=jid);
-        batch = cards[self.offset:self.offset + self.size];
+        in_batch = cards[self.offset:self.offset + self.size];
         updated = 0;
-        for card in batch {
+        for card in in_batch {
             c = store.get_card(card.oracle_id);
             if c is not None {
                 fill_card(card, c);
@@ -300,6 +306,6 @@ walker RefreshCards {
             }
         }
         report updated;
-        report len(batch);
+        report len(in_batch);
     }
 }
