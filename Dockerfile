@@ -47,7 +47,7 @@ RUN JAC_DB_URL=$BUILD_DB_URL jac build --as client
 RUN JAC_DB_URL=$BUILD_DB_URL KP_MODE=hosted jac run --no-serve mcp_server.jac 2>&1 | grep -q 'Hosted mode needs these settings'
 
 # Hosted mode: the app refuses to start without its WorkOS settings
-# (KP_AUTHKIT_DOMAIN, KP_MCP_URL, WORKOS_CLIENT_ID, WORKOS_API_KEY and
+# (KP_AUTHKIT_DOMAIN, KP_PUBLIC_MCP_URL, WORKOS_CLIENT_ID, WORKOS_API_KEY and
 # WORKOS_COOKIE_PASSWORD) and JAC_DB_URL, all set on Railway.
 ENV KP_MODE=hosted \
     KP_TRANSPORT=http \

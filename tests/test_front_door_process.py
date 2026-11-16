@@ -76,11 +76,14 @@ def front_door(fixture_catalog, jac_db_url):
 
 
 def test_hosted_mode_starts_with_its_settings_and_answers_health_but_no_data_call(fixture_catalog, jac_db_url):
-    with _running(fixture_catalog, jac_db_url, KP_MODE="hosted", **HOSTED_SETTINGS) as (_, base, _):
+    with _running(fixture_catalog, jac_db_url, KP_MODE="hosted", **HOSTED_SETTINGS, KP_TRANSPORT="http") as (_, base, _):
         reply = _get(base + "/healthz")
         assert reply == (200, b"ok")
         refused = _get(base + "/walker/ListDecks", b"{}", {"Origin": base, "Content-Type": "application/json"})
         assert refused[0] == 401
+        # Nor the page: served with no caller, its first data call gets a 401 and
+        # Jac's client, holding no Jac token, reloads the page for ever.
+        assert _get(base + "/")[0] == 401
 
 
 def test_page_loads_through_the_front_door_and_a_deck_can_be_read(front_door):

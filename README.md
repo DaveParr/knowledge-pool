@@ -83,17 +83,17 @@ jac x test-ui   # browser smoke test of the web app; skips without a browser (CI
 
 ### Container image
 
-The `Dockerfile` builds the hosted image on `jaseci/jaclang:<the version jac.toml pins>`: the app, the web bundle and the card catalogue, started in hosted mode (`KP_MODE=hosted`, listening on `$PORT`). The build never starts a Postgres (each Jac step is given an address nothing listens on); `catalogue_date.txt` is copied before the catalogue step, so changing it rebuilds the catalogue. Hosted mode refuses to start unless these are set, and names the missing ones: `KP_AUTHKIT_DOMAIN`, `KP_MCP_URL`, `WORKOS_CLIENT_ID`, `WORKOS_API_KEY`, `WORKOS_COOKIE_PASSWORD` and `JAC_DB_URL`. To try it locally:
+The `Dockerfile` builds the hosted image on `jaseci/jaclang:<the version jac.toml pins>`: the app, the web bundle and the card catalogue, started in hosted mode (`KP_MODE=hosted`, listening on `$PORT`). The build never starts a Postgres (each Jac step is given an address nothing listens on); `catalogue_date.txt` is copied before the catalogue step, so changing it rebuilds the catalogue. Hosted mode refuses to start unless these are set, and names the missing ones: `KP_AUTHKIT_DOMAIN`, `KP_PUBLIC_MCP_URL`, `WORKOS_CLIENT_ID`, `WORKOS_API_KEY`, `WORKOS_COOKIE_PASSWORD` and `JAC_DB_URL`. To try it locally:
 
 ```bash
 docker build -t knowledge-pool .
 docker run --rm -p 8080:8080 -e PORT=8080 -e JAC_DB_URL=postgresql://... \
-  -e KP_AUTHKIT_DOMAIN=https://x.authkit.app -e KP_MCP_URL=https://x.example/mcp \
+  -e KP_AUTHKIT_DOMAIN=https://x.authkit.app -e KP_PUBLIC_MCP_URL=https://x.example/mcp \
   -e WORKOS_CLIENT_ID=x -e WORKOS_API_KEY=x -e WORKOS_COOKIE_PASSWORD=<32+ characters> knowledge-pool
 curl localhost:8080/healthz   # ok
 ```
 
-Until the browser sign-in lands, hosted mode answers the health path and refuses every data call.
+Until the browser sign-in lands, hosted mode answers the health path and refuses everything else without a WorkOS bearer token, the page included.
 
 ### Layout
 
