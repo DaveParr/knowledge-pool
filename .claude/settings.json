@@ -24,7 +24,10 @@
       "Bash(git commit *)",
       "Bash(git push -u origin *)",
       "Bash(git push origin *)",
-      "Bash(git push)"
+      "Bash(git push)",
+      "Bash(scripts/ready-tickets.sh)",
+      "Bash(scripts/start-ticket.sh *)",
+      "Bash(scripts/check-ticket-link.sh *)"
     ],
     "deny": [
       "Bash(git push --force *)",
@@ -32,6 +35,19 @@
       "Bash(git push origin main)",
       "Bash(git push origin main *)",
       "Bash(git push origin * main)"
+    ]
+  },
+  "hooks": {
+    "PostToolUse": [
+      {
+        "matcher": "Bash",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "\"$CLAUDE_PROJECT_DIR\"/.claude/hooks/check-ticket-link-on-pr.sh"
+          }
+        ]
+      }
     ]
   }
 }
