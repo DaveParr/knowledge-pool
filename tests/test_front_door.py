@@ -19,6 +19,7 @@ pytestmark = pytest.mark.usefixtures("jac_db_url")
 CLOSED_PATHS = [
     "/docs", "/openapi.json", "/graph", "/admin", "/walkers", "/functions", "/user/login", "/user/register",
     "/sso/google/start", "/cl/__error__", "/static/../docs", "/some/other/path",
+    "/openapi.js", "/docs/client.js", "/..client.js", "/%2e%2e.js",
 ]
 
 
@@ -56,6 +57,14 @@ def test_page_and_static_files_come_from_jacs_server_without_credentials(client)
     assert [(r.url.path, r.url.query) for r in client.upstream_requests] == [("/", b""), ("/static/client.js", b"hash=1")]
     for seen in client.upstream_requests:
         assert "cookie" not in seen.headers and "authorization" not in seen.headers
+
+
+def test_built_bundles_root_files_come_from_jacs_server(client):
+    # `jac build --as client` (the hosted image) writes a page that loads its
+    # script and stylesheet from the root, not from /static/.
+    for path in ("/client.BEp6_VCi.js", "/styles.css"):
+        assert client.get(path).status_code == 200
+    assert [r.url.path for r in client.upstream_requests] == ["/client.BEp6_VCi.js", "/styles.css"]
 
 
 def test_page_answers_502_when_jacs_server_is_gone(client):

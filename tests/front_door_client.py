@@ -51,7 +51,7 @@ class FrontDoorClient:
         self.upstream_requests.append(request)
         if request.url.path == "/":
             return httpx2.Response(200, text="<html><title>app</title></html>", headers={"content-type": "text/html"})
-        if request.url.path == "/static/client.js":
+        if request.url.path in ("/static/client.js", "/client.BEp6_VCi.js", "/styles.css"):
             return httpx2.Response(200, text="export {}", headers={"content-type": "text/javascript"})
         return httpx2.Response(404, json={"detail": "Not Found"})
 

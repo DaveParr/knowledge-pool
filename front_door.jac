@@ -2,7 +2,9 @@
 
 The MCP process answers every request. Jac's own server runs beside it as a
 child on 127.0.0.1 and only hands out the web page and its static files; the
-front door forwards those two kinds of path and no others. Every other path
+front door forwards those two kinds of path and no others. The static files
+are under `/static/`, or, for the bundle `jac build --as client` writes (the
+hosted image), a script or stylesheet at the root. Every other path
 answers 404, so Jac's docs, graph, admin, listing, `/user/*` and `/sso/*`
 endpoints are never reachable from outside.
 
@@ -28,6 +30,7 @@ handing it to the MCP SDK's app.
 import inspect;
 import json;
 import os;
+import re;
 import signal;
 import socket;
 import subprocess;
@@ -51,6 +54,8 @@ import from deck_io { DeckExport, DeckImport, CreateDeckFromList }
 import from cards { search_cards }
 
 glob HEALTH_PATH: str = "/healthz",
+     # The built bundle's script and stylesheet, which its page loads from the root.
+     ROOT_ASSET: re.Pattern = re.compile(r"/client\.[A-Za-z0-9_-]+\.js|/styles\.css"),
      LOOPBACK: str = "127.0.0.1",
      # The MCP SDK's app answers these paths (the connector, and later its OAuth discovery).
      MCP_PREFIXES: list[str] = ["/mcp", "/.well-known/"],
@@ -200,9 +205,10 @@ async def function_call(request: Request, config: FrontDoorConfig) -> Response {
 }
 
 """Whether `path` is the page or one of its static files: the only paths
-forwarded to Jac's server. Nothing that climbs out of `/static/`."""
+forwarded to Jac's server. Nothing that climbs out of `/static/`; at the root,
+only a built bundle's script or stylesheet (`/client.<hash>.js`, `/styles.css`)."""
 def is_page_path(path: str) -> bool {
-    if path == "/" {
+    if path == "/" or ROOT_ASSET.fullmatch(path) {
         return True;
     }
     return path.startswith("/static/") and ".." not in path and "//" not in path and "%" not in path;

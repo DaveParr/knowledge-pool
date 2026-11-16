@@ -19,11 +19,13 @@ glob AUTHKIT_DOMAIN: str = "KP_AUTHKIT_DOMAIN",
      WORKOS_CLIENT_ID: str = "WORKOS_CLIENT_ID",
      WORKOS_API_KEY: str = "WORKOS_API_KEY",
      WORKOS_COOKIE_PASSWORD: str = "WORKOS_COOKIE_PASSWORD",
-     HOSTED_SETTINGS: list[str] = [AUTHKIT_DOMAIN, PUBLIC_MCP_URL, WORKOS_CLIENT_ID, WORKOS_API_KEY, WORKOS_COOKIE_PASSWORD],
+     # Without it Jac starts a Postgres of its own and every deck is lost on the next deploy.
+     DATABASE_URL: str = "JAC_DB_URL",
+     HOSTED_SETTINGS: list[str] = [AUTHKIT_DOMAIN, PUBLIC_MCP_URL, WORKOS_CLIENT_ID, WORKOS_API_KEY, WORKOS_COOKIE_PASSWORD, DATABASE_URL],
      JWKS_PATH: str = "/oauth2/jwks",
      ALGORITHMS: list[str] = ["RS256"];
 
-"""Hosted mode was started without one of its settings."""
+"""Hosted mode was started without one of its settings (the WorkOS ones or the database address)."""
 obj HostedSettingsMissing(Exception) {}
 
 """What hosted mode needs, from the environment. `issuer` is the AuthKit

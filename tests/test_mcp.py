@@ -6,6 +6,9 @@ import subprocess
 import sys
 from pathlib import Path
 
+import pytest
+
+from tests.hosted_settings import ALL_HOSTED_SETTINGS, HOSTED_SETTINGS
 from tests.local_user import local_user_decks
 
 ROOT = Path(__file__).resolve().parent.parent
@@ -74,8 +77,17 @@ def test_local_mode_refuses_to_listen_beyond_loopback(fixture_catalog, jac_db_ur
     assert "Local mode listens on 127.0.0.1 only, not 0.0.0.0." in run.stderr
 
 
-def test_hosted_mode_refuses_to_start_without_its_settings(fixture_catalog, jac_db_url):
-    settings = ("KP_AUTHKIT_DOMAIN", "KP_PUBLIC_MCP_URL", "WORKOS_CLIENT_ID", "WORKOS_API_KEY", "WORKOS_COOKIE_PASSWORD")
-    run = _start_mcp(fixture_catalog, jac_db_url, KP_MODE="hosted", KP_TRANSPORT="http", **{name: "" for name in settings})
+def test_hosted_mode_refuses_to_start_without_any_of_its_settings(fixture_catalog, jac_db_url):
+    run = _start_mcp(fixture_catalog, jac_db_url, KP_MODE="hosted", **{name: "" for name in ALL_HOSTED_SETTINGS})
     assert run.returncode != 0
-    assert all(name in run.stderr for name in settings)
+    for name in ALL_HOSTED_SETTINGS:
+        assert name in run.stderr
+
+
+@pytest.mark.parametrize("missing", ALL_HOSTED_SETTINGS)
+def test_hosted_mode_refuses_to_start_when_one_setting_is_missing(fixture_catalog, jac_db_url, missing):
+    settings = {**HOSTED_SETTINGS, "KP_TRANSPORT": "http", "KP_HTTP_PORT": "0", missing: ""}
+    run = _start_mcp(fixture_catalog, jac_db_url, KP_MODE="hosted", **settings)
+    assert run.returncode != 0
+    assert missing in run.stderr
+    assert all(other not in run.stderr for other in ALL_HOSTED_SETTINGS if other != missing)
