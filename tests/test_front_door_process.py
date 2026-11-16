@@ -103,3 +103,21 @@ def test_jacs_server_is_set_up_as_the_front_doors_child():
     settings = ServeSettings.load(base_path=str(ROOT))
     assert (settings.workers.count, settings.docs_enabled, settings.graph_enabled) == (1, False, False)
     assert settings.auth.registration.enabled is False
+
+
+def _listening(port: int) -> bool:
+    with socket.socket() as s:
+        s.settimeout(1)
+        return s.connect_ex((LOOPBACK, port)) == 0
+
+
+def test_stopping_the_front_door_stops_jacs_server_with_it(front_door):
+    proc, _, upstream_port = front_door
+    assert _listening(upstream_port)
+    proc.terminate()
+    proc.wait(timeout=30)
+    for _ in range(30):
+        if not _listening(upstream_port):
+            return
+        time.sleep(0.5)
+    pytest.fail(f"Jac's server for the page still listens on {upstream_port} after the front door stopped")

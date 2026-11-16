@@ -45,7 +45,7 @@ import from deck_io { DeckExport, DeckImport }
 import from legality { GetFormatRules }
 import from walker_errors { WalkerError }
 import from json_object { JsonObject }
-import from front_door { FrontDoorConfig, front_door_app, start_upstream, stop_upstream, exit_when_upstream_dies, expect_upstream_to_stop }
+import from front_door { FrontDoorConfig, front_door_app, start_upstream, stop_upstream, stop_child_on_sigterm, exit_when_upstream_dies, expect_upstream_to_stop }
 import from urllib.parse { urlparse }
 import from hosted_auth { AuthKitVerifier, HostedSettings, HostedSettingsMissing, hosted_settings, jwks_key_finder }
 import from graph_runner { APP_DIR, HOSTED, app_mode, check_bind, request_caller, run_walker, call_function, start, refresh_cards }
@@ -651,6 +651,7 @@ with entry:__main__ {
         # Jac's server hands out the page from a child on 127.0.0.1; if it dies, this process exits.
         (child, upstream) = start_upstream(int(os.environ.get("KP_UPSTREAM_PORT", "0")));
         exit_when_upstream_dies(child);
+        stop_child_on_sigterm(child);
         try {
             anyio.run(serve_http, http_host, http_port, upstream, hosted);  # jac:ignore[E1054,W1051]: anyio.run takes *args the checker cannot match
         } finally {
