@@ -26,6 +26,13 @@ jobs:
           KP_REQUIRE_BROWSER: "1"
         run: jac x check
 
+      - name: Probe processes
+        if: failure()
+        run: |
+          ps -eo pid,ppid,rss,etime,args --sort=-rss | head -60
+          df -h /tmp /dev/shm; free -m; ls -la ~/.cache || true
+          ss -ltnp || true
+
       - name: Upload test output
         if: failure()
         uses: actions/upload-artifact@v7.0.2
