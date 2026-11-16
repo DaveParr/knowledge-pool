@@ -1,6 +1,7 @@
 ---
 name: qa-ticket
 description: Set up and walk a human through manual QA of a ticket or PR in this repo. Use when the user says a ticket is "human qa", asks how to qa or prove work locally, or asks to set it up for them to qa.
+disable-model-invocation: true
 ---
 
 The human QAs by hand. Your job is to get the PR branch running, hand over a short script with pass conditions, and then handle what they find. Do the setup yourself; never just describe it.
