@@ -42,7 +42,10 @@ import from starlette.requests { Request }
 import from starlette.responses { Response, JSONResponse, PlainTextResponse }
 import from starlette.routing { Route }
 import from jaclang.data.serializer { Serializer }
-import from graph_runner { APP_DIR, request_caller, run_walker, call_function, CallFailed }
+import from mcp.server.auth.routes { build_resource_metadata_url }
+import from pydantic { AnyHttpUrl }
+import from graph_runner { APP_DIR, HOSTED, VERIFIED_SUB, app_mode, request_caller, run_walker, call_function, CallFailed }
+import from hosted_auth { AuthKitVerifier }
 import from decks { CreateDeck, ListDecks, GetDeck, SetDeckFormat, AddCard, SetCardCount, RemoveCard, list_formats }
 import from deck_io { DeckExport, DeckImport, CreateDeckFromList }
 import from cards { search_cards }
@@ -68,16 +71,21 @@ glob HEALTH_PATH: str = "/healthz",
      # The request headers worth passing to Jac's server for the page and its files.
      FORWARDED_REQUEST_HEADERS: list[str] = ["accept", "if-none-match", "if-modified-since"],
      FORWARDED_RESPONSE_HEADERS: list[str] = ["content-type", "cache-control", "etag", "last-modified"],
+     # What a connector may fetch without a token: the metadata that says where to sign in.
+     DISCOVERY_PATH: str = "/.well-known/oauth-protected-resource",
      UPSTREAM_BOOT_S: float = 120.0,
      STOPPING: list[bool] = [];
 
 """What a front door needs to know: where Jac's server listens (`upstream`),
 the `Origin`s of its own page (the only ones a browser data call may carry),
-and the HTTP client that reaches the upstream (a test passes one on a stub)."""
+the HTTP client that reaches the upstream (a test passes one on a stub), and in
+hosted mode the verifier of bearer tokens (`auth`; hosted mode without one
+refuses every request)."""
 obj FrontDoorConfig {
     has upstream: str,
         origins: list[str],
-        client: any = None;  # jac:ignore[W1037]
+        client: any = None,  # jac:ignore[W1037]
+        auth: AuthKitVerifier | None = None;
 }
 
 """Jac's own error envelope, with the HTTP status Jac's server would use."""
@@ -264,6 +272,75 @@ def front_door_app(mcp_app: any, config: FrontDoorConfig) -> any {  # jac:ignore
             await mcp_app(scope, receive, send);
         } else {
             await web(scope, receive, send);
+        }
+    }
+    return guarded(app, config);
+}
+
+"""The bearer token a request carries, or None."""
+def bearer_token(scope: dict[str, any]) -> str | None {  # jac:ignore[W1037]
+    for (name, value) in scope["headers"] {
+        if name == b"authorization" {
+            (kind, _, token) = value.decode("latin-1").partition(" ");
+            return token.strip() or None if kind.lower() == "bearer" else None;
+        }
+    }
+    return None;
+}
+
+"""Whether `path` is the discovery metadata (for the connector's resource URL
+too, which adds its own path)."""
+def is_discovery_path(path: str) -> bool {
+    return path == DISCOVERY_PATH or path.startswith(DISCOVERY_PATH + "/");
+}
+
+"""The reply to a request without a valid token: 401, naming where the
+connector finds how to sign in (RFC 9728)."""
+def unauthorized(auth: AuthKitVerifier | None) -> Response {
+    reply = refusal(401, "UNAUTHORIZED", "Unauthorized");
+    if auth is not None {
+        reply.headers["www-authenticate"] = f'Bearer resource_metadata="{build_resource_metadata_url(AnyHttpUrl(auth.audience))}"';
+    } else {
+        reply.headers["www-authenticate"] = "Bearer";
+    }
+    return reply;
+}
+
+"""The discovery metadata (RFC 9728): this resource, and the AuthKit that signs its tokens."""
+def discovery(auth: AuthKitVerifier) -> Response {
+    return JSONResponse({
+        "resource": auth.audience,
+        "authorization_servers": [auth.issuer],
+        "bearer_methods_supported": ["header"]
+    });
+}
+
+"""The ASGI app, behind the token check of hosted mode. The health path and
+discovery answer anyone; every other request needs a good bearer token, and
+runs with that token's `sub` as the caller (`graph_runner.VERIFIED_SUB`, which
+`graph_runner.request_caller` reads). Local mode has no check."""
+def guarded(inner: any, config: FrontDoorConfig) -> any {  # jac:ignore[W1037]
+    async def app(scope: dict[str, any], receive: any, send: any) {  # jac:ignore[W1037]
+        if scope["type"] != "http" or app_mode() != HOSTED or scope["path"] == HEALTH_PATH {
+            await inner(scope, receive, send);
+            return;
+        }
+        auth = config.auth;
+        if auth is not None and is_discovery_path(scope["path"]) {
+            await discovery(auth)(scope, receive, send);
+            return;
+        }
+        token = bearer_token(scope);
+        access = await auth.verify_token(token) if auth is not None and token else None;
+        if access is None {
+            await unauthorized(auth)(scope, receive, send);
+            return;
+        }
+        reset = VERIFIED_SUB.set(access.subject);
+        try {
+            await inner(scope, receive, send);
+        } finally {
+            VERIFIED_SUB.reset(reset);
         }
     }
     return app;

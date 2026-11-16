@@ -5,8 +5,9 @@ the Jac graph. Every tool goes through the runner (`graph_runner.jac`) as whoeve
 is asking: in local mode, the local user, so `deck_list` lists the local
 user's decks. Deck and format tools each spawn a walker; card search,
 lookup and name resolution go through the card catalogue module (`cards`).
-No tool calls a model. Hosted mode is refused until the front door's
-sign-in names a caller.
+No tool calls a model. In hosted mode the caller is the `sub` of the
+WorkOS AuthKit token the front door verified (`hosted_auth.jac`), and the
+server refuses to start without its settings.
 
 Over HTTP this process is also the front door (`front_door.jac`): the one
 listener, which answers `/mcp`, runs the web page's deck calls through the
@@ -45,6 +46,8 @@ import from legality { GetFormatRules }
 import from walker_errors { WalkerError }
 import from json_object { JsonObject }
 import from front_door { FrontDoorConfig, front_door_app, start_upstream, stop_upstream, stop_child_on_sigterm, exit_when_upstream_dies, expect_upstream_to_stop }
+import from urllib.parse { urlparse }
+import from hosted_auth { AuthKitVerifier, HostedSettings, HostedSettingsMissing, hosted_settings, jwks_key_finder }
 import from graph_runner { APP_DIR, HOSTED, app_mode, check_bind, request_caller, run_walker, call_function, start, refresh_cards }
 import from jaclang.runtime.constructs { WalkerArchetype }
 
@@ -601,14 +604,20 @@ protection), so a host sitting in front of this (e.g. a tunnel) must be
 listed in KP_HTTP_ALLOWED_HOSTS, a comma-separated list of hostnames
 (with port, if any) such as "my-tunnel.trycloudflare.com".
 """
-async def serve_http(host: str, port: int, upstream: str) {
+async def serve_http(host: str, port: int, upstream: str, hosted: HostedSettings | None = None) {
     extra_hosts = [h.strip() for h in os.environ.get("KP_HTTP_ALLOWED_HOSTS", "").split(",") if h.strip()];
+    auth: AuthKitVerifier | None = None;
+    if hosted is not None {
+        # The public address is a host this server answers to, and the one origin its page's calls carry.
+        extra_hosts.append(urlparse(hosted.audience).netloc);
+        auth = AuthKitVerifier(issuer=hosted.issuer, audience=hosted.audience, key_for=jwks_key_finder(hosted.issuer));
+    }
     hosts = [f"127.0.0.1:{port}", f"localhost:{port}"] + extra_hosts;
     origins = [f"https://{h}" for h in extra_hosts] + [f"http://{h}" for h in extra_hosts];
     security = TransportSecuritySettings(allowed_hosts=hosts, allowed_origins=origins);
     mcp_app = server.streamable_http_app(host=host, transport_security=security);
     own_origins = [f"http://127.0.0.1:{port}", f"http://localhost:{port}"] + origins;
-    config = FrontDoorConfig(upstream=upstream, origins=own_origins, client=httpx2.AsyncClient());
+    config = FrontDoorConfig(upstream=upstream, origins=own_origins, client=httpx2.AsyncClient(), auth=auth);
     listener = uvicorn.Server(uvicorn.Config(front_door_app(mcp_app, config), host=host, port=port, log_level="info"));
     await listener.serve();
 }
@@ -617,9 +626,18 @@ with entry:__main__ {
     os.chdir(APP_DIR);
     # Fail before MCP takes stdout: the message goes to stderr.
     check_catalogue();
+    hosted: HostedSettings | None = None;
     if app_mode() == HOSTED {
-        sys.stderr.write("Hosted mode needs the front door's sign-in, which this server does not have yet. Run with KP_MODE=local.\n");  # jac:ignore[E1099]
-        sys.exit(1);
+        try {
+            hosted = hosted_settings();
+        } except HostedSettingsMissing as missing {
+            sys.stderr.write(f"{missing}\n");  # jac:ignore[E1099]
+            sys.exit(1);
+        }
+        if os.environ.get("KP_TRANSPORT", "stdio") != "http" {
+            sys.stderr.write("Hosted mode serves over HTTP only: set KP_TRANSPORT=http.\n");  # jac:ignore[E1099]
+            sys.exit(1);
+        }
     }
     # The guest makes the shared Catalog and Format nodes before any user call.
     start();
@@ -635,7 +653,7 @@ with entry:__main__ {
         exit_when_upstream_dies(child);
         stop_child_on_sigterm(child);
         try {
-            anyio.run(serve_http, http_host, http_port, upstream);  # jac:ignore[E1054,W1051]: anyio.run takes *args the checker cannot match
+            anyio.run(serve_http, http_host, http_port, upstream, hosted);  # jac:ignore[E1054,W1051]: anyio.run takes *args the checker cannot match
         } finally {
             expect_upstream_to_stop();
             stop_upstream(child);

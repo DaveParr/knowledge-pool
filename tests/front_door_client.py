@@ -12,6 +12,8 @@ from starlette.routing import Route
 from starlette.testclient import TestClient
 
 import front_door
+import hosted_auth
+from tests.hosted_tokens import AUDIENCE, ISSUER
 
 ORIGIN = "http://127.0.0.1:8123"
 UPSTREAM = "http://upstream.test"
@@ -26,15 +28,19 @@ def _mcp_stub() -> Starlette:
 
 class FrontDoorClient:
     """Calls arrive with the app's own `Origin`, as a browser sends them, unless
-    `origin=None`. `upstream_requests` is what reached Jac's server (the stub)."""
+    `origin=None`. `upstream_requests` is what reached Jac's server (the stub).
+    With `hosted` (a `TestIssuer`), the front door checks bearer tokens signed by it."""
 
-    def __init__(self, base_path):
+    def __init__(self, base_path, hosted=None, mcp_app=None):
         self._jac = JacTestClient.from_file("main.jac", base_path=str(base_path))
         self.upstream_requests: list[httpx2.Request] = []
         self._upstream_up = True
         http = httpx2.AsyncClient(transport=httpx2.MockTransport(self._upstream))
-        config = front_door.FrontDoorConfig(upstream=UPSTREAM, origins=[ORIGIN], client=http)
-        self._client = TestClient(front_door.front_door_app(_mcp_stub(), config), base_url=ORIGIN)
+        auth = None
+        if hosted is not None:
+            auth = hosted_auth.AuthKitVerifier(issuer=ISSUER, audience=AUDIENCE, key_for=hosted.key_for)
+        config = front_door.FrontDoorConfig(upstream=UPSTREAM, origins=[ORIGIN], client=http, auth=auth)
+        self._client = TestClient(front_door.front_door_app(mcp_app or _mcp_stub(), config), base_url=ORIGIN)
         # Jac's own test client sets Jac up on `JAC_DB_URL` in this process on its
         # first request, and frees it again on close, so each test has its database.
         assert self._jac.get("/healthz").status_code == 200
