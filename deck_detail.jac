@@ -22,7 +22,7 @@ import from card_lines { CardLine }
 import from walker_errors { WalkerError }
 
 """A play format's label ("Standard"), or the name itself when it is not listed."""
-def formatName(name: str, formats: list[FormatInfo]) -> str {
+def:pub formatName(name: str, formats: list[FormatInfo]) -> str {
     for f in formats {
         if f.name == name {
             return f.label;

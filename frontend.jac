@@ -2,7 +2,7 @@
 
 import "./global.css";
 import "./frontend.css";
-import from .deck_detail { DeckDetail }
+import from .deck_detail { DeckDetail, formatName }
 import from .export_panel { ExportPanel }
 import from .walker_failure { failureMessage }
 import from .session_bar { SessionBar }
@@ -33,12 +33,7 @@ def:pub app -> JsxElement {
     async def createFromList -> None;
 
     def formatLabel(format_name: str) -> str {
-        for f in formats {
-            if f.name == format_name {
-                return f.label;
-            }
-        }
-        return format_name;
+        return formatName(format_name, formats);
     }
 
     """Open a deck of the caller's own (`readOnly` False) or another user's."""
