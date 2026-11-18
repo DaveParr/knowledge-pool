@@ -5,12 +5,13 @@ This covers #23, #24, #26 and #27, plus the #25 spike.
 ## 1. Start the app and run the automated checks
 
 ```bash
-uv sync --locked
-uv run jac script up      # builds the catalogue if missing or stale, prints the web and MCP URLs
-uv run jac script check   # type-check, walker tests and pytest: what CI runs
+scripts/install_jac.sh    # the Jac version jac.toml pins
+jac install --dev
+jac x up                  # builds the catalogue if missing or stale, prints the web and MCP URLs
+jac x check               # type-check, walker tests and pytest: what CI runs
 ```
 
-`jac script up` prints `web:`, `mcp:` and `log:` lines. Use the `web:` URL below wherever the checks say http://localhost:8000. Run `uv run jac script down` when finished.
+`jac x up` prints `web:`, `mcp:` and `log:` lines. Use the `web:` URL below wherever the checks say http://localhost:8000. Run `jac x down` when finished.
 
 ## 2. Manual QA
 
@@ -19,7 +20,7 @@ uv run jac script check   # type-check, walker tests and pytest: what CI runs
 - [ ] The Decks page loads and says "No decks yet."
 - [ ] Type a name and press Create deck. The deck appears in the list.
 - [ ] Press Create deck with a blank name. You get "A deck needs a name." and nothing is created.
-- [ ] Run `jac script down` then `jac script up` again, and reload. The deck is still there.
+- [ ] Run `jac x down` then `jac x up` again, and reload. The deck is still there.
 
 ### #24 Real cards in a deck
 
@@ -44,7 +45,7 @@ uv run jac script check   # type-check, walker tests and pytest: what CI runs
 
 ### #27 Claude builds over MCP
 
-`jac script up` already runs the MCP server over HTTP. Run the `claude mcp add --transport http ...` command it printed, then:
+`jac x up` already runs the MCP server over HTTP. Run the `claude mcp add --transport http ...` command it printed, then:
 
 ```bash
 claude mcp list          # the knowledge-pool-<slug> entry should show as connected
@@ -64,7 +65,7 @@ To undo the registration afterwards, run `claude mcp remove` with the name from 
 ### #25 Go/no-go spike
 
 ```bash
-uv run jac run spike/bench.jac
+jac run --no-serve spike/bench.jac
 ```
 
 - [ ] `LOAD` is well under 5 minutes (it was 6.7 s).
@@ -75,4 +76,4 @@ uv run jac run spike/bench.jac
 
 - Card suggestions in the spike ignore colour identity.
 - Decks are single-user. There is no login, and every browser shares one set of decks.
-- Two Jac processes writing the same saved graph lose each other's changes, so use one `jac script up` per worktree.
+- Each worktree has its own database, so decks made in one worktree do not show in another.

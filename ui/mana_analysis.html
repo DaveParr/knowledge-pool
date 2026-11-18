@@ -8,7 +8,7 @@
   MCP Apps view for deck_analyze (ui://knowledge-pool/mana-analysis.html).
   Same handshake as ui/deck_table.html; fills itself from the structuredContent
   of ui/notifications/tool-result: {id, name, format, main_total, mana, curve}.
-  The web twin is mana_panel.cl.jac. Signed-off mockup: ui/mockups/mana_analysis.html.
+  The web twin is mana_panel.jac. Signed-off mockup: ui/mockups/mana_analysis.html.
 -->
 <style>
   :root {
@@ -71,6 +71,7 @@
   td.num, th.num { text-align: right; font-variant-numeric: tabular-nums; }
   th { color: var(--muted); font-weight: 600; font-size: 12px; }
 </style>
+<!-- @include refusal.html -->
 </head>
 <body>
 <main id="app"><p class="empty">Loading mana analysis…</p></main>
@@ -184,6 +185,8 @@
     });
   }
 
+  const view = refusableView(app, "deck_analyze", render, request);
+
   window.addEventListener("message", (event) => {
     const msg = event.data;
     if (!msg || msg.jsonrpc !== "2.0") return;
@@ -193,10 +196,10 @@
       msg.error ? p.reject(msg.error) : p.resolve(msg.result);
       return;
     }
-    if (msg.method === "ui/notifications/tool-result") {
-      const params = msg.params || {};
-      const text = params.isError && params.content && params.content[0] && params.content[0].text;
-      render(text ? { error: text } : params.structuredContent);
+    if (msg.method === "ui/notifications/tool-input") {
+      view.input(msg.params);
+    } else if (msg.method === "ui/notifications/tool-result") {
+      view.result(msg.params);
     } else if (msg.method === "ui/notifications/host-context-changed") {
       applyHost(msg.params);
     } else if (msg.method === "ui/resource-teardown" && msg.id !== undefined) {

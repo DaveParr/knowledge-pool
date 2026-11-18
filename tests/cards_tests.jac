@@ -1,4 +1,4 @@
-"""Tests for the card catalogue module (`cards.sv.jac`), run against a SQLite
+"""Tests for the card catalogue module (`cards.jac`), run against a SQLite
 catalogue built from the small fixture and only through the module's interface.
 
 `jac test` has no pytest-style autouse fixture, so this file builds its own
@@ -18,7 +18,7 @@ import from cards {
 
 glob CATALOG: Path = Path("data/test_catalog.sqlite"),
      ATOMIC: dict[str, any] = load_atomic(Path("tests/fixtures/atomic_small.json")),
-     TAGS: tuple[list, list] = load_oracle_tags(Path("tests/fixtures/oracle_tags_small.jsonl")),
+     TAGS: tuple[list[tuple[any, ...]], list[tuple[any, ...]]] = load_oracle_tags(Path("tests/fixtures/oracle_tags_small.jsonl")),
      BOLT: str = "4457ed35-7c10-48c8-9776-456485fdf070";
 
 with entry {

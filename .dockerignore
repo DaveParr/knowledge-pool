@@ -1,0 +1,13 @@
+.git
+.github
+.claude
+.jac
+.venv
+node_modules
+data
+test-artifacts
+tests
+spike
+docs
+**/__pycache__
+.pytest_cache

@@ -3,9 +3,10 @@ from pathlib import Path
 
 import pytest
 
-from jaclang.runtimelib.testing import JacTestClient
-
 from catalog import store
+from tests.front_door_client import FrontDoorClient
+
+pytestmark = pytest.mark.usefixtures("jac_db_url")
 
 
 def _reports(resp):
@@ -24,7 +25,7 @@ def _new_deck(client, name="IO deck", format="modern") -> str:
 
 
 def test_export_mtgdeck1_contains_every_card_in_the_right_zone(tmp_path):
-    client = JacTestClient.from_file("main.jac", base_path=str(tmp_path))
+    client = FrontDoorClient(tmp_path)
     try:
         deck_id = _new_deck(client)
         client.post("/walker/AddCard", json={"deck_id": deck_id, "oracle_id": _oracle_id("Lightning Bolt"), "count": 4})
@@ -45,7 +46,7 @@ def _error(reports: list) -> dict:
 
 
 def test_export_says_why_a_format_cannot_be_used(tmp_path):
-    client = JacTestClient.from_file("main.jac", base_path=str(tmp_path))
+    client = FrontDoorClient(tmp_path)
     try:
         deck_id = _new_deck(client)
         assert _error(_reports(client.post("/walker/DeckExport", json={"deck_id": deck_id, "format": "nope"}))) == {
@@ -57,7 +58,7 @@ def test_export_says_why_a_format_cannot_be_used(tmp_path):
 
 
 def test_export_mtgdeck1_then_import_round_trips(tmp_path):
-    client = JacTestClient.from_file("main.jac", base_path=str(tmp_path))
+    client = FrontDoorClient(tmp_path)
     try:
         deck_id = _new_deck(client)
         client.post("/walker/AddCard", json={"deck_id": deck_id, "oracle_id": _oracle_id("Lightning Bolt"), "count": 4})
@@ -77,7 +78,7 @@ def test_export_mtgdeck1_then_import_round_trips(tmp_path):
 
 
 def test_import_flags_unresolved_lines_and_never_invents_a_card(tmp_path):
-    client = JacTestClient.from_file("main.jac", base_path=str(tmp_path))
+    client = FrontDoorClient(tmp_path)
     try:
         deck_id = _new_deck(client)
         result = _reports(client.post("/walker/DeckImport", json={
@@ -91,7 +92,7 @@ def test_import_flags_unresolved_lines_and_never_invents_a_card(tmp_path):
 
 
 def test_importing_a_new_list_replaces_what_was_there_before(tmp_path):
-    client = JacTestClient.from_file("main.jac", base_path=str(tmp_path))
+    client = FrontDoorClient(tmp_path)
     try:
         deck_id = _new_deck(client)
         client.post("/walker/AddCard", json={"deck_id": deck_id, "oracle_id": _oracle_id("Goblin Guide"), "count": 4})
@@ -104,7 +105,7 @@ def test_importing_a_new_list_replaces_what_was_there_before(tmp_path):
 
 
 def test_commander_zone_entries_do_not_count_toward_main_deck_legality(tmp_path):
-    client = JacTestClient.from_file("main.jac", base_path=str(tmp_path))
+    client = FrontDoorClient(tmp_path)
     try:
         deck_id = _new_deck(client, format="modern")
         text = json.dumps({
@@ -124,7 +125,7 @@ def test_commander_zone_entries_do_not_count_toward_main_deck_legality(tmp_path)
 
 
 def test_import_says_why_a_format_cannot_be_used(tmp_path):
-    client = JacTestClient.from_file("main.jac", base_path=str(tmp_path))
+    client = FrontDoorClient(tmp_path)
     try:
         deck_id = _new_deck(client)
         assert _error(_reports(client.post("/walker/DeckImport", json={"deck_id": deck_id, "format": "nope", "text": ""})))["code"] == "unknown-list-format"
@@ -135,7 +136,7 @@ def test_import_says_why_a_format_cannot_be_used(tmp_path):
 
 
 def test_import_flags_an_invalid_zone_instead_of_bricking_the_deck(tmp_path):
-    client = JacTestClient.from_file("main.jac", base_path=str(tmp_path))
+    client = FrontDoorClient(tmp_path)
     try:
         deck_id = _new_deck(client)
         client.post("/walker/AddCard", json={"deck_id": deck_id, "oracle_id": _oracle_id("Goblin Guide"), "count": 4})
@@ -159,7 +160,7 @@ def test_import_flags_an_invalid_zone_instead_of_bricking_the_deck(tmp_path):
 
 
 def test_importing_plain_text_as_mtgdeck1_reports_a_parse_error_and_keeps_the_deck(tmp_path):
-    client = JacTestClient.from_file("main.jac", base_path=str(tmp_path))
+    client = FrontDoorClient(tmp_path)
     try:
         deck_id = _new_deck(client)
         client.post("/walker/AddCard", json={"deck_id": deck_id, "oracle_id": _oracle_id("Goblin Guide"), "count": 4})
@@ -174,7 +175,7 @@ def test_importing_plain_text_as_mtgdeck1_reports_a_parse_error_and_keeps_the_de
 
 
 def test_mtgdeck1_entries_with_invalid_counts_are_never_persisted(tmp_path):
-    client = JacTestClient.from_file("main.jac", base_path=str(tmp_path))
+    client = FrontDoorClient(tmp_path)
     try:
         deck_id = _new_deck(client)
         text = json.dumps({
@@ -195,7 +196,7 @@ def test_mtgdeck1_entries_with_invalid_counts_are_never_persisted(tmp_path):
 
 
 def test_the_same_card_listed_across_printings_is_summed(tmp_path):
-    client = JacTestClient.from_file("main.jac", base_path=str(tmp_path))
+    client = FrontDoorClient(tmp_path)
     try:
         deck_id = _new_deck(client)
         result = _reports(client.post("/walker/DeckImport", json={
@@ -210,7 +211,7 @@ def test_the_same_card_listed_across_printings_is_summed(tmp_path):
 
 
 def test_duplicate_mtgdeck1_entries_sum_counts_and_keep_the_last_metadata(tmp_path):
-    client = JacTestClient.from_file("main.jac", base_path=str(tmp_path))
+    client = FrontDoorClient(tmp_path)
     try:
         deck_id = _new_deck(client)
         text = json.dumps({
@@ -228,7 +229,7 @@ def test_duplicate_mtgdeck1_entries_sum_counts_and_keep_the_last_metadata(tmp_pa
 
 
 def test_a_paste_where_nothing_resolves_leaves_the_deck_untouched(tmp_path):
-    client = JacTestClient.from_file("main.jac", base_path=str(tmp_path))
+    client = FrontDoorClient(tmp_path)
     try:
         deck_id = _new_deck(client)
         client.post("/walker/AddCard", json={"deck_id": deck_id, "oracle_id": _oracle_id("Goblin Guide"), "count": 4})
@@ -246,7 +247,7 @@ def test_a_paste_where_nothing_resolves_leaves_the_deck_untouched(tmp_path):
 
 
 def test_a_stale_oracle_id_falls_back_to_the_card_name(tmp_path):
-    client = JacTestClient.from_file("main.jac", base_path=str(tmp_path))
+    client = FrontDoorClient(tmp_path)
     try:
         deck_id = _new_deck(client)
         text = json.dumps({
@@ -270,7 +271,7 @@ def test_a_stale_oracle_id_falls_back_to_the_card_name(tmp_path):
     ("mtgdeck1", json.dumps({"name": "x", "mainBoard": [{"count": 4, "name": "Lightning Bolt"}]})),
 ])
 def test_an_import_with_no_cards_leaves_the_deck_untouched(tmp_path, fmt, text):
-    client = JacTestClient.from_file("main.jac", base_path=str(tmp_path))
+    client = FrontDoorClient(tmp_path)
     try:
         deck_id = _new_deck(client)
         client.post("/walker/AddCard", json={"deck_id": deck_id, "oracle_id": _oracle_id("Goblin Guide"), "count": 4})
@@ -283,7 +284,7 @@ def test_an_import_with_no_cards_leaves_the_deck_untouched(tmp_path, fmt, text):
 
 
 def test_create_deck_from_list_makes_a_filled_deck_and_flags_unresolved_lines(tmp_path):
-    client = JacTestClient.from_file("main.jac", base_path=str(tmp_path))
+    client = FrontDoorClient(tmp_path)
     try:
         result = _reports(client.post("/walker/CreateDeckFromList", json={
             "name": "Burn", "format": "moxfield",
@@ -302,7 +303,7 @@ def test_create_deck_from_list_makes_a_filled_deck_and_flags_unresolved_lines(tm
 
 
 def test_create_deck_from_mtgdeck1_takes_its_name_and_format_when_none_is_given(tmp_path):
-    client = JacTestClient.from_file("main.jac", base_path=str(tmp_path))
+    client = FrontDoorClient(tmp_path)
     try:
         text = json.dumps({
             "schema": "mtgdeck/1", "name": "Shared Burn", "format": "modern",
@@ -321,7 +322,7 @@ def test_create_deck_from_mtgdeck1_takes_its_name_and_format_when_none_is_given(
     ("mtgdeck1", "4 Lightning Bolt\n"),
 ])
 def test_create_deck_from_a_list_with_nothing_usable_creates_no_deck(tmp_path, fmt, text):
-    client = JacTestClient.from_file("main.jac", base_path=str(tmp_path))
+    client = FrontDoorClient(tmp_path)
     try:
         result = _reports(client.post("/walker/CreateDeckFromList", json={"name": "Nope", "format": fmt, "text": text}))[0]
         assert result["deck_id"] == ""
@@ -337,7 +338,7 @@ def test_create_deck_from_a_list_with_nothing_usable_creates_no_deck(tmp_path, f
                              "zones": {"main": [{"name": "Lightning Bolt", "count": 4}]}})),
 ])
 def test_create_deck_from_list_uses_the_chosen_play_format(tmp_path, fmt, text):
-    client = JacTestClient.from_file("main.jac", base_path=str(tmp_path))
+    client = FrontDoorClient(tmp_path)
     try:
         result = _reports(client.post("/walker/CreateDeckFromList", json={
             "name": "Burn", "format": fmt, "text": text, "play_format": "modern",
@@ -367,7 +368,7 @@ def _zone_counts(view: dict) -> dict[str, dict[str, int]]:
     ("GruulStompy_Q07.json", "Gruul Stompy", {"main": 60, "sideboard": 15}, ("sideboard", "Kappa Tech-Wrecker", 2)),
 ])
 def test_create_deck_from_a_real_mtgjson_deck_file(tmp_path, file_name, name, totals, summed):
-    client = JacTestClient.from_file("main.jac", base_path=str(tmp_path))
+    client = FrontDoorClient(tmp_path)
     try:
         result = _reports(client.post("/walker/CreateDeckFromList", json={
             "format": "mtgjson", "text": (MTGJSON_DECKS / file_name).read_text(),
@@ -386,7 +387,7 @@ def test_create_deck_from_a_real_mtgjson_deck_file(tmp_path, file_name, name, to
 
 
 def test_mtgjson_export_then_import_round_trips(tmp_path):
-    client = JacTestClient.from_file("main.jac", base_path=str(tmp_path))
+    client = FrontDoorClient(tmp_path)
     try:
         result = _reports(client.post("/walker/CreateDeckFromList", json={
             "format": "mtgjson", "text": (MTGJSON_DECKS / "GruulStompy_Q07.json").read_text(),

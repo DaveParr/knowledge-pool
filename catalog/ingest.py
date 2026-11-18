@@ -6,11 +6,12 @@ index over name, type line and rules text, plus Scryfall's community oracle
 tags (a `tags` table and a `card_tags(oracle_id, tag)` join on the same
 oracle id), plus the MTGJSON version and build date in a meta table.
 
-    uv run python -m catalog.ingest                          # download (or reuse the shared cache), then build
-    uv run python -m catalog.ingest --if-stale                # build only when the catalogue is missing or out of date
-    uv run python -m catalog.ingest --max-age-days N          # download again when a cached file is older (default 7)
-    uv run python -m catalog.ingest --source FILE             # local AtomicCards .json or .json.xz
-    uv run python -m catalog.ingest --tags-source FILE        # local oracle tags .jsonl or .jsonl.gz
+    jac x catalogue                                          # the same as --if-stale, below
+    .jac/venv/bin/python -m catalog.ingest                   # download (or reuse the shared cache), then build
+    .jac/venv/bin/python -m catalog.ingest --if-stale        # build only when the catalogue is missing or out of date
+    .jac/venv/bin/python -m catalog.ingest --max-age-days N  # download again when a cached file is older (default 7)
+    .jac/venv/bin/python -m catalog.ingest --source FILE     # local AtomicCards .json or .json.xz
+    .jac/venv/bin/python -m catalog.ingest --tags-source FILE  # local oracle tags .jsonl or .jsonl.gz
 
 Downloads are kept in a cache shared by every worktree: $KP_CACHE, else
 ${XDG_CACHE_HOME:-~/.cache}/knowledge-pool. --source and --tags-source bypass it.

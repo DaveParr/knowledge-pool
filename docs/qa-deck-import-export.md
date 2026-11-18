@@ -1,6 +1,6 @@
 # S05 QA: deck import and export (mtgdeck/1)
 
-Checks #37 by hand on branch `DaveParr/s05-deck-import-and-export-mtgdeck-1`. Each acceptance criterion from the issue has its own section, followed by checks for the edge cases fixed during the build.
+Checks #37 by hand on branch `DaveParr/s05-deck-import-and-export-mtgdeck-1`. It records that pass, run on the earlier `uv`-installed Jac; for today's commands see `docs/qa-mvp.md` and `README.md`. Each acceptance criterion from the issue has its own section, followed by checks for the edge cases fixed during the build.
 
 ## 1. Set up
 

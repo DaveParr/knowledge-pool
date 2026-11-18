@@ -1,17 +1,16 @@
-"""End-to-end check of the MCP server over stdio, and of sharing decks with the web app.
+"""End-to-end check of the MCP server over stdio, in local mode.
 
-    uv run python scripts/mcp_smoke.py [port]
+    jac run --no-serve scripts/mcp_smoke.py
 
-Starts `jac run mcp_server.jac` as an MCP client would, builds a deck through
-the tools, checks it through the web app's REST API in the same process, then
-makes a deck in the web app and finds it through MCP.
+Starts `jac run mcp_server.jac` as an MCP client would, on this worktree's
+database (or `JAC_DB_URL`), and builds a deck through the tools. Then a
+second MCP server process on the same database finds the deck: both run
+every call as the local user.
 """
 
 import json
 import os
 import sys
-import time
-import urllib.request
 from pathlib import Path
 
 import anyio
@@ -19,26 +18,10 @@ from mcp.client.session import ClientSession
 from mcp.client.stdio import StdioServerParameters, stdio_client
 
 ROOT = Path(__file__).resolve().parent.parent
-PORT = int(sys.argv[1]) if len(sys.argv) > 1 else 8828
-
-
-def web(path: str, body: dict | None = None) -> dict:
-    req = urllib.request.Request(
-        f"http://127.0.0.1:{PORT}{path}",
-        data=json.dumps(body or {}).encode(),
-        headers={"Content-Type": "application/json"},
-    )
-    return json.load(urllib.request.urlopen(req, timeout=30))
-
-
-def wait_for_web() -> None:
-    for _ in range(120):
-        try:
-            urllib.request.urlopen(f"http://127.0.0.1:{PORT}/healthz", timeout=2)
-            return
-        except OSError:
-            time.sleep(1)
-    raise SystemExit("web app did not come up")
+JAC = sys.executable  # the jac binary runs this script
+MCP_SERVER = StdioServerParameters(
+    command=JAC, args=["run", "--no-serve", "mcp_server.jac"], cwd=str(ROOT), env=dict(os.environ),
+)
 
 
 async def call(session: ClientSession, tool: str, **args):
@@ -57,20 +40,14 @@ def check(label: str, ok: bool, detail="") -> None:
 
 
 async def main() -> None:
-    params = StdioServerParameters(
-        command="uv",
-        args=["run", "jac", "run", "mcp_server.jac"],
-        cwd=str(ROOT),
-        env={**os.environ, "KP_PORT": str(PORT)},
-    )
-    async with stdio_client(params) as (read, write), ClientSession(read, write) as session:
+    async with stdio_client(MCP_SERVER) as (read, write), ClientSession(read, write) as session:
         await session.initialize()
         tools = sorted(t.name for t in (await session.list_tools()).tools)
         print("tools:", ", ".join(tools))
         check("all the tools are listed", {
             "search_cards", "get_card", "resolve_names", "get_format_rules",
             "deck_create", "deck_get", "deck_edit", "deck_validate", "deck_analyze",
-            "deck_export", "deck_import", "deck_show", "card_search",
+            "deck_export", "deck_import", "deck_show", "card_search", "deck_browse", "deck_copy",
         } <= set(tools))
 
         resolved = await call(session, "resolve_names", names=["Lightning Bolt", "Goblin Guide", "Lightening Bolt", "Flargle the Unreal", "Mountain"])
@@ -144,50 +121,28 @@ async def main() -> None:
         check("deck_validate says legal", verdict["legal"] is True and verdict["violations"] == [], verdict)
         check("deck_validate has no Game Changers for a Standard-style deck", verdict["game_changers"] is None, verdict)
 
-        analysis = await call(session, "deck_analyze", deck_id=deck["id"])
-        check("deck_analyze buckets the 4x Bolt and 4x Goblin Guide at mv 1", analysis["curve"]["buckets"]["1"] == 8, analysis)
-        check("deck_analyze excludes the 52 Mountain from the curve", analysis["curve"]["average_mv"] == 1.0, analysis)
-        check(
-            "deck_analyze reports the mana base",
-            analysis["mana"]["land_count"] == 52
-            and analysis["mana"]["pips"]["R"] == 8
-            and analysis["mana"]["sources"]["R"] == 52,
-            analysis,
-        )
-        check(
-            "deck_analyze is the deck's analysis only, not its cards",
-            set(analysis) == {"id", "name", "format", "main_total", "mana", "curve"}
-            and analysis["name"] == "MCP Burn" and analysis["main_total"] == 60,
-            analysis,
-        )
-        check("deck_edit already carried the same curve", deck["curve"] == analysis["curve"], deck)
+        curve = deck["curve"]
+        check("deck_edit's curve buckets the 4x Bolt and 4x Goblin Guide at mv 1", curve["buckets"]["1"] == 8, curve)
+        check("deck_edit's curve excludes the 52 Mountain", curve["average_mv"] == 1.0, curve)
 
         deck = await call(session, "deck_edit", deck_id=deck["id"], format="standard")
-        check("a format change still reports the curve", deck["curve"] == analysis["curve"], deck)
+        check("a format change still reports the curve", deck["curve"] == curve, deck)
         verdict = await call(session, "deck_validate", deck_id=deck["id"])
         check("switching to Standard makes it illegal, with reasons", not verdict["legal"] and {v["rule"] for v in verdict["violations"]} == {"not-legal"}, verdict)
 
-        exported = await call(session, "deck_export", deck_id=deck["id"], format="mtgdeck1")
-        check("export produces an mtgdeck/1 document", json.loads(exported["content"])["schema"] == "mtgdeck/1", exported)
-
         arena = await session.call_tool("deck_export", {"deck_id": deck["id"]})
-        check("deck_export defaults to MTGA/MTGO (arena)", arena.structured_content["format"] == "arena" and arena.structured_content["content"].startswith("Deck\n"), arena.structured_content)
-        check("deck_export names the deck for the view", arena.structured_content["name"] == "MCP Burn" and arena.structured_content["deck_id"] == deck["id"], arena.structured_content)
+        check("deck_export gives a client without MCP Apps no structured content", arena.structured_content is None, arena.structured_content)
         check(
-            "deck_export lists every format with its lossless flag",
-            {f["key"]: f["lossless"] for f in arena.structured_content["formats"]}
-            == {"arena": False, "moxfield": False, "text": False, "mtgdeck1": True, "mtgjson": True},
-            arena.structured_content["formats"],
-        )
-        check(
-            "a lossy export's text gives the list in a code block and says what it drops",
-            "```\nDeck\n" in arena.content[0].text and "drops other zones, roles, tags, locks and reasons" in arena.content[0].text,
+            "deck_export defaults to MTGA/MTGO, its text giving the list in a code block and saying what it drops",
+            arena.content[0].text.startswith("Exported MCP Burn as MTGA/MTGO.")
+            and "```\nDeck\n" in arena.content[0].text and "drops other zones, roles, tags, locks and reasons" in arena.content[0].text,
             arena.content[0].text,
         )
         lossless = await session.call_tool("deck_export", {"deck_id": deck["id"], "format": "mtgdeck1"})
         lossless_text = lossless.content[0].text
         check("a lossless export's text starts with a short summary", lossless_text.startswith("Exported MCP Burn as mtgdeck/1 (lossless,"), lossless_text[:200])
-        check("a lossless export's text still carries the whole JSON", lossless.structured_content["content"] in lossless_text, lossless_text[:200])
+        exported = lossless_text.split("```json\n", 1)[1].rsplit("\n```", 1)[0]
+        check("a lossless export's text carries the whole mtgdeck/1 document", json.loads(exported)["schema"] == "mtgdeck/1", lossless_text[:200])
         export_tool = {t.name: t for t in (await session.list_tools()).tools}["deck_export"]
         export_uri = ((export_tool.meta or {}).get("ui") or {}).get("resourceUri")
         check("deck_export points at the export view", export_uri == "ui://knowledge-pool/deck-export.html", export_tool.meta)
@@ -204,7 +159,7 @@ async def main() -> None:
         export_bad = await session.call_tool("deck_export", {"deck_id": deck["id"], "format": "cockatrice"})
         check("deck_export gives an unknown list format as a tool error", export_bad.is_error and export_bad.structured_content["code"] == "unknown-list-format", export_bad.structured_content)
 
-        reimported = await call(session, "deck_import", deck_id=deck["id"], format="mtgdeck1", text=exported["content"])
+        reimported = await call(session, "deck_import", deck_id=deck["id"], format="mtgdeck1", text=exported)
         check("round-trip import resolves every entry", reimported["unresolved"] == [], reimported)
         check("round-trip import keeps the same main total", reimported["deck"]["main_total"] == deck["main_total"], reimported)
 
@@ -217,33 +172,25 @@ async def main() -> None:
         check("deck_analyze points at a ui:// resource", mana_uri == "ui://knowledge-pool/mana-analysis.html", listed_tools["deck_analyze"].meta)
         mana_page = (await session.read_resource(mana_uri)).contents[0]
         check("the mana view is served as an MCP App", mana_page.mime_type == "text/html;profile=mcp-app" and "ui/initialize" in mana_page.text, mana_page.mime_type)
+        # Some clients (Claude Code among them) give the model the structured
+        # content in place of the text, so a client without MCP Apps gets none:
+        # the Markdown is the whole answer.
         analysed = await session.call_tool("deck_analyze", {"deck_id": deck["id"]})
-        check("deck_analyze gives the view the mana data", analysed.structured_content["mana"]["land_count"] == 52 and analysed.structured_content["curve"]["buckets"]["1"] == 8, analysed.structured_content)
+        check("deck_analyze gives a client without MCP Apps no structured content", analysed.structured_content is None, analysed.structured_content)
         check(
             "deck_analyze gives other clients Markdown tables",
             "| Cards | 0 | 8 | 0 |" in analysed.content[0].text and "| Red | 8 | 52 |" in analysed.content[0].text,
             analysed.content[0].text,
         )
         shown = await session.call_tool("deck_show", {"deck_id": deck["id"]})
-        check("deck_show gives the view the deck data", shown.structured_content["main_total"] == 60, shown.structured_content)
+        check("deck_show gives a client without MCP Apps no structured content", shown.structured_content is None, shown.structured_content)
         check("deck_show gives other clients a Markdown table", "| 52 | Mountain |" in shown.content[0].text, shown.content[0].text)
-        # Real Scryfall tags vary by card and change over time, so this checks
-        # the plumbing (a tagged card's actual tags land in both outputs),
-        # not fixed tag names.
-        bolt_card = next(c for c in shown.structured_content["cards"] if c["name"] == "Lightning Bolt")
-        check("deck_show's structured content carries oracle tags per card", len(bolt_card["oracle_tags"]) > 0, bolt_card)
-        guide_card = next(c for c in shown.structured_content["cards"] if c["name"] == "Goblin Guide")
         check(
-            "deck_show's structured content carries stats and keywords per card",
-            (guide_card["power"], guide_card["toughness"], guide_card["keywords"]) == ("2", "2", ["Haste"]),
-            guide_card,
-        )
-        check(
-            "deck_show's Markdown table has a P/T column and no tags",
-            "| 4 | Goblin Guide | {R} | Creature — Goblin Scout | 2/2 |" in shown.content[0].text
-            and not any(tag in shown.content[0].text for tag in bolt_card["oracle_tags"]),
+            "deck_show's Markdown table has a P/T column",
+            "| 4 | Goblin Guide | {R} | Creature — Goblin Scout | 2/2 |" in shown.content[0].text,
             shown.content[0].text,
         )
+        shown_markdown = shown.content[0].text
 
         delver = await call(session, "get_card", oracle_id_or_name="Delver of Secrets")
         check(
@@ -266,20 +213,15 @@ async def main() -> None:
             search_page.mime_type,
         )
         found = await session.call_tool("card_search", {"deck_id": deck["id"], "query": "lightning bolt", "limit": 5})
-        bolt_hit = next(h for h in found.structured_content["hits"] if h["name"] == "Lightning Bolt")
-        check("card_search says how many copies the deck holds", bolt_hit["in_deck"] == {"main": 4}, bolt_hit)
-        check("card_search hits carry what the view shows", {"oracle_id", "name", "mana_cost", "type_line", "text"} <= set(bolt_hit), bolt_hit)
-        check("card_search gives the view the deck's totals", found.structured_content["deck"]["main_total"] == 60, found.structured_content["deck"])
+        check("card_search gives a client without MCP Apps no structured content", found.structured_content is None, found.structured_content)
         check(
             "card_search gives other clients a Markdown table with an In deck column and a question",
             "| In deck |" in found.content[0].text and "| Lightning Bolt |" in found.content[0].text and "| 4 main |" in found.content[0].text
             and found.content[0].text.endswith("Which should I add, how many, and to main or sideboard?"),
             found.content[0].text,
         )
-        shock = next(h for h in (await session.call_tool("card_search", {"deck_id": deck["id"], "query": "shock"})).structured_content["hits"] if h["name"] == "Shock")
-        check("a card the deck does not hold has no in-deck counts", shock["in_deck"] == {}, shock)
         none_found = await session.call_tool("card_search", {"deck_id": deck["id"], "query": "zzqxv"})
-        check("card_search with no matches says so", not none_found.is_error and none_found.structured_content["hits"] == [] and none_found.content[0].text.startswith("No cards match"), none_found.content)
+        check("card_search with no matches says so", not none_found.is_error and none_found.content[0].text.startswith("No cards match"), none_found.content)
         search_missing = await session.call_tool("card_search", {"deck_id": "nope", "query": "bolt"})
         check("card_search on an unknown deck is a tool error", search_missing.is_error and search_missing.content[0].text == "No deck with id nope.", search_missing.content)
 
@@ -294,36 +236,46 @@ async def main() -> None:
         analysed_missing = await session.call_tool("deck_analyze", {"deck_id": "nope"})
         check("deck_analyze gives the reason as a tool error", analysed_missing.is_error and analysed_missing.content[0].text == "No deck with id nope.", analysed_missing.content)
 
-        wait_for_web()
-        web_decks = web("/walker/ListDecks")["data"]["reports"][0]
-        check("deck made over MCP shows in the web app", "MCP Burn" in [d["name"] for d in web_decks], web_decks)
-        web_view = web("/walker/GetDeck", {"deck_id": deck["id"]})["data"]["reports"][0]
-        check("web app sees the same cards", web_view["main_total"] == 60, web_view)
-
-        web("/walker/CreateDeck", {"name": "Made in the app", "format": "pioneer"})
         listed = await call(session, "deck_list")
-        check("deck made in the web app shows over MCP", "Made in the app" in [d["name"] for d in listed], listed)
+        check("deck_list lists the deck", "MCP Burn" in [d["name"] for d in listed], listed)
+        browsed = await call(session, "deck_browse")
+        check("deck_browse lists no deck of the local user's own", "MCP Burn" not in [d["name"] for d in browsed], browsed)
+        copied = await call(session, "deck_copy", deck_id=deck["id"])
+        check("deck_copy makes the caller's own '<name> (copy)'", copied["name"] == "MCP Burn (copy)" and copied["id"] != deck["id"], copied)
+        copy_missing = await call(session, "deck_copy", deck_id="nope")
+        check("deck_copy gives an unknown deck as an error with its code", copy_missing.get("code") == "no-such-deck", copy_missing)
+        listed = await call(session, "deck_list")
+        check("deck_list lists the copy after", "MCP Burn (copy)" in [d["name"] for d in listed], listed)
 
     # A client that renders MCP Apps already shows the view, so the model gets a
     # short brief instead of the full Markdown (otherwise it repeats the view).
-    # A second server process on the same saved graph, without the web app.
-    apps_params = StdioServerParameters(
-        command="uv",
-        args=["run", "jac", "run", "mcp_server.jac"],
-        cwd=str(ROOT),
-        env={**os.environ, "KP_WEB": "0"},
-    )
+    # A second MCP server process on the same database, as the same local user.
     apps_ext = {"io.modelcontextprotocol/ui": {"mimeTypes": ["text/html;profile=mcp-app"]}}
-    async with stdio_client(apps_params) as (read, write), ClientSession(read, write, extensions=apps_ext) as session:
+    async with stdio_client(MCP_SERVER) as (read, write), ClientSession(read, write, extensions=apps_ext) as session:
         await session.initialize()
+        listed = await call(session, "deck_list")
+        check("a second MCP server process lists the local user's deck", "MCP Burn" in [d["name"] for d in listed], listed)
         shown = await session.call_tool("deck_show", {"deck_id": deck["id"]})
         check(
             "deck_show gives an Apps client a brief, not the table",
-            shown.structured_content["main_total"] == 60
-            and shown.content[0].text.startswith("Shown to the user as an expandable deck list: MCP Burn")
+            shown.content[0].text.startswith("Shown to the user as an expandable deck list: MCP Burn")
             and "| Mountain |" not in shown.content[0].text,
             shown.content[0].text,
         )
+        check("deck_show gives the view the deck data", shown.structured_content["main_total"] == 60, shown.structured_content)
+        # Real Scryfall tags vary by card and change over time, so this checks
+        # the plumbing (a tagged card's actual tags reach the view and stay out
+        # of the Markdown), not fixed tag names.
+        bolt_card = next(c for c in shown.structured_content["cards"] if c["name"] == "Lightning Bolt")
+        check("deck_show's structured content carries oracle tags per card", len(bolt_card["oracle_tags"]) > 0, bolt_card)
+        check("deck_show's Markdown table has no tags", not any(tag in shown_markdown for tag in bolt_card["oracle_tags"]), shown_markdown)
+        guide_card = next(c for c in shown.structured_content["cards"] if c["name"] == "Goblin Guide")
+        check(
+            "deck_show's structured content carries stats and keywords per card",
+            (guide_card["power"], guide_card["toughness"], guide_card["keywords"]) == ("2", "2", ["Haste"]),
+            guide_card,
+        )
+
         analysed = await session.call_tool("deck_analyze", {"deck_id": deck["id"]})
         check(
             "deck_analyze gives an Apps client the numbers on one line, not tables",
@@ -331,6 +283,20 @@ async def main() -> None:
             and "|" not in analysed.content[0].text,
             analysed.content[0].text,
         )
+        analysis = analysed.structured_content
+        check(
+            "deck_analyze gives the view the mana base",
+            analysis["mana"]["land_count"] == 52 and analysis["mana"]["pips"]["R"] == 8 and analysis["mana"]["sources"]["R"] == 52,
+            analysis,
+        )
+        check("deck_analyze gives the view the same curve as deck_edit", analysis["curve"] == curve, analysis)
+        check(
+            "deck_analyze is the deck's analysis only, not its cards",
+            set(analysis) == {"id", "name", "format", "main_total", "mana", "curve"}
+            and analysis["name"] == "MCP Burn" and analysis["main_total"] == 60,
+            analysis,
+        )
+
         found = await session.call_tool("card_search", {"deck_id": deck["id"], "query": "lightning bolt", "limit": 5})
         check(
             "card_search gives an Apps client the hits with oracle ids, not a table",
@@ -339,13 +305,32 @@ async def main() -> None:
             and "|" not in found.content[0].text,
             found.content[0].text,
         )
-        exported = await session.call_tool("deck_export", {"deck_id": deck["id"]})
+        bolt_hit = next(h for h in found.structured_content["hits"] if h["name"] == "Lightning Bolt")
+        check("card_search says how many copies the deck holds", bolt_hit["in_deck"] == {"main": 4}, bolt_hit)
+        check("card_search hits carry what the view shows", {"oracle_id", "name", "mana_cost", "type_line", "text"} <= set(bolt_hit), bolt_hit)
+        check("card_search gives the view the deck's totals", found.structured_content["deck"]["main_total"] == 60, found.structured_content["deck"])
+        shock = next(h for h in (await session.call_tool("card_search", {"deck_id": deck["id"], "query": "shock"})).structured_content["hits"] if h["name"] == "Shock")
+        check("a card the deck does not hold has no in-deck counts", shock["in_deck"] == {}, shock)
+        none_found = await session.call_tool("card_search", {"deck_id": deck["id"], "query": "zzqxv"})
+        check("card_search with no matches gives the view no hits", none_found.structured_content["hits"] == [], none_found.structured_content)
+
+        arena = await session.call_tool("deck_export", {"deck_id": deck["id"]})
         check(
             "deck_export tells an Apps client not to paste the export, and still carries it",
-            exported.content[0].text.startswith("Shown to the user in the export view")
-            and "4 Lightning Bolt" in exported.content[0].text,
-            exported.content[0].text,
+            arena.content[0].text.startswith("Shown to the user in the export view")
+            and "4 Lightning Bolt" in arena.content[0].text,
+            arena.content[0].text,
         )
+        check("deck_export defaults to MTGA/MTGO (arena)", arena.structured_content["format"] == "arena" and arena.structured_content["content"].startswith("Deck\n"), arena.structured_content)
+        check("deck_export names the deck for the view", arena.structured_content["name"] == "MCP Burn" and arena.structured_content["deck_id"] == deck["id"], arena.structured_content)
+        check(
+            "deck_export lists every format with its lossless flag",
+            {f["key"]: f["lossless"] for f in arena.structured_content["formats"]}
+            == {"arena": False, "moxfield": False, "text": False, "mtgdeck1": True, "mtgjson": True},
+            arena.structured_content["formats"],
+        )
+        lossless = await session.call_tool("deck_export", {"deck_id": deck["id"], "format": "mtgdeck1"})
+        check("a lossless export's text carries the view's whole JSON", lossless.structured_content["content"] in lossless.content[0].text, lossless.content[0].text[:200])
 
     print("all checks passed")
 

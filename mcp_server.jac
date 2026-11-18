@@ -1,50 +1,57 @@
 """MCP server for Claude Code and Claude Desktop (local stdio or HTTP).
 
 The MCP SDK's MCPServer (FastMCP before mcp 2.0) runs in the same process as
-the Jac graph. Deck and format tools each spawn a walker against the app's
-shared root, the same root the web app's `:pub` walkers use. Card search,
+the Jac graph. Every tool goes through the runner (`graph_runner.jac`) as whoever
+is asking: in local mode, the local user, so `deck_list` lists the local
+user's decks. Deck and format tools each spawn a walker; card search,
 lookup and name resolution go through the card catalogue module (`cards`).
-No tool calls a model.
+No tool calls a model. In hosted mode the caller is the `sub` of the
+WorkOS AuthKit token the front door verified (`hosted_auth.jac`), and the
+server refuses to start without its settings.
 
-This process also serves the web app (UI and REST) on port 8000, because two
-Jac processes writing the same saved graph overwrite each other's changes. So
-stop `jac start` before connecting Claude; while Claude is connected, the app
-is at http://localhost:8000 as usual.
+Over HTTP this process is also the front door (`front_door.jac`): the one
+listener, which answers `/mcp`, runs the web page's deck calls through the
+runner as the same caller, and hands the page out from Jac's server, its
+child on 127.0.0.1. `jac x up` runs it for this worktree.
 
-    claude mcp add knowledge-pool -- uv run --directory <repo> jac run mcp_server.jac
+    claude mcp add knowledge-pool -- jac run --no-serve <repo>/mcp_server.jac
 
-Environment: KP_PORT (default 8000) for the web app, KP_WEB=0 to skip it.
-KP_TRANSPORT=http switches the MCP endpoint itself from stdio to streamable
-HTTP (KP_HTTP_HOST, default 127.0.0.1; KP_HTTP_PORT, default 8020), for
-clients (e.g. a remote/custom connector) that need a URL instead of a local
-command. That endpoint is plain HTTP: it has no TLS of its own, so putting it
-behind something that terminates HTTPS (a tunnel like `cloudflared` or
-`ngrok`, or a reverse proxy) is up to whoever needs a public https:// URL for
-it — localhost is not reachable from a connector that calls in from outside
-this machine.
+KP_TRANSPORT=http switches the MCP endpoint from stdio to streamable HTTP
+(KP_HTTP_HOST, default 127.0.0.1; KP_HTTP_PORT, default 8020), for clients
+(e.g. a remote/custom connector) that need a URL instead of a local command.
+That endpoint is plain HTTP: it has no TLS of its own, so putting it behind
+something that terminates HTTPS (a tunnel like `cloudflared` or `ngrok`, or a
+reverse proxy) is up to whoever needs a public https:// URL for it — localhost
+is not reachable from a connector that calls in from outside this machine.
 """
 
 import io;
 import os;
 import sys;
-import threading;
 import anyio;
-import from dataclasses { asdict, is_dataclass }
+import httpx2;
+import uvicorn;
 import from datetime { datetime, timezone }
 import from mcp.server.mcpserver { MCPServer, Context }
 import from mcp.server.apps { Apps, ResourcePermissions, client_supports_apps }
 import from mcp_types { CallToolResult, TextContent }
 import from mcp.server.stdio { stdio_server }
 import from mcp.server.streamable_http { TransportSecuritySettings }
-import from jaclang { JacRuntime as Jac }
-import from cards { search_cards as catalog_search, find_card, resolve_names as catalog_resolve_names, check_catalogue }
+import from cards { CardSearch, search_cards as catalog_search, find_card, resolve_names as catalog_resolve_names, check_catalogue }
 import from decks {
-    Deck, DeckView, CreateDeck, ListDecks, GetDeck, SetDeckFormat, EditDeck
+    Deck, DeckAction, DeckView, DeckSummary, CreateDeck, ListDecks, GetDeck, SetDeckFormat, EditDeck
 }
 import from deck_io { DeckExport, DeckImport }
 import from legality { GetFormatRules }
 import from walker_errors { WalkerError }
-import from shared_graph { APP_DIR, run_walker, port_in_use, acquire_graph_lock }
+import from json_object { JsonObject }
+import from ui_pages { view_page }
+import from front_door { FrontDoorConfig, front_door_app, start_upstream, stop_upstream, stop_child_on_sigterm, exit_when_upstream_dies, expect_upstream_to_stop }
+import from urllib.parse { urlparse }
+import from browser_session { WorkOSSessions }
+import from hosted_auth { AuthKitVerifier, HostedSettings, HostedSettingsMissing, hosted_settings, jwks_key_finder }
+import from graph_runner { APP_DIR, HOSTED, app_mode, check_bind, request_caller, run_walker, run_read, CallFailed, copy_deck, list_other_decks, owns_deck, call_function, start, refresh_cards }
+import from jaclang.runtime.constructs { WalkerArchetype }
 
 glob LOGGED_CLIENT_UI: list[bool] = [],
      DECK_UI: str = "ui://knowledge-pool/deck-table.html",
@@ -53,8 +60,8 @@ glob LOGGED_CLIENT_UI: list[bool] = [],
      SEARCH_UI: str = "ui://knowledge-pool/card-search.html",
      EXPORT_UI: str = "ui://knowledge-pool/deck-export.html",
      # The export view's format buttons, in order: key, label, lossless, file
-     # extension. Same list as the web app's export panel (export_panel.cl.jac).
-     EXPORT_FORMATS: list[dict] = [
+     # extension. Same list as the web app's export panel (export_panel.jac).
+     EXPORT_FORMATS: list[JsonObject] = [
          {"key": "arena", "label": "MTGA/MTGO", "lossless": False, "ext": "txt"},
          {"key": "moxfield", "label": "Moxfield", "lossless": False, "ext": "txt"},
          {"key": "text", "label": "Plain text", "lossless": False, "ext": "txt"},
@@ -67,19 +74,17 @@ glob LOGGED_CLIENT_UI: list[bool] = [],
 Clients that support MCP Apps (Claude Desktop and claude.ai) render it as an HTML list
 where each card expands to its rules text, stats, keywords, deck notes and tags; others
 get a compact Markdown table. Use deck_get when you only need the data."""
-def deck_show(deck_id: str, ctx: Context) -> CallToolResult {
-    view = outcome(run_walker(GetDeck(deck_id=deck_id)));
+def deck_show(deck_id: str, ctx: Context) -> CallToolResult {  # jac:ignore[W1036]: the SDK finds the context by this bare annotation
+    view = outcome(read(GetDeck(deck_id=deck_id)));
     if "error" in view {
         return CallToolResult(content=[TextContent(text=view["error"])], is_error=True);
     }
-    return CallToolResult(
-        content=[TextContent(text=view_text(ctx, deck_markdown(view), deck_brief(view)))], structured_content=view
-    );
+    return view_result(ctx, view, deck_markdown(view), deck_brief(view));
 }
 
 """What the model gets when the user already sees the deck view: the deck's
 shape and legality, and a note not to list the cards again."""
-def deck_brief(view: dict) -> str {
+def deck_brief(view: JsonObject) -> str {
     return (
         f"Shown to the user as an expandable deck list: {view['name']}, {view['format']}, "
         + f"{view['main_total']} main, {view['sideboard_total']} sideboard. "
@@ -92,7 +97,7 @@ def deck_brief(view: dict) -> str {
 
 """For a Commander deck, a sentence with its Game Changers and bracket hint
 ("" for other formats)."""
-def game_changers_note(view: dict) -> str {
+def game_changers_note(view: JsonObject) -> str {
     gc = view.get("game_changers");
     if gc is None {
         return "";
@@ -104,7 +109,7 @@ def game_changers_note(view: dict) -> str {
 
 """The deck as a compact Markdown table, for clients that do not render MCP
 Apps: one row per card, without rules text or tags (get_card has those)."""
-def deck_markdown(view: dict) -> str {
+def deck_markdown(view: JsonObject) -> str {
     lines = [
         f"## {view['name']}",
         f"{view['format']}, {view['main_total']} main, {view['sideboard_total']} sideboard. "
@@ -128,7 +133,7 @@ def deck_markdown(view: dict) -> str {
 }
 
 """A card line's front-face power/toughness ("2/2"), or "" when it has none."""
-def power_toughness(card: any) -> str {
+def power_toughness(card: JsonObject) -> str {
     if not card["power"] and not card["toughness"] {
         return "";
     }
@@ -141,7 +146,7 @@ non-land mana curve (card count by mana value, 0-6 and 7+) and its average.
 Main deck only - the sideboard is excluded. deck_get and deck_edit return the
 same analysis with the whole deck; this tool returns only the analysis.
 Clients that support MCP Apps show it as a chart; others get it as Markdown."""
-def deck_analyze(deck_id: str, ctx: Context) -> CallToolResult {
+def deck_analyze(deck_id: str, ctx: Context) -> CallToolResult {  # jac:ignore[W1036]: the SDK finds the context by this bare annotation
     view = deck_get(deck_id);
     if "error" in view {
         return CallToolResult(content=[TextContent(text=view["error"])], is_error=True);
@@ -154,15 +159,12 @@ def deck_analyze(deck_id: str, ctx: Context) -> CallToolResult {
         "mana": view["mana"],
         "curve": view["curve"]
     };
-    return CallToolResult(
-        content=[TextContent(text=view_text(ctx, mana_markdown(analysis), mana_brief(analysis)))],
-        structured_content=analysis
-    );
+    return view_result(ctx, analysis, mana_markdown(analysis), mana_brief(analysis));
 }
 
 """What the model gets when the user already sees the mana chart: the numbers
 on one line, so it can comment on them, and a note not to redraw the chart."""
-def mana_brief(analysis: dict) -> str {
+def mana_brief(analysis: JsonObject) -> str {
     mana = analysis["mana"];
     curve = analysis["curve"];
     buckets = curve["buckets"] as dict[str, int];
@@ -179,7 +181,7 @@ def mana_brief(analysis: dict) -> str {
 }
 
 """The mana analysis as Markdown tables, for clients that do not render MCP Apps."""
-def mana_markdown(analysis: dict) -> str {
+def mana_markdown(analysis: JsonObject) -> str {
     mana = analysis["mana"];
     curve = analysis["curve"];
     buckets = curve["buckets"] as dict[str, int];
@@ -206,12 +208,17 @@ def mana_markdown(analysis: dict) -> str {
 already holds in main and sideboard. Every word must match, as a prefix. Clients that
 support MCP Apps render a search panel where the user can add hits to the deck
 themselves; others get a Markdown table. Use search_cards when no deck is involved."""
-def card_search(deck_id: str, query: str, ctx: Context, limit: int = 20) -> CallToolResult {
-    view = outcome(run_walker(GetDeck(deck_id=deck_id)));
+def card_search(deck_id: str, query: str, ctx: Context, limit: int = 20) -> CallToolResult {  # jac:ignore[W1036]: the SDK finds the context by this bare annotation
+    view = outcome(read(GetDeck(deck_id=deck_id)));
     if "error" in view {
         return CallToolResult(content=[TextContent(text=view["error"])], is_error=True);
     }
-    result = search_with_holdings(view, query, limit);
+    try {
+        mine = owns_deck(request_caller(), deck_id);
+    } except CallFailed as failed {
+        return CallToolResult(content=[TextContent(text=failed.error.message)], is_error=True);
+    }
+    result = search_with_holdings(view, query, limit, mine);
     if result["error"] {
         return CallToolResult(
             content=[TextContent(text=(result["error"] as str).rstrip(".") + ". The deck is unchanged.")],
@@ -219,17 +226,14 @@ def card_search(deck_id: str, query: str, ctx: Context, limit: int = 20) -> Call
             is_error=True
         );
     }
-    return CallToolResult(
-        content=[TextContent(text=view_text(ctx, search_markdown(result), search_brief(result)))],
-        structured_content=result
-    );
+    return view_result(ctx, result, search_markdown(result), search_brief(result));
 }
 
 """What the model gets when the user already sees the search panel: the hits
 on one line with oracle ids (so it can still add one when asked in chat), and
 a note not to list them again."""
-def search_brief(result: dict) -> str {
-    hits = result["hits"] as list[dict[str, any]];
+def search_brief(result: JsonObject) -> str {
+    hits = result["hits"] as list[JsonObject];
     query = result["query"] as str;
     if not hits {
         return search_markdown(result);
@@ -248,11 +252,12 @@ def search_brief(result: dict) -> str {
 }
 
 """Search hits for one deck, each with the copies that deck holds per zone
-(`in_deck`, e.g. {"main": 2}), plus a short summary of the deck. A catalogue
-failure comes back as `error` with no hits."""
-def search_with_holdings(view: dict, query: str, limit: int) -> dict {
+(`in_deck`, e.g. {"main": 2}), plus a short summary of the deck. `mine` is
+whether the caller owns the deck: the view offers its Add buttons only then. A
+catalogue failure comes back as `error` with no hits."""
+def search_with_holdings(view: JsonObject, query: str, limit: int, mine: bool = True) -> JsonObject {
     held: dict[str, dict[str, int]] = {};
-    for c in view["cards"] as list[dict[str, any]] {
+    for c in view["cards"] as list[JsonObject] {
         oid = c["oracle_id"] as str;
         zone = c["zone"] as str;
         zones: dict[str, int] = held.get(oid, {});
@@ -260,14 +265,15 @@ def search_with_holdings(view: dict, query: str, limit: int) -> dict {
         held[oid] = zones;
     }
     found = catalog_search(query, limit);
-    hits = [{**plain(h), "in_deck": held.get(h.oracle_id, {})} for h in found.hits];
+    hits = [{**(plain(h) as JsonObject), "in_deck": held.get(h.oracle_id, {})} for h in found.hits];
     return {
         "deck": {
             "id": view["id"],
             "name": view["name"],
             "format": view["format"],
             "main_total": view["main_total"],
-            "sideboard_total": view["sideboard_total"]
+            "sideboard_total": view["sideboard_total"],
+            "mine": mine
         },
         "query": query,
         "limit": limit,
@@ -284,13 +290,13 @@ def md_cell(value: str) -> str {
 """Search hits as a Markdown table with an In deck column, for clients that do not
 render MCP Apps (and for the model). The oracle ids are there so the model can pass
 them straight to deck_edit."""
-def search_markdown(result: dict) -> str {
-    hits = result["hits"] as list[dict[str, any]];
+def search_markdown(result: JsonObject) -> str {
+    hits = result["hits"] as list[JsonObject];
     query = result["query"] as str;
     if not hits {
         return f"No cards match \"{query}\". Every word must match the start of a word in the name, type or rules text.";
     }
-    deck_name = (result["deck"] as dict[str, any])["name"] as str;
+    deck_name = (result["deck"] as JsonObject)["name"] as str;
     lines = [
         f"{len(hits)} {'card matches' if len(hits) == 1 else 'cards match'} \"{query}\" (deck: {deck_name}):",
         "",
@@ -314,8 +320,8 @@ mtgjson are lossless JSON. Clients that support MCP Apps
 show the export in a view with format buttons, Copy and Download; the text result
 always carries the full export too. A lossless JSON export is long: the user sees
 it in the view, so offer to show it or save it to a file rather than pasting it."""
-def deck_export(deck_id: str, ctx: Context, format: str = "arena") -> CallToolResult {
-    done = outcome(run_walker(DeckExport(deck_id=deck_id, format=format)));
+def deck_export(deck_id: str, ctx: Context, format: str = "arena") -> CallToolResult {  # jac:ignore[W1036]: the SDK finds the context by this bare annotation
+    done = outcome(read(DeckExport(deck_id=deck_id, format=format)));
     if "error" in done {
         return CallToolResult(content=[TextContent(text=done["error"])], structured_content=done, is_error=True);
     }
@@ -328,12 +334,12 @@ def deck_export(deck_id: str, ctx: Context, format: str = "arena") -> CallToolRe
         "lossy_drops": LOSSY_DROPS
     };
     text = export_text(result);
-    return CallToolResult(content=[TextContent(text=view_text(ctx, text, export_brief(result) + text))], structured_content=result);
+    return view_result(ctx, result, text, export_brief() + text);
 }
 
 """The lead-in the model gets when the user already sees the export view. The
 export text still follows it, so the model can answer questions about it."""
-def export_brief(result: dict) -> str {
+def export_brief -> str {
     return (
         "Shown to the user in the export view, with a button per format, Copy and Download. "
         + "The export below is for your reference only: do not paste it into the chat unless the user asks "
@@ -345,7 +351,7 @@ def export_brief(result: dict) -> str {
 MCP Apps (the user already sees the view, so the full text would only make
 the model repeat it), `full` otherwise. Logs the client's advertised
 extensions once, to stderr, so it is easy to see which branch a host gets."""
-def view_text(ctx: Context, full: str, brief: str) -> str {
+def view_text(ctx: Context, full: str, brief: str) -> str {  # jac:ignore[W1036]: the SDK finds the context by this bare annotation
     apps = client_supports_apps(ctx);
     if apps not in LOGGED_CLIENT_UI {
         LOGGED_CLIENT_UI.append(apps);
@@ -357,11 +363,22 @@ def view_text(ctx: Context, full: str, brief: str) -> str {
     return brief if apps else full;
 }
 
+"""A view-bound tool's result: `view_text`'s text, plus `data` as structured
+content for the view, only when the client renders MCP Apps. Some clients
+without MCP Apps (Claude Code among them) give the model the structured content
+in place of the text, so sending it there would swap the Markdown for raw JSON."""
+def view_result(ctx: Context, data: JsonObject, full: str, brief: str) -> CallToolResult {  # jac:ignore[W1036]: the SDK finds the context by this bare annotation
+    return CallToolResult(
+        content=[TextContent(text=view_text(ctx, full, brief))],
+        structured_content=data if client_supports_apps(ctx) else None
+    );
+}
+
 """The export as chat text, for the model and for clients that do not render MCP
 Apps. A lossy list goes in a code block with what it drops. A lossless JSON export
 leads with a short summary and a hint not to paste it unprompted, then the full
 JSON, so a client without the view (Claude Code) can still show or save it."""
-def export_text(result: dict) -> str {
+def export_text(result: JsonObject) -> str {
     label = result["format"];
     lossless = False;
     for f in EXPORT_FORMATS {
@@ -392,53 +409,72 @@ def make_apps -> Apps {
     apps = Apps();
     apps.tool(resource_uri=DECK_UI)(deck_show);
     apps.tool(resource_uri=MANA_UI)(deck_analyze);
-    with open(os.path.join(APP_DIR, "ui", "deck_table.html"), encoding="utf-8") as f {
-        apps.add_html_resource(DECK_UI, f.read(), title="Deck table", prefers_border=True);
-    }
-    with open(os.path.join(APP_DIR, "ui", "mana_analysis.html"), encoding="utf-8") as f {
-        apps.add_html_resource(MANA_UI, f.read(), title="Mana analysis", prefers_border=True);
-    }
+    apps.add_html_resource(DECK_UI, view_page("deck_table.html"), title="Deck table", prefers_border=True);
+    apps.add_html_resource(MANA_UI, view_page("mana_analysis.html"), title="Mana analysis", prefers_border=True);
     apps.tool(resource_uri=SEARCH_UI)(card_search);
-    with open(os.path.join(APP_DIR, "ui", "card_search.html"), encoding="utf-8") as f {
-        apps.add_html_resource(SEARCH_UI, f.read(), title="Card search", prefers_border=True);
-    }
+    apps.add_html_resource(SEARCH_UI, view_page("card_search.html"), title="Card search", prefers_border=True);
     apps.tool(resource_uri=EXPORT_UI)(deck_export);
-    with open(os.path.join(APP_DIR, "ui", "deck_export.html"), encoding="utf-8") as f {
-        apps.add_html_resource(
-            EXPORT_UI, f.read(), title="Deck export", prefers_border=True,
-            # Ask for the clipboard so Copy works; the view selects the text when the host says no.
-            permissions=ResourcePermissions(clipboard_write={})
-        );
-    }
+    apps.add_html_resource(
+        EXPORT_UI, view_page("deck_export.html"), title="Deck export", prefers_border=True,
+        # Ask for the clipboard so Copy works; the view selects the text when the host says no.
+        permissions=ResourcePermissions(clipboard_write={})
+    );
     return apps;
 }
 
-glob server: MCPServer = MCPServer(
+glob server: MCPServer[object] = MCPServer(
     "knowledge-pool",
     instructions=(
-        "Build and edit Magic: The Gathering decks in the user's local Knowledge Pool app. "
+        "Build and edit Magic: The Gathering decks in the user's Knowledge Pool app. "
         + "Card data comes only from the MTGJSON catalogue: turn card names into oracle ids with "
         + "resolve_names (or search_cards) before adding them, and never add a card that was not "
         + "resolved. Give a short reason for every deck change. Finish with deck_validate. "
         + "When the user wants to see a deck, call deck_show; for its mana curve and colours, call deck_analyze. "
         + "When the user wants to find cards to add to a deck, call card_search with that deck's id: it shows "
         + "how many copies the deck already holds, and lets the user add hits themselves; changes they make "
-        + "there are reported back to you. To export a deck, call deck_export."
+        + "there are reported back to you. To export a deck, call deck_export. "
+        + "Every user's decks are visible to every user: deck_list shows only the user's own, deck_browse "
+        + "shows other users', and deck_copy makes one the user's own to change."
     ),
     extensions=[make_apps()]
 );
 
+"""Run walker `w` through the runner as whoever is asking (see
+graph_runner.request_caller): every deck tool's one way onto the graph."""
+def walk(w: WalkerArchetype) -> WalkerArchetype {
+    return run_walker(request_caller(), w);
+}
+
+"""Run the read-only deck walker `w` through the runner as whoever is asking,
+on any user's deck: the app allows every user to read every deck (see
+graph_runner.run_read). Only for walkers that change nothing."""
+def read(w: DeckAction) -> WalkerArchetype {
+    return run_read(request_caller(), w.deck_id, w);
+}
+
+"""Call `f` through the runner as whoever is asking, for the tools that
+read only the card catalogue."""
+def ask(f: Callable[[], object]) -> object {
+    return call_function(request_caller(), f);
+}
+
 """Plain JSON-ready data from walker reports (objs and nodes become dicts)."""
-def plain(value: any) -> any {
-    if is_dataclass(value) and not isinstance(value, type) {
-        out = asdict(value);  # jac:ignore[E1054]
+def plain(value: object) -> object {
+    if isinstance(value, (list, tuple)) {
+        return [plain(v) for v in value];
+    }
+    if isinstance(value, dict) {
+        return {k: plain(v) for (k, v) in value.items()};
+    }
+    if value is None or isinstance(value, (str, int, float, bool)) {
+        return value;
+    }
+    if hasattr(value, "__dict__") {
+        out: JsonObject = {k: plain(v) for (k, v) in vars(value).items() if not k.startswith("_")};
         if isinstance(value, Deck) {
             out["id"] = jid(value);
         }
         return out;
-    }
-    if isinstance(value, list) {
-        return [plain(v) for v in value];
     }
     return value;
 }
@@ -446,22 +482,22 @@ def plain(value: any) -> any {
 """A finished walker's result as tool output: its first report as plain data,
 or {"error": message, "code": code} when it reported a WalkerError. The
 walker says why it failed, so no tool has to guess."""
-def outcome(w: any) -> dict {
+def outcome(w: WalkerArchetype) -> JsonObject {
     first = w.reports[0];
     if isinstance(first, WalkerError) {
         return {"error": first.message, "code": first.code};
     }
-    return plain(first) as dict;
+    return plain(first) as JsonObject;
 }
 
 """Search card names, type lines and rules text. Every word must match, as a prefix."""
 @server.tool()
-def search_cards(query: str, limit: int = 20) -> list[dict] {
-    found = catalog_search(query, limit);
+def search_cards(query: str, limit: int = 20) -> list[JsonObject] {
+    found = ask(lambda () -> object { return catalog_search(query, limit); }) as CardSearch;
     if found.error {
         raise RuntimeError(found.error);
     }
-    return [plain(hit) for hit in found.hits];
+    return [plain(hit) as JsonObject for hit in found.hits];
 }
 
 """Full card details, by oracle id or exact card name: cost, type line, rules text,
@@ -469,8 +505,8 @@ power/toughness, loyalty and defence (front face), keywords, each face of a
 multi-face card (name, cost, type, text, stats), format legalities and Scryfall
 oracle tags."""
 @server.tool()
-def get_card(oracle_id_or_name: str) -> dict {
-    card = find_card(oracle_id_or_name);
+def get_card(oracle_id_or_name: str) -> JsonObject {
+    card = ask(lambda () -> object { return find_card(oracle_id_or_name); }) as JsonObject | None;
     if card is None {
         return {"error": f"No card matches {oracle_id_or_name}. Try resolve_names or search_cards."};
     }
@@ -481,29 +517,52 @@ def get_card(oracle_id_or_name: str) -> dict {
 candidates to choose from, and `unknown` names. Only exact matches (or a candidate
 the user confirms) should go into a deck."""
 @server.tool()
-def resolve_names(names: list[str]) -> dict {
-    return catalog_resolve_names(names);
+def resolve_names(names: list[str]) -> JsonObject {
+    return ask(lambda () -> object { return catalog_resolve_names(names); }) as JsonObject;
 }
 
 """Deck-construction rules for a format: standard, pioneer, modern or commander."""
 @server.tool()
-def get_format_rules(format: str) -> dict {
-    return outcome(run_walker(GetFormatRules(format=format)));
+def get_format_rules(format: str) -> JsonObject {
+    return outcome(walk(GetFormatRules(format=format)));
 }
 
 """List the user's decks (id, name, format)."""
 @server.tool()
-def deck_list() -> list[dict] {
-    decks = plain(run_walker(ListDecks()).reports[0]);
+def deck_list -> list[JsonObject] {
+    decks = plain(walk(ListDecks()).reports[0]) as list[JsonObject];
     return [{"id": d["id"], "name": d["name"], "format": d["format"]} for d in decks];
+}
+
+"""List other users' decks (id, deck name, format and the owner's display name),
+never your own. Every user can see and copy every deck, but only its owner can
+change it: pass an id to deck_get or deck_show to look at one, or to deck_copy to
+make your own copy to change."""
+@server.tool()
+def deck_browse -> list[JsonObject] {
+    try {
+        others = list_other_decks(request_caller());
+    } except CallFailed as failed {
+        return [{"error": failed.error.message, "code": failed.error.code}];
+    }
+    return [{"id": d.id, "name": d.name, "format": d.format, "owner": d.owner} for d in others];
+}
+
+"""Copy any user's deck (see deck_browse for ids) into your own decks as
+"<name> (copy)": its cards, zones, counts, format and per-card notes, with its own
+history starting from one line saying it was copied. The copy is yours to change
+and is not tied to the original. Returns the new deck."""
+@server.tool()
+def deck_copy(deck_id: str) -> JsonObject {
+    return outcome(copy_deck(request_caller(), deck_id));
 }
 
 """Create a deck, optionally with seed cards. Each card is
 {"oracle_id": ..., "count": n, "zone": "main" | "sideboard" | "commander" | "companion" | "maybeboard", "reason": ...};
 get oracle ids from resolve_names first. Returns the deck with its legality."""
 @server.tool()
-def deck_create(name: str, format: str = "standard", cards: list[dict] = []) -> dict {
-    made = outcome(run_walker(CreateDeck(name=name, format=format)));
+def deck_create(name: str, format: str = "standard", cards: list[JsonObject] | None = None) -> JsonObject {
+    made = outcome(walk(CreateDeck(name=name, format=format)));
     if "error" in made {
         return made;
     }
@@ -515,32 +574,32 @@ def deck_create(name: str, format: str = "standard", cards: list[dict] = []) -> 
     return deck_edit(deck_id, changes);
 }
 
-"""A deck: its cards, totals, legality and recent change history."""
+"""A deck, yours or another user's: its cards, totals, legality and recent change history."""
 @server.tool()
-def deck_get(deck_id: str) -> dict {
-    return outcome(run_walker(GetDeck(deck_id=deck_id)));
+def deck_get(deck_id: str) -> JsonObject {
+    return outcome(read(GetDeck(deck_id=deck_id)));
 }
 
-"""Change a deck. Each change is
+"""Change one of your own decks (another user's answers not-your-deck: copy it first). Each change is
 {"oracle_id": ..., "count": n, "zone": "main" | "sideboard" | "commander" | "companion" | "maybeboard", "reason": "why"}
 and sets that card's count in that zone (0 removes it). Every change needs a reason.
 Pass "format" to change the deck's format. Changes with an unknown oracle id or no
 reason are rejected and listed under "rejected"; the rest are applied."""
 @server.tool()
-def deck_edit(deck_id: str, changes: list[dict] = [], format: str = "") -> dict {
+def deck_edit(deck_id: str, changes: list[JsonObject] | None = None, format: str = "") -> JsonObject {
     if format {
-        reformatted = outcome(run_walker(SetDeckFormat(deck_id=deck_id, format=format)));
+        reformatted = outcome(walk(SetDeckFormat(deck_id=deck_id, format=format)));
         if "error" in reformatted {
             return reformatted;
         }
     }
-    return outcome(run_walker(EditDeck(deck_id=deck_id, changes=changes)));
+    return outcome(walk(EditDeck(deck_id=deck_id, changes=changes or [])));
 }
 
 """Check a deck against its format. Returns legal (true or false), each violation and, for a
 Commander deck, game_changers (count, cards and a bracket hint; null for other formats)."""
 @server.tool()
-def deck_validate(deck_id: str) -> dict {
+def deck_validate(deck_id: str) -> JsonObject {
     view = deck_get(deck_id);
     if "error" in view {
         return view;
@@ -558,69 +617,93 @@ def deck_validate(deck_id: str) -> dict {
 mtgjson (an MTGJSON deck file, such as a precon), text, arena or moxfield. Lines that don't resolve to a known card are listed
 under "unresolved" and never added."""
 @server.tool()
-def deck_import(deck_id: str, format: str, text: str) -> dict {
-    return outcome(run_walker(DeckImport(deck_id=deck_id, format=format, text=text)));
-}
-
-"""Serve the web app (UI and REST) from this process, on a background thread."""
-def start_web(port: int) {
-    Jac.jac_import(target="main", base_path=APP_DIR, lng="jac");
-    ServerClass = Jac.get_api_server_class();
-    web = ServerClass(module_name="main", port=port, base_path=APP_DIR);
-    t = threading.Thread(target=web.start, kwargs={"dev": False, "no_client": False}, daemon=True);
-    t.start();
+def deck_import(deck_id: str, format: str, text: str) -> JsonObject {
+    return outcome(walk(DeckImport(deck_id=deck_id, format=format, text=text)));
 }
 
 """Run MCP over the real stdout; everything else this process prints goes to stderr."""
-async def serve_stdio(mcp_out: io.TextIOWrapper) {
-    async with stdio_server(stdout=anyio.wrap_file(mcp_out)) as (read_stream, write_stream) {  # jac:ignore[E1052]
+async def serve_stdio(mcp_out: io.TextIOWrapper[io.BufferedWriter]) {
+    # The checker cannot type `as (a, b)` destructuring yet (W1051, W2001).
+    async with stdio_server(stdout=anyio.wrap_file(mcp_out)) as (read_stream, write_stream) {  # jac:ignore[E1052,W1051]
         low = server._lowlevel_server;
-        await low.run(read_stream, write_stream, low.create_initialization_options());  # jac:ignore[E1053]
+        await low.run(read_stream, write_stream, low.create_initialization_options());  # jac:ignore[E1053,W1051,W2001]
     }
 }
 
-"""Run MCP over streamable HTTP instead of stdio, for clients that need a URL.
+"""Run the front door over HTTP instead of MCP over stdio, for clients that need a URL.
+
+The one listener answers `/mcp` for MCP, the web page's deck calls and the
+page itself (`front_door.jac`); `upstream` is Jac's server, the page's child.
 
 The transport rejects any Host/Origin it doesn't recognize (DNS-rebinding
 protection), so a host sitting in front of this (e.g. a tunnel) must be
 listed in KP_HTTP_ALLOWED_HOSTS, a comma-separated list of hostnames
 (with port, if any) such as "my-tunnel.trycloudflare.com".
 """
-async def serve_http(host: str, port: int) {
+async def serve_http(host: str, port: int, upstream: str, hosted: HostedSettings | None = None) {
     extra_hosts = [h.strip() for h in os.environ.get("KP_HTTP_ALLOWED_HOSTS", "").split(",") if h.strip()];
+    auth: AuthKitVerifier | None = None;
+    sessions: WorkOSSessions | None = None;
+    public_origin = "";
+    if hosted is not None {
+        # The public address is a host this server answers to, and the one origin its page's calls carry.
+        extra_hosts.append(urlparse(hosted.audience).netloc);
+        auth = AuthKitVerifier(issuer=hosted.issuer, audience=hosted.audience, key_for=jwks_key_finder(hosted.issuer));
+        sessions = WorkOSSessions(client_id=hosted.client_id, api_key=hosted.api_key, cookie_password=hosted.cookie_password);
+        public_origin = hosted.public_origin();
+    }
     hosts = [f"127.0.0.1:{port}", f"localhost:{port}"] + extra_hosts;
     origins = [f"https://{h}" for h in extra_hosts] + [f"http://{h}" for h in extra_hosts];
     security = TransportSecuritySettings(allowed_hosts=hosts, allowed_origins=origins);
-    await server.run_streamable_http_async(host=host, port=port, transport_security=security);  # jac:ignore[E1053]
+    mcp_app = server.streamable_http_app(host=host, transport_security=security);
+    own_origins = [f"http://127.0.0.1:{port}", f"http://localhost:{port}"] + origins;
+    config = FrontDoorConfig(upstream=upstream, origins=own_origins, client=httpx2.AsyncClient(), auth=auth, sessions=sessions, public_origin=public_origin);
+    listener = uvicorn.Server(uvicorn.Config(front_door_app(mcp_app, config), host=host, port=port, log_level="info"));
+    await listener.serve();
 }
 
 with entry:__main__ {
     os.chdir(APP_DIR);
     # Fail before MCP takes stdout: the message goes to stderr.
     check_catalogue();
-    acquire_graph_lock("MCP server");
-    if os.environ.get("KP_WEB", "1") != "0" {
-        port = int(os.environ.get("KP_PORT", "8000"));
-        if port_in_use(port) {
-            sys.stderr.write(  # jac:ignore[E1099]
-                f"Port {port} is in use. If `jac start` is running, stop it: this MCP server serves the app itself, "
-                + "and two processes writing one graph overwrite each other's decks. Or set KP_PORT.\n"
-            );
-            exit(1);
+    hosted: HostedSettings | None = None;
+    if app_mode() == HOSTED {
+        try {
+            hosted = hosted_settings();
+        } except HostedSettingsMissing as missing {
+            sys.stderr.write(f"{missing}\n");  # jac:ignore[E1099]
+            sys.exit(1);
         }
-        start_web(port);
+        if os.environ.get("KP_TRANSPORT", "stdio") != "http" {
+            sys.stderr.write("Hosted mode serves over HTTP only: set KP_TRANSPORT=http.\n");  # jac:ignore[E1099]
+            sys.exit(1);
+        }
     }
+    # The guest makes the shared Catalog and Format nodes before any user call.
+    start();
+    # A new catalogue build brings the shared Card nodes up to date; a failure fails the start.
+    refresh_cards();
 
     if os.environ.get("KP_TRANSPORT", "stdio") == "http" {
         http_host = os.environ.get("KP_HTTP_HOST", "127.0.0.1");
         http_port = int(os.environ.get("KP_HTTP_PORT", "8020"));
-        anyio.run(serve_http, http_host, http_port);  # jac:ignore[E1053]
+        check_bind(http_host);
+        # Jac's server hands out the page from a child on 127.0.0.1; if it dies, this process exits.
+        (child, upstream) = start_upstream(int(os.environ.get("KP_UPSTREAM_PORT", "0")));
+        exit_when_upstream_dies(child);
+        stop_child_on_sigterm(child);
+        try {
+            anyio.run(serve_http, http_host, http_port, upstream, hosted);  # jac:ignore[E1054,W1051]: anyio.run takes *args the checker cannot match
+        } finally {
+            expect_upstream_to_stop();
+            stop_upstream(child);
+        }
     } else {
         # stdout carries the MCP protocol, so keep a handle to it and send all
         # other output (walker reports, server logs) to stderr.
         mcp_out = io.TextIOWrapper(os.fdopen(os.dup(1), "wb"), encoding="utf-8", line_buffering=True);
         os.dup2(2, 1);
         sys.stdout = sys.stderr;
-        anyio.run(serve_stdio, mcp_out);  # jac:ignore[E1053]
+        anyio.run(serve_stdio, mcp_out);  # jac:ignore[E1054,W1051]
     }
 }

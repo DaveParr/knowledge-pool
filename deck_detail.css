@@ -59,3 +59,9 @@
 
 .dd-gc { margin-top: 0.5rem; }
 .dd-gc p { margin: 0.15rem 0; }
+
+.dd-readonly { margin: 8px 0; }
+.dd-copy { margin-right: 8px; }
+span.dd-count { display: inline-block; width: 3.2em; padding: 2px 4px; text-align: right; font-variant-numeric: tabular-nums; }
+.dd-history { list-style: none; margin: 0; padding: 0; font-size: 13px; color: var(--muted); }
+.dd-history li { padding: 2px 0; white-space: pre-wrap; }

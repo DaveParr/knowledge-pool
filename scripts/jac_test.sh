@@ -3,13 +3,15 @@
 #
 # `jac test` exits 1 when an assertion fails, but exits 0 when a test raises
 # an exception: it prints "FAILED (errors=N)" and "ERROR: ..." and carries on.
-# So check the output as well as the exit code.
+# So check the output as well as the exit code. A test file that fails to
+# import (say, after a Jac upgrade) is reported as skipped, not failed, so a
+# skip fails the run too.
 set -uo pipefail
 
 log=$(mktemp)
 trap 'rm -f "$log"' EXIT
 
-uv run jac test "$@" 2>&1 | tee "$log"
+jac test "$@" 2>&1 | tee "$log"
 status=${PIPESTATUS[0]}
 
 if [ "$status" -ne 0 ]; then
@@ -18,5 +20,9 @@ if [ "$status" -ne 0 ]; then
 fi
 if grep -qE '^(FAILED \(|ERROR: )' "$log"; then
     echo "jac test reported failing or erroring tests (see above)" >&2
+    exit 1
+fi
+if grep -qE '[0-9]+ skipped' "$log"; then
+    echo "jac test skipped tests; a test file that cannot import is skipped (see above)" >&2
     exit 1
 fi
