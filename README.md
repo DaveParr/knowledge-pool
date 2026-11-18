@@ -97,6 +97,10 @@ Until the browser sign-in lands, hosted mode answers the health path and refuses
 
 Hosted mode limits request rates in the front door's memory (`rate_limits.jac`): `KP_RATE_LIMIT_ADDRESS` (default 30 a minute) per address, from `X-Real-IP`, for requests without a valid token, and `KP_RATE_LIMIT_USER` (default 300 a minute) per user, browser and connector together. A refusal is a 429 with `Retry-After`; only `/healthz` is exempt.
 
+### Deploy
+
+The hosted app runs on Railway at `https://knowledge-pool.engi.ai`. `scripts/deploy_wizard.sh` walks the admin through the one-time setup (Google, WorkOS Production, Railway, Hostinger, GitHub) and the first deploy's checks, step by step; it is the deploy checklist decided in #109. It keeps only public values, in `~/.config/knowledge-pool/deploy.env`; the two secrets go to Railway (sealed) and a password manager. Every push to `main` deploys once Test passes.
+
 ### Layout
 
 - `main.jac` entry point, joins server and client
