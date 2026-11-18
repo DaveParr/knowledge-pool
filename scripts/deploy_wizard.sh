@@ -213,6 +213,23 @@ mkdir -p "$STATE_DIR"
 ENV_FILE="$STATE_DIR/deploy.env"
 NOTES_FILE="$STATE_DIR/deploy-notes.md"
 
+# open_url, overriding the library's: start the opener in the background and
+# return. Some openers never return while the browser runs (xdg-open handing
+# off to a Flatpak browser such as Zen), which stalled the wizard at stage 1.
+open_url() {
+  local url="$1" opener=""
+  printf '  %s↗ opening%s %s\n' "$GREEN" "$RESET" "$url"
+  for o in wslview explorer.exe xdg-open open; do
+    command -v "$o" >/dev/null 2>&1 && { opener="$o"; break; }
+  done
+  if [[ -n "$opener" ]]; then
+    nohup "$opener" "$url" >/dev/null 2>&1 &
+    disown 2>/dev/null || true
+  else
+    warn "couldn't open a browser; visit it manually: $url"
+  fi
+}
+
 # record "Topic" "finding" appends one finding to the notes file.
 record() {
   [[ -f "$NOTES_FILE" ]] || printf '## First deploy: notes from the deploy wizard\n\n' > "$NOTES_FILE"
