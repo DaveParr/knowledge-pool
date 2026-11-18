@@ -11,6 +11,7 @@ import from .mana_panel { ManaPanel }
 import from .card_search { AddCards }
 import from .mana_cost { ManaCost }
 import from .walker_failure { failureMessage }
+import from .session_bar { checkWhenEmpty }
 
 import from decks {
     DeckView, FormatInfo, GetDeck, SetDeckFormat, SetCardCount, RemoveCard, list_formats
@@ -136,7 +137,7 @@ def:pub DeckDetail(deckId: str, importNotes: list[str], onBack: Callable[[], Non
     async def removeCard(oracleId: str, zone: str) -> None;
     async def setFormat(value: str) -> None;
     """Show a deck walker's view, or the reason it failed (the deck shown stays as it was)."""
-    def show(reports: list[DeckView | WalkerError]) -> None;
+    async def show(reports: list[DeckView | WalkerError]) -> None;
 
     def back(_e: MouseEvent) {
         onBack();

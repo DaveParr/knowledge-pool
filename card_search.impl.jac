@@ -22,6 +22,7 @@ impl AddCards.runSearch(e: FormEvent) -> None {
 impl AddCards.addCard(hit: CardHit, zone: str) -> None {
     result = root spawn AddCard(deck_id=deckId, oracle_id=hit.oracle_id, count=1, zone=zone);
     reports: list[DeckView | WalkerError] = result.reports;
+    await checkWhenEmpty(reports);
     why = failureMessage(reports);
     if why {
         toast = "";

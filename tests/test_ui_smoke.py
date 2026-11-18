@@ -181,9 +181,14 @@ def test_build_a_deck_through_the_web_app(app):
     assert "deals 3 damage" in app.wait_text("deals 3 damage", within="ul.dd-cards")
 
 
-def test_the_page_says_decks_are_not_private_and_shows_the_connector_address(app):
+def test_the_page_says_other_users_can_see_and_copy_your_decks(app):
     app.browse("open", app.web)
     assert "Other users can see and copy the decks you make" in app.wait_text("Other users can see")
+
+
+def test_the_connector_address_is_shown_and_copied_and_local_mode_has_no_sign_out(app):
+    app.browse("open", app.web)
+    app.browse("wait", "input[aria-label='Connector address']")
     address = app.js("document.querySelector(\"input[aria-label='Connector address']\").value")
     assert address.strip().strip("\"") == app.web + "/mcp", address
     app.click("button", "Copy")

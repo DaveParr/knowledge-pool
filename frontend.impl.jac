@@ -7,9 +7,7 @@ impl app.loadDecks -> None {
     try {
         result = root spawn ListDecks();
         decks = result.reports[0] if result.reports else [];
-        if not result.reports {
-            await checkSession();
-        }
+        await checkWhenEmpty(result.reports);
     } except Exception {
         await checkSession();
     }
@@ -28,9 +26,7 @@ impl app.createDeck(e: FormEvent) -> None {
     error = "";
     try {
         result = root spawn CreateDeck(name=name);
-        if not result.reports {
-            await checkSession();
-        }
+        await checkWhenEmpty(result.reports);
     } except Exception {
         await checkSession();
     }
@@ -47,12 +43,10 @@ impl app.createFromList -> None {
         result = root spawn CreateDeckFromList(name=name, format=importFormat, text=importText, play_format=importPlayFormat);
     } except Exception {
         await checkSession();
-        error = "Could not reach the server.";
         return;
     }
     if not result.reports {
         await checkSession();
-        error = "The server gave no answer.";
         return;
     }
     why = failureMessage(result.reports);

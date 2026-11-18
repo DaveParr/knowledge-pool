@@ -25,7 +25,7 @@ def:pub connectorAddress(origin: str) -> str {
 }
 
 """Ask the front door whether the session is still good. If it has ended, send
-the user to sign in and back to this address, and answer False (edits in
+the user to sign in and back to this address, and answer None (edits in
 progress are not kept). Otherwise answer the session's reply: the display name
 and whether the page offers "Sign out"; a reply that never came counts as good,
 so a network blip does not throw the user out."""
@@ -43,6 +43,14 @@ async def:pub checkSession -> SessionInfo | None {
         return SessionInfo(name=str(body["name"]), sign_out=bool(body["sign_out"]));
     } except Exception {
         return SessionInfo();
+    }
+}
+
+"""A walker that reported nothing was refused or never answered: check whether the
+session has ended (and if so, send the user to sign in)."""
+async def:pub checkWhenEmpty(reports: Sequence[object]) -> None {
+    if len(reports) == 0 {
+        await checkSession();
     }
 }
 
