@@ -49,6 +49,7 @@ import from mcp.server.auth.routes { build_resource_metadata_url }
 import from pydantic { AnyHttpUrl }
 import from graph_runner { APP_DIR, HOSTED, VERIFIED_SUB, app_mode, request_caller, run_walker, call_function, CallFailed }
 import from hosted_auth { AuthKitVerifier }
+import from rate_limits { RateLimits, rate_limits, UNKNOWN_ADDRESS }
 import from decks { CreateDeck, ListDecks, GetDeck, SetDeckFormat, AddCard, SetCardCount, RemoveCard, list_formats }
 import from deck_io { DeckExport, DeckImport, CreateDeckFromList }
 import from cards { search_cards }
@@ -90,7 +91,8 @@ obj FrontDoorConfig {
     has upstream: str,
         origins: list[str],
         client: any = None,  # jac:ignore[W1037]
-        auth: AuthKitVerifier | None = None;
+        auth: AuthKitVerifier | None = None,
+        limits: RateLimits | None = None;  # hosted mode's rate limits; None reads them from the environment
 }
 
 """Jac's own error envelope, with the HTTP status Jac's server would use."""
@@ -321,25 +323,63 @@ def discovery(auth: AuthKitVerifier) -> Response {
     });
 }
 
-"""The ASGI app, behind the token check of hosted mode. The health path and
-discovery answer anyone; every other request needs a good bearer token, and
-runs with that token's `sub` as the caller (`graph_runner.VERIFIED_SUB`, which
-`graph_runner.request_caller` reads). Local mode has no check."""
+"""The address a request came from: `X-Real-IP`, or "unknown" when it has none."""
+def request_address(scope: dict[str, any]) -> str {  # jac:ignore[W1037]
+    for (name, value) in scope["headers"] {
+        if name == b"x-real-ip" {
+            return value.decode("latin-1").strip() or UNKNOWN_ADDRESS;
+        }
+    }
+    return UNKNOWN_ADDRESS;
+}
+
+"""The reply to a request over its limit: 429, `Retry-After` in seconds, a
+one-line plain-text body."""
+def too_many(pause: int) -> Response {
+    unit = "second" if pause == 1 else "seconds";
+    return PlainTextResponse(
+        f"Too many requests, try again in {pause} {unit}", status_code=429, headers={"retry-after": str(pause)}
+    );
+}
+
+"""The ASGI app, behind the rate limits and the token check of hosted mode.
+The health path answers anyone, uncounted. Discovery answers anyone. Every other
+request needs a good bearer token, and runs with that token's `sub` as the
+caller (`graph_runner.VERIFIED_SUB`, which `graph_runner.request_caller`
+reads). A request without a valid token counts against its address (30 a minute)
+whether it is then answered or refused; one with a valid token counts against
+its user (300 a minute). A refusal is a 429, ahead of everything else. Local
+mode has no check and no limit."""
 def guarded(inner: any, config: FrontDoorConfig) -> any {  # jac:ignore[W1037]
+    limits = config.limits or rate_limits();
     async def app(scope: dict[str, any], receive: any, send: any) {  # jac:ignore[W1037]
         if scope["type"] != "http" or app_mode() != HOSTED or scope["path"] == HEALTH_PATH {
             await inner(scope, receive, send);
             return;
         }
         auth = config.auth;
-        if auth is not None and is_discovery_path(scope["path"]) {
-            await discovery(auth)(scope, receive, send);
-            return;
-        }
         token = bearer_token(scope);
         access = await auth.verify_token(token) if auth is not None and token else None;
         if access is None {
-            await unauthorized(auth)(scope, receive, send);
+            pause = limits.addresses.take(request_address(scope));
+            if pause {
+                await too_many(pause)(scope, receive, send);
+                return;
+            }
+            if auth is not None and is_discovery_path(scope["path"]) {
+                await discovery(auth)(scope, receive, send);
+            } else {
+                await unauthorized(auth)(scope, receive, send);
+            }
+            return;
+        }
+        pause = limits.users.take(access.subject or "");
+        if pause {
+            await too_many(pause)(scope, receive, send);
+            return;
+        }
+        if auth is not None and is_discovery_path(scope["path"]) {
+            await discovery(auth)(scope, receive, send);
             return;
         }
         reset = VERIFIED_SUB.set(access.subject);

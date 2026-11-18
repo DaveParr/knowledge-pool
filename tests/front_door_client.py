@@ -31,7 +31,7 @@ class FrontDoorClient:
     `origin=None`. `upstream_requests` is what reached Jac's server (the stub).
     With `hosted` (a `TestIssuer`), the front door checks bearer tokens signed by it."""
 
-    def __init__(self, base_path, hosted=None, mcp_app=None):
+    def __init__(self, base_path, hosted=None, mcp_app=None, limits=None):
         self._jac = JacTestClient.from_file("main.jac", base_path=str(base_path))
         self.upstream_requests: list[httpx2.Request] = []
         self._upstream_up = True
@@ -39,7 +39,7 @@ class FrontDoorClient:
         auth = None
         if hosted is not None:
             auth = hosted_auth.AuthKitVerifier(issuer=ISSUER, audience=AUDIENCE, key_for=hosted.key_for)
-        config = front_door.FrontDoorConfig(upstream=UPSTREAM, origins=[ORIGIN], client=http, auth=auth)
+        config = front_door.FrontDoorConfig(upstream=UPSTREAM, origins=[ORIGIN], client=http, auth=auth, limits=limits)
         self._client = TestClient(front_door.front_door_app(mcp_app or _mcp_stub(), config), base_url=ORIGIN)
         # Jac's own test client sets Jac up on `JAC_DB_URL` in this process on its
         # first request, and frees it again on close, so each test has its database.
