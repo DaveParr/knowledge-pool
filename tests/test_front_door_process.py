@@ -11,7 +11,7 @@ import time
 from contextlib import contextmanager
 from pathlib import Path
 from urllib.error import HTTPError
-from urllib.request import Request, urlopen
+from urllib.request import HTTPRedirectHandler, Request, build_opener
 
 import pytest
 
@@ -20,17 +20,35 @@ from tests.hosted_settings import HOSTED_SETTINGS
 
 ROOT = Path(__file__).resolve().parent.parent
 LOOPBACK = front_door.LOOPBACK
+LOGIN_PATH = front_door.LOGIN_PATH
 
 
 _free_port = front_door.free_port
 
 
+class _NoRedirect(HTTPRedirectHandler):
+    def redirect_request(self, *_args, **_kwargs):
+        return None
+
+
+_OPENER = build_opener(_NoRedirect)
+
+
 def _get(url: str, data: bytes | None = None, headers: dict | None = None) -> tuple[int, bytes]:
+    """The reply's status and body; a redirect is the reply, not followed."""
     try:
-        with urlopen(Request(url, data=data, headers=headers or {}), timeout=30) as reply:
+        with _OPENER.open(Request(url, data=data, headers=headers or {}), timeout=30) as reply:
             return reply.status, reply.read()
     except HTTPError as refused:
         return refused.code, refused.read()
+
+
+def _location(url: str) -> str:
+    try:
+        _OPENER.open(Request(url), timeout=30)
+    except HTTPError as redirected:
+        return redirected.headers.get("location", "")
+    return ""
 
 
 @contextmanager
@@ -77,13 +95,19 @@ def front_door(fixture_catalog, jac_db_url):
 
 def test_hosted_mode_starts_with_its_settings_and_answers_health_but_no_data_call(fixture_catalog, jac_db_url):
     with _running(fixture_catalog, jac_db_url, KP_MODE="hosted", **HOSTED_SETTINGS, KP_TRANSPORT="http") as (_, base, _):
-        reply = _get(base + "/healthz")
-        assert reply == (200, b"ok")
+        assert _get(base + "/healthz") == (200, b"ok")
         refused = _get(base + "/walker/ListDecks", b"{}", {"Origin": base, "Content-Type": "application/json"})
         assert refused[0] == 401
-        # Nor the page: served with no caller, its first data call gets a 401 and
-        # Jac's client, holding no Jac token, reloads the page for ever.
-        assert _get(base + "/")[0] == 401
+
+
+def test_hosted_mode_sends_a_page_load_and_the_pages_files_to_sign_in_instead_of_serving_them(fixture_catalog, jac_db_url):
+    # Served with no caller, a page's first data call gets a 401 and Jac's client,
+    # holding no Jac token, reloads the page for ever.
+    with _running(fixture_catalog, jac_db_url, KP_MODE="hosted", **HOSTED_SETTINGS, KP_TRANSPORT="http") as (_, base, _):
+        for path in ("/", "/styles.css", "/client.abc123.js"):
+            assert _get(base + path)[0] == 302, path
+        assert _location(base + "/") == f"{LOGIN_PATH}?return_to=%2F"
+        assert _location(base + LOGIN_PATH).startswith("https://api.workos.com/")
 
 
 def test_page_loads_through_the_front_door_and_a_deck_can_be_read(front_door):

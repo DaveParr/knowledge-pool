@@ -47,6 +47,7 @@ import from walker_errors { WalkerError }
 import from json_object { JsonObject }
 import from front_door { FrontDoorConfig, front_door_app, start_upstream, stop_upstream, stop_child_on_sigterm, exit_when_upstream_dies, expect_upstream_to_stop }
 import from urllib.parse { urlparse }
+import from browser_session { WorkOSSessions }
 import from hosted_auth { AuthKitVerifier, HostedSettings, HostedSettingsMissing, hosted_settings, jwks_key_finder }
 import from graph_runner { APP_DIR, HOSTED, app_mode, check_bind, request_caller, run_walker, call_function, start, refresh_cards }
 import from jaclang.runtime.constructs { WalkerArchetype }
@@ -607,17 +608,21 @@ listed in KP_HTTP_ALLOWED_HOSTS, a comma-separated list of hostnames
 async def serve_http(host: str, port: int, upstream: str, hosted: HostedSettings | None = None) {
     extra_hosts = [h.strip() for h in os.environ.get("KP_HTTP_ALLOWED_HOSTS", "").split(",") if h.strip()];
     auth: AuthKitVerifier | None = None;
+    sessions: WorkOSSessions | None = None;
+    public_origin = "";
     if hosted is not None {
         # The public address is a host this server answers to, and the one origin its page's calls carry.
         extra_hosts.append(urlparse(hosted.audience).netloc);
         auth = AuthKitVerifier(issuer=hosted.issuer, audience=hosted.audience, key_for=jwks_key_finder(hosted.issuer));
+        sessions = WorkOSSessions(client_id=hosted.client_id, api_key=hosted.api_key, cookie_password=hosted.cookie_password);
+        public_origin = hosted.public_origin();
     }
     hosts = [f"127.0.0.1:{port}", f"localhost:{port}"] + extra_hosts;
     origins = [f"https://{h}" for h in extra_hosts] + [f"http://{h}" for h in extra_hosts];
     security = TransportSecuritySettings(allowed_hosts=hosts, allowed_origins=origins);
     mcp_app = server.streamable_http_app(host=host, transport_security=security);
     own_origins = [f"http://127.0.0.1:{port}", f"http://localhost:{port}"] + origins;
-    config = FrontDoorConfig(upstream=upstream, origins=own_origins, client=httpx2.AsyncClient(), auth=auth);
+    config = FrontDoorConfig(upstream=upstream, origins=own_origins, client=httpx2.AsyncClient(), auth=auth, sessions=sessions, public_origin=public_origin);
     listener = uvicorn.Server(uvicorn.Config(front_door_app(mcp_app, config), host=host, port=port, log_level="info"));
     await listener.serve();
 }

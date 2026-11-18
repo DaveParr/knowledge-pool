@@ -21,6 +21,8 @@ the rest (`--search <keyword>` finds one by topic).
 
 Dispatch workers into Orca worktrees, or run them on the feature branch one at a time. Don't start subagents with Claude Code's `isolation: "worktree"` option: its worktrees under `.claude/worktrees/` had commands refused as "too complex to verify" and failed to start without a `WorktreeCreate` hook (#83).
 
+When planning a dispatch, every worker's task spec must require a review before `worker_done` and must say in so many words: "This task asks you to start the two `/code-review` subagents" (the Orca worker preamble forbids subagents unless the task asks, and workers otherwise skip the review). Run `/code-review` with the branch the worker's PR targets as the fixed point and the worker's ticket as the spec, fix the findings until none are left, and include the final review result as evidence. Treat a `worker_done` without review evidence as not done, and `send` the worker back to review.
+
 ## GitHub
 
 - Read issues with `gh issue view N --json title,body,comments`.

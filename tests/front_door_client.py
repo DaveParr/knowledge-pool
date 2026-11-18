@@ -16,6 +16,8 @@ import hosted_auth
 from tests.hosted_tokens import AUDIENCE, ISSUER
 
 ORIGIN = "http://127.0.0.1:8123"
+# The address a hosted front door is served from: https, so its Secure cookies are sent back.
+PUBLIC_ORIGIN = "https://knowledge-pool.test"
 UPSTREAM = "http://upstream.test"
 
 
@@ -29,9 +31,12 @@ def _mcp_stub() -> Starlette:
 class FrontDoorClient:
     """Calls arrive with the app's own `Origin`, as a browser sends them, unless
     `origin=None`. `upstream_requests` is what reached Jac's server (the stub).
-    With `hosted` (a `TestIssuer`), the front door checks bearer tokens signed by it."""
+    With `hosted` (a `TestIssuer`), the front door checks bearer tokens signed by it;
+    with `sessions` (see `tests/hosted_sessions.py`), it signs browsers in through that
+    stand-in for WorkOS. `origin` is the address the page is served from. Redirects
+    are not followed."""
 
-    def __init__(self, base_path, hosted=None, mcp_app=None, limits=None):
+    def __init__(self, base_path, hosted=None, mcp_app=None, sessions=None, origin=ORIGIN, limits=None):
         self._jac = JacTestClient.from_file("main.jac", base_path=str(base_path))
         self.upstream_requests: list[httpx2.Request] = []
         self._upstream_up = True
@@ -39,8 +44,14 @@ class FrontDoorClient:
         auth = None
         if hosted is not None:
             auth = hosted_auth.AuthKitVerifier(issuer=ISSUER, audience=AUDIENCE, key_for=hosted.key_for)
-        config = front_door.FrontDoorConfig(upstream=UPSTREAM, origins=[ORIGIN], client=http, auth=auth, limits=limits)
-        self._client = TestClient(front_door.front_door_app(mcp_app or _mcp_stub(), config), base_url=ORIGIN)
+        self.origin = origin
+        config = front_door.FrontDoorConfig(
+            upstream=UPSTREAM, origins=[origin], client=http, auth=auth, sessions=sessions, public_origin=origin,
+            limits=limits
+        )
+        self._client = TestClient(
+            front_door.front_door_app(mcp_app or _mcp_stub(), config), base_url=origin, follow_redirects=False
+        )
         # Jac's own test client sets Jac up on `JAC_DB_URL` in this process on its
         # first request, and frees it again on close, so each test has its database.
         assert self._jac.get("/healthz").status_code == 200
@@ -72,6 +83,12 @@ class FrontDoorClient:
     def get(self, path: str, headers: dict | None = None) -> httpx2.Response:
         return self._client.get(path, headers=headers)
 
-    def post(self, path: str, json=None, headers: dict | None = None, origin: str | None = ORIGIN) -> httpx2.Response:
+    def post(self, path: str, json=None, headers: dict | None = None, origin: str | None = "own") -> httpx2.Response:
+        origin = self.origin if origin == "own" else origin
         sent = {"origin": origin} if origin else {}
         return self._client.post(path, json=json, headers={**sent, **(headers or {})})
+
+    @property
+    def cookies(self):
+        """The browser's cookie jar."""
+        return self._client.cookies
