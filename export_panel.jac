@@ -7,7 +7,6 @@ which opens below the button's row.
 
 import "./export_panel.css";
 import from .walker_failure { failureMessage }
-import from .session_bar { checkSessionIfEmpty }
 
 import from deck_io { DeckExport, ExportResult }
 

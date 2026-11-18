@@ -4,7 +4,6 @@ impl ExportPanel.load(fmt: str) -> None {
     format = fmt;
     status = "";
     result = root spawn DeckExport(deck_id=deckId, format=fmt);
-    await checkSessionIfEmpty(result.reports);
     why = failureMessage(result.reports);
     error = why;
     if why {

@@ -197,10 +197,14 @@ def test_the_connector_address_is_shown_and_copied_and_local_mode_has_no_sign_ou
     assert "Sign out" not in app.js("document.body.innerText")
 
 
-def test_the_page_watches_its_calls_for_an_ended_session(app):
+def test_the_page_wraps_fetch_so_a_refused_call_is_followed_by_a_session_check(app):
     app.browse("open", app.web)
     app.browse("wait", "input[aria-label='Connector address']")
-    assert "native code" not in app.js("window.fetch.toString()")
+    count = "performance.getEntriesByType('resource').filter(e => new URL(e.name).pathname === '/me').length"
+    before = int(app.js(count))
+    app.js("fetch('/no-such-page').then(r => r.status)")
+    app.js(f"new Promise(done => {{ const look = () => {count} > {before} ? done(true) : setTimeout(look, 50); look(); }})")
+    assert int(app.js(count)) > before
 
 
 def test_a_decks_format_pill_ignores_what_is_typed_in_the_name_box(app):

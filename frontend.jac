@@ -5,7 +5,7 @@ import "./frontend.css";
 import from .deck_detail { DeckDetail }
 import from .export_panel { ExportPanel }
 import from .walker_failure { failureMessage }
-import from .session_bar { SessionBar, checkSession, checkSessionIfEmpty }
+import from .session_bar { SessionBar }
 
 import from decks { Deck, FormatInfo, CreateDeck, ListDecks, list_formats }
 import from deck_io { CreateDeckFromList, NewDeckResult }

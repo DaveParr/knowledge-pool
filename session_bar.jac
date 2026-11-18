@@ -24,16 +24,21 @@ def connectorAddress(origin: str) -> str {
     return origin + CONNECTOR_PATH;
 }
 
+"""Send the user to sign in and back to the address they are on (edits in progress
+are not kept)."""
+def signInAgain {
+    window.location.assign(signInAddress(window.location.pathname + window.location.search));
+}
+
 """Ask the front door whether the session is still good. If it has ended, send
-the user to sign in and back to this address, and answer None (edits in
-progress are not kept). Otherwise answer the session's reply: the display name
-and whether the page offers "Sign out"; a reply that never came counts as good,
-so a network blip does not throw the user out."""
+the user to sign in again and answer None. Otherwise answer the session's reply:
+the display name and whether the page offers "Sign out"; a reply that never came
+counts as good, so a network blip does not throw the user out."""
 async def:pub checkSession -> SessionInfo | None {
     try {
         reply = await fetch(ME_PATH, {"credentials": "same-origin", "headers": {"Accept": "application/json"}});
         if reply.status == 401 {
-            window.location.assign(signInAddress(window.location.pathname + window.location.search));
+            signInAgain();
             return None;
         }
         if not reply.ok {
@@ -46,39 +51,44 @@ async def:pub checkSession -> SessionInfo | None {
     }
 }
 
-glob guarded: bool = False,
-     leaving: bool = False;
+glob guardInstalled: bool = False,
+     sessionCheckRunning: bool = False;
 
-"""Watch every call the page makes: one the front door refuses with a 401 means the
-session has ended, however the caller reads the failure (an empty reply or a thrown
-error), so send the user to sign in. Installed once, by the first SessionBar."""
+"""Watch every call the page makes. One that is refused or fails to answer (any
+deck call, whether the caller reads it as an empty reply or a thrown error) is
+followed by a session check, so a session that has ended sends the user to sign
+in instead of showing an empty page. Installed once, by the first SessionBar."""
 def installSessionGuard {
-    if guarded {
+    if guardInstalled {
         return;
     }
-    guarded = True;
+    guardInstalled = True;
     browser: any = window;  # jac:ignore[W1037]
     original: any = browser.fetch;  # jac:ignore[W1037]
+
+    async def recheck {
+        if sessionCheckRunning {
+            return;
+        }
+        sessionCheckRunning = True;
+        await checkSession();
+        sessionCheckRunning = False;
+    }
+
     browser.fetch = lambda (input: any, init: any) -> any {  # jac:ignore[W1037]
         pending: any = original.call(browser, input, init);  # jac:ignore[W1037]
-        pending.then(lambda (reply: any) -> None {  # jac:ignore[W1037]
-            if reply.status == 401 and not leaving and reply.url.indexOf(ME_PATH) < 0 {
-                leaving = True;
-                window.location.assign(signInAddress(window.location.pathname + window.location.search));
+        pending.then(
+            lambda (reply: any) -> any {  # jac:ignore[W1037]
+                if not reply.ok and reply.url.indexOf(ME_PATH) < 0 {
+                    recheck();
+                }
+            },
+            lambda (_failure: any) -> any {  # jac:ignore[W1037]
+                recheck();
             }
-        });
+        );
         return pending;
     };
-}
-
-"""A walker that reported nothing was refused or never answered: check whether the
-session has ended (and if so, send the user to sign in). True if it reported nothing."""
-async def:pub checkSessionIfEmpty(reports: Sequence[object]) -> bool {
-    if len(reports) == 0 {
-        await checkSession();
-        return True;
-    }
-    return False;
 }
 
 def:pub SessionBar -> JsxElement {
