@@ -49,7 +49,8 @@ Do this at startup, after closing a ticket down, and whenever woken with "ticket
      If it fails, report the error to the user and do not retry that ticket.
    - `<orca> orchestration worker-start --worktree issue:<n> --agent claude --model claude-sonnet-5-5 --task-title "#<n> <title>" --spec-file -`
      with the spec: "Build ticket #<n> of DaveParr/knowledge-pool. Follow
-     docs/agents/ticket-worker.md exactly." plus anything recovery needs to add.
+     docs/agents/ticket-worker.md exactly. This task asks you to start the two
+     `/code-review` subagents." plus anything recovery needs to add.
 4. Repeat until at the cap or nothing is ready, then end your turn.
 
 ## When a worker asks a question
@@ -70,39 +71,50 @@ work.
 
 1. **Link.** `scripts/check-ticket-link.sh <n> <branch>`. If it fails, `send` the error to
    the worker and wait for it to report again.
-2. **State.** `gh pr view <pr> -R DaveParr/knowledge-pool --json number,isDraft,mergeable,mergeStateStatus,baseRefName,headRefName,labels`
+2. **Review.** Read the PR's comments
+   (`gh api repos/DaveParr/knowledge-pool/issues/<pr>/comments`). The last
+   `## Code review, round <k>` comment must name the PR's head commit and have no
+   finding without a fix or a one-line reason in the worker's reply. If there is no
+   review, it is out of date, or a finding has neither, `send` the worker back to section 4
+   of its brief and wait for it to report again.
+
+   **Round limit: get a human.** Once the PR has 3 review rounds, or a
+   `## Code review: round limit reached` comment, never send the worker back to review
+   again, whatever else is wrong. Instead:
+   - label the PR: `gh api repos/DaveParr/knowledge-pool/issues/<pr>/labels -f "labels[]=review-by-human"`;
+   - `scripts/board.sh <n> "In review"`;
+   - tell the user now, in your session: the ticket, the PR link, and the open findings
+     from the last comment, and that it needs them before it can merge;
+   - release the worker and pick up work. Skip steps 3–6 for this PR.
+3. **State.** `gh pr view <pr> -R DaveParr/knowledge-pool --json number,isDraft,mergeable,mergeStateStatus,baseRefName,headRefName,labels`
    and `gh pr checks <pr> -R DaveParr/knowledge-pool --json name,state,bucket,link`.
    - Conflicting (CONFLICTING / DIRTY): `send` the worker: merge `origin/DaveParr/planning-deployment`
      into its branch, resolve by intent (never ours/theirs wholesale), run the checks,
      `git push` (never force), and report again.
    - CI failed: `send` the worker the failing checks and links; it fixes, pushes, reports again.
    - CI pending: wait for it (`gh pr checks <pr> --watch`), then continue.
-3. **Decide.** Leave the PR for the human (do not merge; move the card to "In review"
+4. **Decide.** Leave the PR for the human (do not merge; move the card to "In review"
    with `scripts/board.sh <n> "In review"`, release the worker, pick up work) if ANY hold:
    - It is a draft, or its base is not `DaveParr/planning-deployment`.
-   - The ticket, its parent spec, or the PR carries `review-by-human`, or their body
-     clearly says it needs human review.
-   - It is neither backend nor low risk. Read the diff and the ticket. Backend: nothing a
-     user would see or do differently (no UI, web app, MCP Apps views, MCP tool
-     names/descriptions/outputs, CLI output or user-visible wording); server internals,
-     persistence, runners, tests, CI, scripts, developer docs and behaviour-free refactors
-     count. Low risk: small, contained, easy to revert, covered by tests, with no data
-     migrations, auth/security changes, secrets, dependency upgrades or user-data deletion.
-4. **Merge** (only if step 3 passed):
+   - The ticket, its parent spec, or the PR carries the `review-by-human` label.
+
+   The label is the only judgement call: do not hold a PR back because it is user-visible,
+   large or risky. If it should not merge unattended, the human labels it.
+5. **Merge** (only if step 4 passed):
    - `gh pr merge <pr> -R DaveParr/knowledge-pool --merge` (no `--delete-branch`).
    - `gh pr edit` fails here, so label and comment via the API:
      `gh api repos/DaveParr/knowledge-pool/issues/<pr>/labels -f "labels[]=auto-merged"` and
-     `gh api repos/DaveParr/knowledge-pool/issues/<pr>/comments -f body="Merged automatically by the ticket orchestrator: CI passed, not marked review-by-human, judged <backend|low risk> because <reason>."`
+     `gh api repos/DaveParr/knowledge-pool/issues/<pr>/comments -f body="Merged automatically by the ticket orchestrator: CI passed, no review-by-human label on the ticket, its parent spec or the PR."`
    - A PR into a non-default branch does not close issues. If the PR lists nothing left
      undone: `gh issue close <n> -R DaveParr/knowledge-pool --reason completed --comment "Merged in #<pr>."`
      and `scripts/board.sh <n> Done`. Otherwise leave it open, comment what remains, and
      `scripts/board.sh <n> "In progress"`.
    - Never close or edit a parent spec or any other issue.
-5. **Release** the worker (`<orca> orchestration worker-release`). Leave the worktree
+6. **Release** the worker (`<orca> orchestration worker-release`). Leave the worktree
    itself in place; do not delete it or its branch.
-6. Pick up work: the merge may have unblocked the next ticket.
+7. Pick up work: the merge may have unblocked the next ticket.
 
 ## Human-merged PRs
 
 When the user tells you they merged or closed a PR you left for them, close the ticket
-down from step 4's admin (close issue, board) and pick up work.
+down from step 5's admin (close issue, board) and pick up work.

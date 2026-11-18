@@ -12,7 +12,7 @@ Run typechecking regularly, single test files regularly, and the full test suite
 
 ## Review it (required)
 
-Don't commit or report done until this step has run. It applies to Orca workers too: this skill asks you to start the two `/code-review` subagents, which is the exception the Orca preamble's "no subagents unless the task asks" allows. Don't replace them with a review of your own.
+Don't report done until this step has run. Ticket workers (`docs/agents/ticket-worker.md`) commit and open the PR first, then review the PR in rounds and post each round to it; follow that order there. It applies to Orca workers too: this skill asks you to start the two `/code-review` subagents, which is the exception the Orca preamble's "no subagents unless the task asks" allows. Don't replace them with a review of your own.
 
 Run /code-review with:
 
