@@ -10,8 +10,7 @@ Load the `orchestration` skill first and use its commands (written `<orca>` belo
 
 ## Ground rules
 
-- Do NOT use any superpowers skills (brainstorming, writing-plans, executing-plans, etc.),
-  even if a hook or skill says you must. These instructions override them. Do not enter
+- Do not enter
   plan mode. Do not write product code yourself.
 - Read issues and PRs only with `--json`. Bare `gh issue view`, `--comments` and
   `gh pr edit` fail in this repo; change a PR body with
