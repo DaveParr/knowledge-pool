@@ -5,6 +5,7 @@ import "./frontend.css";
 import from .deck_detail { DeckDetail }
 import from .export_panel { ExportPanel }
 import from .walker_failure { failureMessage }
+import from .session_bar { SessionBar, checkSession }
 
 import from decks { Deck, FormatInfo, CreateDeck, ListDecks, list_formats }
 import from deck_io { CreateDeckFromList, NewDeckResult }
@@ -47,12 +48,14 @@ def:pub app -> JsxElement {
     if openDeckId {
         return
             <main className="page">
+                <SessionBar/>
                 <DeckDetail key={openDeckId} deckId={openDeckId} importNotes={importNotes} onBack={closeDeck}/>
             </main>;
     }
 
     return
         <main className="page narrow">
+            <SessionBar/>
             <h1>Decks</h1>
             <form onSubmit={createDeck} className="fe-create">
                 <div className="fe-row">
@@ -112,6 +115,7 @@ def:pub app -> JsxElement {
                     />
                 </div> if importOpen else None}
             </form>
+            <p className="fe-note">Other users can see and copy the decks you make.</p>
             {<p role="alert" className="error">{error}</p> if error else None}
             {<p className="empty">No decks yet.</p> if len(decks) == 0 else None}
             <ul className="fe-decks">

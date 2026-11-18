@@ -4,8 +4,15 @@ impl app.loadDecks -> None {
     if not formats {
         formats = await list_formats();
     }
-    result = root spawn ListDecks();
-    decks = result.reports[0] if result.reports else [];
+    try {
+        result = root spawn ListDecks();
+        decks = result.reports[0] if result.reports else [];
+        if not result.reports {
+            await checkSession();
+        }
+    } except Exception {
+        await checkSession();
+    }
 }
 
 impl app.createDeck(e: FormEvent) -> None {
@@ -19,7 +26,14 @@ impl app.createDeck(e: FormEvent) -> None {
         return;
     }
     error = "";
-    root spawn CreateDeck(name=name);
+    try {
+        result = root spawn CreateDeck(name=name);
+        if not result.reports {
+            await checkSession();
+        }
+    } except Exception {
+        await checkSession();
+    }
     name = "";
     await loadDecks();
 }
@@ -29,7 +43,18 @@ impl app.createFromList -> None {
         error = "Paste a deck list to import.";
         return;
     }
-    result = root spawn CreateDeckFromList(name=name, format=importFormat, text=importText, play_format=importPlayFormat);
+    try {
+        result = root spawn CreateDeckFromList(name=name, format=importFormat, text=importText, play_format=importPlayFormat);
+    } except Exception {
+        await checkSession();
+        error = "Could not reach the server.";
+        return;
+    }
+    if not result.reports {
+        await checkSession();
+        error = "The server gave no answer.";
+        return;
+    }
     why = failureMessage(result.reports);
     if why {
         error = why;

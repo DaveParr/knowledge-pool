@@ -181,6 +181,17 @@ def test_build_a_deck_through_the_web_app(app):
     assert "deals 3 damage" in app.wait_text("deals 3 damage", within="ul.dd-cards")
 
 
+def test_the_page_says_decks_are_not_private_and_shows_the_connector_address(app):
+    app.browse("open", app.web)
+    assert "Other users can see and copy the decks you make" in app.wait_text("Other users can see")
+    address = app.js("document.querySelector(\"input[aria-label='Connector address']\").value")
+    assert address.strip().strip("\"") == app.web + "/mcp", address
+    app.click("button", "Copy")
+    assert app.wait_text("Copied", within=".sb-connector")
+    # Local mode has no browser session to end, so no "Sign out".
+    assert "Sign out" not in app.js("document.body.innerText")
+
+
 def test_a_decks_format_pill_ignores_what_is_typed_in_the_name_box(app):
     app.browse("open", app.web)
     app.fill("input[aria-label='Deck name']", "Pill Deck")
