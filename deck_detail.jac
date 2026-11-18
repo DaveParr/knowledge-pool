@@ -11,7 +11,7 @@ import from .mana_panel { ManaPanel }
 import from .card_search { AddCards }
 import from .mana_cost { ManaCost }
 import from .walker_failure { failureMessage }
-import from .session_bar { checkWhenEmpty }
+import from .session_bar { checkSessionIfEmpty }
 
 import from decks {
     DeckView, FormatInfo, GetDeck, SetDeckFormat, SetCardCount, RemoveCard, list_formats

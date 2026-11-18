@@ -29,7 +29,7 @@ impl DeckDetail.setFormat(value: str) -> None {
 }
 
 impl DeckDetail.show(reports: list[DeckView | WalkerError]) -> None {
-    await checkWhenEmpty(reports);
+    await checkSessionIfEmpty(reports);
     why = failureMessage(reports);
     error = why;
     if not why {

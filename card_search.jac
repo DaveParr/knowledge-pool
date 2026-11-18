@@ -8,7 +8,7 @@ reports the change back (here to the deck page, there to Claude).
 import "./card_search.css";
 import from .mana_cost { ManaCost }
 import from .walker_failure { failureMessage }
-import from .session_bar { checkWhenEmpty }
+import from .session_bar { checkSessionIfEmpty }
 
 import from decks { DeckView, AddCard }
 import from card_lines { CardLine }

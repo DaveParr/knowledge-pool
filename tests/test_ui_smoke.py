@@ -197,6 +197,12 @@ def test_the_connector_address_is_shown_and_copied_and_local_mode_has_no_sign_ou
     assert "Sign out" not in app.js("document.body.innerText")
 
 
+def test_the_page_watches_its_calls_for_an_ended_session(app):
+    app.browse("open", app.web)
+    app.browse("wait", "input[aria-label='Connector address']")
+    assert "native code" not in app.js("window.fetch.toString()")
+
+
 def test_a_decks_format_pill_ignores_what_is_typed_in_the_name_box(app):
     app.browse("open", app.web)
     app.fill("input[aria-label='Deck name']", "Pill Deck")

@@ -7,7 +7,7 @@ impl app.loadDecks -> None {
     try {
         result = root spawn ListDecks();
         decks = result.reports[0] if result.reports else [];
-        await checkWhenEmpty(result.reports);
+        await checkSessionIfEmpty(result.reports);
     } except Exception {
         await checkSession();
     }
@@ -26,7 +26,7 @@ impl app.createDeck(e: FormEvent) -> None {
     error = "";
     try {
         result = root spawn CreateDeck(name=name);
-        await checkWhenEmpty(result.reports);
+        await checkSessionIfEmpty(result.reports);
     } except Exception {
         await checkSession();
     }
@@ -45,7 +45,7 @@ impl app.createFromList -> None {
         await checkSession();
         return;
     }
-    if await checkWhenEmpty(result.reports) {
+    if await checkSessionIfEmpty(result.reports) {
         return;
     }
     why = failureMessage(result.reports);

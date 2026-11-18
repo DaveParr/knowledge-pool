@@ -46,9 +46,34 @@ async def:pub checkSession -> SessionInfo | None {
     }
 }
 
+glob guarded: bool = False,
+     leaving: bool = False;
+
+"""Watch every call the page makes: one the front door refuses with a 401 means the
+session has ended, however the caller reads the failure (an empty reply or a thrown
+error), so send the user to sign in. Installed once, by the first SessionBar."""
+def installSessionGuard {
+    if guarded {
+        return;
+    }
+    guarded = True;
+    browser: any = window;  # jac:ignore[W1037]
+    original: any = browser.fetch;  # jac:ignore[W1037]
+    browser.fetch = lambda (input: any, init: any) -> any {  # jac:ignore[W1037]
+        pending: any = original.call(browser, input, init);  # jac:ignore[W1037]
+        pending.then(lambda (reply: any) -> None {  # jac:ignore[W1037]
+            if reply.status == 401 and not leaving and reply.url.indexOf(ME_PATH) < 0 {
+                leaving = True;
+                window.location.assign(signInAddress(window.location.pathname + window.location.search));
+            }
+        });
+        return pending;
+    };
+}
+
 """A walker that reported nothing was refused or never answered: check whether the
 session has ended (and if so, send the user to sign in). True if it reported nothing."""
-async def:pub checkWhenEmpty(reports: Sequence[object]) -> bool {
+async def:pub checkSessionIfEmpty(reports: Sequence[object]) -> bool {
     if len(reports) == 0 {
         await checkSession();
         return True;
@@ -63,6 +88,7 @@ def:pub SessionBar -> JsxElement {
         address: str = "";
 
     can with entry {
+        installSessionGuard();
         address = connectorAddress(window.location.origin);
         refreshSession();
     }
