@@ -68,3 +68,8 @@ test "a missing catalogue comes back as error, not an exception" {
         store.reset();
     }
 }
+
+test "the deck says whether it is the caller's own, so the view can hide Add on another user's" {
+    assert search_with_holdings(bolt_deck(), "lightning", 10)["deck"]["mine"];
+    assert not search_with_holdings(bolt_deck(), "lightning", 10, False)["deck"]["mine"];
+}

@@ -22,7 +22,7 @@ import from decks { Deck, DeckView, CreateDeck, ListDecks, GetDeck, AddCard, Set
 import from profile { save_display_name, UNKNOWN_USER }
 import from deck_io { DeckExport, ExportResult }
 import from walker_errors { WalkerError }
-import from graph_runner { refresh_cards, guest_root_id, user_root_id, run_walker, run_read, list_other_decks, copy_deck, call_function, run_as_guest, in_context, start, request_caller, check_bind, LOCAL_USER, RERUNS, CallFailed, LOG }
+import from graph_runner { refresh_cards, guest_root_id, user_root_id, run_walker, run_read, list_other_decks, copy_deck, owns_deck, call_function, run_as_guest, in_context, start, request_caller, check_bind, LOCAL_USER, RERUNS, CallFailed, LOG }
 import from cards { Card, RefreshCards, new_card, card_nodes_for }
 import from json_object { JsonObject }
 import from legality { Format, FormatRules, GetFormatRules }
@@ -764,4 +764,12 @@ test "a walker that changes a deck is refused by run_read, and changes nothing" 
     }
     assert refused;
     assert (run_walker(ALICE, GetDeck(deck_id=alices)).reports[0] as DeckView).cards == [];
+}
+
+test "a user owns the decks they made, and no one else's, and no id that names no deck" {
+    mine = _new_deck(ALICE, "Alice owns this");
+    assert owns_deck(ALICE, mine);
+    assert not owns_deck(BOB, mine);
+    assert not owns_deck(ALICE, "not-a-deck");
+    assert not owns_deck(ALICE, str(uuid4()));
 }

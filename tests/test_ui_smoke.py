@@ -186,6 +186,33 @@ def test_the_page_says_other_users_can_see_and_copy_your_decks(app):
     assert "Other users can see and copy the decks you make" in app.wait_text("Other users can see")
 
 
+def test_the_page_has_a_separate_read_only_section_for_other_users_decks(app):
+    app.browse("open", app.web)
+    app.wait_text("No other users' decks yet")
+    heading = app.js("[...document.querySelectorAll('h2')].map(h => h.textContent).join('|')")
+    assert "Other users' decks" in heading, heading
+    # The one local user's own decks never appear in it.
+    assert app.js("document.querySelectorAll('ul.fe-others li').length").strip() == "0"
+
+
+def test_card_search_view_offers_add_only_on_a_deck_the_caller_owns(app):
+    def hits(mine: bool) -> dict:
+        deck = {"id": "d1", "name": "Burn", "format": "modern", "main_total": 3, "sideboard_total": 0, "mine": mine}
+        hit = {"oracle_id": "o1", "name": "Lightning Bolt", "mana_cost": "{R}", "type_line": "Instant",
+               "text": "Deal 3.", "in_deck": {}}
+        return {"deck": deck, "query": "bolt", "limit": 20, "hits": [hit], "error": ""}
+
+    app.browse("open", (ROOT / "ui" / "card_search.html").as_uri())
+    app.browse("wait", "#results")
+    for mine, expected_buttons in ((True, 2), (False, 0)):
+        message = {"jsonrpc": "2.0", "method": "ui/notifications/tool-result",
+                   "params": {"structuredContent": hits(mine)}}
+        app.js(f'window.postMessage({json.dumps(message)}, "*")')
+        app.wait_text("1 card matches", within="#results")
+        assert int(app.js("document.querySelectorAll('#results .actions button').length")) == expected_buttons
+    assert "belongs to another user" in app.wait_text("belongs to another user", within="#results")
+
+
 def test_the_connector_address_is_shown_and_copied_and_local_mode_has_no_sign_out(app):
     app.browse("open", app.web)
     app.browse("wait", "input[aria-label='Connector address']")

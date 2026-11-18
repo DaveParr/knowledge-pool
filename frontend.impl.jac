@@ -6,6 +6,13 @@ impl app.loadDecks -> None {
     }
     result = root spawn ListDecks();
     decks = result.reports[0] if result.reports else [];
+    others = root spawn ListOtherDecks();
+    why = failureMessage(others.reports);
+    if why {
+        error = why;
+    } else {
+        otherDecks = others.reports[0] if others.reports else [];
+    }
 }
 
 impl app.createDeck(e: FormEvent) -> None {
