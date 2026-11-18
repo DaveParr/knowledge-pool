@@ -8,6 +8,10 @@ calls itself, as the caller, through the runner.
 """
 
 import from datetime { datetime, timezone }
+import from uuid { UUID }
+import from jaclang { JacRuntime as Jac }
+import from jaclang.runtime.constructs { NodeAnchor }
+import from profile { display_name }
 import from cards { Card, card_node }
 import from card_lines { CardLine, main_deck }
 import from legality { Violation, FORMAT_LABELS, format_node, check_lines, unknown_format }
@@ -358,9 +362,39 @@ def own_deck(deck_id: str) -> Deck | None {
     return target;
 }
 
+"""The id of the root that owns the deck with id `deck_id`, whoever that is, or
+None when the id names no deck. Reads the stored anchor without Jac's access
+check, so the app can tell a deck that is not the caller's from an id that
+names nothing. The caller learns only that the deck exists, never its contents."""
+def deck_owner(deck_id: str) -> str | None {
+    try {
+        anchor = Jac.get_context().mem.get(UUID(deck_id));
+    } except ValueError {
+        return None;
+    }
+    if not isinstance(anchor, NodeAnchor) or not isinstance(anchor.archetype, Deck) or anchor.root is None {
+        return None;
+    }
+    return str(anchor.root);
+}
+
+"""Why the caller cannot change the deck with id `deck_id`: a not-your-deck
+WalkerError when it is another user's, no-such-deck when no deck has that id."""
+def deck_refusal(deck_id: str) -> WalkerError {
+    if deck_owner(deck_id) is not None {
+        return WalkerError(
+            code="not-your-deck",
+            message=f"Deck {deck_id} belongs to another user, so you cannot change it. Copy it to make your own to change."
+        );
+    }
+    return WalkerError(code="no-such-deck", message=f"No deck with id {deck_id}.");
+}
+
 """Base for walkers that act on one deck. An id that names no deck of the
-caller's is handled here, once: the walker reports a no-such-deck
-WalkerError and stops. Another user's deck answers the same way."""
+caller's is handled here, once: the walker reports a WalkerError and stops
+(not-your-deck for another user's deck, no-such-deck for an id that names no
+deck). Read-only walkers run as the deck's owner through `run_read`
+(graph_runner.jac), where the deck is the caller's, so they find it here."""
 walker DeckAction {
     has deck_id: str,
         reports: list[DeckView | WalkerError] = [];
@@ -368,7 +402,7 @@ walker DeckAction {
     can locate with Root entry {
         deck = own_deck(self.deck_id);
         if deck is None {
-            report WalkerError(code="no-such-deck", message=f"No deck with id {self.deck_id}.");
+            report deck_refusal(self.deck_id);
             disengage;
         }
         visit [deck];
@@ -481,4 +515,80 @@ obj FormatInfo {
 
 def:protect list_formats -> list[FormatInfo] {
     return [FormatInfo(name=k, label=v) for (k, v) in FORMAT_LABELS.items()];
+}
+
+
+# ---- Other users' decks ---------------------------------------------------
+
+"""A deck as another user's list shows it: the deck's id, name and format, and
+its owner's display name."""
+obj DeckSummary {
+    has id: str,
+        name: str,
+        format: str,
+        owner: str;
+}
+
+"""Summaries of every deck on the current root, oldest first, each with the
+root's owner's display name ("Unknown user" when none is stored)."""
+def deck_summaries -> list[DeckSummary] {
+    owner = display_name();
+    decks = sorted([root-->[?:Deck]], key=lambda (d: Deck) { return d.created_at; });
+    return [DeckSummary(id=jid(d), name=d.name, format=d.format, owner=owner) for d in decks];
+}
+
+"""A snapshot of a deck to copy: its name and format, the cards with their
+entry metadata, and its owner's display name. Read as the owner."""
+obj DeckSnapshot {
+    has name: str,
+        format: str,
+        owner: str,
+        entries: list[HoldingEntry] = [];
+}
+
+"""Report a deck as a DeckSnapshot, for copying. Read-only."""
+walker CopySource(DeckAction) {
+    has reports: list[DeckSnapshot | WalkerError] = [];
+
+    can snapshot with Deck entry {
+        report DeckSnapshot(
+            name=here.name,
+            format=here.format,
+            owner=display_name(),
+            entries=[
+                HoldingEntry(
+                    oracle_id=l.oracle_id, zone=l.zone, count=l.count,
+                    roles=l.roles, tags=l.tags, locked=l.locked, reason=l.reason
+                )
+                for l in card_lines(here)
+            ]
+        );
+    }
+}
+
+"""Make a copy of a snapshot as the caller's own new deck "<name> (copy)": its
+format, cards, counts and entry metadata, and one history line saying it was
+copied. It carries nothing that ties it to the original."""
+walker CopyDeck {
+    has snapshot: DeckSnapshot,
+        reports: list[DeckView | WalkerError] = [];
+
+    can copy with Root entry {
+        deck = new_deck(here, f"{self.snapshot.name} (copy)", self.snapshot.format);
+        copied = f"Copied from {self.snapshot.owner}'s {self.snapshot.name}";
+        replace_holdings(deck, self.snapshot.entries, copied);
+        # The copy's history is the one line, not a line per card.
+        deck.history = [
+            ChangeNote(
+                at=datetime.now(timezone.utc).isoformat(),
+                oracle_id="",
+                name="",
+                zone="",
+                before=0,
+                after=0,
+                reason=copied
+            )
+        ];
+        report deck_view(deck);
+    }
 }
