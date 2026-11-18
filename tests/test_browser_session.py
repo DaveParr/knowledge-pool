@@ -113,20 +113,20 @@ def test_signing_in_sets_a_host_only_http_only_secure_lax_cookie_and_returns_to_
 def test_a_signed_in_user_stays_signed_in_across_requests(door):
     _sign_in(door, "code-alice")
     for _ in range(3):
-        assert door.get("/me").json() == {"name": "Alice Example", "sign_out": True}
+        assert door.get("/me").json() == {"name": "Alice Example", "can_sign_out": True}
 
 
 def test_each_sign_in_stores_the_google_display_name_on_the_users_own_root(door):
     _sign_in(door, "code-alice")
-    assert door.get("/me").json() == {"name": "Alice Example", "sign_out": True}
+    assert door.get("/me").json() == {"name": "Alice Example", "can_sign_out": True}
     _sign_in(door, "code-alice-renamed")
-    assert door.get("/me").json() == {"name": "Alice Renamed", "sign_out": True}
-    assert door.get("/me", headers=_as(sealed("user_bob"))).json() == {"name": "Unknown user", "sign_out": True}
+    assert door.get("/me").json() == {"name": "Alice Renamed", "can_sign_out": True}
+    assert door.get("/me", headers=_as(sealed("user_bob"))).json() == {"name": "Unknown user", "can_sign_out": True}
 
 
 def test_a_user_with_no_display_name_is_shown_as_unknown(door):
     _sign_in(door, "code-nameless")
-    assert door.get("/me").json() == {"name": "Unknown user", "sign_out": True}
+    assert door.get("/me").json() == {"name": "Unknown user", "can_sign_out": True}
 
 
 def test_a_person_workos_refuses_gets_403_and_no_session(door):
@@ -200,7 +200,7 @@ def test_local_mode_has_no_sign_in_and_no_session_check_needed(tmp_path, session
         assert local.get(front_door.LOGIN_PATH).status_code == 404
         assert local.get(front_door.CALLBACK_PATH + "?code=code-alice&state=x").status_code == 404
         assert local.post(front_door.LOGOUT_PATH).status_code == 404
-        assert local.get("/me").json() == {"name": "Unknown user", "sign_out": False}
+        assert local.get("/me").json() == {"name": "Unknown user", "can_sign_out": False}
 
 
 def test_signing_out_by_a_link_from_another_site_is_refused_and_ends_nothing(door):

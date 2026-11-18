@@ -45,8 +45,7 @@ impl app.createFromList -> None {
         await checkSession();
         return;
     }
-    if not result.reports {
-        await checkSession();
+    if await checkWhenEmpty(result.reports) {
         return;
     }
     why = failureMessage(result.reports);

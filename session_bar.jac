@@ -11,16 +11,16 @@ glob SIGN_IN_PATH: str = "/auth/login",
 """What the front door says about the session (`GET /me`)."""
 obj SessionInfo {
     has name: str = "",
-        sign_out: bool = False;
+        can_sign_out: bool = False;
 }
 
 """Where to send a user whose session has ended: sign in, then back to this address."""
-def:pub signInAddress(path: str, search: str) -> str {
-    return SIGN_IN_PATH + "?return_to=" + encodeURIComponent(path + search);
+def signInAddress(returnTo: str) -> str {
+    return SIGN_IN_PATH + "?return_to=" + encodeURIComponent(returnTo);
 }
 
 """The address claude.ai connects to, on the site the page was served from."""
-def:pub connectorAddress(origin: str) -> str {
+def connectorAddress(origin: str) -> str {
     return origin + CONNECTOR_PATH;
 }
 
@@ -33,25 +33,27 @@ async def:pub checkSession -> SessionInfo | None {
     try {
         reply = await fetch(ME_PATH, {"credentials": "same-origin", "headers": {"Accept": "application/json"}});
         if reply.status == 401 {
-            window.location.assign(signInAddress(window.location.pathname, window.location.search));
+            window.location.assign(signInAddress(window.location.pathname + window.location.search));
             return None;
         }
         if not reply.ok {
             return SessionInfo();
         }
         body = await reply.json();
-        return SessionInfo(name=str(body["name"]), sign_out=bool(body["sign_out"]));
+        return SessionInfo(name=str(body["name"]), can_sign_out=bool(body["can_sign_out"]));
     } except Exception {
         return SessionInfo();
     }
 }
 
 """A walker that reported nothing was refused or never answered: check whether the
-session has ended (and if so, send the user to sign in)."""
-async def:pub checkWhenEmpty(reports: Sequence[object]) -> None {
+session has ended (and if so, send the user to sign in). True if it reported nothing."""
+async def:pub checkWhenEmpty(reports: Sequence[object]) -> bool {
     if len(reports) == 0 {
         await checkSession();
+        return True;
     }
+    return False;
 }
 
 def:pub SessionBar -> JsxElement {
@@ -62,18 +64,18 @@ def:pub SessionBar -> JsxElement {
 
     can with entry {
         address = connectorAddress(window.location.origin);
-        look();
+        refreshSession();
     }
 
-    async def look {
-        found = await checkSession();
-        if found {
-            name = found.name;
-            signOut = found.sign_out;
+    async def refreshSession {
+        info = await checkSession();
+        if info {
+            name = info.name;
+            signOut = info.can_sign_out;
         }
     }
 
-    async def copy {
+    async def copyAddress {
         try {
             await navigator.clipboard.writeText(address);
             copied = True;
@@ -90,7 +92,7 @@ def:pub SessionBar -> JsxElement {
                     {"Claude connector "}
                     <input type="text" readOnly={True} aria-label="Connector address" value={address}/>
                 </label>
-                <button type="button" onClick={lambda (_e: MouseEvent) { copy(); }}>
+                <button type="button" onClick={lambda (_e: MouseEvent) { copyAddress(); }}>
                     {"Copied" if copied else "Copy"}
                 </button>
             </span>

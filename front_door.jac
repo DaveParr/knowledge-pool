@@ -379,18 +379,18 @@ async def session_check(config: FrontDoorConfig) -> Response {
     if failed is not None {
         return failed;
     }
-    return JSONResponse({"name": name, "sign_out": signs_in(config)}, headers=NO_STORE);
+    return JSONResponse({"name": name, "can_sign_out": browser_sign_in_enabled(config)}, headers=NO_STORE);
 }
 
 """Whether browser sign-in is on: hosted mode with a session provider."""
-def signs_in(config: FrontDoorConfig) -> bool {
+def browser_sign_in_enabled(config: FrontDoorConfig) -> bool {
     return app_mode() == HOSTED and config.sessions is not None;
 }
 
 """A route that answers 404 unless browser sign-in is on (hosted mode with a session provider)."""
 def sign_in_route(handler: any, config: FrontDoorConfig) -> any {  # jac:ignore[W1036,W1037]
     async def route(request: Request) -> Response {  # jac:ignore[W1036]
-        if not signs_in(config) {
+        if not browser_sign_in_enabled(config) {
             return PlainTextResponse("Not Found", status_code=404);
         }
         return await handler(request, config);
