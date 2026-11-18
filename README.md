@@ -95,6 +95,8 @@ curl localhost:8080/healthz   # ok
 
 Until the browser sign-in lands, hosted mode answers the health path and refuses everything else without a WorkOS bearer token, the page included.
 
+Hosted mode limits request rates in the front door's memory (`rate_limits.jac`): `KP_RATE_LIMIT_ADDRESS` (default 30 a minute) per address, from `X-Real-IP`, for requests without a valid token, and `KP_RATE_LIMIT_USER` (default 300 a minute) per user, browser and connector together. A refusal is a 429 with `Retry-After`; only `/healthz` is exempt.
+
 ### Layout
 
 - `main.jac` entry point, joins server and client
@@ -110,6 +112,7 @@ Until the browser sign-in lands, hosted mode answers the health path and refuses
 - `global.css` app-wide style tokens, shared with the MCP Apps views in `ui/`
 - `legality.jac` `Format` nodes and the deck-construction rules
 - `mcp_server.jac` the MCP server and, over HTTP, the process that starts the front door
+- `rate_limits.jac` the front door's token-bucket rate limits
 - `front_door.jac` the front door: the page's deck calls through the runner in Jac's own envelope, the page and its static files forwarded from Jac's server (a child on `127.0.0.1`), everything else 404, a health path
 - `graph_runner.jac` the runner: runs every deck call as a caller on that caller's own root (the local user in local mode, `KP_MODE`), and the app's own work as the guest, for the MCP server and the seed script
 - `seed.jac`, `catalog/precons.py` the seed script: one random MTGJSON precon per format

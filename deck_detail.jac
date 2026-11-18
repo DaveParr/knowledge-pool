@@ -10,16 +10,26 @@ import from .export_panel { ExportPanel }
 import from .mana_panel { ManaPanel }
 import from .card_search { AddCards }
 import from .mana_cost { ManaCost }
-import from .walker_failure { failureMessage }
+import from .walker_failure { failureMessage, thrownLine }
 
 import from decks {
-    DeckView, FormatInfo, GetDeck, SetDeckFormat, SetCardCount, RemoveCard, list_formats
+    ChangeNote, DeckView, FormatInfo, GetDeck, CopyOtherDeck, SetDeckFormat, SetCardCount, RemoveCard, list_formats
 }
 import from legality { Violation }
 import from commander { GameChangers }
 import from mana { ManaProfile }
 import from card_lines { CardLine }
 import from walker_errors { WalkerError }
+
+"""A play format's label ("Standard"), or the name itself when it is not listed."""
+def:pub formatName(name: str, formats: list[FormatInfo]) -> str {
+    for f in formats {
+        if f.name == name {
+            return f.label;
+        }
+    }
+    return name;
+}
 
 """Zones in display order, with their headings."""
 glob ZONES: list[tuple[str, str]] = [
@@ -121,7 +131,20 @@ def:pub CardDetails(line: CardLine) -> JsxElement {
         </div>;
 }
 
-def:pub DeckDetail(deckId: str, importNotes: list[str], onBack: Callable[[], None]) -> JsxElement {
+"""One history line: the change made, and why."""
+def historyLine(note: ChangeNote) -> str {
+    what = note.reason;
+    if note.name {
+        what = note.name + " (" + note.zone + "): " + str(note.before) + " → " + str(note.after) + (" — " + note.reason if note.reason else "");
+    }
+    return note.at[:10] + "  " + what;
+}
+
+"""A deck. `readOnly` is another user's deck: every control that changes it is
+left out, and Copy is offered instead; `onCopied` gets the new deck's id."""
+def:pub DeckDetail(
+    deckId: str, importNotes: list[str], readOnly: bool, onCopied: Callable[[str], None], onBack: Callable[[], None]
+) -> JsxElement {
     has deck: DeckView | None = None,
         error: str = "",
         formats: list[FormatInfo] = [],
@@ -135,6 +158,7 @@ def:pub DeckDetail(deckId: str, importNotes: list[str], onBack: Callable[[], Non
     async def setCount(oracleId: str, zone: str, value: str) -> None;
     async def removeCard(oracleId: str, zone: str) -> None;
     async def setFormat(value: str) -> None;
+    async def copyDeck -> None;
     """Show a deck walker's view, or the reason it failed (the deck shown stays as it was)."""
     def show(reports: list[DeckView | WalkerError]) -> None;
 
@@ -174,16 +198,22 @@ def:pub DeckDetail(deckId: str, importNotes: list[str], onBack: Callable[[], Non
             <button className="quiet dd-back" onClick={back}>← Decks</button>
             <div className="dd-head">
                 <h1>{deck.name}</h1>
-                <ExportPanel deckId={deckId} deckName={deck.name}/>
+                <span>
+                    {<button className="primary dd-copy" onClick={lambda (_e: MouseEvent) { copyDeck(); }}>Copy to my decks</button> if readOnly else None}
+                    <ExportPanel deckId={deckId} deckName={deck.name}/>
+                </span>
             </div>
+            {<p role="status" className="status dd-readonly">
+                {"This deck belongs to another user, so you can't change it. Copy it to make your own to change."}
+            </p> if readOnly else None}
             <p className="meta">
-                <select
+                {<span className="pill">{formatName(deck.format, formats)}</span> if readOnly else <select
                     aria-label="Format"
                     value={deck.format}
                     onChange={lambda (e: ChangeEvent) { setFormat(e.target.value); }}
                 >
                     {[<option key={f.name} value={f.name}>{f.label}</option> for f in formats]}
-                </select>
+                </select>}
                 {" · " + str(deck.main_total) + " main · " + str(deck.sideboard_total) + " sideboard"}
             </p>
             {alert}
@@ -228,14 +258,14 @@ def:pub DeckDetail(deckId: str, importNotes: list[str], onBack: Callable[[], Non
                         <ul className="dd-cards">
                             {for line in rows {
                                 <li key={rowKey(line)} className="dd-row">
-                                    <input
+                                    {<span className="dd-count" aria-label={"Count of " + line.name + " in " + line.zone}>{str(line.count)}</span> if readOnly else <input
                                         type="number"
                                         min="0"
                                         className="dd-count"
                                         aria-label={"Count of " + line.name + " in " + line.zone}
                                         value={str(line.count)}
                                         onChange={lambda (e: ChangeEvent) { setCount(line.oracle_id, line.zone, e.target.value); }}
-                                    />
+                                    />}
                                     <details
                                         open={bool(opened.get(rowKey(line), False))}
                                         onToggle={lambda (e: Event) { setOpen(rowKey(line), e.target.hasAttribute("open")); }}
@@ -248,14 +278,14 @@ def:pub DeckDetail(deckId: str, importNotes: list[str], onBack: Callable[[], Non
                                         </summary>
                                         <CardDetails line={line}/>
                                     </details>
-                                    <button
+                                    {<span/> if readOnly else <button
                                         className="quiet dd-remove"
                                         aria-label={"Remove " + line.name + " from " + line.zone}
                                         title="Remove"
                                         onClick={lambda (_e: MouseEvent) { removeCard(line.oracle_id, line.zone); }}
                                     >
                                         ✕
-                                    </button>
+                                    </button>}
                                 </li>
                             }}
                         </ul>
@@ -263,6 +293,12 @@ def:pub DeckDetail(deckId: str, importNotes: list[str], onBack: Callable[[], Non
                 }
             }}
 
-            <AddCards deckId={deckId} format={deck.format} cards={deck.cards} onChanged={changed}/>
+            {<AddCards deckId={deckId} format={deck.format} cards={deck.cards} onChanged={changed}/> if not readOnly else None}
+
+            <h2>History</h2>
+            {<p className="empty">No changes yet.</p> if len(deck.history) == 0 else None}
+            <ul className="dd-history" aria-label="History">
+                {[<li key={str(i)}>{historyLine(note)}</li> for (i, note) in enumerate(deck.history)]}
+            </ul>
         </section>;
 }

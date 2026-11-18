@@ -17,6 +17,7 @@ from pathlib import Path
 import anyio
 from contextlib import contextmanager
 import pytest
+import ui_pages
 from mcp.client.session import ClientSession
 from mcp.client.streamable_http import streamable_http_client
 
@@ -181,6 +182,72 @@ def test_build_a_deck_through_the_web_app(app):
     assert "deals 3 damage" in app.wait_text("deals 3 damage", within="ul.dd-cards")
 
 
+def test_the_page_says_other_users_can_see_and_copy_your_decks(app):
+    app.browse("open", app.web)
+    assert "Other users can see and copy the decks you make" in app.wait_text("Other users can see")
+
+
+def test_the_page_has_a_separate_read_only_section_for_other_users_decks(app):
+    app.browse("open", app.web)
+    app.wait_text("No other users' decks yet")
+    heading = app.js("[...document.querySelectorAll('h2')].map(h => h.textContent).join('|')")
+    assert "Other users' decks" in heading, heading
+    # The one local user's own decks never appear in it.
+    assert app.js("document.querySelectorAll('ul.fe-others li').length").strip() == "0"
+
+
+def test_card_search_view_offers_add_only_on_a_deck_the_caller_owns(app):
+    def hits(mine: bool) -> dict:
+        deck = {"id": "d1", "name": "Burn", "format": "modern", "main_total": 3, "sideboard_total": 0, "mine": mine}
+        hit = {"oracle_id": "o1", "name": "Lightning Bolt", "mana_cost": "{R}", "type_line": "Instant",
+               "text": "Deal 3.", "in_deck": {}}
+        return {"deck": deck, "query": "bolt", "limit": 20, "hits": [hit], "error": ""}
+
+    app.browse("open", (ROOT / "ui" / "card_search.html").as_uri())
+    app.browse("wait", "#results")
+    for mine, expected_buttons in ((True, 2), (False, 0)):
+        message = {"jsonrpc": "2.0", "method": "ui/notifications/tool-result",
+                   "params": {"structuredContent": hits(mine)}}
+        app.js(f'window.postMessage({json.dumps(message)}, "*")')
+        app.wait_text("1 card matches", within="#results")
+        assert int(app.js("document.querySelectorAll('#results .actions button').length")) == expected_buttons
+    assert "belongs to another user" in app.wait_text("belongs to another user", within="#results")
+
+
+def test_the_connector_address_is_shown_and_copied_and_local_mode_has_no_sign_out(app):
+    app.browse("open", app.web)
+    app.browse("wait", "input[aria-label='Connector address']")
+    address = app.js("document.querySelector(\"input[aria-label='Connector address']\").value")
+    assert address.strip().strip("\"") == app.web + "/mcp", address
+    app.click("button", "Copy")
+    assert app.wait_text("Copied", within=".sb-connector")
+    # Local mode has no browser session to end, so no "Sign out".
+    assert "Sign out" not in app.js("document.body.innerText")
+
+
+def test_the_page_wraps_fetch_so_a_refused_call_is_followed_by_a_session_check(app):
+    app.browse("open", app.web)
+    app.browse("wait", "input[aria-label='Connector address']")
+    count = "performance.getEntriesByType('resource').filter(e => new URL(e.name).pathname === '/me').length"
+    before = int(app.js(count))
+    app.js("fetch('/no-such-page').then(r => r.status)")
+    app.js(f"new Promise(done => {{ const look = () => {count} > {before} ? done(true) : setTimeout(look, 50); look(); }})")
+    assert int(app.js(count)) > before
+
+
+def test_a_refused_deck_call_reaches_the_page_as_a_failed_walkers_report_not_an_error(app):
+    app.browse("open", app.web)
+    app.browse("wait", "input[aria-label='Connector address']")
+    reply = app.js(
+        "fetch('/walker/NoSuchWalker', {method: 'POST', headers: {'Content-Type': 'application/json'}, body: '{}'})"
+        ".then(async r => JSON.stringify({status: r.status, reports: (await r.json()).data.reports}))"
+    )
+    seen = json.loads(reply)
+    assert seen["status"] == 200
+    assert [r["code"] for r in seen["reports"]] == ["refused"]
+    assert seen["reports"][0]["message"], seen
+
+
 def test_a_decks_format_pill_ignores_what_is_typed_in_the_name_box(app):
     app.browse("open", app.web)
     app.fill("input[aria-label='Deck name']", "Pill Deck")
@@ -222,12 +289,11 @@ async def deck_show_result(url: str) -> dict:
         return await call(session, "deck_show", deck_id=deck["id"])
 
 
-def test_deck_table_view_renders_a_real_deck_show_result(app):
+def test_deck_table_view_renders_a_real_deck_show_result(app, tmp_path):
     shown = anyio.run(deck_show_result, app.mcp)
     bolt = next(c for c in shown["cards"] if c["name"] == "Lightning Bolt" and c["zone"] == "main")
 
-    app.browse("open", (ROOT / "ui" / "deck_table.html").as_uri())
-    app.browse("wait", "#app")
+    open_view(app, tmp_path, "deck_table.html")
     message = {"jsonrpc": "2.0", "method": "ui/notifications/tool-result", "params": {"structuredContent": shown}}
     app.js(f'window.postMessage({json.dumps(message)}, "*")')
 
@@ -235,3 +301,79 @@ def test_deck_table_view_renders_a_real_deck_show_result(app):
     assert "Smoke Burn" in table
     row = app.js("document.querySelector('#app ul[data-zone=\"main\"] summary').innerText")
     assert re.search(rf"{bolt['count']}\s+Lightning Bolt", row), row
+
+
+REFUSAL = "Too many requests, try again in 12 seconds"
+HOST_ANSWERS_CALLS = """
+window.__calls = [];
+window.addEventListener("message", (e) => {
+  const m = e.data;
+  if (!m || m.method !== "tools/call") return;
+  window.__calls.push({name: m.params.name, arguments: m.params.arguments});
+  window.postMessage({jsonrpc: "2.0", id: m.id, result: %s}, "*");
+});
+"""
+# Each view: its tool, the arguments the host sends it, a good result, and what the view shows for it.
+VIEWS = {
+    "deck_table.html": ("deck_show", {"deck_id": "d1"}, "Mock Deck", {
+        "name": "Mock Deck", "format": "standard", "main_total": 0, "sideboard_total": 0, "legal": True,
+        "violations": [], "cards": [],
+    }),
+    "mana_analysis.html": ("deck_analyze", {"deck_id": "d1"}, "Mock Deck: mana", {
+        "name": "Mock Deck", "format": "standard", "main_total": 0,
+        "mana": {"land_count": 0, "pips": {}, "sources": {}}, "curve": {"buckets": {}, "average_mv": 0},
+    }),
+    "card_search.html": ("card_search", {"deck_id": "d1", "query": "bolt"}, "1 card matches", {
+        "deck": {"id": "d1", "name": "Mock Deck", "format": "standard", "main_total": 0, "sideboard_total": 0},
+        "query": "bolt", "limit": 20, "error": "",
+        "hits": [{"oracle_id": "o1", "name": "Mock Bolt", "mana_cost": "{R}", "type_line": "Instant", "text": "", "in_deck": {}}],
+    }),
+    "deck_export.html": ("deck_export", {"deck_id": "d1", "format": "arena"}, "Export Mock Deck", {
+        "deck_id": "d1", "name": "Mock Deck", "format": "arena", "content": "1 Mock Bolt",
+        "formats": [{"key": "arena", "label": "MTGA/MTGO", "lossless": False, "ext": "txt"}], "lossy_drops": "keeps names.",
+    }),
+}
+
+
+def host_says(app: App, method: str, params: dict) -> None:
+    app.js(f'window.postMessage({json.dumps({"jsonrpc": "2.0", "method": method, "params": params})}, "*")')
+
+
+def open_view(app: App, tmp_path: Path, name: str) -> None:
+    page = tmp_path / name
+    page.write_text(ui_pages.view_page(name))
+    app.browse("open", page.as_uri())
+    app.browse("wait", "#app" if name != "card_search.html" else "#results")
+
+
+@pytest.mark.parametrize("name", VIEWS)
+def test_a_view_shows_a_refused_call_as_one_line_with_a_retry_that_calls_the_tool_again(app, tmp_path, name):
+    tool, arguments, shown, good = VIEWS[name]
+    open_view(app, tmp_path, name)
+    app.js(HOST_ANSWERS_CALLS % json.dumps({"structuredContent": good, "content": []}))
+
+    host_says(app, "ui/notifications/tool-input", {"arguments": arguments})
+    host_says(app, "ui/notifications/tool-result", {"isError": True, "content": [{"type": "text", "text": REFUSAL}]})
+    line = app.wait_text(REFUSAL, within=".refused span")
+    assert "\n" not in line, line
+    assert "Try again" in app.js("document.querySelector('.refused button').innerText")
+
+    app.browse("click", ".refused button")
+    assert shown in app.wait_text(shown)
+    calls = json.loads(app.js("JSON.stringify(window.__calls)"))
+    assert [c["name"] for c in calls] == [tool]
+    assert calls[0]["arguments"]["deck_id"] == "d1"
+
+
+@pytest.mark.parametrize("name", VIEWS)
+def test_a_view_shows_a_retry_that_is_refused_again_as_one_line_too(app, tmp_path, name):
+    tool, arguments, _shown, _good = VIEWS[name]
+    open_view(app, tmp_path, name)
+    app.js('window.addEventListener("message", (e) => { const m = e.data; if (m && m.method === "tools/call") '
+           'window.postMessage({jsonrpc: "2.0", id: m.id, error: {message: "The host refused the call."}}, "*"); });')
+    host_says(app, "ui/notifications/tool-input", {"arguments": arguments})
+    host_says(app, "ui/notifications/tool-result", {"isError": True, "content": [{"type": "text", "text": REFUSAL}]})
+    app.wait_text(REFUSAL, within=".refused span")
+    app.browse("click", ".refused button")
+    assert "The host refused the call." in app.wait_text("The host refused the call.", within=".refused span")
+    assert "Try again" in app.js("document.querySelector('.refused button').innerText")

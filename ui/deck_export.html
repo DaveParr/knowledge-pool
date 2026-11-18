@@ -53,6 +53,7 @@
   .status { font-size: 13px; color: var(--ok-fg); }
   .empty { color: var(--muted); }
 </style>
+<!-- @include refusal.html -->
 </head>
 <body>
 <main id="app"><p class="empty">Exporting deck…</p></main>
@@ -85,6 +86,7 @@
   let error = "";        // why the last export failed, if it did
   let busy = false;
   let status = "";
+  let tried = null;      // the export last asked for ({deck_id, format}), so a refused one can be retried
 
   function applyHost(ctx) {
     if (!ctx) return;
@@ -101,7 +103,7 @@
 
   function render() {
     if (!state) {
-      app.innerHTML = `<p class="note error" role="alert">${esc(error || "No export.")}</p>`;
+      app.innerHTML = refusalHtml(error || "No export.", Boolean(tried));
       return;
     }
     const f = currentFormat() || { key: state.format, label: state.format, lossless: false, ext: "txt" };
@@ -114,7 +116,7 @@
       ${f.lossless
         ? `<div class="note lossless">Lossless: this re-imports with every zone, role, tag, lock and reason.</div>`
         : `<div class="note lossy">Lossy: ${esc(f.label)} ${esc(state.lossy_drops || "keeps card names and counts only.")}</div>`}
-      ${error ? `<p class="note error" role="alert">${esc(error)}</p>` : ""}
+      ${error ? refusalHtml(error, Boolean(tried)) : ""}
       <textarea id="out" readonly aria-label="Exported ${esc(state.name)}"></textarea>
       <div class="bar">
         <button type="button" class="primary" id="copy">Copy</button>
@@ -140,15 +142,22 @@
 
   async function switchFormat(key) {
     if (!state || busy || key === state.format) return;
+    await exportAs(state.deck_id, key);
+  }
+
+  // A refused export comes back as one line with a retry that asks again.
+  async function exportAs(deckId, key) {
+    if (busy) return;
+    tried = { deck_id: deckId, format: key };
     busy = true; status = "Exporting…"; render();
     try {
-      const result = await request("tools/call", { name: "deck_export", arguments: { deck_id: state.deck_id, format: key } });
+      const result = await request("tools/call", { name: "deck_export", arguments: tried });
       status = "";
       busy = false;
       takeResult(result);
     } catch (e) {
       busy = false; status = "";
-      error = `Couldn't export again: ${(e && e.message) || "the host refused"}. Ask Claude for this format instead.`;
+      error = refusalOf(null, e);
       render();
     }
   }
@@ -193,7 +202,8 @@
   app.addEventListener("click", (e) => {
     const b = e.target.closest("button");
     if (!b || b.disabled) return;
-    if (b.dataset.k) switchFormat(b.dataset.k);
+    if (b.hasAttribute("data-retry")) { if (tried) exportAs(tried.deck_id, tried.format); }
+    else if (b.dataset.k) switchFormat(b.dataset.k);
     else if (b.id === "copy") copy();
     else if (b.id === "dl") download();
   });
@@ -207,7 +217,10 @@
       msg.error ? p.reject(msg.error) : p.resolve(msg.result);
       return;
     }
-    if (msg.method === "ui/notifications/tool-result") {
+    if (msg.method === "ui/notifications/tool-input") {
+      const args = (msg.params && msg.params.arguments) || {};
+      if (args.deck_id) tried = args.format ? { deck_id: args.deck_id, format: args.format } : { deck_id: args.deck_id };
+    } else if (msg.method === "ui/notifications/tool-result") {
       status = "";
       takeResult(msg.params);
     } else if (msg.method === "ui/notifications/tool-cancelled") {

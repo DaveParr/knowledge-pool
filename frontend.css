@@ -12,3 +12,5 @@
 }
 .fe-deck a { font-weight: 600; text-decoration: none; margin-right: auto; }
 .fe-deck a:hover { text-decoration: underline; }
+.fe-note { margin: 4px 0 0; color: var(--muted); font-size: 13px; }
+.fe-owner { color: var(--muted); font-size: 13px; }

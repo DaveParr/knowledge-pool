@@ -1,7 +1,12 @@
 """Handlers for the deck view."""
 
 impl DeckDetail.loadDeck -> None {
-    formats = await list_formats();
+    try {
+        formats = await list_formats();
+    } except Exception as failure {
+        error = thrownLine(failure);
+        return;
+    }
     result = root spawn GetDeck(deck_id=deckId);
     show(result.reports);
 }
@@ -34,4 +39,14 @@ impl DeckDetail.show(reports: list[DeckView | WalkerError]) -> None {
     if not why {
         deck = reports[0] as DeckView;
     }
+}
+
+impl DeckDetail.copyDeck -> None {
+    result = root spawn CopyOtherDeck(deck_id=deckId);
+    why = failureMessage(result.reports);
+    if why {
+        error = why;
+        return;
+    }
+    onCopied((result.reports[0] as DeckView).id);
 }

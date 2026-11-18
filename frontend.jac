@@ -2,18 +2,21 @@
 
 import "./global.css";
 import "./frontend.css";
-import from .deck_detail { DeckDetail }
+import from .deck_detail { DeckDetail, formatName }
 import from .export_panel { ExportPanel }
-import from .walker_failure { failureMessage }
+import from .walker_failure { failureMessage, thrownLine }
+import from .session_bar { SessionBar }
 
-import from decks { Deck, FormatInfo, CreateDeck, ListDecks, list_formats }
+import from decks { Deck, DeckSummary, FormatInfo, CreateDeck, ListDecks, ListOtherDecks, list_formats }
 import from deck_io { CreateDeckFromList, NewDeckResult }
 
 def:pub app -> JsxElement {
     has decks: list[Deck] = [],
         name: str = "",
         error: str = "",
+        otherDecks: list[DeckSummary] = [],
         openDeckId: str = "",
+        openReadOnly: bool = False,
         importOpen: bool = False,
         importFormat: str = "moxfield",
         importText: str = "",
@@ -30,12 +33,18 @@ def:pub app -> JsxElement {
     async def createFromList -> None;
 
     def formatLabel(format_name: str) -> str {
-        for f in formats {
-            if f.name == format_name {
-                return f.label;
-            }
-        }
-        return format_name;
+        return formatName(format_name, formats);
+    }
+
+    """Open a deck of the caller's own (`readOnly` False) or another user's."""
+    def openDeck(deckId: str, readOnly: bool) {
+        openReadOnly = readOnly;
+        openDeckId = deckId;
+    }
+
+    """A copy was made: open it, as the caller's own deck."""
+    def copied(deckId: str) {
+        openDeck(deckId, False);
     }
 
     def closeDeck {
@@ -47,12 +56,21 @@ def:pub app -> JsxElement {
     if openDeckId {
         return
             <main className="page">
-                <DeckDetail key={openDeckId} deckId={openDeckId} importNotes={importNotes} onBack={closeDeck}/>
+                <SessionBar/>
+                <DeckDetail
+                    key={openDeckId}
+                    deckId={openDeckId}
+                    importNotes={importNotes}
+                    readOnly={openReadOnly}
+                    onCopied={copied}
+                    onBack={closeDeck}
+                />
             </main>;
     }
 
     return
         <main className="page narrow">
+            <SessionBar/>
             <h1>Decks</h1>
             <form onSubmit={createDeck} className="fe-create">
                 <div className="fe-row">
@@ -112,14 +130,15 @@ def:pub app -> JsxElement {
                     />
                 </div> if importOpen else None}
             </form>
+            <p className="fe-note">Other users can see and copy the decks you make.</p>
             {<p role="alert" className="error">{error}</p> if error else None}
-            {<p className="empty">No decks yet.</p> if len(decks) == 0 else None}
+            {<p className="empty">No decks yet.</p> if len(decks) == 0 and not error else None}
             <ul className="fe-decks">
                 {[
                     <li key={jid(deck)} className="fe-deck">
                         <a
                             href="#"
-                            onClick={lambda (e: MouseEvent) { e.preventDefault(); openDeckId = jid(deck); }}
+                            onClick={lambda (e: MouseEvent) { e.preventDefault(); openDeck(jid(deck), False); }}
                         >
                             {deck.name}
                         </a>
@@ -127,6 +146,24 @@ def:pub app -> JsxElement {
                         <ExportPanel deckId={jid(deck)} deckName={deck.name}/>
                     </li>
                     for deck in decks
+                ]}
+            </ul>
+            <h2>Other users' decks</h2>
+            <p className="fe-note">Read-only. Open one to see it all, and copy it to make your own to change.</p>
+            {<p className="empty">No other users' decks yet.</p> if len(otherDecks) == 0 else None}
+            <ul className="fe-decks fe-others" aria-label="Other users' decks">
+                {[
+                    <li key={deck.id} className="fe-deck">
+                        <a
+                            href="#"
+                            onClick={lambda (e: MouseEvent) { e.preventDefault(); openDeck(deck.id, True); }}
+                        >
+                            {deck.name}
+                        </a>
+                        <span className="pill">{formatLabel(deck.format)}</span>
+                        <span className="fe-owner">{"by " + deck.owner}</span>
+                    </li>
+                    for deck in otherDecks
                 ]}
             </ul>
         </main>;

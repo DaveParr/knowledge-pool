@@ -10,6 +10,7 @@ nothing and keeps no users: the caller is the token's `sub`.
 
 import os;
 import time;
+import from urllib.parse { urlparse }
 import anyio;
 import jwt;
 import from mcp.server.auth.provider { AccessToken }
@@ -36,6 +37,12 @@ obj HostedSettings {
         client_id: str,
         api_key: str,
         cookie_password: str;
+
+    """The address the public sees, from the MCP URL: where AuthKit sends browsers back to."""
+    def public_origin -> str {
+        public = urlparse(self.audience);
+        return f"{public.scheme}://{public.netloc}";
+    }
 }
 
 """The hosted settings, or `HostedSettingsMissing` naming every one that is

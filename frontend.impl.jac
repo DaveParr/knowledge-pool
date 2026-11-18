@@ -2,10 +2,28 @@
 
 impl app.loadDecks -> None {
     if not formats {
-        formats = await list_formats();
+        try {
+            formats = await list_formats();
+        } except Exception as failure {
+            error = thrownLine(failure);
+            return;
+        }
     }
     result = root spawn ListDecks();
+    why = failureMessage(result.reports);
+    if why {
+        error = why;
+        return;
+    }
+    error = "";
     decks = result.reports[0] if result.reports else [];
+    others = root spawn ListOtherDecks();
+    why = failureMessage(others.reports);
+    if why {
+        error = why;
+    } else {
+        otherDecks = others.reports[0] if others.reports else [];
+    }
 }
 
 impl app.createDeck(e: FormEvent) -> None {
@@ -19,7 +37,12 @@ impl app.createDeck(e: FormEvent) -> None {
         return;
     }
     error = "";
-    root spawn CreateDeck(name=name);
+    created = root spawn CreateDeck(name=name);
+    why = failureMessage(created.reports);
+    if why {
+        error = why;
+        return;
+    }
     name = "";
     await loadDecks();
 }

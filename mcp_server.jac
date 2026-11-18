@@ -39,16 +39,18 @@ import from mcp.server.stdio { stdio_server }
 import from mcp.server.streamable_http { TransportSecuritySettings }
 import from cards { CardSearch, search_cards as catalog_search, find_card, resolve_names as catalog_resolve_names, check_catalogue }
 import from decks {
-    Deck, DeckView, CreateDeck, ListDecks, GetDeck, SetDeckFormat, EditDeck
+    Deck, DeckAction, DeckView, DeckSummary, CreateDeck, ListDecks, GetDeck, SetDeckFormat, EditDeck
 }
 import from deck_io { DeckExport, DeckImport }
 import from legality { GetFormatRules }
 import from walker_errors { WalkerError }
 import from json_object { JsonObject }
+import from ui_pages { view_page }
 import from front_door { FrontDoorConfig, front_door_app, start_upstream, stop_upstream, stop_child_on_sigterm, exit_when_upstream_dies, expect_upstream_to_stop }
 import from urllib.parse { urlparse }
+import from browser_session { WorkOSSessions }
 import from hosted_auth { AuthKitVerifier, HostedSettings, HostedSettingsMissing, hosted_settings, jwks_key_finder }
-import from graph_runner { APP_DIR, HOSTED, app_mode, check_bind, request_caller, run_walker, call_function, start, refresh_cards }
+import from graph_runner { APP_DIR, HOSTED, app_mode, check_bind, request_caller, run_walker, run_read, CallFailed, copy_deck, list_other_decks, owns_deck, call_function, start, refresh_cards }
 import from jaclang.runtime.constructs { WalkerArchetype }
 
 glob LOGGED_CLIENT_UI: list[bool] = [],
@@ -73,7 +75,7 @@ Clients that support MCP Apps (Claude Desktop and claude.ai) render it as an HTM
 where each card expands to its rules text, stats, keywords, deck notes and tags; others
 get a compact Markdown table. Use deck_get when you only need the data."""
 def deck_show(deck_id: str, ctx: Context) -> CallToolResult {  # jac:ignore[W1036]: the SDK finds the context by this bare annotation
-    view = outcome(walk(GetDeck(deck_id=deck_id)));
+    view = outcome(read(GetDeck(deck_id=deck_id)));
     if "error" in view {
         return CallToolResult(content=[TextContent(text=view["error"])], is_error=True);
     }
@@ -207,11 +209,16 @@ already holds in main and sideboard. Every word must match, as a prefix. Clients
 support MCP Apps render a search panel where the user can add hits to the deck
 themselves; others get a Markdown table. Use search_cards when no deck is involved."""
 def card_search(deck_id: str, query: str, ctx: Context, limit: int = 20) -> CallToolResult {  # jac:ignore[W1036]: the SDK finds the context by this bare annotation
-    view = outcome(walk(GetDeck(deck_id=deck_id)));
+    view = outcome(read(GetDeck(deck_id=deck_id)));
     if "error" in view {
         return CallToolResult(content=[TextContent(text=view["error"])], is_error=True);
     }
-    result = search_with_holdings(view, query, limit);
+    try {
+        mine = owns_deck(request_caller(), deck_id);
+    } except CallFailed as failed {
+        return CallToolResult(content=[TextContent(text=failed.error.message)], is_error=True);
+    }
+    result = search_with_holdings(view, query, limit, mine);
     if result["error"] {
         return CallToolResult(
             content=[TextContent(text=(result["error"] as str).rstrip(".") + ". The deck is unchanged.")],
@@ -245,9 +252,10 @@ def search_brief(result: JsonObject) -> str {
 }
 
 """Search hits for one deck, each with the copies that deck holds per zone
-(`in_deck`, e.g. {"main": 2}), plus a short summary of the deck. A catalogue
-failure comes back as `error` with no hits."""
-def search_with_holdings(view: JsonObject, query: str, limit: int) -> JsonObject {
+(`in_deck`, e.g. {"main": 2}), plus a short summary of the deck. `mine` is
+whether the caller owns the deck: the view offers its Add buttons only then. A
+catalogue failure comes back as `error` with no hits."""
+def search_with_holdings(view: JsonObject, query: str, limit: int, mine: bool = True) -> JsonObject {
     held: dict[str, dict[str, int]] = {};
     for c in view["cards"] as list[JsonObject] {
         oid = c["oracle_id"] as str;
@@ -264,7 +272,8 @@ def search_with_holdings(view: JsonObject, query: str, limit: int) -> JsonObject
             "name": view["name"],
             "format": view["format"],
             "main_total": view["main_total"],
-            "sideboard_total": view["sideboard_total"]
+            "sideboard_total": view["sideboard_total"],
+            "mine": mine
         },
         "query": query,
         "limit": limit,
@@ -312,7 +321,7 @@ show the export in a view with format buttons, Copy and Download; the text resul
 always carries the full export too. A lossless JSON export is long: the user sees
 it in the view, so offer to show it or save it to a file rather than pasting it."""
 def deck_export(deck_id: str, ctx: Context, format: str = "arena") -> CallToolResult {  # jac:ignore[W1036]: the SDK finds the context by this bare annotation
-    done = outcome(walk(DeckExport(deck_id=deck_id, format=format)));
+    done = outcome(read(DeckExport(deck_id=deck_id, format=format)));
     if "error" in done {
         return CallToolResult(content=[TextContent(text=done["error"])], structured_content=done, is_error=True);
     }
@@ -400,38 +409,32 @@ def make_apps -> Apps {
     apps = Apps();
     apps.tool(resource_uri=DECK_UI)(deck_show);
     apps.tool(resource_uri=MANA_UI)(deck_analyze);
-    with open(os.path.join(APP_DIR, "ui", "deck_table.html"), encoding="utf-8") as f {
-        apps.add_html_resource(DECK_UI, f.read(), title="Deck table", prefers_border=True);
-    }
-    with open(os.path.join(APP_DIR, "ui", "mana_analysis.html"), encoding="utf-8") as f {
-        apps.add_html_resource(MANA_UI, f.read(), title="Mana analysis", prefers_border=True);
-    }
+    apps.add_html_resource(DECK_UI, view_page("deck_table.html"), title="Deck table", prefers_border=True);
+    apps.add_html_resource(MANA_UI, view_page("mana_analysis.html"), title="Mana analysis", prefers_border=True);
     apps.tool(resource_uri=SEARCH_UI)(card_search);
-    with open(os.path.join(APP_DIR, "ui", "card_search.html"), encoding="utf-8") as f {
-        apps.add_html_resource(SEARCH_UI, f.read(), title="Card search", prefers_border=True);
-    }
+    apps.add_html_resource(SEARCH_UI, view_page("card_search.html"), title="Card search", prefers_border=True);
     apps.tool(resource_uri=EXPORT_UI)(deck_export);
-    with open(os.path.join(APP_DIR, "ui", "deck_export.html"), encoding="utf-8") as f {
-        apps.add_html_resource(
-            EXPORT_UI, f.read(), title="Deck export", prefers_border=True,
-            # Ask for the clipboard so Copy works; the view selects the text when the host says no.
-            permissions=ResourcePermissions(clipboard_write={})
-        );
-    }
+    apps.add_html_resource(
+        EXPORT_UI, view_page("deck_export.html"), title="Deck export", prefers_border=True,
+        # Ask for the clipboard so Copy works; the view selects the text when the host says no.
+        permissions=ResourcePermissions(clipboard_write={})
+    );
     return apps;
 }
 
 glob server: MCPServer[object] = MCPServer(
     "knowledge-pool",
     instructions=(
-        "Build and edit Magic: The Gathering decks in the user's local Knowledge Pool app. "
+        "Build and edit Magic: The Gathering decks in the user's Knowledge Pool app. "
         + "Card data comes only from the MTGJSON catalogue: turn card names into oracle ids with "
         + "resolve_names (or search_cards) before adding them, and never add a card that was not "
         + "resolved. Give a short reason for every deck change. Finish with deck_validate. "
         + "When the user wants to see a deck, call deck_show; for its mana curve and colours, call deck_analyze. "
         + "When the user wants to find cards to add to a deck, call card_search with that deck's id: it shows "
         + "how many copies the deck already holds, and lets the user add hits themselves; changes they make "
-        + "there are reported back to you. To export a deck, call deck_export."
+        + "there are reported back to you. To export a deck, call deck_export. "
+        + "Every user's decks are visible to every user: deck_list shows only the user's own, deck_browse "
+        + "shows other users', and deck_copy makes one the user's own to change."
     ),
     extensions=[make_apps()]
 );
@@ -440,6 +443,13 @@ glob server: MCPServer[object] = MCPServer(
 graph_runner.request_caller): every deck tool's one way onto the graph."""
 def walk(w: WalkerArchetype) -> WalkerArchetype {
     return run_walker(request_caller(), w);
+}
+
+"""Run the read-only deck walker `w` through the runner as whoever is asking,
+on any user's deck: the app allows every user to read every deck (see
+graph_runner.run_read). Only for walkers that change nothing."""
+def read(w: DeckAction) -> WalkerArchetype {
+    return run_read(request_caller(), w.deck_id, w);
 }
 
 """Call `f` through the runner as whoever is asking, for the tools that
@@ -524,6 +534,29 @@ def deck_list -> list[JsonObject] {
     return [{"id": d["id"], "name": d["name"], "format": d["format"]} for d in decks];
 }
 
+"""List other users' decks (id, deck name, format and the owner's display name),
+never your own. Every user can see and copy every deck, but only its owner can
+change it: pass an id to deck_get or deck_show to look at one, or to deck_copy to
+make your own copy to change."""
+@server.tool()
+def deck_browse -> list[JsonObject] {
+    try {
+        others = list_other_decks(request_caller());
+    } except CallFailed as failed {
+        return [{"error": failed.error.message, "code": failed.error.code}];
+    }
+    return [{"id": d.id, "name": d.name, "format": d.format, "owner": d.owner} for d in others];
+}
+
+"""Copy any user's deck (see deck_browse for ids) into your own decks as
+"<name> (copy)": its cards, zones, counts, format and per-card notes, with its own
+history starting from one line saying it was copied. The copy is yours to change
+and is not tied to the original. Returns the new deck."""
+@server.tool()
+def deck_copy(deck_id: str) -> JsonObject {
+    return outcome(copy_deck(request_caller(), deck_id));
+}
+
 """Create a deck, optionally with seed cards. Each card is
 {"oracle_id": ..., "count": n, "zone": "main" | "sideboard" | "commander" | "companion" | "maybeboard", "reason": ...};
 get oracle ids from resolve_names first. Returns the deck with its legality."""
@@ -541,13 +574,13 @@ def deck_create(name: str, format: str = "standard", cards: list[JsonObject] | N
     return deck_edit(deck_id, changes);
 }
 
-"""A deck: its cards, totals, legality and recent change history."""
+"""A deck, yours or another user's: its cards, totals, legality and recent change history."""
 @server.tool()
 def deck_get(deck_id: str) -> JsonObject {
-    return outcome(walk(GetDeck(deck_id=deck_id)));
+    return outcome(read(GetDeck(deck_id=deck_id)));
 }
 
-"""Change a deck. Each change is
+"""Change one of your own decks (another user's answers not-your-deck: copy it first). Each change is
 {"oracle_id": ..., "count": n, "zone": "main" | "sideboard" | "commander" | "companion" | "maybeboard", "reason": "why"}
 and sets that card's count in that zone (0 removes it). Every change needs a reason.
 Pass "format" to change the deck's format. Changes with an unknown oracle id or no
@@ -610,17 +643,21 @@ listed in KP_HTTP_ALLOWED_HOSTS, a comma-separated list of hostnames
 async def serve_http(host: str, port: int, upstream: str, hosted: HostedSettings | None = None) {
     extra_hosts = [h.strip() for h in os.environ.get("KP_HTTP_ALLOWED_HOSTS", "").split(",") if h.strip()];
     auth: AuthKitVerifier | None = None;
+    sessions: WorkOSSessions | None = None;
+    public_origin = "";
     if hosted is not None {
         # The public address is a host this server answers to, and the one origin its page's calls carry.
         extra_hosts.append(urlparse(hosted.audience).netloc);
         auth = AuthKitVerifier(issuer=hosted.issuer, audience=hosted.audience, key_for=jwks_key_finder(hosted.issuer));
+        sessions = WorkOSSessions(client_id=hosted.client_id, api_key=hosted.api_key, cookie_password=hosted.cookie_password);
+        public_origin = hosted.public_origin();
     }
     hosts = [f"127.0.0.1:{port}", f"localhost:{port}"] + extra_hosts;
     origins = [f"https://{h}" for h in extra_hosts] + [f"http://{h}" for h in extra_hosts];
     security = TransportSecuritySettings(allowed_hosts=hosts, allowed_origins=origins);
     mcp_app = server.streamable_http_app(host=host, transport_security=security);
     own_origins = [f"http://127.0.0.1:{port}", f"http://localhost:{port}"] + origins;
-    config = FrontDoorConfig(upstream=upstream, origins=own_origins, client=httpx2.AsyncClient(), auth=auth);
+    config = FrontDoorConfig(upstream=upstream, origins=own_origins, client=httpx2.AsyncClient(), auth=auth, sessions=sessions, public_origin=public_origin);
     listener = uvicorn.Server(uvicorn.Config(front_door_app(mcp_app, config), host=host, port=port, log_level="info"));
     await listener.serve();
 }

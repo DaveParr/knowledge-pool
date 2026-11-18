@@ -47,7 +47,7 @@ async def main() -> None:
         check("all the tools are listed", {
             "search_cards", "get_card", "resolve_names", "get_format_rules",
             "deck_create", "deck_get", "deck_edit", "deck_validate", "deck_analyze",
-            "deck_export", "deck_import", "deck_show", "card_search",
+            "deck_export", "deck_import", "deck_show", "card_search", "deck_browse", "deck_copy",
         } <= set(tools))
 
         resolved = await call(session, "resolve_names", names=["Lightning Bolt", "Goblin Guide", "Lightening Bolt", "Flargle the Unreal", "Mountain"])
@@ -238,6 +238,14 @@ async def main() -> None:
 
         listed = await call(session, "deck_list")
         check("deck_list lists the deck", "MCP Burn" in [d["name"] for d in listed], listed)
+        browsed = await call(session, "deck_browse")
+        check("deck_browse lists no deck of the local user's own", "MCP Burn" not in [d["name"] for d in browsed], browsed)
+        copied = await call(session, "deck_copy", deck_id=deck["id"])
+        check("deck_copy makes the caller's own '<name> (copy)'", copied["name"] == "MCP Burn (copy)" and copied["id"] != deck["id"], copied)
+        copy_missing = await call(session, "deck_copy", deck_id="nope")
+        check("deck_copy gives an unknown deck as an error with its code", copy_missing.get("code") == "no-such-deck", copy_missing)
+        listed = await call(session, "deck_list")
+        check("deck_list lists the copy after", "MCP Burn (copy)" in [d["name"] for d in listed], listed)
 
     # A client that renders MCP Apps already shows the view, so the model gets a
     # short brief instead of the full Markdown (otherwise it repeats the view).

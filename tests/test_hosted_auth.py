@@ -153,3 +153,20 @@ def test_an_mcp_tool_runs_as_the_token_of_its_own_request(tmp_path, issuer, monk
         _tool(client, alice, "deck_create", {"name": "Alice's deck", "format": "standard"})
         assert [d["name"] for d in _tool(client, alice, "deck_list", {})["result"]] == ["Alice's deck"]
         assert _tool(client, bob, "deck_list", {})["result"] == []
+
+
+def test_workos_sessions_send_the_browser_to_authkit_and_name_the_user_by_id_and_google_name():
+    from browser_session import WorkOSSessions, session_user
+    from tests.hosted_settings import HOSTED_SETTINGS
+
+    sessions = WorkOSSessions(
+        client_id=HOSTED_SETTINGS["WORKOS_CLIENT_ID"], api_key=HOSTED_SETTINGS["WORKOS_API_KEY"],
+        cookie_password=HOSTED_SETTINGS["WORKOS_COOKIE_PASSWORD"],
+    )
+    url = sessions.login_url("a-state", "https://knowledge-pool.example/auth/callback")
+    assert "state=a-state" in url and "provider=authkit" in url and "client_id=client_stand_in" in url
+    assert "redirect_uri=https%3A%2F%2Fknowledge-pool.example%2Fauth%2Fcallback" in url
+    who = session_user({"id": "user_01", "email": "a@example.com", "first_name": "Ada", "last_name": "Lovelace"})
+    assert (who.sub, who.name) == ("user_01", "Ada Lovelace")
+    assert session_user({"id": "user_02", "first_name": None}).name == ""
+    assert session_user({"first_name": "No Id"}) is None
