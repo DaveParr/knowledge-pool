@@ -25,4 +25,22 @@ function refusalHtml(message, canRetry) {
   const esc = (s) => String(s).replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[c]);
   return `<p class="refused" role="alert"><span>${esc(message)}</span>${canRetry ? `<button type="button" data-retry>Try again</button>` : ""}</p>`;
 }
+// A view that fills `app` from one tool's result: `.result(params)` takes the host's tool-result,
+// `.input(params)` its tool-input (the arguments a retry calls the tool with again).
+function refusableView(app, tool, render, request) {
+  let args = null;
+  const result = (reply) => {
+    const why = refusalOf(reply);
+    if (why) app.innerHTML = refusalHtml(why, Boolean(args));
+    else render(reply.structuredContent);
+  };
+  const retry = async () => {
+    if (!args) return;
+    app.innerHTML = `<p class="empty">Trying again…</p>`;
+    try { result(await request("tools/call", { name: tool, arguments: args })); }
+    catch (e) { app.innerHTML = refusalHtml(refusalOf(null, e), true); }
+  };
+  app.addEventListener("click", (e) => { if (e.target.closest("[data-retry]")) retry(); });
+  return { result, input: (params) => { args = (params && params.arguments) || null; } };
+}
 </script>

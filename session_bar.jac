@@ -94,7 +94,10 @@ def installSessionGuard {
                 if reply.ok or reply.url.indexOf(ME_PATH) >= 0 {
                     return reply;
                 }
-                recheck();
+                # A 429 says nothing about the session, and a session check would spend more of the limit.
+                if reply.status != 429 {
+                    recheck();
+                }
                 if reply.status != 401 and reply.url.indexOf("/walker/") >= 0 {
                     return refusedAsReport(reply);
                 }

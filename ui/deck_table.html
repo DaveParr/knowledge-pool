@@ -176,21 +176,6 @@
   });
 
 
-  // A refused call shows as one line with a retry that makes the same call again through the host.
-  const TOOL = "deck_show";
-  let lastArgs = null;
-  async function retry() {
-    if (!lastArgs) return;
-    app.innerHTML = `<p class="empty">Trying again…</p>`;
-    try { shown(await request("tools/call", { name: TOOL, arguments: lastArgs })); }
-    catch (e) { app.innerHTML = refusalHtml(refusalOf(null, e), true); }
-  }
-  function shown(result) {
-    const why = refusalOf(result);
-    if (why) app.innerHTML = refusalHtml(why, Boolean(lastArgs));
-    else render(result.structuredContent);
-  }
-  app.addEventListener("click", (e) => { if (e.target.closest("[data-retry]")) retry(); });
 
   function render(deck) {
     if (!deck || deck.error) {
@@ -216,6 +201,8 @@
       ${cards.length ? "" : `<p class="empty">This deck has no cards yet.</p>`}`;
   }
 
+  const view = refusableView(app, "deck_show", render, request);
+
   window.addEventListener("message", (event) => {
     const msg = event.data;
     if (!msg || msg.jsonrpc !== "2.0") return;
@@ -226,9 +213,9 @@
       return;
     }
     if (msg.method === "ui/notifications/tool-input") {
-      lastArgs = (msg.params && msg.params.arguments) || null;
+      view.input(msg.params);
     } else if (msg.method === "ui/notifications/tool-result") {
-      shown(msg.params);
+      view.result(msg.params);
     } else if (msg.method === "ui/notifications/host-context-changed") {
       applyHost(msg.params);
     } else if (msg.method === "ui/resource-teardown" && msg.id !== undefined) {
