@@ -2,6 +2,7 @@
 with a copy button, and "Sign out". Also the page's session check."""
 
 import "./session_bar.css";
+import from .walker_failure { refusalLine, REFUSED_CODE }
 
 glob SIGN_IN_PATH: str = "/auth/login",
      SIGN_OUT_PATH: str = "/auth/logout",
@@ -54,10 +55,21 @@ async def:pub checkSession -> SessionInfo | None {
 glob guardInstalled: bool = False,
      sessionCheckRunning: bool = False;
 
+"""A walker call the front door refused (a 429, `try-again`, the internal
+error), as the reply a walker that failed gives: one WalkerError report, which
+the page's walker failure display already shows (`failureMessage`)."""
+async def refusedAsReport(reply: any) -> any {  # jac:ignore[W1037]
+    line = refusalLine(int(reply.status), str(await reply.text()));
+    body = {"ok": True, "type": "response", "data": {"result": None, "reports": [{"code": REFUSED_CODE, "message": line}]}, "error": None};
+    return new(Response, JSON.stringify(body), {"status": 200, "headers": {"Content-Type": "application/json"}});  # jac:ignore[E1053,W1051,W2001]
+}
+
 """Watch every call the page makes. One that is refused or fails to answer (any
 deck call, whether the caller reads it as an empty reply or a thrown error) is
 followed by a session check, so a session that has ended sends the user to sign
-in instead of showing an empty page. Installed once, by the first SessionBar."""
+in instead of showing an empty page. A walker call refused for any other reason
+(401 aside) comes back as a failed walker's report, so the page says why in one
+line instead of showing nothing. Installed once, when this module loads."""
 def installSessionGuard {
     if guardInstalled {
         return;
@@ -77,18 +89,30 @@ def installSessionGuard {
 
     browser.fetch = lambda (input: any, init: any) -> any {  # jac:ignore[W1037]
         pending: any = original.call(browser, input, init);  # jac:ignore[W1037]
-        pending.then(
+        return pending.then(
             lambda (reply: any) -> any {  # jac:ignore[W1037]
-                if not reply.ok and reply.url.indexOf(ME_PATH) < 0 {
+                if reply.ok or reply.url.indexOf(ME_PATH) >= 0 {
+                    return reply;
+                }
+                # A 429 says nothing about the session, and a session check would spend more of the limit.
+                if reply.status != 429 {
                     recheck();
                 }
+                if reply.status != 401 and reply.url.indexOf("/walker/") >= 0 {
+                    return refusedAsReport(reply);
+                }
+                return reply;
             },
-            lambda (_failure: any) -> any {  # jac:ignore[W1037]
+            lambda (failure: any) -> any {  # jac:ignore[W1037]
                 recheck();
+                raise failure;
             }
         );
-        return pending;
     };
+}
+
+with entry {
+    installSessionGuard();
 }
 
 def:pub SessionBar -> JsxElement {
@@ -98,7 +122,6 @@ def:pub SessionBar -> JsxElement {
         address: str = "";
 
     can with entry {
-        installSessionGuard();
         address = connectorAddress(window.location.origin);
         refreshSession();
     }

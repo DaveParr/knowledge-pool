@@ -45,6 +45,7 @@ import from deck_io { DeckExport, DeckImport }
 import from legality { GetFormatRules }
 import from walker_errors { WalkerError }
 import from json_object { JsonObject }
+import from ui_pages { view_page }
 import from front_door { FrontDoorConfig, front_door_app, start_upstream, stop_upstream, stop_child_on_sigterm, exit_when_upstream_dies, expect_upstream_to_stop }
 import from urllib.parse { urlparse }
 import from browser_session { WorkOSSessions }
@@ -405,24 +406,16 @@ def make_apps -> Apps {
     apps = Apps();
     apps.tool(resource_uri=DECK_UI)(deck_show);
     apps.tool(resource_uri=MANA_UI)(deck_analyze);
-    with open(os.path.join(APP_DIR, "ui", "deck_table.html"), encoding="utf-8") as f {
-        apps.add_html_resource(DECK_UI, f.read(), title="Deck table", prefers_border=True);
-    }
-    with open(os.path.join(APP_DIR, "ui", "mana_analysis.html"), encoding="utf-8") as f {
-        apps.add_html_resource(MANA_UI, f.read(), title="Mana analysis", prefers_border=True);
-    }
+    apps.add_html_resource(DECK_UI, view_page("deck_table.html"), title="Deck table", prefers_border=True);
+    apps.add_html_resource(MANA_UI, view_page("mana_analysis.html"), title="Mana analysis", prefers_border=True);
     apps.tool(resource_uri=SEARCH_UI)(card_search);
-    with open(os.path.join(APP_DIR, "ui", "card_search.html"), encoding="utf-8") as f {
-        apps.add_html_resource(SEARCH_UI, f.read(), title="Card search", prefers_border=True);
-    }
+    apps.add_html_resource(SEARCH_UI, view_page("card_search.html"), title="Card search", prefers_border=True);
     apps.tool(resource_uri=EXPORT_UI)(deck_export);
-    with open(os.path.join(APP_DIR, "ui", "deck_export.html"), encoding="utf-8") as f {
-        apps.add_html_resource(
-            EXPORT_UI, f.read(), title="Deck export", prefers_border=True,
-            # Ask for the clipboard so Copy works; the view selects the text when the host says no.
-            permissions=ResourcePermissions(clipboard_write={})
-        );
-    }
+    apps.add_html_resource(
+        EXPORT_UI, view_page("deck_export.html"), title="Deck export", prefers_border=True,
+        # Ask for the clipboard so Copy works; the view selects the text when the host says no.
+        permissions=ResourcePermissions(clipboard_write={})
+    );
     return apps;
 }
 

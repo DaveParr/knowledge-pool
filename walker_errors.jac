@@ -13,7 +13,8 @@ no-export / no-import (the list format cannot go that way), refused-change
 (a holdings change was refused; the message says why). The runner adds two
 of its own (`graph_runner.jac`): try-again (the call kept meeting another
 writer and was rolled back) and internal-error (Jac refused a write the app
-had allowed: an app fault, rolled back and logged)."""
+had allowed: an app fault, rolled back and logged). The web page adds `refused` (`session_bar.jac`) for a call
+the front door refused, such as a 429, with the line to show."""
 obj WalkerError {
     has code: str,
         message: str;

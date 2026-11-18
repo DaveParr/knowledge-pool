@@ -82,6 +82,7 @@
     color: #1f1e1d; font: 600 11px/1 var(--font-sans, system-ui, sans-serif); font-variant-numeric: tabular-nums; }
   .mc-sep { color: var(--muted); font-size: 11px; margin: 0 2px; }
 </style>
+<!-- @include refusal.html -->
 </head>
 <body>
 <main id="app"><p class="empty">Loading deck…</p></main>
@@ -198,6 +199,8 @@
       ${cards.length ? "" : `<p class="empty">This deck has no cards yet.</p>`}`;
   }
 
+  const view = refusableView(app, "deck_show", render, request);
+
   window.addEventListener("message", (event) => {
     const msg = event.data;
     if (!msg || msg.jsonrpc !== "2.0") return;
@@ -207,8 +210,10 @@
       msg.error ? p.reject(msg.error) : p.resolve(msg.result);
       return;
     }
-    if (msg.method === "ui/notifications/tool-result") {
-      render(msg.params && msg.params.structuredContent);
+    if (msg.method === "ui/notifications/tool-input") {
+      view.input(msg.params);
+    } else if (msg.method === "ui/notifications/tool-result") {
+      view.result(msg.params);
     } else if (msg.method === "ui/notifications/host-context-changed") {
       applyHost(msg.params);
     } else if (msg.method === "ui/resource-teardown" && msg.id !== undefined) {
