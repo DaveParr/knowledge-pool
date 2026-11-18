@@ -48,6 +48,11 @@ def _set_cookies(reply) -> dict[str, str]:
     return {c.split("=", 1)[0]: c for c in reply.headers.get_list("set-cookie")}
 
 
+def me_reply(name, can_sign_out=True):
+    """What `GET /me` answers."""
+    return {"name": name, "can_sign_out": can_sign_out}
+
+
 def test_a_page_load_with_no_session_redirects_to_sign_in_and_serves_nothing(door):
     reply = door.get("/?deck=1")
     assert reply.status_code == 302
@@ -113,20 +118,20 @@ def test_signing_in_sets_a_host_only_http_only_secure_lax_cookie_and_returns_to_
 def test_a_signed_in_user_stays_signed_in_across_requests(door):
     _sign_in(door, "code-alice")
     for _ in range(3):
-        assert door.get("/me").json() == {"name": "Alice Example"}
+        assert door.get("/me").json() == me_reply("Alice Example")
 
 
 def test_each_sign_in_stores_the_google_display_name_on_the_users_own_root(door):
     _sign_in(door, "code-alice")
-    assert door.get("/me").json() == {"name": "Alice Example"}
+    assert door.get("/me").json() == me_reply("Alice Example")
     _sign_in(door, "code-alice-renamed")
-    assert door.get("/me").json() == {"name": "Alice Renamed"}
-    assert door.get("/me", headers=_as(sealed("user_bob"))).json() == {"name": "Unknown user"}
+    assert door.get("/me").json() == me_reply("Alice Renamed")
+    assert door.get("/me", headers=_as(sealed("user_bob"))).json() == me_reply("Unknown user")
 
 
 def test_a_user_with_no_display_name_is_shown_as_unknown(door):
     _sign_in(door, "code-nameless")
-    assert door.get("/me").json() == {"name": "Unknown user"}
+    assert door.get("/me").json() == me_reply("Unknown user")
 
 
 def test_a_person_workos_refuses_gets_403_and_no_session(door):
@@ -200,7 +205,7 @@ def test_local_mode_has_no_sign_in_and_no_session_check_needed(tmp_path, session
         assert local.get(front_door.LOGIN_PATH).status_code == 404
         assert local.get(front_door.CALLBACK_PATH + "?code=code-alice&state=x").status_code == 404
         assert local.post(front_door.LOGOUT_PATH).status_code == 404
-        assert local.get("/me").json() == {"name": "Unknown user"}
+        assert local.get("/me").json() == me_reply("Unknown user", can_sign_out=False)
 
 
 def test_signing_out_by_a_link_from_another_site_is_refused_and_ends_nothing(door):

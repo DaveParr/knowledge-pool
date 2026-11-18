@@ -368,20 +368,29 @@ async def logout(request: Request, config: FrontDoorConfig) -> Response {  # jac
 }
 
 """`GET /me`, the session check for the page: the caller's display name, or
-"Unknown user" when none is stored yet."""
-async def session_check(_request: Request) -> Response {  # jac:ignore[W1036]
+"Unknown user" when none is stored yet, and whether the page may offer "Sign out"
+(only where a browser session exists to end)."""
+async def session_check(config: FrontDoorConfig) -> Response {
     caller = request_caller();
     if caller is None {
         return refusal(401, "UNAUTHORIZED", "Unauthorized");
     }
     (name, failed) = await as_caller(caller, display_name, "display_name");
-    return failed if failed is not None else JSONResponse({"name": name}, headers=NO_STORE);
+    if failed is not None {
+        return failed;
+    }
+    return JSONResponse({"name": name, "can_sign_out": browser_sign_in_enabled(config)}, headers=NO_STORE);
+}
+
+"""Whether browser sign-in is on: hosted mode with a session provider."""
+def browser_sign_in_enabled(config: FrontDoorConfig) -> bool {
+    return app_mode() == HOSTED and config.sessions is not None;
 }
 
 """A route that answers 404 unless browser sign-in is on (hosted mode with a session provider)."""
 def sign_in_route(handler: any, config: FrontDoorConfig) -> any {  # jac:ignore[W1036,W1037]
     async def route(request: Request) -> Response {  # jac:ignore[W1036]
-        if app_mode() != HOSTED or config.sessions is None {
+        if not browser_sign_in_enabled(config) {
             return PlainTextResponse("Not Found", status_code=404);
         }
         return await handler(request, config);
@@ -400,13 +409,16 @@ def web_app(config: FrontDoorConfig) -> Starlette {
     async def other_route(request: Request) -> Response {  # jac:ignore[W1036]
         return await other(request, config);
     }
+    async def me_route(_request: Request) -> Response {  # jac:ignore[W1036]
+        return await session_check(config);
+    }
     return Starlette(
         routes=[
             Route(HEALTH_PATH, health, methods=["GET", "HEAD"]),
             Route(LOGIN_PATH, sign_in_route(login, config), methods=["GET"]),
             Route(CALLBACK_PATH, sign_in_route(callback, config), methods=["GET"]),
             Route(LOGOUT_PATH, sign_in_route(logout, config), methods=["POST"]),
-            Route(ME_PATH, session_check, methods=["GET"]),
+            Route(ME_PATH, me_route, methods=["GET"]),
             Route("/walker/{name}", walker_route, methods=["POST"]),
             Route("/function/{name}", function_route, methods=["POST"]),
             Route("/{path:path}", other_route, methods=["GET", "HEAD", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"])
