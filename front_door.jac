@@ -64,6 +64,7 @@ import from graph_runner { APP_DIR, HOSTED, VERIFIED_SUB, app_mode, request_call
 import from profile { save_display_name, display_name }
 import from browser_session { SessionUser, SessionCheckUnavailable, check_session }
 import from hosted_auth { AuthKitVerifier }
+import from rate_limits { Buckets, RateLimits, rate_limits, UNKNOWN_ADDRESS }
 import from decks { DeckAction, CreateDeck, ListDecks, GetDeck, SetDeckFormat, AddCard, SetCardCount, RemoveCard, list_formats }
 import from deck_io { DeckExport, DeckImport, CreateDeckFromList }
 import from jaclang.runtime.constructs { WalkerArchetype }
@@ -124,7 +125,8 @@ obj FrontDoorConfig {
         client: any = None,  # jac:ignore[W1037]
         auth: AuthKitVerifier | None = None,
         sessions: any = None,  # jac:ignore[W1037]
-        public_origin: str = "";
+        public_origin: str = "",
+        limits: RateLimits | None = None;  # hosted mode's rate limits; None reads them from the environment
 }
 
 """Jac's own error envelope, with the HTTP status Jac's server would use."""
@@ -548,29 +550,71 @@ def refuse_anonymous(request: Request, config: FrontDoorConfig, ended: bool) -> 
     return reply;
 }
 
-"""The ASGI app, behind the sign-in check of hosted mode. The health path,
-discovery and the sign-in paths answer anyone. Every other request runs as
-the caller its credentials name (`graph_runner.VERIFIED_SUB`, which
-`graph_runner.request_caller` reads); a session whose access token has
-expired is renewed and the renewed cookie goes out with the response. A
-request from no one gets, for a page load or a page file, a redirect to
-sign in (before anything is served: a page served with no caller would
-reload for ever on its first 401), and for anything else a 401. If WorkOS
-cannot say whether a session is good, the answer is 503 and the cookie
-stays. Local mode has no check."""
+"""The address a request came from: `X-Real-IP`, or "unknown" when it has none."""
+def request_address(scope: dict[str, any]) -> str {  # jac:ignore[W1037]
+    for (name, value) in scope["headers"] {
+        if name == b"x-real-ip" {
+            return value.decode("latin-1").strip() or UNKNOWN_ADDRESS;
+        }
+    }
+    return UNKNOWN_ADDRESS;
+}
+
+"""The reply to a request over its limit: 429, `Retry-After` in seconds, a
+one-line plain-text body."""
+def too_many(pause: int) -> Response {
+    unit = "second" if pause == 1 else "seconds";
+    return PlainTextResponse(
+        f"Too many requests, try again in {pause} {unit}", status_code=429, headers={"retry-after": str(pause)}
+    );
+}
+
+"""Spend one request from `buckets` for `key`. When it is over its limit, answer
+429 and say so (True)."""
+async def refused_as_too_many(buckets: Buckets, key: str, scope: dict[str, any], receive: any, send: any) -> bool {  # jac:ignore[W1037]
+    pause = buckets.take(key);
+    if pause {
+        await too_many(pause)(scope, receive, send);
+    }
+    return pause > 0;
+}
+
+"""The ASGI app, behind the rate limits and the sign-in check of hosted mode.
+The health path answers anyone, uncounted. Discovery and the sign-in paths
+answer anyone too, but count against the caller's address (30 a minute), as
+does every request from no one, whether it is then answered or refused. Every
+other request runs as the caller its credentials name
+(`graph_runner.VERIFIED_SUB`, which `graph_runner.request_caller` reads) and
+counts against that user (300 a minute, browser and connector together); a
+session whose access token has expired is renewed and the renewed cookie goes
+out with the response. A refusal is a 429, ahead of everything else. A request
+from no one gets, for a page load or a page file, a redirect to sign in
+(before anything is served: a page served with no caller would reload for ever
+on its first 401), and for anything else a 401. If WorkOS cannot say whether a
+session is good, the answer is 503 and the cookie stays. Local mode has no
+check and no limit."""
 def guarded(inner: any, config: FrontDoorConfig) -> any {  # jac:ignore[W1037]
+    limits = config.limits or rate_limits();
     async def app(scope: dict[str, any], receive: any, send: any) {  # jac:ignore[W1037]
         if scope["type"] != "http" {
             await inner(scope, receive, send);
             return;
         }
         path = scope["path"];
-        if app_mode() != HOSTED or path == HEALTH_PATH or path in AUTH_PATHS {
+        if app_mode() != HOSTED or path == HEALTH_PATH {
             await inner(scope, receive, send);
             return;
         }
-        if config.auth is not None and is_discovery_path(path) {
-            await discovery(config.auth)(scope, receive, send);
+        if path in AUTH_PATHS or (config.auth is not None and is_discovery_path(path)) {
+            # Open to anyone, so counted against the address.
+            if await refused_as_too_many(limits.addresses, request_address(scope), scope, receive, send) {
+                return;
+            }
+            if config.auth is not None and is_discovery_path(path) {
+                await discovery(config.auth)(scope, receive, send);
+            } else {
+                await inner(scope, receive, send);
+            }
             return;
         }
         try {
@@ -580,7 +624,13 @@ def guarded(inner: any, config: FrontDoorConfig) -> any {  # jac:ignore[W1037]
             return;
         }
         if who.caller is None {
+            if await refused_as_too_many(limits.addresses, request_address(scope), scope, receive, send) {
+                return;
+            }
             await refuse_anonymous(Request(scope), config, who.ended)(scope, receive, send);
+            return;
+        }
+        if await refused_as_too_many(limits.users, who.caller, scope, receive, send) {
             return;
         }
         reset = VERIFIED_SUB.set(who.caller);

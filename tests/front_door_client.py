@@ -36,7 +36,7 @@ class FrontDoorClient:
     stand-in for WorkOS. `origin` is the address the page is served from. Redirects
     are not followed."""
 
-    def __init__(self, base_path, hosted=None, mcp_app=None, sessions=None, origin=ORIGIN):
+    def __init__(self, base_path, hosted=None, mcp_app=None, sessions=None, origin=ORIGIN, limits=None):
         self._jac = JacTestClient.from_file("main.jac", base_path=str(base_path))
         self.upstream_requests: list[httpx2.Request] = []
         self._upstream_up = True
@@ -46,7 +46,8 @@ class FrontDoorClient:
             auth = hosted_auth.AuthKitVerifier(issuer=ISSUER, audience=AUDIENCE, key_for=hosted.key_for)
         self.origin = origin
         config = front_door.FrontDoorConfig(
-            upstream=UPSTREAM, origins=[origin], client=http, auth=auth, sessions=sessions, public_origin=origin
+            upstream=UPSTREAM, origins=[origin], client=http, auth=auth, sessions=sessions, public_origin=origin,
+            limits=limits
         )
         self._client = TestClient(
             front_door.front_door_app(mcp_app or _mcp_stub(), config), base_url=origin, follow_redirects=False
