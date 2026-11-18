@@ -23,6 +23,7 @@ typescript = "5.9.3"
 
 [dependencies.pypi]
 mcp = "==2.3.0"
+workos = "==10.9.0"
 
 [dev-dependencies.pypi]
 watchdog = ">=3.0.0"
