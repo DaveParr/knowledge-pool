@@ -219,7 +219,7 @@
     }
     if (msg.method === "ui/notifications/tool-input") {
       const args = (msg.params && msg.params.arguments) || {};
-      if (args.deck_id) tried = { deck_id: args.deck_id, format: args.format || "arena" };
+      if (args.deck_id) tried = args.format ? { deck_id: args.deck_id, format: args.format } : { deck_id: args.deck_id };
     } else if (msg.method === "ui/notifications/tool-result") {
       status = "";
       takeResult(msg.params);

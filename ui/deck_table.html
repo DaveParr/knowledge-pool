@@ -175,8 +175,6 @@
     app.querySelectorAll(`ul[data-zone="${b.dataset.zone}"] > li > details`).forEach((d) => { d.open = b.dataset.all === "open"; });
   });
 
-
-
   function render(deck) {
     if (!deck || deck.error) {
       app.innerHTML = `<p class="empty">${esc(deck ? deck.error : "No deck.")}</p>`;
