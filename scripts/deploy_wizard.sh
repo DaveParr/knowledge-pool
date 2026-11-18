@@ -202,7 +202,11 @@ MCP_URL="$APP_URL/mcp"
 HEALTH_PATH="/healthz"
 CALLBACK_URL="$APP_URL/auth/callback"
 REPO="DaveParr/knowledge-pool"
+BASE="DaveParr/planning-deployment"   # the integration branch every ticket merges into
 ISSUE=136
+
+# gh secret set picks the repo from the working directory: run from the checkout.
+cd "$(git -C "$(dirname "$0")" rev-parse --show-toplevel)"
 
 STATE_DIR="${XDG_CONFIG_HOME:-$HOME/.config}/knowledge-pool"
 mkdir -p "$STATE_DIR"
@@ -355,7 +359,7 @@ step "Create → GitHub Repo → $REPO (accept the GitHub permission Railway ask
 step "App service → Settings → Source: branch main, 'Wait for CI' ON."
 step "Settings → Build: Dockerfile (the repo root's Dockerfile is picked up)."
 step "Settings → Deploy: health check path $HEALTH_PATH, restart policy 'On failure'."
-step "Don't deploy yet: the variables come next. If it already started a build, let it fail."
+step "main has no Dockerfile yet, so a build Railway starts now fails: leave it. The first real deploy is stage 16."
 pause "Press Enter once the service is linked."
 
 stage "Railway: the app's variables"
@@ -404,7 +408,10 @@ pause
 # ── B. First deploy ───────────────────────────────────────────────────────
 
 stage "First deploy: Test, build, health"
-say "Push to main (merge the release PR). Railway waits for Test, then builds and checks health."
+say "Railway deploys main, and main does not have the hosted app yet: it is on $BASE."
+step "Open a PR from $BASE into main and merge it (a merge commit, no squash)."
+open_url "https://github.com/$REPO/compare/main...$BASE?expand=1"
+pause "Press Enter once it is merged."
 open_url "https://github.com/$REPO/actions/workflows/test.yml"
 step "Watch Test pass on main, then the Railway build and health check."
 pause "Press Enter once Railway shows the deployment Active (the wizard then polls $HEALTH_PATH)."
