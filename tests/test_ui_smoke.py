@@ -205,7 +205,9 @@ async def deck_show_result(url: str) -> dict:
             return json.loads(result.content[0].text)
         return sc["result"] if set(sc) == {"result"} else sc
 
-    async with streamable_http_client(url) as (read, write), ClientSession(read, write) as session:
+    # As a host that renders MCP Apps: only those get deck_show's structuredContent.
+    apps_ext = {"io.modelcontextprotocol/ui": {"mimeTypes": ["text/html;profile=mcp-app"]}}
+    async with streamable_http_client(url) as (read, write), ClientSession(read, write, extensions=apps_ext) as session:
         await session.initialize()
         decks = await call(session, "deck_list")
         deck = next((d for d in decks if d["name"] == "Smoke Burn"), None)

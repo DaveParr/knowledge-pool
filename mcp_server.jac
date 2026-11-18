@@ -77,9 +77,7 @@ def deck_show(deck_id: str, ctx: Context) -> CallToolResult {  # jac:ignore[W103
     if "error" in view {
         return CallToolResult(content=[TextContent(text=view["error"])], is_error=True);
     }
-    return CallToolResult(
-        content=[TextContent(text=view_text(ctx, deck_markdown(view), deck_brief(view)))], structured_content=view
-    );
+    return view_result(ctx, view, deck_markdown(view), deck_brief(view));
 }
 
 """What the model gets when the user already sees the deck view: the deck's
@@ -159,10 +157,7 @@ def deck_analyze(deck_id: str, ctx: Context) -> CallToolResult {  # jac:ignore[W
         "mana": view["mana"],
         "curve": view["curve"]
     };
-    return CallToolResult(
-        content=[TextContent(text=view_text(ctx, mana_markdown(analysis), mana_brief(analysis)))],
-        structured_content=analysis
-    );
+    return view_result(ctx, analysis, mana_markdown(analysis), mana_brief(analysis));
 }
 
 """What the model gets when the user already sees the mana chart: the numbers
@@ -224,10 +219,7 @@ def card_search(deck_id: str, query: str, ctx: Context, limit: int = 20) -> Call
             is_error=True
         );
     }
-    return CallToolResult(
-        content=[TextContent(text=view_text(ctx, search_markdown(result), search_brief(result)))],
-        structured_content=result
-    );
+    return view_result(ctx, result, search_markdown(result), search_brief(result));
 }
 
 """What the model gets when the user already sees the search panel: the hits
@@ -333,7 +325,7 @@ def deck_export(deck_id: str, ctx: Context, format: str = "arena") -> CallToolRe
         "lossy_drops": LOSSY_DROPS
     };
     text = export_text(result);
-    return CallToolResult(content=[TextContent(text=view_text(ctx, text, export_brief() + text))], structured_content=result);
+    return view_result(ctx, result, text, export_brief() + text);
 }
 
 """The lead-in the model gets when the user already sees the export view. The
@@ -360,6 +352,17 @@ def view_text(ctx: Context, full: str, brief: str) -> str {  # jac:ignore[W1036]
         );
     }
     return brief if apps else full;
+}
+
+"""A view-bound tool's result: `view_text`'s text, plus `data` as structured
+content for the view, only when the client renders MCP Apps. Some clients
+without MCP Apps (Claude Code among them) give the model the structured content
+in place of the text, so sending it there would swap the Markdown for raw JSON."""
+def view_result(ctx: Context, data: JsonObject, full: str, brief: str) -> CallToolResult {  # jac:ignore[W1036]: the SDK finds the context by this bare annotation
+    return CallToolResult(
+        content=[TextContent(text=view_text(ctx, full, brief))],
+        structured_content=data if client_supports_apps(ctx) else None
+    );
 }
 
 """The export as chat text, for the model and for clients that do not render MCP
