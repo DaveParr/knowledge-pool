@@ -27,6 +27,7 @@ glob ADDRESS_LIMIT_SETTING: str = "KP_RATE_LIMIT_ADDRESS",
      MAX_ADDRESSES: int = 10000,
      UNKNOWN_ADDRESS: str = "unknown",
      WINDOW_S: float = 60.0,
+     LOG_PRUNE_AT: int = 1000,
      RATE_LOG: logging.Logger = logging.getLogger("knowledge_pool.rate_limits");
 
 """A set of token buckets, one per key, each `per_minute` tokens deep. `take`
@@ -93,6 +94,10 @@ obj Buckets {
     def log_refusal(key: str, now: float) {
         if key in self.logged and now - self.logged[key] < WINDOW_S {
             return;
+        }
+        # Lines older than a minute no longer silence anything: forget them, so this table stays small.
+        if len(self.logged) >= LOG_PRUNE_AT {
+            self.logged = {k: t for (k, t) in self.logged.items() if now - t < WINDOW_S};
         }
         self.logged[key] = now;
         RATE_LOG.warning("Rate limit hit for %s %s (%d a minute).", self.label, key, self.per_minute);

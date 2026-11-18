@@ -37,8 +37,8 @@ def issuer():
 @pytest.fixture
 def client(tmp_path, issuer, clock, monkeypatch):
     monkeypatch.setenv("KP_MODE", "hosted")
-    monkeypatch.setenv("KP_RATE_LIMIT_ADDRESS", str(ADDRESS_LIMIT))
-    monkeypatch.setenv("KP_RATE_LIMIT_USER", str(USER_LIMIT))
+    monkeypatch.setenv(rate_limits.ADDRESS_LIMIT_SETTING, str(ADDRESS_LIMIT))
+    monkeypatch.setenv(rate_limits.USER_LIMIT_SETTING, str(USER_LIMIT))
     with FrontDoorClient(tmp_path, hosted=issuer, limits=rate_limits.rate_limits(clock)) as c:
         yield c
 
@@ -51,16 +51,18 @@ def from_address(address: str, **headers) -> dict:
     return {"x-real-ip": address, **headers}
 
 
-def test_limits_default_to_30_and_300_a_minute(monkeypatch):
-    monkeypatch.delenv("KP_RATE_LIMIT_ADDRESS", raising=False)
-    monkeypatch.delenv("KP_RATE_LIMIT_USER", raising=False)
+def test_limits_default_to_the_named_defaults(monkeypatch):
+    monkeypatch.delenv(rate_limits.ADDRESS_LIMIT_SETTING, raising=False)
+    monkeypatch.delenv(rate_limits.USER_LIMIT_SETTING, raising=False)
     limits = rate_limits.rate_limits()
-    assert (limits.addresses.per_minute, limits.users.per_minute) == (30, 300)
+    assert (limits.addresses.per_minute, limits.users.per_minute) == (
+        rate_limits.DEFAULT_ADDRESS_LIMIT, rate_limits.DEFAULT_USER_LIMIT
+    )
 
 
 def test_limits_come_from_variables(monkeypatch):
-    monkeypatch.setenv("KP_RATE_LIMIT_ADDRESS", "7")
-    monkeypatch.setenv("KP_RATE_LIMIT_USER", "9")
+    monkeypatch.setenv(rate_limits.ADDRESS_LIMIT_SETTING, "7")
+    monkeypatch.setenv(rate_limits.USER_LIMIT_SETTING, "9")
     limits = rate_limits.rate_limits()
     assert (limits.addresses.per_minute, limits.users.per_minute) == (7, 9)
 
@@ -143,7 +145,7 @@ def test_the_health_path_is_never_limited(client):
 def test_requests_without_an_address_share_one_unknown_bucket(client):
     codes = [client.get("/mcp").status_code for _ in range(ADDRESS_LIMIT + 1)]
     assert codes == [401] * ADDRESS_LIMIT + [429]
-    assert client.get("/mcp", headers=from_address("unknown")).status_code == 429
+    assert client.get("/mcp", headers=from_address(rate_limits.UNKNOWN_ADDRESS)).status_code == 429
 
 
 def test_addresses_past_the_table_size_share_unknown(monkeypatch, clock):
@@ -176,3 +178,16 @@ def test_a_refused_user_is_logged_once_a_minute(client, issuer, caplog):
     for _ in range(USER_LIMIT + 5):
         client.get("/mcp", headers=alice)
     assert [r.getMessage() for r in caplog.records] == ["Rate limit hit for user user_alice (5 a minute)."]
+
+
+def test_the_refusal_log_forgets_keys_after_a_minute(clock, monkeypatch):
+    monkeypatch.setattr(rate_limits, "LOG_PRUNE_AT", 3)
+    buckets = rate_limits.rate_limits(clock).users
+    for n in range(3):
+        for _ in range(buckets.per_minute + 1):
+            buckets.take(f"user_{n}")
+    assert len(buckets.logged) == 3
+    clock.now += 61
+    for _ in range(buckets.per_minute + 1):
+        buckets.take("user_late")
+    assert list(buckets.logged) == ["user_late"]
