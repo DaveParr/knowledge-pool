@@ -18,9 +18,11 @@ import from jaclang.server.session { Session }
 import from pathlib { Path }
 import from catalog.ingest { build, load_atomic, load_oracle_tags }
 import catalog.store as store;
-import from decks { Deck, DeckView, CreateDeck, ListDecks, GetDeck, AddCard, holdings }
+import from decks { Deck, DeckView, CreateDeck, ListDecks, GetDeck, AddCard, SetDeckFormat, EditDeck, DeckSummary, holdings }
+import from profile { save_display_name, UNKNOWN_USER }
+import from deck_io { DeckExport, ExportResult }
 import from walker_errors { WalkerError }
-import from graph_runner { refresh_cards, guest_root_id, user_root_id, run_walker, call_function, run_as_guest, in_context, start, request_caller, check_bind, LOCAL_USER, RERUNS, CallFailed, LOG }
+import from graph_runner { refresh_cards, guest_root_id, user_root_id, run_walker, run_read, list_other_decks, copy_deck, call_function, run_as_guest, in_context, start, request_caller, check_bind, LOCAL_USER, RERUNS, CallFailed, LOG }
 import from cards { Card, RefreshCards, new_card, card_nodes_for }
 import from json_object { JsonObject }
 import from legality { Format, FormatRules, GetFormatRules }
@@ -66,22 +68,41 @@ def _error_code(caller: str, w: WalkerArchetype) -> str {
     return first.code if isinstance(first, WalkerError) else "";
 }
 
-test "another user's deck id answers no-such-deck, to read or to change" {
-    alices = _new_deck(ALICE, "Alice's private-to-change deck");
+test "changing another user's deck answers not-your-deck, and an id that names no deck answers no-such-deck" {
+    alices = _new_deck(ALICE, "Alice's change-guarded deck");
     assert _error_code(ALICE, GetDeck(deck_id=alices)) == "";
-    assert _error_code(BOB, GetDeck(deck_id=alices)) == "no-such-deck";
     bolt = store.find_by_name("Lightning Bolt")["oracle_id"] as str;
-    assert _error_code(BOB, AddCard(deck_id=alices, oracle_id=bolt)) == "no-such-deck";
+    assert _error_code(BOB, AddCard(deck_id=alices, oracle_id=bolt)) == "not-your-deck";
+    assert _error_code(BOB, SetDeckFormat(deck_id=alices, format="modern")) == "not-your-deck";
+    assert _error_code(BOB, AddCard(deck_id=str(uuid4()), oracle_id=bolt)) == "no-such-deck";
+    assert _error_code(BOB, AddCard(deck_id="not an id", oracle_id=bolt)) == "no-such-deck";
     view = run_walker(ALICE, GetDeck(deck_id=alices)).reports[0] as DeckView;
     assert view.cards == [];
 }
 
-test "a deck another user can read still answers no-such-deck: only the owner's root counts" {
+test "the not-your-deck message points to copying" {
+    alices = _new_deck(ALICE, "Alice's copy-pointer deck");
+    bolt = store.find_by_name("Lightning Bolt")["oracle_id"] as str;
+    err = run_walker(BOB, AddCard(deck_id=alices, oracle_id=bolt)).reports[0] as WalkerError;
+    assert "copy" in err.message.lower();
+}
+
+test "a card id or a root id is no deck: it answers no-such-deck, never not-your-deck" {
+    alices = _deck_with(ALICE, "Alice's non-deck-id deck", "Shock");
+    card_id = _card_ids(ALICE, alices)[0];
+    root_id = user_root_id(ALICE);
+    bolt = store.find_by_name("Lightning Bolt")["oracle_id"] as str;
+    assert _error_code(BOB, AddCard(deck_id=card_id, oracle_id=bolt)) == "no-such-deck";
+    assert _error_code(BOB, AddCard(deck_id=root_id, oracle_id=bolt)) == "no-such-deck";
+}
+
+test "a deck another user can read answers not-your-deck to a change: only the owner's root counts" {
     alices = _new_deck(ALICE, "Alice's readable deck");
     call_function(ALICE, lambda () -> object { grant(jobj(alices), level=AccessLevel.READ); return None; });
     seen = call_function(BOB, lambda () -> object { return jobj(alices); });
     assert isinstance(seen, Deck);  # Jac lets Bob read it now
-    assert _error_code(BOB, GetDeck(deck_id=alices)) == "no-such-deck";
+    bolt = store.find_by_name("Lightning Bolt")["oracle_id"] as str;
+    assert _error_code(BOB, AddCard(deck_id=alices, oracle_id=bolt)) == "not-your-deck";
 }
 
 """The id of the oracle card `name`."""
@@ -541,4 +562,206 @@ test "a refresh with no duplicate cards logs no warning" {
         assert refresh_cards();
     }
     assert warned.call_count == 0;
+}
+
+
+# ---- Other users' decks: reading and copying -----------------------------
+
+"""`caller`'s deck `name` holding a Shock (main, with a role, a tag and a lock) and a Lightning Bolt (sideboard)."""
+def _annotated_deck(caller: str, name: str) -> str {
+    deck_id = _new_deck(caller, name);
+    shock = _oracle_id("Shock");
+    bolt = _oracle_id("Lightning Bolt");
+    done = run_walker(
+        caller,
+        EditDeck(
+            deck_id=deck_id,
+            changes=[
+                {"oracle_id": shock, "count": 3, "zone": "main", "reason": "cheap burn"},
+                {"oracle_id": bolt, "count": 2, "zone": "sideboard", "reason": "backup burn"}
+            ]
+        )
+    );
+    assert done.reports[0].rejected == [];
+    return deck_id;
+}
+
+"""Give `caller`'s deck `deck_id` its entry metadata on the Shock, as the deck's owner."""
+def _annotate_shock(caller: str, deck_id: str) {
+    call_function(
+        caller,
+        lambda () -> object {
+            for (e, c) in holdings(jobj(deck_id) as Deck) {
+                if c.name == "Shock" {
+                    e.roles = ["removal"];
+                    e.tags = ["burn"];
+                    e.locked = True;
+                    e.reason = "kills small creatures";
+                }
+            }
+            return None;
+        }
+    );
+}
+
+test "a user reads another user's deck as the owner, with its cards, history and notes" {
+    alices = _annotated_deck(ALICE, "Alice's readable-by-all deck");
+    _annotate_shock(ALICE, alices);
+    view = run_read(BOB, alices, GetDeck(deck_id=alices)).reports[0] as DeckView;
+    assert view.name == "Alice's readable-by-all deck";
+    assert [(l.name, l.zone, l.count) for l in view.cards] == [("Shock", "main", 3), ("Lightning Bolt", "sideboard", 2)];
+    shock = [l for l in view.cards if l.name == "Shock"][0];
+    assert shock.roles == ["removal"] and shock.locked and shock.reason == "kills small creatures";
+    assert len(view.history) == 2;
+}
+
+test "a read of another user's deck gives Bob no grant: his own lookup still finds nothing" {
+    alices = _new_deck(ALICE, "Alice's no-grant deck");
+    run_read(BOB, alices, GetDeck(deck_id=alices));
+    assert call_function(BOB, lambda () -> object { return jobj(alices); }) is None;
+}
+
+test "a read of another user's deck exports it too" {
+    alices = _annotated_deck(ALICE, "Alice's exportable deck");
+    out = run_read(BOB, alices, DeckExport(deck_id=alices, format="text")).reports[0] as ExportResult;
+    assert "Shock" in out.content;
+}
+
+test "a read of an id that names no deck answers no-such-deck" {
+    assert run_read(BOB, str(uuid4()), GetDeck(deck_id=str(uuid4()))).reports[0].code == "no-such-deck";
+    assert run_read(BOB, "not an id", GetDeck(deck_id="not an id")).reports[0].code == "no-such-deck";
+}
+
+test "a read with no caller is refused" {
+    alices = _new_deck(ALICE, "Alice's no-caller deck");
+    refused = False;
+    try {
+        run_read(None, alices, GetDeck(deck_id=alices));
+    } except PermissionError {
+        refused = True;
+    }
+    assert refused;
+}
+
+"""What a deck view shows of its deck, as plain values to compare."""
+def _shape(view: DeckView) -> tuple[object, ...] {
+    return (
+        view.id, view.name, view.format,
+        [(l.name, l.zone, l.count, l.roles, l.tags, l.locked, l.reason) for l in view.cards],
+        [(n.name, n.zone, n.before, n.after, n.reason) for n in view.history]
+    );
+}
+
+"""The one copy a user made of deck `deck_id`, as its view."""
+def _copy_view(caller: str, deck_id: str) -> DeckView {
+    return copy_deck(caller, deck_id).reports[0] as DeckView;
+}
+
+test "copying another user's deck makes the copier's own deck named '<name> (copy)', with cards, zones, counts and format" {
+    alices = _annotated_deck(ALICE, "Alice's burn deck");
+    run_walker(ALICE, SetDeckFormat(deck_id=alices, format="modern"));
+    copy = _copy_view(BOB, alices);
+    assert copy.name == "Alice's burn deck (copy)";
+    assert copy.format == "modern";
+    assert [(l.name, l.zone, l.count) for l in copy.cards] == [("Shock", "main", 3), ("Lightning Bolt", "sideboard", 2)];
+    assert "Alice's burn deck (copy)" in _deck_names(BOB);
+    assert copy.id != alices;
+    assert _error_code(BOB, AddCard(deck_id=copy.id, oracle_id=_oracle_id("Shock"))) == "";
+}
+
+test "a copy carries the per-card notes: roles, tags, locked and reason" {
+    alices = _annotated_deck(ALICE, "Alice's noted deck");
+    _annotate_shock(ALICE, alices);
+    copy = _copy_view(BOB, alices);
+    shock = [l for l in copy.cards if l.name == "Shock"][0];
+    assert shock.roles == ["removal"] and shock.tags == ["burn"] and shock.locked;
+    assert shock.reason == "kills small creatures";
+}
+
+test "a copy starts its own history with one line saying it was copied" {
+    alices = _annotated_deck(ALICE, "Alice's history deck");
+    save_display_name_as(ALICE, "Alice Archer");
+    copy = _copy_view(BOB, alices);
+    assert len(copy.history) == 1;
+    assert "copied" in copy.history[0].reason.lower();
+    assert "Alice's history deck" in copy.history[0].reason;
+}
+
+"""Store `name` as `caller`'s display name."""
+def save_display_name_as(caller: str, name: str) {
+    call_function(caller, lambda () -> object { save_display_name(name); return None; });
+}
+
+test "copying leaves the original untouched" {
+    alices = _annotated_deck(ALICE, "Alice's untouched deck");
+    before = run_walker(ALICE, GetDeck(deck_id=alices)).reports[0] as DeckView;
+    copy = _copy_view(BOB, alices);
+    run_walker(BOB, AddCard(deck_id=copy.id, oracle_id=_oracle_id("Goblin Guide")));
+    after = run_walker(ALICE, GetDeck(deck_id=alices)).reports[0] as DeckView;
+    assert _shape(after) == _shape(before);
+    assert _deck_names(ALICE).count("Alice's untouched deck") == 1;
+    assert "Alice's untouched deck (copy)" not in _deck_names(ALICE);
+}
+
+test "a copy stays as it was when the original changes later" {
+    alices = _annotated_deck(ALICE, "Alice's later-changed deck");
+    copy = _copy_view(BOB, alices);
+    run_walker(ALICE, AddCard(deck_id=alices, oracle_id=_oracle_id("Goblin Guide")));
+    run_walker(ALICE, SetDeckFormat(deck_id=alices, format="commander"));
+    again = run_walker(BOB, GetDeck(deck_id=copy.id)).reports[0] as DeckView;
+    assert _shape(again) == _shape(copy);
+}
+
+test "a user can copy their own deck" {
+    alices = _annotated_deck(ALICE, "Alice's self-copy deck");
+    copy = _copy_view(ALICE, alices);
+    assert copy.name == "Alice's self-copy deck (copy)";
+    assert len(copy.cards) == 2;
+}
+
+test "copying an id that names no deck answers no-such-deck and makes nothing" {
+    before = _deck_names(BOB);
+    assert copy_deck(BOB, str(uuid4())).reports[0].code == "no-such-deck";
+    assert _deck_names(BOB) == before;
+}
+
+"""The summaries of the decks `caller` can see that belong to other users."""
+def _others(caller: str) -> list[DeckSummary] {
+    return list_other_decks(caller);
+}
+
+test "listing other users' decks gives owner display name, deck name and format, and never the caller's own" {
+    _new_deck(ALICE, "Alice's browsable deck");
+    _new_deck(BOB, "Bob's own-browse deck");
+    save_display_name_as(ALICE, "Alice Archer");
+    seen = [(d.owner, d.name, d.format) for d in _others(BOB)];
+    assert ("Alice Archer", "Alice's browsable deck", "standard") in seen;
+    assert all(n != "Bob's own-browse deck" for (_, n, _) in seen);
+    assert all(n != "Alice's browsable deck" for (_, n, _) in [(d.owner, d.name, d.format) for d in _others(ALICE)]);
+}
+
+test "an owner with no stored name shows as Unknown user" {
+    carol = "user_test_carol_unnamed";
+    _new_deck(carol, "Carol's unnamed-owner deck");
+    mine = [d for d in _others(BOB) if d.name == "Carol's unnamed-owner deck"];
+    assert len(mine) == 1 and mine[0].owner == UNKNOWN_USER;
+}
+
+test "a listed deck's id reads and copies" {
+    _new_deck(ALICE, "Alice's listed-then-read deck");
+    listed = [d for d in _others(BOB) if d.name == "Alice's listed-then-read deck"][0];
+    assert run_read(BOB, listed.id, GetDeck(deck_id=listed.id)).reports[0].name == "Alice's listed-then-read deck";
+    assert _copy_view(BOB, listed.id).name == "Alice's listed-then-read deck (copy)";
+}
+
+test "a walker that changes a deck is refused by run_read, and changes nothing" {
+    alices = _new_deck(ALICE, "Alice's read-only-guarded deck");
+    refused = False;
+    try {
+        run_read(BOB, alices, AddCard(deck_id=alices, oracle_id=_oracle_id("Shock")));
+    } except TypeError {
+        refused = True;
+    }
+    assert refused;
+    assert (run_walker(ALICE, GetDeck(deck_id=alices)).reports[0] as DeckView).cards == [];
 }

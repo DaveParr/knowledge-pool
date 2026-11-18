@@ -60,13 +60,14 @@ import from starlette.routing { Route }
 import from jaclang.data.serializer { Serializer }
 import from mcp.server.auth.routes { build_resource_metadata_url }
 import from pydantic { AnyHttpUrl }
-import from graph_runner { APP_DIR, HOSTED, VERIFIED_SUB, app_mode, request_caller, run_walker, call_function, CallFailed }
+import from graph_runner { APP_DIR, HOSTED, VERIFIED_SUB, app_mode, request_caller, run_walker, run_read, READ_WALKERS, call_function, CallFailed }
 import from profile { save_display_name, display_name }
 import from browser_session { SessionUser, SessionCheckUnavailable, check_session }
 import from hosted_auth { AuthKitVerifier }
 import from rate_limits { Buckets, RateLimits, rate_limits, UNKNOWN_ADDRESS }
-import from decks { CreateDeck, ListDecks, GetDeck, SetDeckFormat, AddCard, SetCardCount, RemoveCard, list_formats }
+import from decks { DeckAction, CreateDeck, ListDecks, GetDeck, SetDeckFormat, AddCard, SetCardCount, RemoveCard, list_formats }
 import from deck_io { DeckExport, DeckImport, CreateDeckFromList }
+import from jaclang.runtime.constructs { WalkerArchetype }
 import from cards { search_cards }
 
 glob HEALTH_PATH: str = "/healthz",
@@ -196,6 +197,14 @@ def fits(target: any, fields: dict[str, any]) -> bool {  # jac:ignore[W1037]
     return True;
 }
 
+"""Run the page's walker `w` as `caller`. A read of a deck (any user's) runs as the deck's owner."""
+def run_page_walker(caller: str | None, w: WalkerArchetype) -> WalkerArchetype {
+    if isinstance(w, DeckAction) and type(w) in READ_WALKERS {
+        return run_read(caller, w.deck_id, w);
+    }
+    return run_walker(caller, w);
+}
+
 """`POST /walker/<name>`: run the walker as the caller, answer in Jac's envelope."""
 async def walker_call(request: Request, config: FrontDoorConfig) -> Response {  # jac:ignore[W1036]
     (caller, refused) = check_data_call(request, config);
@@ -211,7 +220,7 @@ async def walker_call(request: Request, config: FrontDoorConfig) -> Response {  
         return refusal(422, "INVALID_REQUEST", "The call's fields do not fit this walker.");
     }
     w = cls(**fields);
-    done = await anyio.to_thread.run_sync(lambda -> any { return run_walker(caller, w); });
+    done = await anyio.to_thread.run_sync(lambda -> any { return run_page_walker(caller, w); });
     return JSONResponse(envelope(done, done.reports));
 }
 
@@ -370,20 +379,29 @@ async def logout(request: Request, config: FrontDoorConfig) -> Response {  # jac
 }
 
 """`GET /me`, the session check for the page: the caller's display name, or
-"Unknown user" when none is stored yet."""
-async def session_check(_request: Request) -> Response {  # jac:ignore[W1036]
+"Unknown user" when none is stored yet, and whether the page may offer "Sign out"
+(only where a browser session exists to end)."""
+async def session_check(config: FrontDoorConfig) -> Response {
     caller = request_caller();
     if caller is None {
         return refusal(401, "UNAUTHORIZED", "Unauthorized");
     }
     (name, failed) = await as_caller(caller, display_name, "display_name");
-    return failed if failed is not None else JSONResponse({"name": name}, headers=NO_STORE);
+    if failed is not None {
+        return failed;
+    }
+    return JSONResponse({"name": name, "can_sign_out": browser_sign_in_enabled(config)}, headers=NO_STORE);
+}
+
+"""Whether browser sign-in is on: hosted mode with a session provider."""
+def browser_sign_in_enabled(config: FrontDoorConfig) -> bool {
+    return app_mode() == HOSTED and config.sessions is not None;
 }
 
 """A route that answers 404 unless browser sign-in is on (hosted mode with a session provider)."""
 def sign_in_route(handler: any, config: FrontDoorConfig) -> any {  # jac:ignore[W1036,W1037]
     async def route(request: Request) -> Response {  # jac:ignore[W1036]
-        if app_mode() != HOSTED or config.sessions is None {
+        if not browser_sign_in_enabled(config) {
             return PlainTextResponse("Not Found", status_code=404);
         }
         return await handler(request, config);
@@ -402,13 +420,16 @@ def web_app(config: FrontDoorConfig) -> Starlette {
     async def other_route(request: Request) -> Response {  # jac:ignore[W1036]
         return await other(request, config);
     }
+    async def me_route(_request: Request) -> Response {  # jac:ignore[W1036]
+        return await session_check(config);
+    }
     return Starlette(
         routes=[
             Route(HEALTH_PATH, health, methods=["GET", "HEAD"]),
             Route(LOGIN_PATH, sign_in_route(login, config), methods=["GET"]),
             Route(CALLBACK_PATH, sign_in_route(callback, config), methods=["GET"]),
             Route(LOGOUT_PATH, sign_in_route(logout, config), methods=["POST"]),
-            Route(ME_PATH, session_check, methods=["GET"]),
+            Route(ME_PATH, me_route, methods=["GET"]),
             Route("/walker/{name}", walker_route, methods=["POST"]),
             Route("/function/{name}", function_route, methods=["POST"]),
             Route("/{path:path}", other_route, methods=["GET", "HEAD", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"])

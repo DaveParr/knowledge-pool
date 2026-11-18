@@ -1,0 +1,12 @@
+/* Session strip: who, connector address, sign out. */
+
+.sb {
+  display: flex; flex-wrap: wrap; align-items: center; gap: 8px 16px;
+  padding: 8px 16px; border-bottom: 1px solid var(--line); background: var(--soft);
+  font-size: 13px;
+}
+.sb-who { font-weight: 600; margin-right: auto; }
+.sb-connector { display: flex; align-items: center; gap: 6px; color: var(--muted); }
+.sb-connector input[type=text] { width: 22em; max-width: 60vw; font-family: var(--font-mono); }
+.sb-signout { margin: 0; }
+.sb-signout .link { background: none; border: 0; padding: 0; color: var(--accent); cursor: pointer; text-decoration: underline; }

@@ -181,6 +181,32 @@ def test_build_a_deck_through_the_web_app(app):
     assert "deals 3 damage" in app.wait_text("deals 3 damage", within="ul.dd-cards")
 
 
+def test_the_page_says_other_users_can_see_and_copy_your_decks(app):
+    app.browse("open", app.web)
+    assert "Other users can see and copy the decks you make" in app.wait_text("Other users can see")
+
+
+def test_the_connector_address_is_shown_and_copied_and_local_mode_has_no_sign_out(app):
+    app.browse("open", app.web)
+    app.browse("wait", "input[aria-label='Connector address']")
+    address = app.js("document.querySelector(\"input[aria-label='Connector address']\").value")
+    assert address.strip().strip("\"") == app.web + "/mcp", address
+    app.click("button", "Copy")
+    assert app.wait_text("Copied", within=".sb-connector")
+    # Local mode has no browser session to end, so no "Sign out".
+    assert "Sign out" not in app.js("document.body.innerText")
+
+
+def test_the_page_wraps_fetch_so_a_refused_call_is_followed_by_a_session_check(app):
+    app.browse("open", app.web)
+    app.browse("wait", "input[aria-label='Connector address']")
+    count = "performance.getEntriesByType('resource').filter(e => new URL(e.name).pathname === '/me').length"
+    before = int(app.js(count))
+    app.js("fetch('/no-such-page').then(r => r.status)")
+    app.js(f"new Promise(done => {{ const look = () => {count} > {before} ? done(true) : setTimeout(look, 50); look(); }})")
+    assert int(app.js(count)) > before
+
+
 def test_a_decks_format_pill_ignores_what_is_typed_in_the_name_box(app):
     app.browse("open", app.web)
     app.fill("input[aria-label='Deck name']", "Pill Deck")
