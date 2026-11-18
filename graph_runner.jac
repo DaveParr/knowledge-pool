@@ -52,7 +52,8 @@ import from jaclang.server.identity.user_manager { UserManager }
 import from cards { open_catalog, RefreshCards, REFRESH_BATCH, catalogue_version, refreshed_version, record_refresh, duplicate_oracle_ids }
 import from legality { open_formats }
 import from walker_errors { WalkerError }
-import from decks { DeckSummary, CopySource, CopyDeck, deck_owner, deck_summaries }
+import from decks { DeckSummary, CopySource, CopyDeck, GetDeck, deck_owner, deck_summaries }
+import from deck_io { DeckExport }
 
 glob APP_DIR: str = os.path.dirname(os.path.abspath(__file__)),
      LOCK: threading.RLock = threading.RLock(),
@@ -64,6 +65,8 @@ glob APP_DIR: str = os.path.dirname(os.path.abspath(__file__)),
      STARTED_FOR_GUEST: list[str] = [],
      # The `sub` of the token the front door verified for the request being served (hosted mode).
      VERIFIED_SUB: contextvars.ContextVar[str | None] = contextvars.ContextVar("verified_sub"),
+     # The walkers `run_read` will run on another user's root: the ones that change nothing.
+     READ_WALKERS: list[type] = [GetDeck, DeckExport, CopySource],
      USER_PAGE: int = 100,
      RERUNS: int = 3,
      RERUN_WAIT_S: tuple[float, float] = (0.01, 0.05),
@@ -261,12 +264,14 @@ def failed_walker(w: WalkerArchetype, failed: CallFailed) -> WalkerArchetype {
 
 """Spawn the read-only walker `w` (one that acts on the deck `deck_id`) as the
 deck's owner, on the owner's root, for `caller`: any signed-in user may read
-any deck. The app has decided that read is allowed; it is only for walkers that
-change nothing, and gives the caller no grant, edge or access of any kind. An
+any deck. The app has decided that read is allowed; it runs only the walkers in `READ_WALKERS`, which change nothing, and gives the caller no grant, edge or access of any kind. An
 id that names no deck runs as the caller, so it answers no-such-deck. No caller
 is a refusal. Like `run_walker`, a call the runner could not finish returns a
 copy of `w` whose one report is the walker error."""
 def run_read(caller: str | None, deck_id: str, w: WalkerArchetype) -> WalkerArchetype {
+    if type(w) not in READ_WALKERS {
+        raise TypeError(f"{type(w).__name__} is not a read-only walker: it cannot run as another user's deck owner.");
+    }
     try {
         owner = call_function(caller, lambda () -> object { return deck_owner(deck_id); }, name="deck_owner") as str | None;
         if owner is None {
@@ -298,12 +303,14 @@ def user_root_ids -> list[str] {
     storage = user_manager()._identity_storage;
     guest = guest_root_id();
     found: list[str] = [];
+    known: set[str] = set();
     offset = 0;
     while True {
         page = storage.list_all_users(limit=USER_PAGE, offset=offset);
         for user in page {
             rid = str(user.get("root_id") or "");
-            if rid and rid != guest and rid not in found {
+            if rid and rid != guest and rid not in known {
+                known.add(rid);
                 found.append(rid);
             }
         }
@@ -320,16 +327,16 @@ display name. A call the runner could not finish raises `CallFailed`."""
 def list_other_decks(caller: str | None) -> list[DeckSummary] {
     start();
     mine = user_root_id(caller);
-    seen: list[DeckSummary] = [];
+    others: list[DeckSummary] = [];
     for root_id in user_root_ids() {
         if root_id == mine {
             continue;
         }
-        seen += in_context(
+        others += in_context(
             root_id, lambda () -> object { return deck_summaries(); }, name="list_other_decks", caller=str(caller)
         ) as list[DeckSummary];
     }
-    return sorted(seen, key=lambda (d: DeckSummary) { return (d.owner, d.name); });
+    return sorted(others, key=lambda (d: DeckSummary) { return (d.owner, d.name); });
 }
 
 """Call `f` (a page function, or other read of the graph) as `caller` on

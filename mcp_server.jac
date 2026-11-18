@@ -49,7 +49,7 @@ import from front_door { FrontDoorConfig, front_door_app, start_upstream, stop_u
 import from urllib.parse { urlparse }
 import from browser_session { WorkOSSessions }
 import from hosted_auth { AuthKitVerifier, HostedSettings, HostedSettingsMissing, hosted_settings, jwks_key_finder }
-import from graph_runner { APP_DIR, HOSTED, app_mode, check_bind, request_caller, run_walker, run_read, copy_deck, list_other_decks, call_function, start, refresh_cards }
+import from graph_runner { APP_DIR, HOSTED, app_mode, check_bind, request_caller, run_walker, run_read, CallFailed, copy_deck, list_other_decks, call_function, start, refresh_cards }
 import from jaclang.runtime.constructs { WalkerArchetype }
 
 glob LOGGED_CLIENT_UI: list[bool] = [],
@@ -537,7 +537,11 @@ change it: pass an id to deck_get or deck_show to look at one, or to deck_copy t
 make your own copy to change."""
 @server.tool()
 def deck_browse -> list[JsonObject] {
-    others = list_other_decks(request_caller());
+    try {
+        others = list_other_decks(request_caller());
+    } except CallFailed as failed {
+        return [{"error": failed.error.message, "code": failed.error.code}];
+    }
     return [{"id": d.id, "name": d.name, "format": d.format, "owner": d.owner} for d in others];
 }
 

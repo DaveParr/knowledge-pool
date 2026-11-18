@@ -753,3 +753,15 @@ test "a listed deck's id reads and copies" {
     assert run_read(BOB, listed.id, GetDeck(deck_id=listed.id)).reports[0].name == "Alice's listed-then-read deck";
     assert _copy_view(BOB, listed.id).name == "Alice's listed-then-read deck (copy)";
 }
+
+test "a walker that changes a deck is refused by run_read, and changes nothing" {
+    alices = _new_deck(ALICE, "Alice's read-only-guarded deck");
+    refused = False;
+    try {
+        run_read(BOB, alices, AddCard(deck_id=alices, oracle_id=_oracle_id("Shock")));
+    } except TypeError {
+        refused = True;
+    }
+    assert refused;
+    assert (run_walker(ALICE, GetDeck(deck_id=alices)).reports[0] as DeckView).cards == [];
+}
