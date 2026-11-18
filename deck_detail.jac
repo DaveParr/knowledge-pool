@@ -13,13 +13,12 @@ import from .mana_cost { ManaCost }
 import from .walker_failure { failureMessage }
 
 import from decks {
-    DeckView, FormatInfo, GetDeck, CopyOtherDeck, SetDeckFormat, SetCardCount, RemoveCard, list_formats
+    ChangeNote, DeckView, FormatInfo, GetDeck, CopyOtherDeck, SetDeckFormat, SetCardCount, RemoveCard, list_formats
 }
 import from legality { Violation }
 import from commander { GameChangers }
 import from mana { ManaProfile }
 import from card_lines { CardLine }
-import from decks { ChangeNote }
 import from walker_errors { WalkerError }
 
 """A play format's label ("Standard"), or the name itself when it is not listed."""

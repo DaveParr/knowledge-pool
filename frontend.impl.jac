@@ -7,7 +7,10 @@ impl app.loadDecks -> None {
     result = root spawn ListDecks();
     decks = result.reports[0] if result.reports else [];
     others = root spawn ListOtherDecks();
-    if failureMessage(others.reports) == "" {
+    why = failureMessage(others.reports);
+    if why {
+        error = why;
+    } else {
         otherDecks = others.reports[0] if others.reports else [];
     }
 }
