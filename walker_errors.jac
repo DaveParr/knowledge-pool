@@ -6,7 +6,8 @@ reports list."""
 """A failed walker's only report: a stable `code` callers can branch on, and a
 `message` to show the user as is.
 
-Codes: no-such-deck, blank-name, unknown-format (a play format such as
+Codes: no-such-deck (no deck has that id), not-your-deck (a change to
+another user's deck; the message points to copying), blank-name, unknown-format (a play format such as
 standard), unknown-list-format (a deck list format such as moxfield),
 no-export / no-import (the list format cannot go that way), refused-change
 (a holdings change was refused; the message says why). The runner adds two

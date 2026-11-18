@@ -60,12 +60,13 @@ import from starlette.routing { Route }
 import from jaclang.data.serializer { Serializer }
 import from mcp.server.auth.routes { build_resource_metadata_url }
 import from pydantic { AnyHttpUrl }
-import from graph_runner { APP_DIR, HOSTED, VERIFIED_SUB, app_mode, request_caller, run_walker, call_function, CallFailed }
+import from graph_runner { APP_DIR, HOSTED, VERIFIED_SUB, app_mode, request_caller, run_walker, run_read, READ_WALKERS, call_function, CallFailed }
 import from profile { save_display_name, display_name }
 import from browser_session { SessionUser, SessionCheckUnavailable, check_session }
 import from hosted_auth { AuthKitVerifier }
-import from decks { CreateDeck, ListDecks, GetDeck, SetDeckFormat, AddCard, SetCardCount, RemoveCard, list_formats }
+import from decks { DeckAction, CreateDeck, ListDecks, GetDeck, SetDeckFormat, AddCard, SetCardCount, RemoveCard, list_formats }
 import from deck_io { DeckExport, DeckImport, CreateDeckFromList }
+import from jaclang.runtime.constructs { WalkerArchetype }
 import from cards { search_cards }
 
 glob HEALTH_PATH: str = "/healthz",
@@ -194,6 +195,14 @@ def fits(target: any, fields: dict[str, any]) -> bool {  # jac:ignore[W1037]
     return True;
 }
 
+"""Run the page's walker `w` as `caller`. A read of a deck (any user's) runs as the deck's owner."""
+def run_page_walker(caller: str | None, w: WalkerArchetype) -> WalkerArchetype {
+    if isinstance(w, DeckAction) and type(w) in READ_WALKERS {
+        return run_read(caller, w.deck_id, w);
+    }
+    return run_walker(caller, w);
+}
+
 """`POST /walker/<name>`: run the walker as the caller, answer in Jac's envelope."""
 async def walker_call(request: Request, config: FrontDoorConfig) -> Response {  # jac:ignore[W1036]
     (caller, refused) = check_data_call(request, config);
@@ -209,7 +218,7 @@ async def walker_call(request: Request, config: FrontDoorConfig) -> Response {  
         return refusal(422, "INVALID_REQUEST", "The call's fields do not fit this walker.");
     }
     w = cls(**fields);
-    done = await anyio.to_thread.run_sync(lambda -> any { return run_walker(caller, w); });
+    done = await anyio.to_thread.run_sync(lambda -> any { return run_page_walker(caller, w); });
     return JSONResponse(envelope(done, done.reports));
 }
 

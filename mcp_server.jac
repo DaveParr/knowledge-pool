@@ -39,7 +39,7 @@ import from mcp.server.stdio { stdio_server }
 import from mcp.server.streamable_http { TransportSecuritySettings }
 import from cards { CardSearch, search_cards as catalog_search, find_card, resolve_names as catalog_resolve_names, check_catalogue }
 import from decks {
-    Deck, DeckView, CreateDeck, ListDecks, GetDeck, SetDeckFormat, EditDeck
+    Deck, DeckAction, DeckView, DeckSummary, CreateDeck, ListDecks, GetDeck, SetDeckFormat, EditDeck
 }
 import from deck_io { DeckExport, DeckImport }
 import from legality { GetFormatRules }
@@ -49,7 +49,7 @@ import from front_door { FrontDoorConfig, front_door_app, start_upstream, stop_u
 import from urllib.parse { urlparse }
 import from browser_session { WorkOSSessions }
 import from hosted_auth { AuthKitVerifier, HostedSettings, HostedSettingsMissing, hosted_settings, jwks_key_finder }
-import from graph_runner { APP_DIR, HOSTED, app_mode, check_bind, request_caller, run_walker, call_function, start, refresh_cards }
+import from graph_runner { APP_DIR, HOSTED, app_mode, check_bind, request_caller, run_walker, run_read, CallFailed, copy_deck, list_other_decks, call_function, start, refresh_cards }
 import from jaclang.runtime.constructs { WalkerArchetype }
 
 glob LOGGED_CLIENT_UI: list[bool] = [],
@@ -74,7 +74,7 @@ Clients that support MCP Apps (Claude Desktop and claude.ai) render it as an HTM
 where each card expands to its rules text, stats, keywords, deck notes and tags; others
 get a compact Markdown table. Use deck_get when you only need the data."""
 def deck_show(deck_id: str, ctx: Context) -> CallToolResult {  # jac:ignore[W1036]: the SDK finds the context by this bare annotation
-    view = outcome(walk(GetDeck(deck_id=deck_id)));
+    view = outcome(read(GetDeck(deck_id=deck_id)));
     if "error" in view {
         return CallToolResult(content=[TextContent(text=view["error"])], is_error=True);
     }
@@ -213,7 +213,7 @@ already holds in main and sideboard. Every word must match, as a prefix. Clients
 support MCP Apps render a search panel where the user can add hits to the deck
 themselves; others get a Markdown table. Use search_cards when no deck is involved."""
 def card_search(deck_id: str, query: str, ctx: Context, limit: int = 20) -> CallToolResult {  # jac:ignore[W1036]: the SDK finds the context by this bare annotation
-    view = outcome(walk(GetDeck(deck_id=deck_id)));
+    view = outcome(read(GetDeck(deck_id=deck_id)));
     if "error" in view {
         return CallToolResult(content=[TextContent(text=view["error"])], is_error=True);
     }
@@ -321,7 +321,7 @@ show the export in a view with format buttons, Copy and Download; the text resul
 always carries the full export too. A lossless JSON export is long: the user sees
 it in the view, so offer to show it or save it to a file rather than pasting it."""
 def deck_export(deck_id: str, ctx: Context, format: str = "arena") -> CallToolResult {  # jac:ignore[W1036]: the SDK finds the context by this bare annotation
-    done = outcome(walk(DeckExport(deck_id=deck_id, format=format)));
+    done = outcome(read(DeckExport(deck_id=deck_id, format=format)));
     if "error" in done {
         return CallToolResult(content=[TextContent(text=done["error"])], structured_content=done, is_error=True);
     }
@@ -422,14 +422,16 @@ def make_apps -> Apps {
 glob server: MCPServer[object] = MCPServer(
     "knowledge-pool",
     instructions=(
-        "Build and edit Magic: The Gathering decks in the user's local Knowledge Pool app. "
+        "Build and edit Magic: The Gathering decks in the user's Knowledge Pool app. "
         + "Card data comes only from the MTGJSON catalogue: turn card names into oracle ids with "
         + "resolve_names (or search_cards) before adding them, and never add a card that was not "
         + "resolved. Give a short reason for every deck change. Finish with deck_validate. "
         + "When the user wants to see a deck, call deck_show; for its mana curve and colours, call deck_analyze. "
         + "When the user wants to find cards to add to a deck, call card_search with that deck's id: it shows "
         + "how many copies the deck already holds, and lets the user add hits themselves; changes they make "
-        + "there are reported back to you. To export a deck, call deck_export."
+        + "there are reported back to you. To export a deck, call deck_export. "
+        + "Every user's decks are visible to every user: deck_list shows only the user's own, deck_browse "
+        + "shows other users', and deck_copy makes one the user's own to change."
     ),
     extensions=[make_apps()]
 );
@@ -438,6 +440,13 @@ glob server: MCPServer[object] = MCPServer(
 graph_runner.request_caller): every deck tool's one way onto the graph."""
 def walk(w: WalkerArchetype) -> WalkerArchetype {
     return run_walker(request_caller(), w);
+}
+
+"""Run the read-only deck walker `w` through the runner as whoever is asking,
+on any user's deck: the app allows every user to read every deck (see
+graph_runner.run_read). Only for walkers that change nothing."""
+def read(w: DeckAction) -> WalkerArchetype {
+    return run_read(request_caller(), w.deck_id, w);
 }
 
 """Call `f` through the runner as whoever is asking, for the tools that
@@ -522,6 +531,29 @@ def deck_list -> list[JsonObject] {
     return [{"id": d["id"], "name": d["name"], "format": d["format"]} for d in decks];
 }
 
+"""List other users' decks (id, deck name, format and the owner's display name),
+never your own. Every user can see and copy every deck, but only its owner can
+change it: pass an id to deck_get or deck_show to look at one, or to deck_copy to
+make your own copy to change."""
+@server.tool()
+def deck_browse -> list[JsonObject] {
+    try {
+        others = list_other_decks(request_caller());
+    } except CallFailed as failed {
+        return [{"error": failed.error.message, "code": failed.error.code}];
+    }
+    return [{"id": d.id, "name": d.name, "format": d.format, "owner": d.owner} for d in others];
+}
+
+"""Copy any user's deck (see deck_browse for ids) into your own decks as
+"<name> (copy)": its cards, zones, counts, format and per-card notes, with its own
+history starting from one line saying it was copied. The copy is yours to change
+and is not tied to the original. Returns the new deck."""
+@server.tool()
+def deck_copy(deck_id: str) -> JsonObject {
+    return outcome(copy_deck(request_caller(), deck_id));
+}
+
 """Create a deck, optionally with seed cards. Each card is
 {"oracle_id": ..., "count": n, "zone": "main" | "sideboard" | "commander" | "companion" | "maybeboard", "reason": ...};
 get oracle ids from resolve_names first. Returns the deck with its legality."""
@@ -539,13 +571,13 @@ def deck_create(name: str, format: str = "standard", cards: list[JsonObject] | N
     return deck_edit(deck_id, changes);
 }
 
-"""A deck: its cards, totals, legality and recent change history."""
+"""A deck, yours or another user's: its cards, totals, legality and recent change history."""
 @server.tool()
 def deck_get(deck_id: str) -> JsonObject {
-    return outcome(walk(GetDeck(deck_id=deck_id)));
+    return outcome(read(GetDeck(deck_id=deck_id)));
 }
 
-"""Change a deck. Each change is
+"""Change one of your own decks (another user's answers not-your-deck: copy it first). Each change is
 {"oracle_id": ..., "count": n, "zone": "main" | "sideboard" | "commander" | "companion" | "maybeboard", "reason": "why"}
 and sets that card's count in that zone (0 removes it). Every change needs a reason.
 Pass "format" to change the deck's format. Changes with an unknown oracle id or no
