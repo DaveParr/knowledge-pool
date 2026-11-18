@@ -20,6 +20,7 @@ from tests.hosted_settings import HOSTED_SETTINGS
 
 ROOT = Path(__file__).resolve().parent.parent
 LOOPBACK = front_door.LOOPBACK
+LOGIN_PATH = front_door.LOGIN_PATH
 
 
 _free_port = front_door.free_port
@@ -92,19 +93,21 @@ def front_door(fixture_catalog, jac_db_url):
         yield running
 
 
-def test_hosted_mode_starts_with_its_settings_answers_health_and_sends_a_page_load_to_sign_in_but_serves_no_data_call(fixture_catalog, jac_db_url):
+def test_hosted_mode_starts_with_its_settings_and_answers_health_but_no_data_call(fixture_catalog, jac_db_url):
     with _running(fixture_catalog, jac_db_url, KP_MODE="hosted", **HOSTED_SETTINGS, KP_TRANSPORT="http") as (_, base, _):
-        reply = _get(base + "/healthz")
-        assert reply == (200, b"ok")
+        assert _get(base + "/healthz") == (200, b"ok")
         refused = _get(base + "/walker/ListDecks", b"{}", {"Origin": base, "Content-Type": "application/json"})
         assert refused[0] == 401
-        # Nor the page: served with no caller, its first data call gets a 401 and
-        # Jac's client, holding no Jac token, reloads the page for ever. It is
-        # sent to sign in instead, and so is each file the page loads.
+
+
+def test_hosted_mode_sends_a_page_load_and_the_pages_files_to_sign_in_instead_of_serving_them(fixture_catalog, jac_db_url):
+    # Served with no caller, a page's first data call gets a 401 and Jac's client,
+    # holding no Jac token, reloads the page for ever.
+    with _running(fixture_catalog, jac_db_url, KP_MODE="hosted", **HOSTED_SETTINGS, KP_TRANSPORT="http") as (_, base, _):
         for path in ("/", "/styles.css", "/client.abc123.js"):
             assert _get(base + path)[0] == 302, path
-        assert _location(base + "/") == "/auth/login?return_to=%2F"
-        assert _location(base + "/auth/login").startswith("https://api.workos.com/")
+        assert _location(base + "/") == f"{LOGIN_PATH}?return_to=%2F"
+        assert _location(base + LOGIN_PATH).startswith("https://api.workos.com/")
 
 
 def test_page_loads_through_the_front_door_and_a_deck_can_be_read(front_door):

@@ -615,8 +615,7 @@ async def serve_http(host: str, port: int, upstream: str, hosted: HostedSettings
         extra_hosts.append(urlparse(hosted.audience).netloc);
         auth = AuthKitVerifier(issuer=hosted.issuer, audience=hosted.audience, key_for=jwks_key_finder(hosted.issuer));
         sessions = WorkOSSessions(client_id=hosted.client_id, api_key=hosted.api_key, cookie_password=hosted.cookie_password);
-        public = urlparse(hosted.audience);
-        public_origin = f"{public.scheme}://{public.netloc}";
+        public_origin = hosted.public_origin();
     }
     hosts = [f"127.0.0.1:{port}", f"localhost:{port}"] + extra_hosts;
     origins = [f"https://{h}" for h in extra_hosts] + [f"http://{h}" for h in extra_hosts];

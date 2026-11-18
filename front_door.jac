@@ -62,6 +62,7 @@ import from mcp.server.auth.routes { build_resource_metadata_url }
 import from pydantic { AnyHttpUrl }
 import from graph_runner { APP_DIR, HOSTED, VERIFIED_SUB, app_mode, request_caller, run_walker, call_function, CallFailed }
 import from profile { save_display_name, display_name }
+import from browser_session { SessionUser, SessionCheckUnavailable, check_session }
 import from hosted_auth { AuthKitVerifier }
 import from decks { CreateDeck, ListDecks, GetDeck, SetDeckFormat, AddCard, SetCardCount, RemoveCard, list_formats }
 import from deck_io { DeckExport, DeckImport, CreateDeckFromList }
@@ -92,16 +93,20 @@ glob HEALTH_PATH: str = "/healthz",
      FORWARDED_RESPONSE_HEADERS: list[str] = ["content-type", "cache-control", "etag", "last-modified"],
      # What a connector may fetch without a token: the metadata that says where to sign in.
      DISCOVERY_PATH: str = "/.well-known/oauth-protected-resource",
-     SESSION_COOKIE: str = "kp_session",
-     LOGIN_COOKIE: str = "kp_login",
+     # `__Host-` makes the browser itself insist on Secure, Path=/ and no Domain: the exact host only.
+     SESSION_COOKIE: str = "__Host-kp_session",
+     LOGIN_COOKIE: str = "__Host-kp_login",
      LOGIN_PATH: str = "/auth/login",
      CALLBACK_PATH: str = "/auth/callback",
      LOGOUT_PATH: str = "/auth/logout",
-     AUTH_PATHS: list[str] = ["/auth/login", "/auth/callback", "/auth/logout"],
+     AUTH_PATHS: list[str] = [LOGIN_PATH, CALLBACK_PATH, LOGOUT_PATH],
+     # A path on this site and nothing a browser could read as another address (no tab, space, backslash).
+     SAFE_RETURN: re.Pattern = re.compile(r"/(?!/)[A-Za-z0-9._~!$&'()*+,;=:@%/?-]*"),
      ME_PATH: str = "/me",
-     # A session cookie lasts a month from its last renewal; the session itself ends when WorkOS says so.
-     SESSION_MAX_AGE_S: int = 30 * 24 * 3600,
+     # The longest a browser keeps a cookie; the session itself ends when WorkOS says so.
+     SESSION_MAX_AGE_S: int = 400 * 24 * 3600,
      LOGIN_MAX_AGE_S: int = 600,
+     NO_STORE: dict[str, str] = {"cache-control": "no-store"},
      UPSTREAM_BOOT_S: float = 120.0,
      STOPPING: list[bool] = [];
 
@@ -279,10 +284,7 @@ def cookie_header(name: str, value: str, max_age: int) -> str {
 """`where` if it is a path on this site, else "/": a sign-in must never send the
 browser to another address."""
 def safe_return(where: str) -> str {
-    if not where.startswith("/") or where.startswith("//") or "\\" in where or "\n" in where or "\r" in where {
-        return "/";
-    }
-    return where;
+    return where if SAFE_RETURN.fullmatch(where) else "/";
 }
 
 """The sign-in page's address for a request that may not have it: the current
@@ -292,23 +294,31 @@ def login_redirect(path: str, query: str) -> str {
     return f"{LOGIN_PATH}?return_to={quote(here, safe='')}";
 }
 
-"""Whether browser sign-in is on: hosted mode with a session provider."""
-def sign_in_on(config: FrontDoorConfig) -> bool {
-    return app_mode() == HOSTED and config.sessions is not None;
+"""A redirect that no cache keeps."""
+def redirect(where: str, status: int = 302) -> RedirectResponse {
+    return RedirectResponse(where, status_code=status, headers=NO_STORE);
+}
+
+"""Run `work` as `caller` on their own root, off the event loop; a call the runner
+could not finish is answered as a failed call."""
+async def as_caller(caller: str, work: Callable[[], any], name: str) -> tuple[any, Response | None] {  # jac:ignore[W1036,W1037]
+    try {
+        done = await anyio.to_thread.run_sync(lambda -> any { return call_function(caller, work, name=name); });
+    } except CallFailed as failed {
+        return (None, failed_call(failed));
+    }
+    return (done, None);
 }
 
 """`GET /auth/login`: send the browser to AuthKit, remembering where it came from."""
 async def login(request: Request, config: FrontDoorConfig) -> Response {  # jac:ignore[W1036]
-    if not sign_in_on(config) {
-        return PlainTextResponse("Not Found", status_code=404);
-    }
     state = secrets.token_urlsafe(24);
-    back = safe_return(request.query_params.get("return_to", "/"));
+    return_path = safe_return(request.query_params.get("return_to", "/"));
     where = await anyio.to_thread.run_sync(
         lambda -> str { return config.sessions.login_url(state, config.public_origin + CALLBACK_PATH); }
     );
-    reply = RedirectResponse(where, status_code=302);
-    reply.headers.append("set-cookie", cookie_header(LOGIN_COOKIE, f"{state}.{quote(back, safe='')}", LOGIN_MAX_AGE_S));
+    reply = redirect(where);
+    reply.headers.append("set-cookie", cookie_header(LOGIN_COOKIE, f"{state}.{quote(return_path, safe='')}", LOGIN_MAX_AGE_S));
     return reply;
 }
 
@@ -317,37 +327,33 @@ sealed session, store the user's display name on their own root, set the session
 cookie and return to where the user was going. A person WorkOS refuses (not
 invited, another address) gets a 403 and no cookie."""
 async def callback(request: Request, config: FrontDoorConfig) -> Response {  # jac:ignore[W1036]
-    if not sign_in_on(config) {
-        return PlainTextResponse("Not Found", status_code=404);
-    }
     code = request.query_params.get("code", "");
     state = request.query_params.get("state", "");
-    (want, _, back) = request.cookies.get(LOGIN_COOKIE, "").partition(".");
-    if not code or not want or not secrets.compare_digest(state, want) {
-        return PlainTextResponse("Sign-in could not be completed. Start again.", status_code=400);
+    (expected_state, _, quoted_return) = request.cookies.get(LOGIN_COOKIE, "").partition(".");
+    if not code or not expected_state or not secrets.compare_digest(state, expected_state) {
+        return PlainTextResponse("Sign-in could not be completed. Start again.", status_code=400, headers=NO_STORE);
     }
     try {
-        (sealed, who) = await anyio.to_thread.run_sync(lambda -> tuple { return config.sessions.complete_login(code); });
+        user = await anyio.to_thread.run_sync(lambda -> SessionUser { return config.sessions.complete_login(code); });
     } except Exception {
-        return PlainTextResponse("Sign-in refused.", status_code=403);
+        return PlainTextResponse("Sign-in refused.", status_code=403, headers=NO_STORE);
     }
-    try {
-        await anyio.to_thread.run_sync(
-            lambda -> any { return call_function(who.sub, lambda -> any { return save_display_name(who.name); }, name="save_display_name"); }
-        );
-    } except CallFailed as failed {
-        return failed_call(failed);
+    (_, failed) = await as_caller(user.sub, lambda -> any { return save_display_name(user.name); }, "save_display_name");
+    if failed is not None {
+        return failed;
     }
-    reply = RedirectResponse(safe_return(unquote(back)), status_code=302);
-    reply.headers.append("set-cookie", cookie_header(SESSION_COOKIE, sealed, SESSION_MAX_AGE_S));
+    reply = redirect(safe_return(unquote(quoted_return)));
+    reply.headers.append("set-cookie", cookie_header(SESSION_COOKIE, user.sealed or "", SESSION_MAX_AGE_S));
     reply.headers.append("set-cookie", cookie_header(LOGIN_COOKIE, "", 0));
     return reply;
 }
 
-"""`GET /auth/logout`: end the session at WorkOS, clear the cookie and go to the site's root."""
+"""`POST /auth/logout`: end the session at WorkOS, clear the cookie and go to the
+site's root. A POST from the app's own page only, so another site cannot sign a
+user out with a link."""
 async def logout(request: Request, config: FrontDoorConfig) -> Response {  # jac:ignore[W1036]
-    if not sign_in_on(config) {
-        return PlainTextResponse("Not Found", status_code=404);
+    if request.headers.get("origin") not in config.origins {
+        return refusal(403, "FORBIDDEN", "Forbidden");
     }
     sealed = request.cookies.get(SESSION_COOKIE, "");
     where: str | None = None;
@@ -356,24 +362,31 @@ async def logout(request: Request, config: FrontDoorConfig) -> Response {  # jac
             lambda -> str | None { return config.sessions.logout_url(sealed, config.public_origin + "/"); }
         );
     }
-    reply = RedirectResponse(where or "/", status_code=302);
+    reply = redirect(where or "/", 303);
     reply.headers.append("set-cookie", cookie_header(SESSION_COOKIE, "", 0));
     return reply;
 }
 
-"""`GET /me`: the session check for the page. The caller's display name, or
+"""`GET /me`, the session check for the page: the caller's display name, or
 "Unknown user" when none is stored yet."""
-async def me(_request: Request) -> Response {  # jac:ignore[W1036]
+async def session_check(_request: Request) -> Response {  # jac:ignore[W1036]
     caller = request_caller();
     if caller is None {
         return refusal(401, "UNAUTHORIZED", "Unauthorized");
     }
-    try {
-        name = await anyio.to_thread.run_sync(lambda -> any { return call_function(caller, display_name, name="display_name"); });
-    } except CallFailed as failed {
-        return failed_call(failed);
+    (name, failed) = await as_caller(caller, display_name, "display_name");
+    return failed if failed is not None else JSONResponse({"name": name}, headers=NO_STORE);
+}
+
+"""A route that answers 404 unless browser sign-in is on (hosted mode with a session provider)."""
+def sign_in_route(handler: any, config: FrontDoorConfig) -> any {  # jac:ignore[W1036,W1037]
+    async def route(request: Request) -> Response {  # jac:ignore[W1036]
+        if app_mode() != HOSTED or config.sessions is None {
+            return PlainTextResponse("Not Found", status_code=404);
+        }
+        return await handler(request, config);
     }
-    return JSONResponse({"name": name});
+    return route;
 }
 
 """The front door's own routes, apart from the MCP SDK's."""
@@ -387,22 +400,13 @@ def web_app(config: FrontDoorConfig) -> Starlette {
     async def other_route(request: Request) -> Response {  # jac:ignore[W1036]
         return await other(request, config);
     }
-    async def login_route(request: Request) -> Response {  # jac:ignore[W1036]
-        return await login(request, config);
-    }
-    async def callback_route(request: Request) -> Response {  # jac:ignore[W1036]
-        return await callback(request, config);
-    }
-    async def logout_route(request: Request) -> Response {  # jac:ignore[W1036]
-        return await logout(request, config);
-    }
     return Starlette(
         routes=[
             Route(HEALTH_PATH, health, methods=["GET", "HEAD"]),
-            Route(LOGIN_PATH, login_route, methods=["GET"]),
-            Route(CALLBACK_PATH, callback_route, methods=["GET"]),
-            Route(LOGOUT_PATH, logout_route, methods=["GET"]),
-            Route(ME_PATH, me, methods=["GET"]),
+            Route(LOGIN_PATH, sign_in_route(login, config), methods=["GET"]),
+            Route(CALLBACK_PATH, sign_in_route(callback, config), methods=["GET"]),
+            Route(LOGOUT_PATH, sign_in_route(logout, config), methods=["POST"]),
+            Route(ME_PATH, session_check, methods=["GET"]),
             Route("/walker/{name}", walker_route, methods=["POST"]),
             Route("/function/{name}", function_route, methods=["POST"]),
             Route("/{path:path}", other_route, methods=["GET", "HEAD", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"])
@@ -468,8 +472,8 @@ def discovery(auth: AuthKitVerifier) -> Response {
     });
 }
 
-"""A reply that adds a `Set-Cookie` header to the response that `send` carries."""
-def sending_cookie(send: any, cookie: str) -> any {  # jac:ignore[W1037]
+"""`send`, changed so the response it carries also sets `cookie`."""
+def send_with_cookie(send: any, cookie: str) -> any {  # jac:ignore[W1037]
     async def wrapped(message: dict[str, any]) {  # jac:ignore[W1037]
         if message["type"] == "http.response.start" {
             message = {**message, "headers": [*message.get("headers", []), (b"set-cookie", cookie.encode("latin-1"))]};
@@ -479,16 +483,60 @@ def sending_cookie(send: any, cookie: str) -> any {  # jac:ignore[W1037]
     return wrapped;
 }
 
+"""What a request's credentials say: the `caller` (a WorkOS user id) or None;
+the `renewed` session cookie to send back, when the access token was renewed;
+and whether the request carried a session `ended`."""
+obj Credentials {
+    has caller: str | None = None,
+        renewed: str | None = None,
+        ended: bool = False;
+}
+
+"""Who a request is from: its bearer token, or for a path the connector does
+not use, its session cookie. Raises `SessionCheckUnavailable` when WorkOS
+cannot say whether the session is still good."""
+async def credentials(scope: dict[str, any], config: FrontDoorConfig) -> Credentials {  # jac:ignore[W1037]
+    token = bearer_token(scope);
+    access = await config.auth.verify_token(token) if config.auth is not None and token else None;
+    if access is not None {
+        return Credentials(caller=access.subject);
+    }
+    sealed = Request(scope).cookies.get(SESSION_COOKIE, "");
+    if config.sessions is None or is_mcp_path(scope["path"]) or not sealed {
+        return Credentials();
+    }
+    session_user = await anyio.to_thread.run_sync(lambda -> SessionUser | None { return check_session(config.sessions, sealed); });
+    if session_user is None {
+        return Credentials(ended=True);
+    }
+    return Credentials(caller=session_user.sub, renewed=session_user.sealed);
+}
+
+"""The reply to a request from no one: a page load or a page file is sent to
+sign in; anything else gets a 401. A session that has ended is cleared."""
+def refuse_anonymous(request: Request, config: FrontDoorConfig, ended: bool) -> Response {
+    reply: Response;
+    if config.sessions is not None and request.method in ["GET", "HEAD"] and is_page_path(request.url.path) {
+        reply = redirect(login_redirect(request.url.path, request.url.query));
+    } else {
+        reply = unauthorized(config.auth);
+    }
+    if ended {
+        reply.headers.append("set-cookie", cookie_header(SESSION_COOKIE, "", 0));
+    }
+    return reply;
+}
+
 """The ASGI app, behind the sign-in check of hosted mode. The health path,
 discovery and the sign-in paths answer anyone. Every other request runs as
-the `sub` of its bearer token, or, for a path the connector does not use, of
-its session cookie (`graph_runner.VERIFIED_SUB`, which
+the caller its credentials name (`graph_runner.VERIFIED_SUB`, which
 `graph_runner.request_caller` reads); a session whose access token has
-expired is renewed here and the renewed cookie goes out with the response.
-A request with neither gets, for a page load or a page file, a redirect to
+expired is renewed and the renewed cookie goes out with the response. A
+request from no one gets, for a page load or a page file, a redirect to
 sign in (before anything is served: a page served with no caller would
-reload for ever on its first 401), and for anything else a 401. Local mode
-has no check."""
+reload for ever on its first 401), and for anything else a 401. If WorkOS
+cannot say whether a session is good, the answer is 503 and the cookie
+stays. Local mode has no check."""
 def guarded(inner: any, config: FrontDoorConfig) -> any {  # jac:ignore[W1037]
     async def app(scope: dict[str, any], receive: any, send: any) {  # jac:ignore[W1037]
         if scope["type"] != "http" {
@@ -500,44 +548,24 @@ def guarded(inner: any, config: FrontDoorConfig) -> any {  # jac:ignore[W1037]
             await inner(scope, receive, send);
             return;
         }
-        auth = config.auth;
-        if auth is not None and is_discovery_path(path) {
-            await discovery(auth)(scope, receive, send);
+        if config.auth is not None and is_discovery_path(path) {
+            await discovery(config.auth)(scope, receive, send);
             return;
         }
-        token = bearer_token(scope);
-        access = await auth.verify_token(token) if auth is not None and token else None;
-        who: str | None = access.subject if access is not None else None;
-        renewed: str | None = None;
-        expired = False;
-        sealed = Request(scope).cookies.get(SESSION_COOKIE, "");
-        if who is None and config.sessions is not None and not is_mcp_path(path) and sealed {
-            found = await anyio.to_thread.run_sync(lambda -> any { return config.sessions.check(sealed); });
-            if found is not None {
-                who = found.sub;
-                renewed = found.sealed;
-            } else {
-                expired = True;
-            }
-        }
-        if who is None {
-            request = Request(scope);
-            reply: Response;
-            if config.sessions is not None and request.method in ["GET", "HEAD"] and is_page_path(path) {
-                reply = RedirectResponse(login_redirect(path, request.url.query), status_code=302);
-            } else {
-                reply = unauthorized(auth);
-            }
-            if expired {
-                reply.headers.append("set-cookie", cookie_header(SESSION_COOKIE, "", 0));
-            }
-            await reply(scope, receive, send);
-            return;
-        }
-        reset = VERIFIED_SUB.set(who);
         try {
-            if renewed is not None {
-                send = sending_cookie(send, cookie_header(SESSION_COOKIE, renewed, SESSION_MAX_AGE_S));
+            who = await credentials(scope, config);
+        } except SessionCheckUnavailable {
+            await PlainTextResponse("Sign-in is unavailable. Try again.", status_code=503, headers=NO_STORE)(scope, receive, send);
+            return;
+        }
+        if who.caller is None {
+            await refuse_anonymous(Request(scope), config, who.ended)(scope, receive, send);
+            return;
+        }
+        reset = VERIFIED_SUB.set(who.caller);
+        try {
+            if who.renewed is not None {
+                send = send_with_cookie(send, cookie_header(SESSION_COOKIE, who.renewed, SESSION_MAX_AGE_S));
             }
             await inner(scope, receive, send);
         } finally {

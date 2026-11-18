@@ -28,6 +28,8 @@ def sealed(sub: str, name: str = "", *, old: bool = False) -> str:
 class StandInSessions:
     def __init__(self):
         self.ended: set[str] = set()
+        self.renewals = 0  # how often an expired session was renewed (WorkOS refresh tokens work once)
+        self.unavailable = False  # WorkOS cannot be reached
 
     def login_url(self, state: str, redirect_uri: str) -> str:
         return f"{LOGIN_URL}?state={state}&redirect_uri={quote(redirect_uri, safe='')}"
@@ -36,14 +38,17 @@ class StandInSessions:
         if code not in SIGN_INS:
             raise PermissionError("not invited")
         sub, name = SIGN_INS[code]
-        return sealed(sub, name), SessionUser(sub=sub, name=name)
+        return SessionUser(sub=sub, name=name, sealed=sealed(sub, name))
 
     def check(self, value: str):
+        if self.unavailable:
+            raise ConnectionError("WorkOS is unreachable")
         if not value.startswith("sealed:") or value.removesuffix(":old") in self.ended:
             return None
         parts = value.split(":")
         sub, name = parts[1], parts[2]
         renewed = sealed(sub, name) if value.endswith(":old") else None
+        self.renewals += renewed is not None
         return SessionUser(sub=sub, name=name, sealed=renewed)
 
     def logout_url(self, value: str, return_to: str):

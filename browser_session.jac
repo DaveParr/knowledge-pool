@@ -10,10 +10,20 @@ All methods block on the network, so the front door calls them off its
 event loop.
 """
 
+import threading;
+import time;
 import from workos { WorkOSClient }
 import from workos.session { AuthenticateWithSessionCookieFailureReason, seal_session_from_auth_response }
 
-glob AUTHKIT_PROVIDER: str = "authkit";
+glob AUTHKIT_PROVIDER: str = "authkit",
+     # How long a renewed session is remembered under the cookie it replaced.
+     RENEWAL_MEMORY_S: float = 60.0,
+     RENEWALS: dict[str, tuple[float, any]] = {},  # jac:ignore[W1037]
+     RENEWAL_LOCK: threading.Lock = threading.Lock();
+
+"""WorkOS was unreachable, or answered in a way that does not say the session
+has ended: the session is not known to be over, so the cookie must stay."""
+obj SessionCheckUnavailable(Exception) {}
 
 """Who a session names (`sub` is the WorkOS user id, never an email address)
 and, when the access token had to be renewed, the new sealed session to put
@@ -51,18 +61,18 @@ obj WorkOSSessions {
         );
     }
 
-    def complete_login(code: str) -> tuple[str, SessionUser] {  # jac:ignore[W1036]
+    def complete_login(code: str) -> SessionUser {
         reply = self.client.user_management.authenticate_with_code(code=code);  # jac:ignore[E1054,W1051]
         user = reply.user.to_dict();  # jac:ignore[W1051]
         sealed = seal_session_from_auth_response(  # jac:ignore[E1054,W1051]
             access_token=reply.access_token, refresh_token=reply.refresh_token, user=user,
             cookie_password=self.cookie_password
         );
-        who = session_user(user);
-        if who is None {
+        signed_in = session_user(user, sealed);
+        if signed_in is None {
             raise PermissionError("WorkOS named no user.");
         }
-        return (sealed, who);
+        return signed_in;
     }
 
     def check(sealed: str) -> SessionUser | None {
@@ -77,7 +87,12 @@ obj WorkOSSessions {
         }
         renewed = session.refresh() as any;  # jac:ignore[W1037,W1051]
         if not renewed.authenticated {
-            return None;
+            # WorkOS refused the refresh token: the session is over. A network error, or a
+            # reason this code does not know, is not proof of that.
+            if renewed.reason in list(AuthenticateWithSessionCookieFailureReason) and renewed.reason != AuthenticateWithSessionCookieFailureReason.REFRESH_NETWORK_ERROR {  # jac:ignore[W1051]
+                return None;
+            }
+            raise SessionCheckUnavailable(str(renewed.reason));  # jac:ignore[W1051]
         }
         return session_user(renewed.user, renewed.sealed_session);  # jac:ignore[W1051]
     }
@@ -89,5 +104,33 @@ obj WorkOSSessions {
         } except Exception {
             return None;
         }
+    }
+}
+
+"""Who `sealed` names, or None when the session has ended; raises
+`SessionCheckUnavailable` when that cannot be told. A page load makes
+several requests at once with the same cookie, and WorkOS refresh tokens
+work once: so one check at a time, and a renewal is remembered for a minute
+under the cookie it replaced, so the others get the same answer."""
+def check_session(provider: any, sealed: str) -> SessionUser | None {  # jac:ignore[W1037]
+    with RENEWAL_LOCK {
+        now = time.monotonic();
+        for stale in [k for (k, (at, _)) in RENEWALS.items() if now - at > RENEWAL_MEMORY_S] {
+            del RENEWALS[stale];
+        }
+        if sealed in RENEWALS {
+            return RENEWALS[sealed][1] as SessionUser;
+        }
+        try {
+            found = provider.check(sealed);
+        } except SessionCheckUnavailable {
+            raise;
+        } except Exception as e {  # the SDK's network and JWKS errors
+            raise SessionCheckUnavailable(str(e)) from e;
+        }
+        if found is not None and found.sealed is not None {
+            RENEWALS[sealed] = (now, found);
+        }
+        return found as SessionUser | None;
     }
 }
