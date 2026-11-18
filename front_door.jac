@@ -60,11 +60,11 @@ import from starlette.routing { Route }
 import from jaclang.data.serializer { Serializer }
 import from mcp.server.auth.routes { build_resource_metadata_url }
 import from pydantic { AnyHttpUrl }
-import from graph_runner { APP_DIR, HOSTED, VERIFIED_SUB, app_mode, request_caller, run_walker, run_read, call_function, CallFailed }
+import from graph_runner { APP_DIR, HOSTED, VERIFIED_SUB, app_mode, request_caller, run_walker, run_read, READ_WALKERS, call_function, CallFailed }
 import from profile { save_display_name, display_name }
 import from browser_session { SessionUser, SessionCheckUnavailable, check_session }
 import from hosted_auth { AuthKitVerifier }
-import from decks { CreateDeck, ListDecks, GetDeck, SetDeckFormat, AddCard, SetCardCount, RemoveCard, list_formats }
+import from decks { DeckAction, CreateDeck, ListDecks, GetDeck, SetDeckFormat, AddCard, SetCardCount, RemoveCard, list_formats }
 import from deck_io { DeckExport, DeckImport, CreateDeckFromList }
 import from jaclang.runtime.constructs { WalkerArchetype }
 import from cards { search_cards }
@@ -197,7 +197,7 @@ def fits(target: any, fields: dict[str, any]) -> bool {  # jac:ignore[W1037]
 
 """Run the page's walker `w` as `caller`. A read of a deck (any user's) runs as the deck's owner."""
 def run_page_walker(caller: str | None, w: WalkerArchetype) -> WalkerArchetype {
-    if isinstance(w, GetDeck) or isinstance(w, DeckExport) {
+    if isinstance(w, DeckAction) and type(w) in READ_WALKERS {
         return run_read(caller, w.deck_id, w);
     }
     return run_walker(caller, w);
