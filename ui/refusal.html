@@ -1,0 +1,28 @@
+<!-- Shared by the four views: a refused call as one line with a retry. `view_page` (ui_pages.jac) puts this in each view. -->
+<style>
+  .refused { display: flex; align-items: center; gap: 10px; margin: 0; padding: 8px 12px; border-radius: 6px;
+    background: var(--bad-bg, #fdecea); color: var(--bad-fg, #8a1c13); }
+  .refused span { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .refused button { flex: none; font: inherit; font-size: 13px; color: inherit; background: none;
+    border: 1px solid currentColor; border-radius: 6px; padding: 2px 10px; cursor: pointer; }
+</style>
+<script>
+// Why a call was refused, as one line ("" when it was not): from a tool result (the host's
+// tool-result notification or a tools/call reply) or from what a tools/call threw.
+function refusalOf(result, thrown) {
+  const oneLine = (t) => { const s = String(t ?? "").replace(/\s+/g, " ").trim(); return s.length > 160 ? s.slice(0, 157) + "…" : s; };
+  if (thrown) return oneLine((thrown && thrown.message) || "The host refused the call.");
+  if (!result) return "The call did not return anything.";
+  const sc = result.structuredContent;
+  const text = (result.content || []).filter((c) => c.type === "text").map((c) => c.text).join(" ");
+  if (result.isError) return oneLine(text || "The call failed.");
+  if (sc && sc.error) return oneLine(sc.error);
+  if (!sc) return oneLine(text || "The call did not return anything.");
+  return "";
+}
+// The message and its "Try again" button; a view finds the button by `[data-retry]`.
+function refusalHtml(message, canRetry) {
+  const esc = (s) => String(s).replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[c]);
+  return `<p class="refused" role="alert"><span>${esc(message)}</span>${canRetry ? `<button type="button" data-retry>Try again</button>` : ""}</p>`;
+}
+</script>

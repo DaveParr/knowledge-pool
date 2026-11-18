@@ -82,6 +82,7 @@
     color: #1f1e1d; font: 600 11px/1 var(--font-sans, system-ui, sans-serif); font-variant-numeric: tabular-nums; }
   .mc-sep { color: var(--muted); font-size: 11px; margin: 0 2px; }
 </style>
+<!-- @include refusal.html -->
 </head>
 <body>
 <main id="app"><p class="empty">Loading deck…</p></main>
@@ -174,6 +175,23 @@
     app.querySelectorAll(`ul[data-zone="${b.dataset.zone}"] > li > details`).forEach((d) => { d.open = b.dataset.all === "open"; });
   });
 
+
+  // A refused call shows as one line with a retry that makes the same call again through the host.
+  const TOOL = "deck_show";
+  let lastArgs = null;
+  async function retry() {
+    if (!lastArgs) return;
+    app.innerHTML = `<p class="empty">Trying again…</p>`;
+    try { shown(await request("tools/call", { name: TOOL, arguments: lastArgs })); }
+    catch (e) { app.innerHTML = refusalHtml(refusalOf(null, e), true); }
+  }
+  function shown(result) {
+    const why = refusalOf(result);
+    if (why) app.innerHTML = refusalHtml(why, Boolean(lastArgs));
+    else render(result.structuredContent);
+  }
+  app.addEventListener("click", (e) => { if (e.target.closest("[data-retry]")) retry(); });
+
   function render(deck) {
     if (!deck || deck.error) {
       app.innerHTML = `<p class="empty">${esc(deck ? deck.error : "No deck.")}</p>`;
@@ -207,8 +225,10 @@
       msg.error ? p.reject(msg.error) : p.resolve(msg.result);
       return;
     }
-    if (msg.method === "ui/notifications/tool-result") {
-      render(msg.params && msg.params.structuredContent);
+    if (msg.method === "ui/notifications/tool-input") {
+      lastArgs = (msg.params && msg.params.arguments) || null;
+    } else if (msg.method === "ui/notifications/tool-result") {
+      shown(msg.params);
     } else if (msg.method === "ui/notifications/host-context-changed") {
       applyHost(msg.params);
     } else if (msg.method === "ui/resource-teardown" && msg.id !== undefined) {

@@ -4,7 +4,7 @@ import "./global.css";
 import "./frontend.css";
 import from .deck_detail { DeckDetail }
 import from .export_panel { ExportPanel }
-import from .walker_failure { failureMessage }
+import from .walker_failure { failureMessage, thrownLine }
 import from .session_bar { SessionBar }
 
 import from decks { Deck, FormatInfo, CreateDeck, ListDecks, list_formats }
@@ -117,7 +117,7 @@ def:pub app -> JsxElement {
             </form>
             <p className="fe-note">Other users can see and copy the decks you make.</p>
             {<p role="alert" className="error">{error}</p> if error else None}
-            {<p className="empty">No decks yet.</p> if len(decks) == 0 else None}
+            {<p className="empty">No decks yet.</p> if len(decks) == 0 and not error else None}
             <ul className="fe-decks">
                 {[
                     <li key={jid(deck)} className="fe-deck">

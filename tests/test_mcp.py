@@ -8,6 +8,8 @@ from pathlib import Path
 
 import pytest
 
+import ui_pages
+
 from tests.hosted_settings import ALL_HOSTED_SETTINGS, HOSTED_SETTINGS
 from tests.local_user import local_user_decks
 
@@ -41,6 +43,14 @@ def test_export_view_only_sends_mcp_apps_methods():
     sent = set(re.findall(r'(?:request|notify)\("([^"]+)"', page))
     assert sent == VIEW_METHODS, sent
     assert "hostCaps.downloadFile" in page  # ui/download-file only when the host advertises it
+
+
+@pytest.mark.parametrize("name", ["deck_table.html", "mana_analysis.html", "card_search.html", "deck_export.html"])
+def test_every_view_is_served_with_the_shared_refusal_helpers(name):
+    assert "@include refusal.html" in (ROOT / "ui" / name).read_text()
+    served = ui_pages.view_page(name)
+    assert "@include" not in served
+    assert "function refusalOf(" in served and "function refusalHtml(" in served
 
 
 def test_mcp_over_stdio_keeps_the_local_users_decks_across_processes(fixture_catalog, jac_db_url, tmp_path):

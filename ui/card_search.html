@@ -43,7 +43,6 @@
   .toast { padding: 6px 10px; border-radius: 6px; background: var(--ok-bg); color: var(--ok-fg); font-size: 13px; margin: 6px 0; }
   .toast.bad { background: var(--bad-bg); color: var(--bad-fg); }
   .empty { color: var(--muted); padding: 10px 0; margin: 0; }
-  .failed { color: var(--bad-fg); padding: 10px 0; margin: 0; }
   @media (max-width: 420px) { .hit .actions { flex-direction: row; grid-row: auto; grid-column: 1 / -1; } li.hit { grid-template-columns: 1fr; } }
   /* Mana symbol pills (same as mana_cost.css in the web app and ui/deck_table.html). */
   :root { --mana-w: #f8f3d6; --mana-u: #b4d7f0; --mana-b: #c8c1bd; --mana-r: #f0a68c; --mana-g: #9fd0ae; --mana-c: #d8d4cc; }
@@ -53,6 +52,7 @@
     color: #1f1e1d; font: 600 11px/1 var(--font-sans, system-ui, sans-serif); font-variant-numeric: tabular-nums; }
   .mc-sep { color: var(--muted); font-size: 11px; margin: 0 2px; }
 </style>
+<!-- @include refusal.html -->
 </head>
 <body>
 <main id="app">
@@ -100,6 +100,7 @@
   }
 
   const state = {
+    args: null,       // what the tool was called with (tool-input)
     deck: null,       // {id, name, format, main_total, sideboard_total}
     query: "", limit: 20,
     hits: null,       // null until the first result arrives
@@ -147,7 +148,7 @@
     const off = state.busy || !state.canCallTools || !state.deck;
     $("go").disabled = off;
     if (state.error) {
-      $("results").innerHTML = `<p class="failed" role="alert">${esc(state.error.replace(/\.?$/, "."))} The deck is unchanged.</p>`;
+      $("results").innerHTML = refusalHtml(`${state.error.replace(/\.?$/, ".")} The deck is unchanged.`, Boolean(searchDeckId() && state.canCallTools));
       return;
     }
     if (state.hits === null) return;
@@ -207,12 +208,15 @@
     for (const h of state.hits || []) h.in_deck = held[h.oracle_id] || {};
   }
 
+  // The deck being searched for: the one the result named, else the one the call named.
+  const searchDeckId = () => (state.deck && state.deck.id) || (state.args && state.args.deck_id) || "";
+
   async function search(query) {
-    if (!state.deck || state.busy) return;
+    if (!searchDeckId() || state.busy) return;
     state.busy = true; toast(""); renderResults();
     try {
       const res = await request("tools/call", { name: "card_search",
-        arguments: { deck_id: state.deck.id, query, limit: state.limit } });
+        arguments: { deck_id: searchDeckId(), query, limit: state.limit } });
       state.query = query;
       showSearch(res);
     } catch (e) {
@@ -270,6 +274,11 @@
     if (q) search(q);
   });
   $("results").addEventListener("click", (e) => {
+    if (e.target.closest("[data-retry]")) {
+      const q = state.query || $("q").value.trim();
+      if (q) search(q);
+      return;
+    }
     const b = e.target.closest("button[data-zone]");
     if (!b || !state.hits) return;
     add(state.hits[Number(b.dataset.i)], b.dataset.zone);
@@ -286,6 +295,7 @@
     }
     if (msg.method === "ui/notifications/tool-input") {
       const args = (msg.params && msg.params.arguments) || {};
+      state.args = args;
       if (args.query && !$("q").value) $("q").value = args.query;
     } else if (msg.method === "ui/notifications/tool-result") {
       showSearch(msg.params);

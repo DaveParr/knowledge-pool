@@ -1,7 +1,12 @@
 """Handlers for the deck view."""
 
 impl DeckDetail.loadDeck -> None {
-    formats = await list_formats();
+    try {
+        formats = await list_formats();
+    } except Exception as failure {
+        error = thrownLine(failure);
+        return;
+    }
     result = root spawn GetDeck(deck_id=deckId);
     show(result.reports);
 }
