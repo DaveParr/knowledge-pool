@@ -10,4 +10,3 @@
 .sb-connector input[type=text] { width: 22em; max-width: 60vw; font-family: var(--font-mono); }
 .sb-signout { margin: 0; }
 .sb-signout .link { background: none; border: 0; padding: 0; color: var(--accent); cursor: pointer; text-decoration: underline; }
-.fe-note { margin: 4px 0 0; color: var(--muted); font-size: 13px; }
