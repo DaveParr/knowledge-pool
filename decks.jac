@@ -592,3 +592,19 @@ walker CopyDeck {
         report deck_view(deck);
     }
 }
+
+"""List every other user's decks (never the caller's own), for the web page.
+The front door fills the report from the runner (`list_other_decks`): the
+decks are on other users' roots, which no walker can visit."""
+walker:protect ListOtherDecks {
+    has reports: list[list[DeckSummary]] = [];
+}
+
+"""Copy another user's deck (or any deck) into the caller's own, for the web
+page. The front door runs it through the runner (`copy_deck`), which reads
+the deck as its owner and creates the copy as the caller; it reports the new
+deck's view, or a WalkerError."""
+walker:protect CopyOtherDeck {
+    has deck_id: str,
+        reports: list[DeckView | WalkerError] = [];
+}

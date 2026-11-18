@@ -35,3 +35,13 @@ impl DeckDetail.show(reports: list[DeckView | WalkerError]) -> None {
         deck = reports[0] as DeckView;
     }
 }
+
+impl DeckDetail.copyDeck -> None {
+    result = root spawn CopyOtherDeck(deck_id=deckId);
+    why = failureMessage(result.reports);
+    if why {
+        error = why;
+        return;
+    }
+    onCopied((result.reports[0] as DeckView).id);
+}

@@ -321,6 +321,14 @@ def user_root_ids -> list[str] {
     }
 }
 
+"""Whether the deck `deck_id` is `caller`'s own: the views use this to hide the
+controls that change a deck the caller does not own. False for an id that names no deck."""
+def owns_deck(caller: str | None, deck_id: str) -> bool {
+    owner = call_function(caller, lambda () -> object { return deck_owner(deck_id); }, name="deck_owner") as str | None;
+    # The deck's anchor spells its root with dashes, the user record without.
+    return owner is not None and owner.replace("-", "") == user_root_id(caller).replace("-", "");
+}
+
 """Every deck of every other user (not `caller`'s own), by owner then deck
 name. Each user's decks are read on that user's root, with their stored
 display name. A call the runner could not finish raises `CallFailed`."""
