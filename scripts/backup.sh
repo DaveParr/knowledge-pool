@@ -13,9 +13,9 @@
 #
 # Settings (environment):
 #   KP_BACKUP_DIR       where dumps go (default ~/.local/share/knowledge-pool/backups)
-#   KP_BACKUP_KEEP      how many dumps to keep (default 8)
+#   KP_BACKUP_KEEP      how many dumps to keep (default 14)
 #   KP_BACKUP_SERVICE   the Postgres service `dump` reads (default Postgres)
-#   KP_BACKUP_SCHEDULE  install-timer's OnCalendar (default weekly)
+#   KP_BACKUP_SCHEDULE  install-timer's OnCalendar (default daily)
 #   KP_RAILWAY_PROJECT, KP_RAILWAY_ENVIRONMENT  default to production, so the
 #                       script works from any directory, linked or not
 #   KP_PG_IMAGE         the image that runs pg_dump/pg_restore/psql when no local
@@ -25,7 +25,7 @@ set -euo pipefail
 REPO="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 SCRIPT="$REPO/scripts/backup.sh"
 BACKUP_DIR="${KP_BACKUP_DIR:-${XDG_DATA_HOME:-$HOME/.local/share}/knowledge-pool/backups}"
-KEEP="${KP_BACKUP_KEEP:-8}"
+KEEP="${KP_BACKUP_KEEP:-14}"
 PROJECT="${KP_RAILWAY_PROJECT:-fb141f57-62d6-4897-98d5-bc6e145d915f}"
 ENVIRONMENT="${KP_RAILWAY_ENVIRONMENT:-65957dce-6184-4fb6-948b-085ac9c5d6b1}"
 PG_IMAGE="${KP_PG_IMAGE:-postgres:18}"
@@ -194,7 +194,7 @@ cmd_install_timer() {
     sed -e "s|@SCRIPT@|$SCRIPT|" -e "s|@PATH@|$PATH|" \
         -e "s|@KEEP@|$KEEP|" -e "s|@BACKUP_DIR@|$BACKUP_DIR|" \
         "$REPO/scripts/systemd/kp-backup.service" >"$units/kp-backup.service"
-    sed -e "s|@SCHEDULE@|${KP_BACKUP_SCHEDULE:-weekly}|" \
+    sed -e "s|@SCHEDULE@|${KP_BACKUP_SCHEDULE:-daily}|" \
         "$REPO/scripts/systemd/kp-backup.timer" >"$units/kp-backup.timer"
     systemctl --user daemon-reload
     systemctl --user enable --now kp-backup.timer

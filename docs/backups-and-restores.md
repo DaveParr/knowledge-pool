@@ -1,14 +1,18 @@
 # Backups and restores
 
 How decks come back after a bad deploy, an admin mistake, or the loss of the Railway
-project. Decided in #107, built in #138. Two layers:
+project. Decided in #107, built in #138.
 
-1. **Railway volume backups** on the Postgres service: daily (kept 6 days), weekly
-   (about a month) and monthly (about three months). Quick to roll back to, but they
-   live in the same project and environment, so they go when the volume or the
-   project does. Restore 1 uses them.
-2. **A dump on the admin's machine**, weekly, the last 8 kept: `scripts/backup.sh`.
-   It survives the loss of the whole project. Restore 2 uses it.
+**On the Hobby plan there is one layer: a daily dump on the admin's machine**, the last
+14 kept, made by `scripts/backup.sh`. It survives the loss of the whole project.
+Restore 2 rebuilds from it.
+
+Railway's volume backups (scheduled daily, weekly and monthly, restored in place by
+Restore 1) need the Pro plan: on Hobby the Backups tab can only view, restore and
+delete backups that already exist (checked 2026-11-19). If the plan moves to Pro, turn
+on all three schedules, go back to a weekly dump keeping 8
+(`KP_BACKUP_SCHEDULE=weekly KP_BACKUP_KEEP=8 scripts/backup.sh install-timer`), and
+run the Restore 1 drill.
 
 Every restore is the whole database, with the app down, decided by the admin alone. A
 restore brings back what was deleted since the backup (decks, and the decks of users
@@ -20,7 +24,7 @@ not restored.
 `scripts/backup.sh` opens Railway's SSH tunnel to the Postgres service (Postgres has no
 public address), runs `pg_dump --format=custom --no-owner` over the whole database to
 `~/.local/share/knowledge-pool/backups/knowledge-pool-<UTC time>.dump`, reads the file
-back with `pg_restore --list`, and keeps the newest 8. If anything fails it exits
+back with `pg_restore --list`, and keeps the newest 14. If anything fails it exits
 non-zero and raises a desktop notification; the old dumps stay as they were.
 
 It needs `railway` logged in (`railway login`), `python3`, and Postgres client tools of
@@ -37,20 +41,13 @@ systemctl --user list-timers kp-backup.timer
 
 `install-timer` writes `kp-backup.service` and `kp-backup.timer` (from
 `scripts/systemd/`) into `~/.config/systemd/user/`, with this checkout's path and the
-current `PATH` filled in, and enables the timer. `Persistent=true` runs a missed dump
+current `PATH` filled in, and enables the timer (daily by default). `Persistent=true` runs a missed dump
 when the machine next starts. Run it again after moving the checkout.
 
 Settings, as environment variables: `KP_BACKUP_DIR` (must be outside the repo; created
-mode 700), `KP_BACKUP_KEEP` (default 8), `KP_BACKUP_SCHEDULE` (the timer's `OnCalendar`,
-default `weekly`), `KP_BACKUP_SERVICE` (default `Postgres`). `install-timer` copies the
+mode 700), `KP_BACKUP_KEEP` (default 14), `KP_BACKUP_SCHEDULE` (the timer's `OnCalendar`,
+default `daily`), `KP_BACKUP_SERVICE` (default `Postgres`). `install-timer` copies the
 first three into the units.
-
-If Railway's scheduled backups are not offered on the plan, the dump is the only layer:
-install the timer daily, keeping 14.
-
-```sh
-KP_BACKUP_SCHEDULE=daily KP_BACKUP_KEEP=14 scripts/backup.sh install-timer
-```
 
 Keep the dumps on the encrypted disk and in the admin's own backup of it, nowhere else:
 each one holds every user's decks and the sign-in tables.
@@ -58,7 +55,8 @@ each one holds every user's decks and the sign-in tables.
 ## Restore 1: roll back in place
 
 For a bad deploy or an admin mistake, when the Postgres service and its volume still
-exist.
+exist. **Needs Railway's volume backups, so the Pro plan**; on Hobby, use Restore 2 with
+the newest dump from before the damage, into a new Postgres service.
 
 1. **Take the app down**, so no write lands mid-restore: app service → Deployments →
    the active deployment → ⋮ → Remove.
@@ -110,26 +108,30 @@ The dump drill restores into a throwaway Postgres 18 here and compares row count
 production:
 
 ```sh
-docker run -d --name kp-scratch -e POSTGRES_PASSWORD=scratch -p 127.0.0.1:55432:5432 postgres:18
+COUNTS="select table_name || ' ' || (xpath('/row/c/text()', query_to_xml(format(
+  'select count(*) as c from %I.%I', table_schema, table_name), false, true, '')))[1]::text
+  from information_schema.tables where table_schema = 'public' order by 1"
+
+docker run -d --name kp-scratch -e POSTGRES_PASSWORD=scratch postgres:18
+docker exec kp-scratch pg_isready -U postgres   # repeat until it answers
 docker exec -i kp-scratch pg_restore -U postgres -d postgres --no-owner --exit-on-error \
   < ~/.local/share/knowledge-pool/backups/<newest>.dump
-docker exec kp-scratch psql -U postgres -d postgres -c \
-  "select relname, n_live_tup from pg_stat_user_tables order by relname"
+docker exec kp-scratch psql -U postgres -d postgres -Atc "$COUNTS"
+railway ssh -p fb141f57-62d6-4897-98d5-bc6e145d915f -e 65957dce-6184-4fb6-948b-085ac9c5d6b1 \
+  --service Postgres -- psql -U postgres -d railway -Atc "$COUNTS"
 docker rm -f kp-scratch
 ```
 
-Run the same `select` on production (`railway ssh --service Postgres`, then `psql -U
-postgres -d railway`); `n_live_tup` is an estimate, so for an exact count use
-`select count(*)` on the tables that differ.
+The two lists of exact row counts should match (a write between the dump and the count
+can move one by a little).
 
 ## Drills
 
 Tried before anyone is invited, and the dump drill again after each Postgres major
 upgrade. Note how long each restore took on #138 (or the upgrade's ticket).
 
-- Turn on the three schedules; take a manual backup.
-- Restore 1: make a deck, take a manual backup, change the deck, run Restore 1, see the
-  deck as it was.
 - Run `scripts/backup.sh`; do the scratch restore above and compare row counts.
 - Restore 2 into a second Postgres service, point the app at it, check a deck.
 - `scripts/backup.sh install-timer`.
+- On Pro only: turn on the three schedules, take a manual backup; make a deck, take a
+  manual backup, change the deck, run Restore 1, see the deck as it was.

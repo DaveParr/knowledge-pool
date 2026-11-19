@@ -106,17 +106,17 @@ def test_dump_is_the_default_command(env):
     assert len(dumps(env)) == 1
 
 
-def test_dump_keeps_only_the_newest_eight(env):
+def test_dump_keeps_only_the_newest_fourteen(env):
     folder = Path(env["KP_BACKUP_DIR"])
     folder.mkdir()
-    old = [f"knowledge-pool-2026-01-{day:02d}T000000Z.dump" for day in range(1, 11)]
+    old = [f"knowledge-pool-2026-01-{day:02d}T000000Z.dump" for day in range(1, 17)]
     for name in old:
         (folder / name).write_text("old")
     (folder / "notes.txt").write_text("not a dump")
     assert backup("dump", env=env).returncode == 0
     kept = dumps(env)
-    assert len(kept) == 8
-    assert kept[:7] == old[-7:]
+    assert len(kept) == 14
+    assert kept[:13] == old[-13:]
     assert (folder / "notes.txt").exists()
 
 
@@ -125,8 +125,8 @@ def test_dump_keep_count_can_be_changed(env):
     folder.mkdir()
     for day in range(1, 20):
         (folder / f"knowledge-pool-2026-01-{day:02d}T000000Z.dump").write_text("old")
-    assert backup("dump", env={**env, "KP_BACKUP_KEEP": "14"}).returncode == 0
-    assert len(dumps(env)) == 14
+    assert backup("dump", env={**env, "KP_BACKUP_KEEP": "8"}).returncode == 0
+    assert len(dumps(env)) == 8
 
 
 def test_a_failed_dump_exits_non_zero_notifies_and_keeps_the_old_files(env):
