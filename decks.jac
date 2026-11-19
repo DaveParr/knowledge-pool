@@ -32,6 +32,14 @@ obj ChangeNote {
         reason: str;
 }
 
+"""A history line about the deck as a whole (copied, renamed), not about one
+card: the card, zone and counts are blank."""
+def deck_note(reason: str) -> ChangeNote {
+    return ChangeNote(
+        at=datetime.now(timezone.utc).isoformat(), oracle_id="", name="", zone="", before=0, after=0, reason=reason
+    );
+}
+
 node Deck {
     has name: str,
         created_at: str = "",
@@ -445,15 +453,7 @@ walker:protect RenameDeck(DeckAction) {
         }
         if name != here.name {
             here.history.append(
-                ChangeNote(
-                    at=datetime.now(timezone.utc).isoformat(),
-                    oracle_id="",
-                    name="",
-                    zone="",
-                    before=0,
-                    after=0,
-                    reason=f"Renamed from {here.name} to {name}"
-                )
+                deck_note(f"Renamed from {here.name} to {name}")
             );
             here.name = name;
         }
@@ -610,15 +610,7 @@ walker CopyDeck {
         replace_holdings(deck, self.snapshot.entries, copied);
         # The copy's history is the one line, not a line per card.
         deck.history = [
-            ChangeNote(
-                at=datetime.now(timezone.utc).isoformat(),
-                oracle_id="",
-                name="",
-                zone="",
-                before=0,
-                after=0,
-                reason=copied
-            )
+            deck_note(copied)
         ];
         report deck_view(deck);
     }

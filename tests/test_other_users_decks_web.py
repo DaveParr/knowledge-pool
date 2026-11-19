@@ -89,9 +89,13 @@ def test_owner_renames_a_deck_from_the_web_page_and_the_new_name_lists(client, a
     assert [d["name"] for d in others] == ["Alice's Rebuilt Burn"]
 
 
-def test_renaming_another_users_deck_or_to_a_blank_name_is_refused(client, alice, bob):
+def test_renaming_another_users_deck_is_refused_with_not_your_deck(client, alice, bob):
     deck_id = alices_deck(client, alice)
     [error] = reports(client.post("/walker/RenameDeck", json={"deck_id": deck_id, "name": "Mine now"}, headers=bob))
     assert error["code"] == "not-your-deck"
+
+
+def test_renaming_to_a_blank_name_is_refused_with_a_message_to_show(client, alice):
+    deck_id = alices_deck(client, alice)
     [blank] = reports(client.post("/walker/RenameDeck", json={"deck_id": deck_id, "name": "  "}, headers=alice))
     assert blank["code"] == "blank-name" and blank["message"] == "A deck needs a name."
