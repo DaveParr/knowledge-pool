@@ -100,6 +100,37 @@ def test_hosted_mode_starts_with_its_settings_and_answers_health_but_no_data_cal
         assert refused[0] == 401
 
 
+def test_hosted_mode_writes_routine_lines_to_stdout_not_stderr(fixture_catalog, jac_db_url):
+    # Railway labels every stderr line `error`; a routine request must not land there.
+    port, upstream_port = _free_port(), _free_port()
+    env = {
+        **os.environ, "KP_CATALOG": str(fixture_catalog), "JAC_DB_URL": jac_db_url, "KP_MODE": "hosted",
+        "KP_TRANSPORT": "http", "KP_HTTP_PORT": str(port), "KP_UPSTREAM_PORT": str(upstream_port), **HOSTED_SETTINGS,
+    }
+    proc = subprocess.Popen(
+        [sys.executable, "run", "--no-serve", "mcp_server.jac"], cwd=ROOT, env=env,
+        stdin=subprocess.DEVNULL, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True,
+    )
+    try:
+        for _ in range(240):
+            assert proc.poll() is None, "the front door exited"
+            try:
+                if _get(f"http://{LOOPBACK}:{port}/healthz")[0] == 200:
+                    break
+            except OSError:
+                time.sleep(0.5)
+        else:
+            pytest.fail("the front door did not answer")
+    finally:
+        proc.terminate()
+        out, err = proc.communicate(timeout=60)
+    assert "/healthz" in out
+    # Jac's own start-up notes ("Preparing application...") still use stderr; routine lines must not.
+    assert "/healthz" not in err and "HTTP Request" not in err
+    levelled = [json.loads(line) for line in out.splitlines() if line.startswith("{")]
+    assert levelled and {"info", "INFO"} <= {entry["level"] for entry in levelled}
+
+
 def test_hosted_mode_sends_a_page_load_and_the_pages_files_to_sign_in_instead_of_serving_them(fixture_catalog, jac_db_url):
     # Served with no caller, a page's first data call gets a 401 and Jac's client,
     # holding no Jac token, reloads the page for ever.

@@ -670,12 +670,16 @@ def free_port -> int {
 
 """Start Jac's server for the page as a child, on 127.0.0.1 only (`port`;
 a free one when 0). One worker, docs and graph off and registration off come
-from `jac.toml`. Returns the child and its URL once it answers, or raises."""
-def start_upstream(port: int = 0) -> tuple[subprocess.Popen, str] {  # jac:ignore[W1036]
+from `jac.toml`. Returns the child and its URL once it answers, or raises.
+
+The child's output goes to stderr, or, when `to_stdout` (hosted mode, `log_setup.jac`), to
+stdout, where a host reads a plain line as routine."""
+def start_upstream(port: int = 0, to_stdout: bool = False) -> tuple[subprocess.Popen, str] {  # jac:ignore[W1036]
     port = port or free_port();
+    out = sys.stdout if to_stdout else sys.stderr;
     child = subprocess.Popen(
         [sys.executable, "run", "--no-dev", "--host", LOOPBACK, "--port", str(port), "main.jac"],
-        cwd=APP_DIR, stdin=subprocess.DEVNULL, stdout=sys.stderr, stderr=sys.stderr
+        cwd=APP_DIR, stdin=subprocess.DEVNULL, stdout=out, stderr=out
     );
     atexit.register(stop_upstream, child);
     url = f"http://{LOOPBACK}:{port}";
