@@ -355,12 +355,12 @@ ask PRED_LOCKS "What does SHOW max_pred_locks_per_transaction answer now?"
 write_env PRED_LOCKS "$PRED_LOCKS"
 
 stage "Railway: the app service"
+note "Rebuilding a lost project (Restore 2)? Restore the dump into Postgres first: docs/backups-and-restores.md."
 step "Create → GitHub Repo → $REPO (accept the GitHub permission Railway asks for)."
 step "App service → Settings → Source: branch main, 'Wait for CI' ON."
 step "Settings → Build: Dockerfile (the repo root's Dockerfile is picked up)."
 step "Settings → Deploy: health check path $HEALTH_PATH, restart policy 'On failure'."
 step "On the first deploy main had no Dockerfile, so this build failed: leave it. The first real deploy is stage 16."
-note "Rebuilding a lost project (Restore 2)? Restore the dump into Postgres before this stage: docs/backups-and-restores.md."
 pause "Press Enter once the service is linked."
 
 stage "Railway: the app's variables"

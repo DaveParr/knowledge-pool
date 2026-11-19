@@ -91,8 +91,9 @@ database moves region.
    database, set up as step 3 asks. Set `KP_RAILWAY_PROJECT` and
    `KP_RAILWAY_ENVIRONMENT` to the new ids (or change the defaults in
    `scripts/backup.sh`), do step 4 into `Postgres`, then carry on with the wizard from
-   "the app service" (its build now succeeds: `main` has the Dockerfile), and finish
-   with step 6. Steps 2, 3 and 5 do not apply.
+   "the app service" through "GitHub: Railway project token" (the app's build now
+   succeeds: `main` has the Dockerfile). Leave the wizard there: its later stages are
+   for the first deploy. Finish with step 6. Steps 2, 3 and 5 do not apply.
 2. **Take the app down** if it is up (as in Restore 1).
 3. **Create Postgres 18 with no public address**: Create → Database → PostgreSQL. Name
    it (say `Postgres-EU`; a name of its own leaves any old service alone). Settings →

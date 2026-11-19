@@ -9,11 +9,11 @@ small file, and each fake logs its arguments, so these tests run offline. The
 real tunnel and Postgres 18 tools are tried in the drills."""
 
 import os
-import signal
-import time
 import re
+import signal
 import stat
 import subprocess
+import time
 from pathlib import Path
 
 import pytest
@@ -306,6 +306,8 @@ def test_install_timer_refuses_a_value_a_unit_cannot_hold(env, tmp_path):
 
 @pytest.mark.parametrize("sig", [signal.SIGTERM, signal.SIGHUP, signal.SIGINT])
 def test_dump_killed_midway_closes_the_tunnel_and_leaves_no_partial(env, sig):
+    """Guards the behaviour, not the script's signal traps: bash 5 runs the EXIT
+    trap on these signals even without them."""
     run = subprocess.Popen(
         [str(SCRIPT), "dump"], env={**env, "FAKE_DUMP": "slow"}, cwd=ROOT,
         stdout=subprocess.PIPE, stderr=subprocess.PIPE, start_new_session=True,

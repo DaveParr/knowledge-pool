@@ -58,10 +58,11 @@ cleanup() {
     exit "$status"
 }
 trap cleanup EXIT
-# bash skips the EXIT trap when a signal kills it: turn signals into exits, so
-# the tunnel (in its own session) is closed and a partial dump removed.
+# Not every bash runs the EXIT trap when a signal kills it: turn signals into
+# exits, so the tunnel (in its own session) is closed and a partial dump removed.
+trap 'exit 129' HUP
 trap 'exit 130' INT
-trap 'exit 143' TERM HUP
+trap 'exit 143' TERM
 
 fail() {
     FAILURE="$1"
