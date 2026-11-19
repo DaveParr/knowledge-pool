@@ -659,7 +659,7 @@ async def serve_http(host: str, port: int, upstream: str, hosted: HostedSettings
     mcp_app = server.streamable_http_app(host=host, transport_security=security);
     own_origins = [f"http://127.0.0.1:{port}", f"http://localhost:{port}"] + origins;
     config = FrontDoorConfig(upstream=upstream, origins=own_origins, client=httpx2.AsyncClient(), auth=auth, sessions=sessions, public_origin=public_origin);
-    listener = uvicorn.Server(uvicorn.Config(front_door_app(mcp_app, config), host=host, port=port, log_level="info", log_config=None if hosted is not None else uvicorn.config.LOGGING_CONFIG));
+    listener = uvicorn.Server(uvicorn.Config(front_door_app(mcp_app, config), host=host, port=port, log_level="info", log_config=(None if hosted is not None else uvicorn.config.LOGGING_CONFIG)));
     await listener.serve();
 }
 
@@ -692,7 +692,7 @@ with entry:__main__ {
         http_port = int(os.environ.get("KP_HTTP_PORT", "8020"));
         check_bind(http_host);
         # Jac's server hands out the page from a child on 127.0.0.1; if it dies, this process exits.
-        (child, upstream) = start_upstream(int(os.environ.get("KP_UPSTREAM_PORT", "0")), hosted is not None);
+        (child, upstream) = start_upstream(int(os.environ.get("KP_UPSTREAM_PORT", "0")), to_stdout=hosted is not None);
         exit_when_upstream_dies(child);
         stop_child_on_sigterm(child);
         try {

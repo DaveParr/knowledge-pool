@@ -3,6 +3,7 @@
 import io
 import json
 import logging
+import sys
 
 import pytest
 
@@ -43,7 +44,6 @@ def test_hosted_logs_give_a_failure_the_error_level_with_its_traceback(hosted_lo
 
 
 def test_hosted_logs_leave_no_plain_text_handler_on_stderr(hosted_logs):
-    import sys
     plain = [h for h in logging.getLogger().handlers
              if getattr(h, "stream", None) is sys.stderr and not isinstance(h.formatter, log_setup.JsonLineFormatter)]
     assert plain == []

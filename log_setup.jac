@@ -43,10 +43,10 @@ own handlers over this: start it with `log_config=None`."""
 def use_json_logs(stream: io.TextIOBase | None = None) {
     handler = logging.StreamHandler(stream or sys.stdout);
     handler.setFormatter(JsonLineFormatter());
-    top_logger = logging.getLogger();
-    for old in list(top_logger.handlers) {
-        top_logger.removeHandler(old);
+    root_logger = logging.getLogger();
+    for old in list(root_logger.handlers) {
+        root_logger.removeHandler(old);
     }
-    top_logger.addHandler(handler);
-    top_logger.setLevel(logging.INFO);
+    root_logger.addHandler(handler);
+    root_logger.setLevel(logging.INFO);
 }

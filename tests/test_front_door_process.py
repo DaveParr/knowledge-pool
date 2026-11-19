@@ -127,8 +127,9 @@ def test_hosted_mode_writes_routine_lines_to_stdout_not_stderr(fixture_catalog, 
     assert "/healthz" in out
     # Jac's own start-up notes ("Preparing application...") still use stderr; routine lines must not.
     assert "/healthz" not in err and "HTTP Request" not in err
-    levelled = [json.loads(line) for line in out.splitlines() if line.startswith("{")]
-    assert levelled and {"info", "INFO"} <= {entry["level"] for entry in levelled}
+    # The front door's own lines say `info` in lower case; the child's JSON lines say `INFO`.
+    json_lines = [json.loads(line) for line in out.splitlines() if line.startswith("{")]
+    assert any(entry["level"] == "info" and "/healthz" in entry["message"] for entry in json_lines)
 
 
 def test_hosted_mode_sends_a_page_load_and_the_pages_files_to_sign_in_instead_of_serving_them(fixture_catalog, jac_db_url):
