@@ -84,12 +84,15 @@ on Hobby run `scripts/backup.sh`.
 For a wiped volume, a deleted Postgres service, or a lost project. Also how the
 database moves region.
 
-1. If the project is gone, redo the Railway stages of `scripts/deploy_wizard.sh` (the
-   project, Postgres, the app and its variables, the domain). Its `Postgres` service is
-   the new, empty database, already set up as step 3 asks: skip step 3 and step 5,
-   and in step 4 restore into `Postgres`. Set `KP_RAILWAY_PROJECT` and
+1. If the project is gone, the app must not reach the new database before the dump is
+   in it (it would create its own tables, and `restore` only loads into an empty
+   database). So: run `scripts/deploy_wizard.sh`'s Railway stages up to and including
+   "Postgres predicate locks", and stop there. Its `Postgres` service is the new, empty
+   database, set up as step 3 asks. Set `KP_RAILWAY_PROJECT` and
    `KP_RAILWAY_ENVIRONMENT` to the new ids (or change the defaults in
-   `scripts/backup.sh`).
+   `scripts/backup.sh`), do step 4 into `Postgres`, then carry on with the wizard from
+   "the app service" (its build now succeeds: `main` has the Dockerfile), and finish
+   with step 6. Steps 2, 3 and 5 do not apply.
 2. **Take the app down** if it is up (as in Restore 1).
 3. **Create Postgres 18 with no public address**: Create → Database → PostgreSQL. Name
    it (say `Postgres-EU`; a name of its own leaves any old service alone). Settings →

@@ -9,6 +9,8 @@ small file, and each fake logs its arguments, so these tests run offline. The
 real tunnel and Postgres 18 tools are tried in the drills."""
 
 import os
+import signal
+import time
 import re
 import stat
 import subprocess
@@ -41,6 +43,7 @@ case "$1" in
     echo "Connection: postgresql://postgres:{PASSWORD}@127.0.0.1"
     echo "Connection: postgresql://postgres:{ENCODED_PASSWORD}@127.0.0.1"
     [ "${{FAKE_TUNNEL:-ok}}" = fail ] && exit 1
+    echo $$ > "$FAKE_LOG.tunnel-pid"
     while [ "$#" -gt 0 ]; do [ "$1" = -P ] && port="$2"; shift; done
     exec python3 -c "import socket,time
 s=socket.socket(); s.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
@@ -52,6 +55,7 @@ esac
 echo "pg_dump $* password=${PGPASSWORD:+set}" >> "$FAKE_LOG"
 [ "${FAKE_DUMP:-ok}" = fail ] && { echo "pg_dump: error: connection refused" >&2; exit 1; }
 echo "PGDMP fake dump"
+if [ "${FAKE_DUMP:-ok}" = slow ]; then touch "$FAKE_LOG.dumping"; sleep 30; fi
 """,
     "pg_restore": """#!/usr/bin/env bash
 [ "$1" = --version ] && { echo "pg_restore (PostgreSQL) 18.1"; exit 0; }
@@ -298,3 +302,24 @@ def test_install_timer_refuses_a_value_a_unit_cannot_hold(env, tmp_path):
     assert result.returncode != 0
     assert "KP_BACKUP_DIR" in result.stderr
     assert "systemctl" not in calls(env)
+
+
+@pytest.mark.parametrize("sig", [signal.SIGTERM, signal.SIGHUP, signal.SIGINT])
+def test_dump_killed_midway_closes_the_tunnel_and_leaves_no_partial(env, sig):
+    run = subprocess.Popen(
+        [str(SCRIPT), "dump"], env={**env, "FAKE_DUMP": "slow"}, cwd=ROOT,
+        stdout=subprocess.PIPE, stderr=subprocess.PIPE, start_new_session=True,
+    )
+    dumping = Path(env["FAKE_LOG"] + ".dumping")
+    deadline = time.monotonic() + 30
+    while not dumping.exists():
+        assert time.monotonic() < deadline, "the fake dump never started"
+        time.sleep(0.1)
+    tunnel = int(Path(env["FAKE_LOG"] + ".tunnel-pid").read_text())
+    os.killpg(run.pid, sig)  # as a terminal's Ctrl-C or hangup does
+    assert run.wait(timeout=30) != 0
+    time.sleep(0.5)
+    with pytest.raises(ProcessLookupError):
+        os.kill(tunnel, 0)
+    assert not list(Path(env["KP_BACKUP_DIR"]).glob("*partial*"))
+    assert dumps(env) == []

@@ -58,6 +58,10 @@ cleanup() {
     exit "$status"
 }
 trap cleanup EXIT
+# bash skips the EXIT trap when a signal kills it: turn signals into exits, so
+# the tunnel (in its own session) is closed and a partial dump removed.
+trap 'exit 130' INT
+trap 'exit 143' TERM HUP
 
 fail() {
     FAILURE="$1"
@@ -236,10 +240,10 @@ cmd_restore() {
 }
 
 # unit_value NAME VALUE prints VALUE if it can go into a unit file as it is:
-# no sed delimiter, systemd specifier, quote, backslash or newline.
+# no sed delimiter, systemd specifier or variable, quote, backslash or newline.
 unit_value() {
     case "$2" in
-        *[\|\&%\"\\]* | *$'\n'*) fail "$1 cannot go into a systemd unit as it is: $2" ;;
+        *[\|\&%\$\"\\]* | *$'\n'*) fail "$1 cannot go into a systemd unit as it is: $2" ;;
     esac
     printf '%s' "$2"
 }
