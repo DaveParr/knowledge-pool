@@ -33,6 +33,9 @@ class JsonLineFormatter(logging.Formatter) {
         if record.exc_info {
             line["exception"] = self.formatException(record.exc_info);
         }
+        if record.stack_info {
+            line["stack"] = self.formatStack(record.stack_info);
+        }
         return json.dumps(line);
     }
 }

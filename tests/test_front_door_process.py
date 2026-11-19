@@ -118,7 +118,8 @@ def test_hosted_mode_writes_a_request_line_to_stdout_as_info_and_not_to_stderr(f
                 if _get(f"http://{LOOPBACK}:{port}/healthz")[0] == 200:
                     break
             except OSError:
-                time.sleep(0.5)
+                pass
+            time.sleep(0.5)
         else:
             pytest.fail("the front door did not answer")
     finally:
