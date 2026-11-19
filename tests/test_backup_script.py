@@ -22,7 +22,12 @@ FAKES = {
 echo "railway $*" >> "$FAKE_LOG"
 case "$1" in
   variable)
-    echo '{{"PGUSER":"postgres","PGPASSWORD":"{PASSWORD}","PGDATABASE":"railway"}}' ;;
+    case "$*" in
+      *knowledge-pool*)
+        echo '{{"JAC_DB_URL":"postgresql://postgres:{PASSWORD}@'"${{FAKE_APP_DB_HOST:-postgres-eu.railway.internal}}"':5432/railway"}}' ;;
+      *)
+        echo '{{"PGUSER":"postgres","PGPASSWORD":"{PASSWORD}","PGDATABASE":"railway","PGHOST":"postgres-eu.railway.internal"}}' ;;
+    esac ;;
   connect)
     echo "Connection: postgresql://postgres:{PASSWORD}@127.0.0.1"
     [ "${{FAKE_TUNNEL:-ok}}" = fail ] && exit 1
@@ -211,3 +216,13 @@ def test_restore_needs_the_service_name_typed_back(env, tmp_path):
     result = backup("restore", str(dump), "Postgres-EU", env=env, stdin="yes\n")
     assert result.returncode != 0
     assert "--tunnel-only" not in calls(env)
+
+
+def test_dump_refuses_a_service_the_app_does_not_use(env):
+    result = backup("dump", env={**env, "FAKE_APP_DB_HOST": "postgres.railway.internal"})
+    assert result.returncode != 0
+    assert "not the database the app uses" in result.stderr
+    assert "postgres.railway.internal" in result.stderr
+    assert "notify-send" in calls(env)
+    assert "--tunnel-only" not in calls(env)
+    assert PASSWORD not in result.stdout + result.stderr

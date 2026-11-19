@@ -14,7 +14,9 @@
 # Settings (environment):
 #   KP_BACKUP_DIR       where dumps go (default ~/.local/share/knowledge-pool/backups)
 #   KP_BACKUP_KEEP      how many dumps to keep (default 14)
-#   KP_BACKUP_SERVICE   the Postgres service `dump` reads (default Postgres)
+#   KP_BACKUP_SERVICE   the Postgres service `dump` reads (default Postgres-EU); it
+#                       must be the one the app's JAC_DB_URL points at, or `dump` fails
+#   KP_APP_SERVICE      the app's service (default knowledge-pool)
 #   KP_BACKUP_SCHEDULE  install-timer's OnCalendar (default daily)
 #   KP_RAILWAY_PROJECT, KP_RAILWAY_ENVIRONMENT  default to production, so the
 #                       script works from any directory, linked or not
@@ -28,6 +30,7 @@ BACKUP_DIR="${KP_BACKUP_DIR:-${XDG_DATA_HOME:-$HOME/.local/share}/knowledge-pool
 KEEP="${KP_BACKUP_KEEP:-14}"
 PROJECT="${KP_RAILWAY_PROJECT:-fb141f57-62d6-4897-98d5-bc6e145d915f}"
 ENVIRONMENT="${KP_RAILWAY_ENVIRONMENT:-65957dce-6184-4fb6-948b-085ac9c5d6b1}"
+APP_SERVICE="${KP_APP_SERVICE:-knowledge-pool}"
 PG_IMAGE="${KP_PG_IMAGE:-postgres:18}"
 PG_MAJOR=18
 TUNNEL_WAIT=60
@@ -78,6 +81,21 @@ free_port() {
 }
 
 port_open() { (exec 3<>"/dev/tcp/127.0.0.1/$1") 2>/dev/null; }
+
+# app_uses SERVICE fails unless the app's JAC_DB_URL names SERVICE's private host,
+# so a dump never quietly copies an old database after the app has moved on.
+app_uses() {
+    local service="$1" app_host service_host
+    app_host="$(railway variable list --service "$APP_SERVICE" -p "$PROJECT" -e "$ENVIRONMENT" --json 2>/dev/null |
+        python3 -c 'import json, sys, urllib.parse
+print(urllib.parse.urlsplit(json.load(sys.stdin).get("JAC_DB_URL", "")).hostname or "")')" ||
+        fail "could not read $APP_SERVICE's JAC_DB_URL from Railway (logged in? run: railway login)"
+    service_host="$(railway variable list --service "$service" -p "$PROJECT" -e "$ENVIRONMENT" --json 2>/dev/null |
+        python3 -c 'import json, sys; print(json.load(sys.stdin).get("PGHOST", ""))')" ||
+        fail "could not read $service's variables from Railway"
+    [ -n "$app_host" ] && [ "$app_host" = "$service_host" ] ||
+        fail "$service is not the database the app uses: its JAC_DB_URL points at ${app_host:-nothing}; set KP_BACKUP_SERVICE"
+}
 
 # open_tunnel SERVICE reads SERVICE's user, password and database from Railway
 # and opens the SSH tunnel to it on a free local port: sets PORT, PGUSER,
@@ -139,11 +157,12 @@ cmd_dump() {
     esac
     chmod 700 "$folder"
 
-    local service="${KP_BACKUP_SERVICE:-Postgres}"
+    local service="${KP_BACKUP_SERVICE:-Postgres-EU}"
     local name
     name="knowledge-pool-$(date -u +%Y-%m-%dT%H%M%SZ).dump"
     local partial="$TMP/$name.partial"
 
+    app_uses "$service"
     open_tunnel "$service"
     # shellcheck disable=SC2046  # connection() is flags without spaces
     pg pg_dump $(connection) --format=custom --no-owner >"$partial" ||

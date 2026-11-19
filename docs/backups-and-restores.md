@@ -40,14 +40,20 @@ systemctl --user list-timers kp-backup.timer
 ```
 
 `install-timer` writes `kp-backup.service` and `kp-backup.timer` (from
-`scripts/systemd/`) into `~/.config/systemd/user/`, with this checkout's path and the
+`scripts/systemd/`) into `~/.config/systemd/user/`, with this checkout's path (run it
+from the main checkout, not a worktree that will be removed) and the
 current `PATH` filled in, and enables the timer (daily by default). `Persistent=true` runs a missed dump
 when the machine next starts. Run it again after moving the checkout.
 
 Settings, as environment variables: `KP_BACKUP_DIR` (must be outside the repo; created
 mode 700), `KP_BACKUP_KEEP` (default 14), `KP_BACKUP_SCHEDULE` (the timer's `OnCalendar`,
-default `daily`), `KP_BACKUP_SERVICE` (default `Postgres`). `install-timer` copies the
+default `daily`), `KP_BACKUP_SERVICE` (default `Postgres-EU`). `install-timer` copies the
 first three into the units.
+
+Before it dumps, the script checks that `KP_BACKUP_SERVICE` is the database the app's
+`JAC_DB_URL` points at, and fails (with the notification) if not. After Restore 2 moves
+the app to a service of another name, change the default in `scripts/backup.sh`, or set
+`KP_BACKUP_SERVICE` in `~/.config/systemd/user/kp-backup.service`.
 
 Keep the dumps on the encrypted disk and in the admin's own backup of it, nowhere else:
 each one holds every user's decks and the sign-in tables.
@@ -83,7 +89,7 @@ database moves region.
 3. **Create Postgres 18 with no public address**: Create → Database → PostgreSQL. Name
    it (say `Postgres-EU`; a name of its own leaves any old service alone). Settings →
    Source image: pin the tag to 18. Settings → Networking: remove any TCP proxy.
-   Settings → Deploy → Regions: the region you want. Then set the predicate locks and
+   Settings → Scale: the region you want (it moves the empty volume). Then set the predicate locks and
    restart, as the deploy wizard does:
    ```sh
    railway ssh --service Postgres-EU
@@ -97,8 +103,11 @@ database moves region.
    It asks you to type the service name, refuses a database that already has tables,
    and runs `pg_restore --no-owner --exit-on-error`. It prints how long the restore took.
 5. **Point the app at it**: app service → Variables → `JAC_DB_URL` =
-   `${{Postgres-EU.DATABASE_URL}}`, and check it resolves to the private address
-   (`postgres-eu.railway.internal`). Deploy.
+   `${{Postgres-EU.DATABASE_URL}}` (it resolves to the new service's private
+   `*.railway.internal` address). If the app moves region too, set it under the app's
+   Settings → Scale. Then deploy **from source**
+   (`railway redeploy --from-source -s knowledge-pool`): a plain redeploy, or one of an
+   earlier deployment, reuses that deployment's region.
 6. Steps 3 to 5 of Restore 1. Going back is pointing `JAC_DB_URL` at the old service
    again. If an old Postgres service still exists, keep it for a week, then delete it.
 
