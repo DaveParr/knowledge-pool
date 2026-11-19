@@ -18,7 +18,7 @@ import from jaclang.server.session { Session }
 import from pathlib { Path }
 import from catalog.ingest { build, load_atomic, load_oracle_tags }
 import catalog.store as store;
-import from decks { Deck, DeckView, CreateDeck, ListDecks, GetDeck, AddCard, SetDeckFormat, EditDeck, DeckSummary, holdings }
+import from decks { Deck, DeckView, CreateDeck, ListDecks, GetDeck, AddCard, SetDeckFormat, RenameDeck, EditDeck, DeckSummary, holdings }
 import from profile { save_display_name, UNKNOWN_USER }
 import from deck_io { DeckExport, ExportResult }
 import from walker_errors { WalkerError }
@@ -772,4 +772,35 @@ test "a user owns the decks they made, and no one else's, and no id that names n
     assert not owns_deck(BOB, mine);
     assert not owns_deck(ALICE, "not-a-deck");
     assert not owns_deck(ALICE, str(uuid4()));
+}
+
+test "the owner renames a deck: the name is trimmed, shows in the list and the history gets one line" {
+    id = _new_deck(ALICE, "Alice's old name");
+    view = run_walker(ALICE, RenameDeck(deck_id=id, name="  Alice's new name  ")).reports[0] as DeckView;
+    assert view.name == "Alice's new name";
+    assert view.history[-1].reason == "Renamed from Alice's old name to Alice's new name";
+    assert "Alice's new name" in _deck_names(ALICE);
+    assert "Alice's old name" not in _deck_names(ALICE);
+}
+
+test "another user cannot rename a deck: not-your-deck, and the name stays" {
+    id = _new_deck(ALICE, "Alice's guarded name");
+    assert _error_code(BOB, RenameDeck(deck_id=id, name="Bob's name")) == "not-your-deck";
+    assert "Alice's guarded name" in _deck_names(ALICE);
+    assert _error_code(BOB, RenameDeck(deck_id=str(uuid4()), name="x")) == "no-such-deck";
+}
+
+test "a blank name renames nothing and writes no history" {
+    id = _new_deck(ALICE, "Alice's kept name");
+    assert _error_code(ALICE, RenameDeck(deck_id=id, name="   ")) == "blank-name";
+    view = run_walker(ALICE, GetDeck(deck_id=id)).reports[0] as DeckView;
+    assert view.name == "Alice's kept name" and view.history == [];
+}
+
+test "a copy keeps its own name when the original is renamed" {
+    id = _new_deck(ALICE, "Alice's original");
+    copied = (copy_deck(BOB, id).reports[0] as DeckView).id;
+    run_walker(ALICE, RenameDeck(deck_id=id, name="Alice's renamed"));
+    bobs = run_walker(BOB, GetDeck(deck_id=copied)).reports[0] as DeckView;
+    assert bobs.name == "Alice's original (copy)";
 }
