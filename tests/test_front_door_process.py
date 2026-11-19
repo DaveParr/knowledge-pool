@@ -100,7 +100,7 @@ def test_hosted_mode_starts_with_its_settings_and_answers_health_but_no_data_cal
         assert refused[0] == 401
 
 
-def test_hosted_mode_writes_routine_lines_to_stdout_not_stderr(fixture_catalog, jac_db_url):
+def test_hosted_mode_writes_a_request_line_to_stdout_as_info_and_not_to_stderr(fixture_catalog, jac_db_url):
     # Railway labels every stderr line `error`; a routine request must not land there.
     port, upstream_port = _free_port(), _free_port()
     env = {

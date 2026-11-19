@@ -27,6 +27,7 @@ is not reachable from a connector that calls in from outside this machine.
 
 import io;
 import os;
+import logging;
 import sys;
 import anyio;
 import httpx2;
@@ -351,15 +352,19 @@ def export_brief -> str {
 """The text a view-bound tool gives the model: `brief` when the client renders
 MCP Apps (the user already sees the view, so the full text would only make
 the model repeat it), `full` otherwise. Logs the client's advertised
-extensions once, to stderr, so it is easy to see which branch a host gets."""
+extensions once, to stderr (to the info log when hosted), so it is easy to see which branch a host gets."""
 def view_text(ctx: Context, full: str, brief: str) -> str {  # jac:ignore[W1036]: the SDK finds the context by this bare annotation
     apps = client_supports_apps(ctx);
     if apps not in LOGGED_CLIENT_UI {
         LOGGED_CLIENT_UI.append(apps);
         caps = ctx.client_capabilities;
-        sys.stderr.write(  # jac:ignore[E1099]
-            f"MCP client renders MCP Apps: {apps} (extensions: {caps.extensions if caps else None})\n"
-        );
+        note = f"MCP client renders MCP Apps: {apps} (extensions: {caps.extensions if caps else None})";
+        if app_mode() == HOSTED {
+            # Hosted logs are JSON on stdout, where this routine note is info (`log_setup.jac`).
+            logging.getLogger("knowledge_pool.mcp").info(note);
+        } else {
+            sys.stderr.write(note + "\n");  # jac:ignore[E1099]
+        }
     }
     return brief if apps else full;
 }
