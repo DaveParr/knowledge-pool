@@ -1,12 +1,15 @@
-"""scripts/backup.sh: the weekly dump of the production database to the admin's
+"""scripts/backup.sh: the daily dump of the production database to the admin's
 machine, and the restore of a dump into an empty Postgres (#138, decided in #107).
 
-`railway`, `pg_dump`, `pg_restore`, `psql` and `notify-send` are fakes on PATH:
-the fake tunnel listens on the port it is given, the fake `pg_dump` writes a
+`railway`, `pg_dump`, `pg_restore`, `psql`, `notify-send` and `systemctl` are
+fakes on PATH. The fake project has the app and two Postgres services, `Postgres`
+and `Postgres-EU`; the app's JAC_DB_URL names Postgres-EU's host unless
+FAKE_APP_DB_HOST says otherwise. The fake tunnel listens on the port it is given, the fake `pg_dump` writes a
 small file, and each fake logs its arguments, so these tests run offline. The
 real tunnel and Postgres 18 tools are tried in the drills."""
 
 import os
+import re
 import stat
 import subprocess
 from pathlib import Path
@@ -16,6 +19,7 @@ import pytest
 ROOT = Path(__file__).resolve().parent.parent
 SCRIPT = ROOT / "scripts" / "backup.sh"
 PASSWORD = "pw-do-not-print-0f3a"
+ENCODED_PASSWORD = "pw%2Fencoded-0f3a"
 
 FAKES = {
     "railway": f"""#!/usr/bin/env bash
@@ -23,13 +27,19 @@ echo "railway $*" >> "$FAKE_LOG"
 case "$1" in
   variable)
     case "$*" in
-      *knowledge-pool*)
+      *"--service knowledge-pool "*)
         echo '{{"JAC_DB_URL":"postgresql://postgres:{PASSWORD}@'"${{FAKE_APP_DB_HOST:-postgres-eu.railway.internal}}"':5432/railway"}}' ;;
-      *)
-        echo '{{"PGUSER":"postgres","PGPASSWORD":"{PASSWORD}","PGDATABASE":"railway","PGHOST":"postgres-eu.railway.internal"}}' ;;
-    esac ;;
+      *"--service Postgres "*) host=postgres.railway.internal ;;
+      *) host=postgres-eu.railway.internal ;;
+    esac
+    [ -z "${{host:-}}" ] || echo '{{"PGUSER":"postgres","PGPASSWORD":"{PASSWORD}","PGDATABASE":"railway","PGHOST":"'"$host"'"}}' ;;
+  service)
+    echo '[{{"name":"knowledge-pool","source":{{"repo":"r","image":null}}}},
+           {{"name":"Postgres","source":{{"image":"ghcr.io/railwayapp-templates/postgres-ssl:18"}}}},
+           {{"name":"Postgres-EU","source":{{"image":"ghcr.io/railwayapp-templates/postgres-ssl:18"}}}}]' ;;
   connect)
     echo "Connection: postgresql://postgres:{PASSWORD}@127.0.0.1"
+    echo "Connection: postgresql://postgres:{ENCODED_PASSWORD}@127.0.0.1"
     [ "${{FAKE_TUNNEL:-ok}}" = fail ] && exit 1
     while [ "$#" -gt 0 ]; do [ "$1" = -P ] && port="$2"; shift; done
     exec python3 -c "import socket,time
@@ -57,6 +67,9 @@ echo "${FAKE_TABLES:-0}"
     "notify-send": """#!/usr/bin/env bash
 echo "notify-send $*" >> "$FAKE_LOG"
 """,
+    "systemctl": """#!/usr/bin/env bash
+echo "systemctl $*" >> "$FAKE_LOG"
+""",
 }
 
 
@@ -73,6 +86,7 @@ def env(tmp_path):
         "PATH": f"{bin_dir}:{os.environ['PATH']}",
         "FAKE_LOG": str(tmp_path / "calls.log"),
         "KP_BACKUP_DIR": str(tmp_path / "backups"),
+        "XDG_CONFIG_HOME": str(tmp_path / "config"),
     }
 
 
@@ -111,7 +125,7 @@ def test_dump_is_the_default_command(env):
     assert len(dumps(env)) == 1
 
 
-def test_dump_keeps_only_the_newest_fourteen(env):
+def test_dump_keeps_only_the_newest_fourteen_by_default(env):
     folder = Path(env["KP_BACKUP_DIR"])
     folder.mkdir()
     old = [f"knowledge-pool-2026-01-{day:02d}T000000Z.dump" for day in range(1, 17)]
@@ -134,7 +148,7 @@ def test_dump_keep_count_can_be_changed(env):
     assert len(dumps(env)) == 8
 
 
-def test_a_failed_dump_exits_non_zero_notifies_and_keeps_the_old_files(env):
+def test_dump_failing_exits_non_zero_notifies_and_keeps_the_old_files(env):
     folder = Path(env["KP_BACKUP_DIR"])
     folder.mkdir()
     old = [f"knowledge-pool-2026-01-{day:02d}T000000Z.dump" for day in range(1, 10)]
@@ -147,14 +161,14 @@ def test_a_failed_dump_exits_non_zero_notifies_and_keeps_the_old_files(env):
     assert not list(folder.glob("*partial*"))
 
 
-def test_a_dump_that_fails_its_check_exits_non_zero_and_is_not_kept(env):
+def test_dump_failing_its_check_exits_non_zero_and_is_not_kept(env):
     result = backup("dump", env={**env, "FAKE_LIST": "fail"})
     assert result.returncode != 0
     assert "notify-send" in calls(env)
     assert dumps(env) == []
 
 
-def test_a_tunnel_that_does_not_open_exits_non_zero_and_notifies(env):
+def test_dump_whose_tunnel_does_not_open_exits_non_zero_and_notifies(env):
     result = backup("dump", env={**env, "FAKE_TUNNEL": "fail"})
     assert result.returncode != 0
     assert "tunnel" in result.stderr
@@ -162,10 +176,12 @@ def test_a_tunnel_that_does_not_open_exits_non_zero_and_notifies(env):
     assert "pg_dump --" not in calls(env)
 
 
-def test_the_password_never_reaches_the_output(env):
+def test_dump_never_prints_the_password(env):
     for extra in ({}, {"FAKE_TUNNEL": "fail"}, {"FAKE_DUMP": "fail"}):
         result = backup("dump", env={**env, **extra})
-        assert PASSWORD not in result.stdout + result.stderr
+        output = result.stdout + result.stderr
+        assert PASSWORD not in output
+        assert ENCODED_PASSWORD not in output
 
 
 def test_dump_refuses_a_folder_inside_the_repo(env):
@@ -173,6 +189,12 @@ def test_dump_refuses_a_folder_inside_the_repo(env):
     assert result.returncode != 0
     assert "outside the repo" in result.stderr
     assert not (ROOT / "backups").exists()
+
+
+def test_dump_refuses_a_nested_folder_inside_the_repo_without_creating_it(env):
+    result = backup("dump", env={**env, "KP_BACKUP_DIR": str(ROOT / "nested" / "backups")})
+    assert result.returncode != 0
+    assert not (ROOT / "nested").exists()
 
 
 def test_dump_files_are_private_to_the_admin(env):
@@ -218,11 +240,61 @@ def test_restore_needs_the_service_name_typed_back(env, tmp_path):
     assert "--tunnel-only" not in calls(env)
 
 
-def test_dump_refuses_a_service_the_app_does_not_use(env):
-    result = backup("dump", env={**env, "FAKE_APP_DB_HOST": "postgres.railway.internal"})
+def test_dump_reads_the_database_the_app_uses(env):
+    assert backup("dump", env=env).returncode == 0
+    assert "connect Postgres-EU --tunnel-only" in calls(env)
+    calls_path = Path(env["FAKE_LOG"])
+    calls_path.unlink()
+    moved = {**env, "FAKE_APP_DB_HOST": "postgres.railway.internal"}
+    result = backup("dump", env=moved)
+    assert result.returncode == 0, result.stdout + result.stderr
+    assert "connect Postgres --tunnel-only" in calls(env)
+
+
+def test_dump_refuses_a_named_service_the_app_does_not_use(env):
+    result = backup("dump", env={**env, "KP_BACKUP_SERVICE": "Postgres"})
     assert result.returncode != 0
     assert "not the database the app uses" in result.stderr
-    assert "postgres.railway.internal" in result.stderr
+    assert "postgres-eu.railway.internal" in result.stderr
     assert "notify-send" in calls(env)
     assert "--tunnel-only" not in calls(env)
     assert PASSWORD not in result.stdout + result.stderr
+
+
+def test_dump_fails_when_no_service_has_the_apps_database_host(env):
+    result = backup("dump", env={**env, "FAKE_APP_DB_HOST": "gone.railway.internal"})
+    assert result.returncode != 0
+    assert "gone.railway.internal" in result.stderr
+    assert "notify-send" in calls(env)
+    assert "--tunnel-only" not in calls(env)
+
+
+@pytest.mark.parametrize("keep", ["0", "-3", "many"])
+def test_dump_refuses_a_keep_count_below_one_and_deletes_nothing(env, keep):
+    folder = Path(env["KP_BACKUP_DIR"])
+    folder.mkdir()
+    (folder / "knowledge-pool-2026-01-01T000000Z.dump").write_text("old")
+    result = backup("dump", env={**env, "KP_BACKUP_KEEP": keep})
+    assert result.returncode != 0
+    assert "KP_BACKUP_KEEP" in result.stderr
+    assert dumps(env) == ["knowledge-pool-2026-01-01T000000Z.dump"]
+
+
+def test_install_timer_writes_both_units_and_enables_the_timer(env):
+    result = backup("install-timer", env={**env, "KP_BACKUP_SCHEDULE": "weekly"})
+    assert result.returncode == 0, result.stdout + result.stderr
+    units = Path(env["XDG_CONFIG_HOME"]) / "systemd" / "user"
+    service = (units / "kp-backup.service").read_text()
+    assert f'ExecStart="{SCRIPT}" dump' in service
+    assert f'Environment="KP_BACKUP_DIR={env["KP_BACKUP_DIR"]}"' in service
+    assert not re.search(r"@[A-Z_]+@", service)
+    timer = (units / "kp-backup.timer").read_text()
+    assert "OnCalendar=weekly" in timer and "Persistent=true" in timer
+    assert "systemctl --user enable --now kp-backup.timer" in calls(env)
+
+
+def test_install_timer_refuses_a_value_a_unit_cannot_hold(env, tmp_path):
+    result = backup("install-timer", env={**env, "KP_BACKUP_DIR": str(tmp_path / "100%")})
+    assert result.returncode != 0
+    assert "KP_BACKUP_DIR" in result.stderr
+    assert "systemctl" not in calls(env)

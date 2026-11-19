@@ -17,7 +17,8 @@ run the Restore 1 drill.
 Every restore is the whole database, with the app down, decided by the admin alone. A
 restore brings back what was deleted since the backup (decks, and the decks of users
 removed since), and loses the edits made since. The invite list lives at WorkOS and is
-not restored.
+not restored. Removed data lingers in the dumps until they age out: about two weeks
+with 14 daily dumps.
 
 ## The dump script
 
@@ -47,13 +48,13 @@ when the machine next starts. Run it again after moving the checkout.
 
 Settings, as environment variables: `KP_BACKUP_DIR` (must be outside the repo; created
 mode 700), `KP_BACKUP_KEEP` (default 14), `KP_BACKUP_SCHEDULE` (the timer's `OnCalendar`,
-default `daily`), `KP_BACKUP_SERVICE` (default `Postgres-EU`). `install-timer` copies the
+default `daily`), `KP_BACKUP_SERVICE` (see below). `install-timer` copies the
 first three into the units.
 
-Before it dumps, the script checks that `KP_BACKUP_SERVICE` is the database the app's
-`JAC_DB_URL` points at, and fails (with the notification) if not. After Restore 2 moves
-the app to a service of another name, change the default in `scripts/backup.sh`, or set
-`KP_BACKUP_SERVICE` in `~/.config/systemd/user/kp-backup.service`.
+The script dumps the Postgres service whose private host the app's `JAC_DB_URL`
+names, so after Restore 2 moves the app to a new service the dump follows it. Set
+`KP_BACKUP_SERVICE` only to check a particular service: if it is not the app's database,
+`dump` fails with the notification.
 
 Keep the dumps on the encrypted disk and in the admin's own backup of it, nowhere else:
 each one holds every user's decks and the sign-in tables.
@@ -75,7 +76,8 @@ the newest dump from before the damage, into a new Postgres service.
 5. **Tell users** which period of edits was lost.
 6. **After a week**, delete the old, unmounted volume.
 
-Before each Postgres upgrade (#109), take a manual backup on the Backups tab.
+Before each Postgres upgrade (#109), take a manual backup on the Backups tab (Pro), or
+on Hobby run `scripts/backup.sh`.
 
 ## Restore 2: rebuild from a dump
 
@@ -83,8 +85,11 @@ For a wiped volume, a deleted Postgres service, or a lost project. Also how the
 database moves region.
 
 1. If the project is gone, redo the Railway stages of `scripts/deploy_wizard.sh` (the
-   project, Postgres, the app and its variables, the domain), then carry on here with
-   the Postgres it made.
+   project, Postgres, the app and its variables, the domain). Its `Postgres` service is
+   the new, empty database, already set up as step 3 asks: skip step 3 and step 5,
+   and in step 4 restore into `Postgres`. Set `KP_RAILWAY_PROJECT` and
+   `KP_RAILWAY_ENVIRONMENT` to the new ids (or change the defaults in
+   `scripts/backup.sh`).
 2. **Take the app down** if it is up (as in Restore 1).
 3. **Create Postgres 18 with no public address**: Create → Database → PostgreSQL. Name
    it (say `Postgres-EU`; a name of its own leaves any old service alone). Settings →
@@ -127,11 +132,12 @@ docker exec -i kp-scratch pg_restore -U postgres -d postgres --no-owner --exit-o
   < ~/.local/share/knowledge-pool/backups/<newest>.dump
 docker exec kp-scratch psql -U postgres -d postgres -Atc "$COUNTS"
 railway ssh -p fb141f57-62d6-4897-98d5-bc6e145d915f -e 65957dce-6184-4fb6-948b-085ac9c5d6b1 \
-  --service Postgres -- psql -U postgres -d railway -Atc "$COUNTS"
+  --service <the app's Postgres> -- psql -U postgres -d railway -Atc "$COUNTS"
 docker rm -f kp-scratch
 ```
 
-The two lists of exact row counts should match (a write between the dump and the count
+The app's Postgres is the service `scripts/backup.sh` names in its `wrote … from`
+line (`Postgres-EU` since 2026-11-19). The two lists of exact row counts should match (a write between the dump and the count
 can move one by a little).
 
 ## Drills
@@ -140,7 +146,9 @@ Tried before anyone is invited, and the dump drill again after each Postgres maj
 upgrade. Note how long each restore took on #138 (or the upgrade's ticket).
 
 - Run `scripts/backup.sh`; do the scratch restore above and compare row counts.
-- Restore 2 into a second Postgres service, point the app at it, check a deck.
+- Restore 2 into a second Postgres service, point the app at it, check a deck. Then
+  point `JAC_DB_URL` back at the first service, deploy, and delete the second one (on
+  2026-11-19 this drill was the move to EU West, so the new service stayed).
 - `scripts/backup.sh install-timer`.
 - On Pro only: turn on the three schedules, take a manual backup; make a deck, take a
   manual backup, change the deck, run Restore 1, see the deck as it was.

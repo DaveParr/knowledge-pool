@@ -6,7 +6,7 @@ After=network-online.target
 
 [Service]
 Type=oneshot
-Environment=PATH=@PATH@
-Environment=KP_BACKUP_KEEP=@KEEP@
-Environment=KP_BACKUP_DIR=@BACKUP_DIR@
-ExecStart=@SCRIPT@ dump
+Environment="PATH=@PATH@"
+Environment="KP_BACKUP_KEEP=@KEEP@"
+Environment="KP_BACKUP_DIR=@BACKUP_DIR@"
+ExecStart="@SCRIPT@" dump

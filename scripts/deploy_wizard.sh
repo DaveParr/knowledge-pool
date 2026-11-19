@@ -245,7 +245,7 @@ expect_status() {
   fi
 }
 
-TOTAL_STAGES=21
+TOTAL_STAGES=22
 
 banner "Knowledge Pool: deploy checklist and first deploy"
 
@@ -486,6 +486,16 @@ say "Claude Code over HTTP:"
 step "claude mcp add --transport http knowledge-pool $MCP_URL   then /mcp in Claude Code to sign in."
 step "Ask it to list your decks."
 ask_note "Claude Code over HTTP" "What happened?"
+
+stage "Backups: a dump, a scratch restore and the daily timer"
+say "Hobby has no Railway volume backups: a daily dump on this machine is the only layer (#138)."
+say "docs/backups-and-restores.md has the commands and both restores."
+step "Take a dump:  scripts/backup.sh   (it finds the database the app uses)."
+step "Restore it into a scratch Postgres 18 here and compare row counts with production"
+step "  (docs/backups-and-restores.md, 'A scratch restore on this machine')."
+ask_note "Dump drill" "Dump and scratch-restore times, and did the row counts match?"
+step "Install the timer from this checkout:  scripts/backup.sh install-timer"
+pause "Press Enter once the timer is listed."
 
 stage "Runbook, and posting the notes"
 say "Every deploy: a failed Test or build emails you and the old version keeps serving."

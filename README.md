@@ -99,7 +99,7 @@ Hosted mode limits request rates in the front door's memory (`rate_limits.jac`):
 
 ### Deploy
 
-The hosted app runs on Railway at `https://knowledge-pool.engi.ai`. `scripts/deploy_wizard.sh` walks the admin through the one-time setup (Google, WorkOS Production, Railway, Hostinger, GitHub) and the first deploy's checks, step by step; it is the deploy checklist decided in #109. It keeps only public values, in `~/.config/knowledge-pool/deploy.env`; the two secrets go to Railway (sealed) and a password manager. Every push to `main` deploys once Test passes.
+The hosted app runs on Railway at `https://knowledge-pool.engi.ai`. `scripts/deploy_wizard.sh` walks the admin through the one-time setup (Google, WorkOS Production, Railway, Hostinger, GitHub) and the first deploy's checks, step by step; it is the deploy checklist decided in #109. [docs/backups-and-restores.md](docs/backups-and-restores.md) covers the daily database dump (`scripts/backup.sh`) and how to restore from one (#138). It keeps only public values, in `~/.config/knowledge-pool/deploy.env`; the two secrets go to Railway (sealed) and a password manager. Every push to `main` deploys once Test passes.
 
 ### Layout
 

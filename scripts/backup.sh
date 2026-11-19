@@ -14,8 +14,9 @@
 # Settings (environment):
 #   KP_BACKUP_DIR       where dumps go (default ~/.local/share/knowledge-pool/backups)
 #   KP_BACKUP_KEEP      how many dumps to keep (default 14)
-#   KP_BACKUP_SERVICE   the Postgres service `dump` reads (default Postgres-EU); it
-#                       must be the one the app's JAC_DB_URL points at, or `dump` fails
+#   KP_BACKUP_SERVICE   the Postgres service `dump` reads. Unset, `dump` finds the
+#                       service whose private host the app's JAC_DB_URL names; set,
+#                       it must be that service, or `dump` fails
 #   KP_APP_SERVICE      the app's service (default knowledge-pool)
 #   KP_BACKUP_SCHEDULE  install-timer's OnCalendar (default daily)
 #   KP_RAILWAY_PROJECT, KP_RAILWAY_ENVIRONMENT  default to production, so the
@@ -38,16 +39,18 @@ TUNNEL_WAIT=60
 umask 077
 TMP="$(mktemp -d)"
 TUNNEL_PID=""
+PARTIAL=""
 NOTIFY_ON_FAILURE=""
 FAILURE="the script stopped early"
 
 cleanup() {
     local status=$?
     if [ -n "$TUNNEL_PID" ]; then
-        kill "$TUNNEL_PID" 2>/dev/null || true
+        kill -- "-$TUNNEL_PID" 2>/dev/null || kill "$TUNNEL_PID" 2>/dev/null || true
         wait "$TUNNEL_PID" 2>/dev/null || true
     fi
     rm -rf "$TMP"
+    [ -z "$PARTIAL" ] || rm -f "$PARTIAL"
     if [ "$status" -ne 0 ] && [ -n "$NOTIFY_ON_FAILURE" ]; then
         notify-send --urgency=critical "Knowledge Pool backup failed" \
             "$FAILURE. See: journalctl --user -u kp-backup" 2>/dev/null || true
@@ -82,46 +85,74 @@ free_port() {
 
 port_open() { (exec 3<>"/dev/tcp/127.0.0.1/$1") 2>/dev/null; }
 
-# app_uses SERVICE fails unless the app's JAC_DB_URL names SERVICE's private host,
-# so a dump never quietly copies an old database after the app has moved on.
-app_uses() {
-    local service="$1" app_host service_host
-    app_host="$(railway variable list --service "$APP_SERVICE" -p "$PROJECT" -e "$ENVIRONMENT" --json 2>/dev/null |
-        python3 -c 'import json, sys, urllib.parse
-print(urllib.parse.urlsplit(json.load(sys.stdin).get("JAC_DB_URL", "")).hostname or "")')" ||
+# railway_vars SERVICE KEY... prints SERVICE's variables KEY..., one per line.
+railway_vars() {
+    local service="$1"
+    shift
+    railway variable list --service "$service" -p "$PROJECT" -e "$ENVIRONMENT" --json 2>/dev/null |
+        python3 -c 'import json, sys
+v = json.load(sys.stdin)
+for key in sys.argv[1:]:
+    print(v.get(key, ""))' "$@"
+}
+
+url_host() {
+    python3 -c 'import sys, urllib.parse; print(urllib.parse.urlsplit(sys.stdin.read().strip()).hostname or "")'
+}
+
+# find_app_database sets DB_SERVICE to the Postgres service whose private host the
+# app's JAC_DB_URL names (or checks KP_BACKUP_SERVICE is it), so a dump never
+# quietly copies an old database after the app has moved to a new one.
+find_app_database() {
+    local app_host name candidates
+    app_host="$(railway_vars "$APP_SERVICE" JAC_DB_URL | url_host)" ||
         fail "could not read $APP_SERVICE's JAC_DB_URL from Railway (logged in? run: railway login)"
-    service_host="$(railway variable list --service "$service" -p "$PROJECT" -e "$ENVIRONMENT" --json 2>/dev/null |
-        python3 -c 'import json, sys; print(json.load(sys.stdin).get("PGHOST", ""))')" ||
-        fail "could not read $service's variables from Railway"
-    [ -n "$app_host" ] && [ "$app_host" = "$service_host" ] ||
-        fail "$service is not the database the app uses: its JAC_DB_URL points at ${app_host:-nothing}; set KP_BACKUP_SERVICE"
+    [ -n "$app_host" ] || fail "$APP_SERVICE has no JAC_DB_URL"
+    if [ -n "${KP_BACKUP_SERVICE:-}" ]; then
+        candidates="$KP_BACKUP_SERVICE"
+    else
+        candidates="$(railway service list -p "$PROJECT" -e "$ENVIRONMENT" --json 2>/dev/null |
+            python3 -c 'import json, sys
+for s in json.load(sys.stdin):
+    if "postgres" in ((s.get("source") or {}).get("image") or ""):
+        print(s["name"])')" || fail "could not list the project's services"
+    fi
+    while IFS= read -r name; do
+        [ -n "$name" ] || continue
+        if [ "$(railway_vars "$name" PGHOST)" = "$app_host" ]; then
+            DB_SERVICE="$name"
+            return
+        fi
+    done <<<"$candidates"
+    if [ -n "${KP_BACKUP_SERVICE:-}" ]; then
+        fail "$KP_BACKUP_SERVICE is not the database the app uses: its JAC_DB_URL points at $app_host"
+    fi
+    fail "no Postgres service has the host the app's JAC_DB_URL points at ($app_host)"
 }
 
 # open_tunnel SERVICE reads SERVICE's user, password and database from Railway
-# and opens the SSH tunnel to it on a free local port: sets PORT, PGUSER,
-# PGPASSWORD (exported) and PGDATABASE.
+# and opens the SSH tunnel to it on a free local port. Sets CONN (the flags the
+# Postgres tools connect with) and exports PGPASSWORD.
 open_tunnel() {
-    local service="$1" vars
-    vars="$(railway variable list --service "$service" -p "$PROJECT" -e "$ENVIRONMENT" --json 2>/dev/null)" ||
-        fail "could not read $service's variables from Railway (logged in? run: railway login)"
+    local service="$1" user database
     {
-        read -r PGUSER
+        read -r user
         read -r PGPASSWORD
-        read -r PGDATABASE
-    } < <(python3 -c 'import json, sys
-v = json.load(sys.stdin)
-for key in ("PGUSER", "PGPASSWORD", "PGDATABASE"):
-    print(v.get(key, ""))' <<<"$vars") || fail "could not parse $service's variables"
-    [ -n "$PGUSER" ] && [ -n "$PGPASSWORD" ] && [ -n "$PGDATABASE" ] ||
+        read -r database
+    } < <(railway_vars "$service" PGUSER PGPASSWORD PGDATABASE) ||
+        fail "could not read $service's variables from Railway (logged in? run: railway login)"
+    [ -n "$user" ] && [ -n "$PGPASSWORD" ] && [ -n "$database" ] ||
         fail "$service has no PGUSER, PGPASSWORD or PGDATABASE variable"
     export PGPASSWORD
 
-    PORT="$(free_port)"
-    railway connect "$service" --tunnel-only -P "$PORT" -p "$PROJECT" -e "$ENVIRONMENT" \
+    local port waited=0
+    port="$(free_port)"
+    CONN=(--host=127.0.0.1 --port="$port" --username="$user" --dbname="$database")
+    # Its own process group, so cleanup stops anything the CLI starts.
+    setsid railway connect "$service" --tunnel-only -P "$port" -p "$PROJECT" -e "$ENVIRONMENT" \
         </dev/null >"$TMP/tunnel.log" 2>&1 &
     TUNNEL_PID=$!
-    local waited=0
-    until port_open "$PORT"; do
+    until port_open "$port"; do
         if ! kill -0 "$TUNNEL_PID" 2>/dev/null || [ "$waited" -ge "$TUNNEL_WAIT" ]; then
             show_tunnel_log
             fail "the tunnel to $service did not open"
@@ -132,48 +163,47 @@ for key in ("PGUSER", "PGPASSWORD", "PGDATABASE"):
 }
 
 # The tunnel prints the connection details, password included: show its last
-# lines with the password masked.
+# lines with the password masked, and any URL's password too (it may be
+# percent-encoded there).
 show_tunnel_log() {
     local line
     tail -n 5 "$TMP/tunnel.log" | while IFS= read -r line; do
-        echo "  tunnel: ${line//"$PGPASSWORD"/********}" >&2
-    done
+        echo "  tunnel: ${line//"$PGPASSWORD"/********}"
+    done | sed -E 's#(://[^:/@[:space:]]*):[^@[:space:]]*@#\1:********@#g' >&2
 }
 
-connection() {
-    echo --host=127.0.0.1 --port="$PORT" --username="$PGUSER" --dbname="$PGDATABASE"
+require_keep() {
+    [[ "$KEEP" =~ ^[1-9][0-9]*$ ]] || fail "KP_BACKUP_KEEP must be a whole number of at least 1, not '$KEEP'"
 }
 
 cmd_dump() {
     NOTIFY_ON_FAILURE=1
+    require_keep
     local folder
-    mkdir -p "$BACKUP_DIR" 2>/dev/null && folder="$(cd "$BACKUP_DIR" && pwd -P)" ||
-        fail "cannot create $BACKUP_DIR"
+    folder="$(realpath -m "$BACKUP_DIR")"
     case "$folder/" in
-        "$(cd "$REPO" && pwd -P)/"*)
-            rmdir "$BACKUP_DIR" 2>/dev/null || true
-            fail "KP_BACKUP_DIR must be outside the repo: a dump holds every user's decks"
-            ;;
+        "$(realpath "$REPO")/"*)
+            fail "KP_BACKUP_DIR must be outside the repo: a dump holds every user's decks" ;;
     esac
-    chmod 700 "$folder"
+    mkdir -p "$folder" && chmod 700 "$folder" || fail "cannot create $folder"
 
-    local service="${KP_BACKUP_SERVICE:-Postgres-EU}"
     local name
     name="knowledge-pool-$(date -u +%Y-%m-%dT%H%M%SZ).dump"
-    local partial="$TMP/$name.partial"
+    # Written beside its final name, so the rename that marks it good is atomic.
+    PARTIAL="$folder/.$name.partial"
 
-    app_uses "$service"
-    open_tunnel "$service"
-    # shellcheck disable=SC2046  # connection() is flags without spaces
-    pg pg_dump $(connection) --format=custom --no-owner >"$partial" ||
-        fail "pg_dump of $service failed"
-    pg pg_restore --list <"$partial" >/dev/null ||
+    find_app_database
+    open_tunnel "$DB_SERVICE"
+    pg pg_dump "${CONN[@]}" --format=custom --no-owner >"$PARTIAL" ||
+        fail "pg_dump of $DB_SERVICE failed"
+    pg pg_restore --list <"$PARTIAL" >/dev/null ||
         fail "the new dump does not read back (pg_restore --list failed)"
-    mv "$partial" "$folder/$name"
-    echo "backup: wrote $folder/$name ($(du -h "$folder/$name" | cut -f1))"
+    mv "$PARTIAL" "$folder/$name"
+    PARTIAL=""
+    echo "backup: wrote $folder/$name from $DB_SERVICE ($(du -h "$folder/$name" | cut -f1))"
 
     local old
-    ls -1 "$folder" | grep -E '^knowledge-pool-.*\.dump$' | sort | head -n "-$KEEP" |
+    find "$folder" -maxdepth 1 -name 'knowledge-pool-*.dump' -printf '%f\n' | sort | head -n "-$KEEP" |
         while IFS= read -r old; do
             rm -f "$folder/$old"
             echo "backup: removed $old"
@@ -193,28 +223,39 @@ cmd_restore() {
 
     open_tunnel "$service"
     local tables
-    # shellcheck disable=SC2046
-    tables="$(pg psql $(connection) --tuples-only --no-align --command \
+    tables="$(pg psql "${CONN[@]}" --tuples-only --no-align --command \
         "select count(*) from pg_tables where schemaname not in ('pg_catalog', 'information_schema')")" ||
         fail "could not query $service"
     [ "$tables" = 0 ] ||
         fail "$service's database is not empty ($tables tables): restore only into a new Postgres service"
 
     local started=$SECONDS
-    # shellcheck disable=SC2046
-    pg pg_restore $(connection) --no-owner --exit-on-error <"$file" ||
+    pg pg_restore "${CONN[@]}" --no-owner --exit-on-error <"$file" ||
         fail "pg_restore into $service failed; drop and recreate the service before trying again"
     echo "backup: restored $file into $service in $((SECONDS - started))s"
 }
 
+# unit_value NAME VALUE prints VALUE if it can go into a unit file as it is:
+# no sed delimiter, systemd specifier, quote, backslash or newline.
+unit_value() {
+    case "$2" in
+        *[\|\&%\"\\]* | *$'\n'*) fail "$1 cannot go into a systemd unit as it is: $2" ;;
+    esac
+    printf '%s' "$2"
+}
+
 cmd_install_timer() {
-    local units="${XDG_CONFIG_HOME:-$HOME/.config}/systemd/user"
+    require_keep
+    local units="${XDG_CONFIG_HOME:-$HOME/.config}/systemd/user" script path keep dir schedule
+    script="$(unit_value "the script path" "$SCRIPT")"
+    path="$(unit_value PATH "$PATH")"
+    keep="$(unit_value KP_BACKUP_KEEP "$KEEP")"
+    dir="$(unit_value KP_BACKUP_DIR "$(realpath -m "$BACKUP_DIR")")"
+    schedule="$(unit_value KP_BACKUP_SCHEDULE "${KP_BACKUP_SCHEDULE:-daily}")"
     mkdir -p "$units"
-    sed -e "s|@SCRIPT@|$SCRIPT|" -e "s|@PATH@|$PATH|" \
-        -e "s|@KEEP@|$KEEP|" -e "s|@BACKUP_DIR@|$BACKUP_DIR|" \
+    sed -e "s|@SCRIPT@|$script|" -e "s|@PATH@|$path|" -e "s|@KEEP@|$keep|" -e "s|@BACKUP_DIR@|$dir|" \
         "$REPO/scripts/systemd/kp-backup.service" >"$units/kp-backup.service"
-    sed -e "s|@SCHEDULE@|${KP_BACKUP_SCHEDULE:-daily}|" \
-        "$REPO/scripts/systemd/kp-backup.timer" >"$units/kp-backup.timer"
+    sed -e "s|@SCHEDULE@|$schedule|" "$REPO/scripts/systemd/kp-backup.timer" >"$units/kp-backup.timer"
     systemctl --user daemon-reload
     systemctl --user enable --now kp-backup.timer
     systemctl --user list-timers kp-backup.timer --no-pager
