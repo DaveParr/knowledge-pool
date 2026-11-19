@@ -130,6 +130,13 @@ async def main() -> None:
         verdict = await call(session, "deck_validate", deck_id=deck["id"])
         check("switching to Standard makes it illegal, with reasons", not verdict["legal"] and {v["rule"] for v in verdict["violations"]} == {"not-legal"}, verdict)
 
+        blank = await call(session, "deck_edit", deck_id=deck["id"], name="  ")
+        check("a blank name is refused with a message to show", blank.get("code") == "blank-name" and blank.get("error") == "A deck needs a name.", blank)
+        deck = await call(session, "deck_edit", deck_id=deck["id"], name="  MCP Burn v2 ")
+        check("deck_edit renames the deck, trimmed, with one history line", deck["name"] == "MCP Burn v2" and deck["history"][-1]["reason"] == "Renamed from MCP Burn to MCP Burn v2", deck)
+        check("deck_list shows the new name", "MCP Burn v2" in [d["name"] for d in await call(session, "deck_list")])
+        deck = await call(session, "deck_edit", deck_id=deck["id"], name="MCP Burn")
+
         arena = await session.call_tool("deck_export", {"deck_id": deck["id"]})
         check("deck_export gives a client without MCP Apps no structured content", arena.structured_content is None, arena.structured_content)
         check(

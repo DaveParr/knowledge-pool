@@ -32,6 +32,14 @@ obj ChangeNote {
         reason: str;
 }
 
+"""A history line about the deck as a whole (copied, renamed), not about one
+card: the card, zone and counts are blank."""
+def deck_note(reason: str) -> ChangeNote {
+    return ChangeNote(
+        at=datetime.now(timezone.utc).isoformat(), oracle_id="", name="", zone="", before=0, after=0, reason=reason
+    );
+}
+
 node Deck {
     has name: str,
         created_at: str = "",
@@ -430,6 +438,29 @@ walker:protect SetDeckFormat(DeckAction) {
     }
 }
 
+"""Rename a deck. The new name is trimmed; a blank one renames nothing and
+reports a blank-name WalkerError. The rename is logged as one history line
+("Renamed from X to Y"). A name that is already the deck's is applied but not
+logged. Copies carry no tie to the original, so they keep their own names."""
+walker:protect RenameDeck(DeckAction) {
+    has name: str;
+
+    can rename with Deck entry {
+        name = self.name.strip();
+        if not name {
+            report WalkerError(code="blank-name", message="A deck needs a name.");
+            disengage;
+        }
+        if name != here.name {
+            here.history.append(
+                deck_note(f"Renamed from {here.name} to {name}")
+            );
+            here.name = name;
+        }
+        report deck_view(here);
+    }
+}
+
 """The reason logged for a change made in the web app, which asks for none."""
 glob WEB_EDIT_REASON: str = "Edited in the app";
 
@@ -579,15 +610,7 @@ walker CopyDeck {
         replace_holdings(deck, self.snapshot.entries, copied);
         # The copy's history is the one line, not a line per card.
         deck.history = [
-            ChangeNote(
-                at=datetime.now(timezone.utc).isoformat(),
-                oracle_id="",
-                name="",
-                zone="",
-                before=0,
-                after=0,
-                reason=copied
-            )
+            deck_note(copied)
         ];
         report deck_view(deck);
     }
