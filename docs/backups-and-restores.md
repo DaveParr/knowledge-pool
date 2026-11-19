@@ -118,7 +118,11 @@ database moves region.
    (`railway redeploy --from-source -s knowledge-pool`): a plain redeploy, or one of an
    earlier deployment, reuses that deployment's region.
 6. Steps 3 to 5 of Restore 1. Going back is pointing `JAC_DB_URL` at the old service
-   again. If an old Postgres service still exists, keep it for a week, then delete it.
+   again. If an old Postgres service still exists, keep it for a week, then delete it
+   and its volume (deleting a service keeps its volume). Then rename the new service
+   to `Postgres` (Settings, in the dashboard: the CLI and API cannot) and set
+   `JAC_DB_URL` to `${{Postgres.DATABASE_URL}}`, so the project matches the deploy
+   wizard again; the resolved value is unchanged, so no redeploy is needed.
 
 ## A scratch restore on this machine
 
@@ -141,7 +145,7 @@ docker rm -f kp-scratch
 ```
 
 The app's Postgres is the service `scripts/backup.sh` names in its `wrote … from`
-line (`Postgres-EU` since 2026-11-19). The two lists of exact row counts should match (a write between the dump and the count
+line (`Postgres`, in EU West since 2026-11-19). The two lists of exact row counts should match (a write between the dump and the count
 can move one by a little).
 
 ## Drills
