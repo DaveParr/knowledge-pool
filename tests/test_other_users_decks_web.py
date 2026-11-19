@@ -77,3 +77,21 @@ def test_changing_another_users_deck_is_refused_with_the_not_your_deck_message(c
     deck_id = alices_deck(client, alice)
     [error] = reports(client.post("/walker/SetDeckFormat", json={"deck_id": deck_id, "format": "modern"}, headers=bob))
     assert error["code"] == "not-your-deck" and "Copy it" in error["message"]
+
+
+def test_owner_renames_a_deck_from_the_web_page_and_the_new_name_lists(client, alice, bob):
+    deck_id = alices_deck(client, alice)
+    [view] = reports(client.post("/walker/RenameDeck", json={"deck_id": deck_id, "name": "  Alice's Rebuilt Burn "}, headers=alice))
+    assert view["name"] == "Alice's Rebuilt Burn"
+    assert view["history"][-1]["reason"] == "Renamed from Alice's Burn to Alice's Rebuilt Burn"
+    assert [d["name"] for d in reports(client.post("/walker/ListDecks", json={}, headers=alice))[0]] == ["Alice's Rebuilt Burn"]
+    [others] = reports(client.post("/walker/ListOtherDecks", json={}, headers=bob))
+    assert [d["name"] for d in others] == ["Alice's Rebuilt Burn"]
+
+
+def test_renaming_another_users_deck_or_to_a_blank_name_is_refused(client, alice, bob):
+    deck_id = alices_deck(client, alice)
+    [error] = reports(client.post("/walker/RenameDeck", json={"deck_id": deck_id, "name": "Mine now"}, headers=bob))
+    assert error["code"] == "not-your-deck"
+    [blank] = reports(client.post("/walker/RenameDeck", json={"deck_id": deck_id, "name": "  "}, headers=alice))
+    assert blank["code"] == "blank-name" and blank["message"] == "A deck needs a name."

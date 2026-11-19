@@ -13,7 +13,7 @@ import from .mana_cost { ManaCost }
 import from .walker_failure { failureMessage, thrownLine }
 
 import from decks {
-    ChangeNote, DeckView, FormatInfo, GetDeck, CopyOtherDeck, SetDeckFormat, SetCardCount, RemoveCard, list_formats
+    ChangeNote, DeckView, FormatInfo, GetDeck, CopyOtherDeck, SetDeckFormat, RenameDeck, SetCardCount, RemoveCard, list_formats
 }
 import from legality { Violation }
 import from commander { GameChangers }
@@ -148,7 +148,9 @@ def:pub DeckDetail(
     has deck: DeckView | None = None,
         error: str = "",
         formats: list[FormatInfo] = [],
-        opened: dict[str, bool] = {};
+        opened: dict[str, bool] = {},
+        renaming: bool = False,
+        draft: str = "";
 
     can with entry {
         loadDeck();
@@ -159,6 +161,16 @@ def:pub DeckDetail(
     async def removeCard(oracleId: str, zone: str) -> None;
     async def setFormat(value: str) -> None;
     async def copyDeck -> None;
+    async def renameDeck -> None;
+
+    def startRename(_e: MouseEvent) {
+        draft = deck.name if deck else "";
+        renaming = True;
+    }
+
+    def cancelRename(_e: MouseEvent) {
+        renaming = False;
+    }
     """Show a deck walker's view, or the reason it failed (the deck shown stays as it was)."""
     def show(reports: list[DeckView | WalkerError]) -> None;
 
@@ -197,7 +209,19 @@ def:pub DeckDetail(
         <section>
             <button className="quiet dd-back" onClick={back}>← Decks</button>
             <div className="dd-head">
-                <h1>{deck.name}</h1>
+                {<form className="dd-rename" onSubmit={lambda (e: Event) { e.preventDefault(); renameDeck(); }}>
+                    <input
+                        aria-label="Deck name"
+                        value={draft}
+                        autoFocus={True}
+                        onChange={lambda (e: ChangeEvent) { draft = e.target.value; }}
+                    />
+                    <button type="submit" className="primary">Save</button>
+                    <button type="button" className="quiet" onClick={cancelRename}>Cancel</button>
+                </form> if renaming else <h1>
+                    {deck.name}
+                    {<button className="quiet dd-rename-btn" aria-label="Rename deck" onClick={startRename}>Rename</button> if not readOnly else None}
+                </h1>}
                 <span>
                     {<button className="primary dd-copy" onClick={lambda (_e: MouseEvent) { copyDeck(); }}>Copy to my decks</button> if readOnly else None}
                     <ExportPanel deckId={deckId} deckName={deck.name}/>

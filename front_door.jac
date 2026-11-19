@@ -65,7 +65,7 @@ import from profile { save_display_name, display_name }
 import from browser_session { SessionUser, SessionCheckUnavailable, check_session }
 import from hosted_auth { AuthKitVerifier }
 import from rate_limits { Buckets, RateLimits, rate_limits, UNKNOWN_ADDRESS }
-import from decks { DeckAction, CreateDeck, ListDecks, ListOtherDecks, CopyOtherDeck, GetDeck, SetDeckFormat, AddCard, SetCardCount, RemoveCard, list_formats }
+import from decks { DeckAction, CreateDeck, ListDecks, ListOtherDecks, CopyOtherDeck, GetDeck, SetDeckFormat, RenameDeck, AddCard, SetCardCount, RemoveCard, list_formats }
 import from deck_io { DeckExport, DeckImport, CreateDeckFromList }
 import from jaclang.runtime.constructs { WalkerArchetype }
 import from cards { search_cards }
@@ -84,6 +84,7 @@ glob HEALTH_PATH: str = "/healthz",
          "CopyOtherDeck": CopyOtherDeck,
          "GetDeck": GetDeck,
          "SetDeckFormat": SetDeckFormat,
+         "RenameDeck": RenameDeck,
          "AddCard": AddCard,
          "SetCardCount": SetCardCount,
          "RemoveCard": RemoveCard,

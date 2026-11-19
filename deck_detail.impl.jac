@@ -50,3 +50,13 @@ impl DeckDetail.copyDeck -> None {
     }
     onCopied((result.reports[0] as DeckView).id);
 }
+
+impl DeckDetail.renameDeck -> None {
+    result = root spawn RenameDeck(deck_id=deckId, name=draft);
+    why = failureMessage(result.reports);
+    error = why;
+    if not why {
+        deck = result.reports[0] as DeckView;
+        renaming = False;
+    }
+}

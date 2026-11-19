@@ -430,6 +430,37 @@ walker:protect SetDeckFormat(DeckAction) {
     }
 }
 
+"""Rename a deck. The new name is trimmed; a blank one renames nothing and
+reports a blank-name WalkerError. The rename is logged as one history line
+("Renamed from X to Y"). A name that is already the deck's is applied but not
+logged. Copies carry no tie to the original, so they keep their own names."""
+walker:protect RenameDeck(DeckAction) {
+    has name: str;
+
+    can rename with Deck entry {
+        name = self.name.strip();
+        if not name {
+            report WalkerError(code="blank-name", message="A deck needs a name.");
+            disengage;
+        }
+        if name != here.name {
+            here.history.append(
+                ChangeNote(
+                    at=datetime.now(timezone.utc).isoformat(),
+                    oracle_id="",
+                    name="",
+                    zone="",
+                    before=0,
+                    after=0,
+                    reason=f"Renamed from {here.name} to {name}"
+                )
+            );
+            here.name = name;
+        }
+        report deck_view(here);
+    }
+}
+
 """The reason logged for a change made in the web app, which asks for none."""
 glob WEB_EDIT_REASON: str = "Edited in the app";
 
