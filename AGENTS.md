@@ -26,8 +26,8 @@ When planning a dispatch, every worker's task spec must require a review before 
 ## GitHub
 
 - Read issues with `gh issue view N --json title,body,comments`.
-- Update PR bodies with `gh api -X PATCH repos/DaveParr/knowledge-pool/pulls/N -F body=@file`.
-- Move board cards with `scripts/board.sh <issue> <status>`.
+- Update PR bodies with `gh pr edit N --body-file file`. The ticket scripts need gh >= 2.97.0 (`scripts/lib/gh.sh` says why) and stop if gh is older.
+- Move board cards with `scripts/board.sh <issue> <status>` (it adds a missing card).
 
 ## Jac gotcha
 

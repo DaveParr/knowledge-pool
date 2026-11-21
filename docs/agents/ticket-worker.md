@@ -15,9 +15,8 @@ orchestrator reviews and merges it.
 - This task asks you to start the two `/code-review` subagents (Standards and Spec). That
   is the exception the Orca preamble's "no subagents unless the task asks" allows. Don't
   replace them with a review of your own.
-- Read issues only with `--json` (`gh issue view <n> --json title,body,labels,comments,state`).
-  Bare `gh issue view` and `--comments` fail in this repo. So does `gh pr edit`; change a PR
-  with `gh api -X PATCH repos/DaveParr/knowledge-pool/pulls/<pr> -f body=...`.
+- Read issues with `--json` (`gh issue view <n> --json title,body,labels,comments,state`).
+  Change a PR body with `gh pr edit <pr> --body-file <file>`.
 - Stay on this worktree's branch. Do not rename it, create another, or switch: the branch
   is what links your PR to the ticket's Development field.
 - Do not claim, close, relabel or move the ticket on the board, and do not merge. The
