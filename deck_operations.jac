@@ -2,14 +2,14 @@
 call, `perform`, that both edges (the front door for the web page, the MCP tools
 for the connector) make to do it.
 
-Each entry of `OPERATIONS` names a walker and says how it runs:
+Each entry of `OPERATIONS` names a walker (every one the edges call, including `GetFormatRules`, which reads the shared rules and takes no deck) and says how it runs:
 
 - `OWN`: on the caller's own root (`run_walker`). A walker that acts on one deck
   answers `not-your-deck` for another user's deck and `no-such-deck` for an id
   that names no deck, so every change is the owner's alone.
 - `OWNER`: on the root of the deck's owner, for a read-only walker (`run_read`):
   any user may read any deck (CONTEXT.md, "Reading another user's deck"). The
-  walker must change nothing; this table is the one list of the ones that run so.
+  walker must change nothing; this table is the one list of the ones `perform` runs so (`copy_deck` also reads `CopySource` this way, listed for completeness).
 - `FLOW`: a runner flow across users' roots that no single walker can make,
   named by the entry's `across` (listing other users' decks, copying a deck).
 
@@ -56,7 +56,7 @@ obj DeckOperation {
         across: Callable[[str | None, WalkerArchetype], WalkerArchetype] | None = None;
 }
 
-glob ALL: list[DeckOperation] = [
+glob LISTED: list[DeckOperation] = [
     DeckOperation(kind=CreateDeck, runs=OWN, page=True),
     DeckOperation(kind=ListDecks, runs=OWN, page=True),
     DeckOperation(kind=ListOtherDecks, runs=FLOW, page=True, across=list_others_flow),
@@ -76,7 +76,7 @@ glob ALL: list[DeckOperation] = [
 ];
 
 """The table: each operation by its walker's name."""
-glob OPERATIONS: dict[str, DeckOperation] = {op.kind.__name__: op for op in ALL};
+glob OPERATIONS: dict[str, DeckOperation] = {op.kind.__name__: op for op in LISTED};
 
 """The walkers the web page may call, by name: the front door's table, derived."""
 def page_walkers -> dict[str, type] {
