@@ -2,7 +2,7 @@
 
 from pathlib import Path
 
-from tests.conftest import split_into_shards
+from tests.conftest import FILE_SECONDS, split_into_shards
 
 FILES = sorted(str(p) for p in Path(__file__).parent.glob("test_*.py"))
 
@@ -17,6 +17,4 @@ def test_split_into_shards_ignores_input_order():
 
 
 def test_every_timed_file_still_exists():
-    from tests.conftest import FILE_SECONDS
-
     assert set(FILE_SECONDS) <= {Path(f).name for f in FILES}
