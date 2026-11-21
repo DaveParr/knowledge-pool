@@ -5,12 +5,11 @@
 #
 # Steps, in order:
 #   1. Claim: assign @me and move the card to "In progress".
-#   2. Create an Orca worktree `ticket-<n>` on branch `DaveParr/<n>-<slug>`, based on the
-#      integration branch, with the issue linked in Orca's metadata. Orca adds a numeric
+#   2. Create an Orca worktree `ticket-<n>` on branch `DaveParr/<n>-<slug>`, based on
+#      main, with the issue linked in Orca's metadata. Orca adds a numeric
 #      suffix if the branch name is taken, so the real name is read back from Orca.
 #   3. `gh issue develop` creates that branch on GitHub as a linked branch, which puts it
-#      in the issue's Development field. (A PR into a non-default branch never fills
-#      Development from "Closes #n"; the linked branch is the only link that works here.)
+#      in the issue's Development field before any PR exists.
 #   4. Point the local branch at the linked remote branch and write the `.ticket` marker.
 #
 # Prints one JSON line: {"issue":n,"branch":"...","worktreeId":"...","path":"..."}.
@@ -19,7 +18,7 @@ set -euo pipefail
 
 REPO="DaveParr/knowledge-pool"
 REPO_ID="d0c89184-5aee-4d56-91c1-4faa754134e8"   # Orca repo id for knowledge-pool
-BASE="DaveParr/planning-deployment"
+BASE="main"
 ORCA="${ORCA_CLI_COMMAND:-orca}"
 
 n="${1:-}"
