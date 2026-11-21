@@ -2,15 +2,15 @@
 
 from pathlib import Path
 
-from tests.conftest import shard_of
+from tests.conftest import split_into_shards
 
 FILES = sorted(str(p) for p in Path(__file__).parent.glob("test_*.py"))
 
 
-def test_every_test_file_is_in_exactly_one_shard():
-    shards = shard_of(FILES, 4)
+def test_split_into_shards_places_every_file_in_one_shard():
+    shards = split_into_shards(FILES, 4)
     assert sorted(f for shard in shards for f in shard) == FILES
 
 
-def test_the_split_is_the_same_every_time():
-    assert shard_of(FILES, 4) == shard_of(list(reversed(FILES)), 4)
+def test_split_into_shards_ignores_input_order():
+    assert split_into_shards(FILES, 4) == split_into_shards(list(reversed(FILES)), 4)

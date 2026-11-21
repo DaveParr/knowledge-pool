@@ -67,16 +67,20 @@ FILE_SECONDS = {
 DEFAULT_SECONDS = 5
 
 
-def shard_of(files, count):
+def _cost(name):
+    return FILE_SECONDS.get(Path(name).name, DEFAULT_SECONDS)
+
+
+def split_into_shards(files, count):
     """Split test file names into `count` shards of similar total time: the
     slowest first, each into the shard with the least so far. The split depends
     only on the names, so every CI job computes the same one."""
     shards = [[] for _ in range(count)]
     totals = [0] * count
-    for name in sorted(files, key=lambda f: (-FILE_SECONDS.get(Path(f).name, DEFAULT_SECONDS), f)):
+    for name in sorted(files, key=lambda f: (-_cost(f), f)):
         i = totals.index(min(totals))
         shards[i].append(name)
-        totals[i] += FILE_SECONDS.get(Path(name).name, DEFAULT_SECONDS)
+        totals[i] += _cost(name)
     return shards
 
 
@@ -88,7 +92,7 @@ def pytest_collection_modifyitems(config, items):
         return
     k, n = (int(x) for x in spec.split("/"))
     files = sorted({str(item.path) for item in items})
-    mine = set(shard_of(files, n)[k - 1])
+    mine = set(split_into_shards(files, n)[k - 1])
     chosen = [item for item in items if str(item.path) in mine]
     config.hook.pytest_deselected(items=[i for i in items if str(i.path) not in mine])
     items[:] = chosen
