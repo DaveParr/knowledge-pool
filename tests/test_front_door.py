@@ -155,6 +155,20 @@ def test_the_front_door_table_is_exactly_what_the_app_marks_protect():
     assert _protected_names() == set(front_door.WALKERS) | set(front_door.FUNCTIONS)
 
 
+def test_the_front_door_walkers_are_the_deck_operations_the_page_may_call():
+    import deck_operations
+
+    assert front_door.WALKERS == deck_operations.page_walkers()
+    assert {"ListOtherDecks", "CopyOtherDeck", "RenameDeck"} <= set(front_door.WALKERS)
+
+
+def test_the_app_imports_every_page_callable_walker():
+    """main.jac is the app's entry; a page walker it does not import gets no endpoint."""
+    source = (ROOT / "main.jac").read_text()
+    imported = set(re.findall(r"\b[A-Z]\w+\b", source))
+    assert set(front_door.WALKERS) <= imported
+
+
 def test_no_walker_or_server_function_is_pub():
     """Jac's server would answer a `:pub` one for anyone who reaches it. (The page's own
     components and client helpers are `def:pub` too, in the client modules.)"""

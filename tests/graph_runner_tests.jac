@@ -18,10 +18,11 @@ import from jaclang.server.session { Session }
 import from pathlib { Path }
 import from catalog.ingest { build, load_atomic, load_oracle_tags }
 import catalog.store as store;
-import from decks { Deck, DeckView, CreateDeck, ListDecks, GetDeck, AddCard, SetDeckFormat, RenameDeck, EditDeck, DeckSummary, holdings }
+import from decks { Deck, DeckView, CreateDeck, ListDecks, ListOtherDecks, CopyOtherDeck, GetDeck, AddCard, SetCardCount, RemoveCard, SetDeckFormat, RenameDeck, EditDeck, DeckSummary, holdings }
 import from profile { save_display_name, UNKNOWN_USER }
 import from deck_io { DeckExport, ExportResult }
 import from walker_errors { WalkerError }
+import from deck_operations { perform, page_walkers, OPERATIONS, OWN, OWNER, FLOW }
 import from graph_runner { refresh_cards, guest_root_id, user_root_id, run_walker, run_read, list_other_decks, copy_deck, owns_deck, call_function, run_as_guest, in_context, start, request_caller, check_bind, LOCAL_USER, RERUNS, CallFailed, LOG }
 import from cards { Card, RefreshCards, new_card, card_nodes_for, catalogue_version }
 import from json_object { JsonObject }
@@ -766,18 +767,6 @@ test "a listed deck's id reads and copies" {
     assert _copy_view(BOB, listed.id).name == "Alice's listed-then-read deck (copy)";
 }
 
-test "a walker that changes a deck is refused by run_read, and changes nothing" {
-    alices = _new_deck(ALICE, "Alice's read-only-guarded deck");
-    refused = False;
-    try {
-        run_read(BOB, alices, AddCard(deck_id=alices, oracle_id=_oracle_id("Shock")));
-    } except TypeError {
-        refused = True;
-    }
-    assert refused;
-    assert (run_walker(ALICE, GetDeck(deck_id=alices)).reports[0] as DeckView).cards == [];
-}
-
 test "a user owns the decks they made, and no one else's, and no id that names no deck" {
     mine = _new_deck(ALICE, "Alice owns this");
     assert owns_deck(ALICE, mine);
@@ -815,4 +804,97 @@ test "a copy keeps its own name when the original is renamed" {
     run_walker(ALICE, RenameDeck(deck_id=id, name="Alice's renamed"));
     bobs = run_walker(BOB, GetDeck(deck_id=copied)).reports[0] as DeckView;
     assert bobs.name == "Alice's original (copy)";
+}
+
+"""Deck operations (`perform`), called as two users.
+
+The first report of operation `w` performed by `caller`."""
+def _op_first(caller: str, w: WalkerArchetype) -> object {
+    return perform(caller, w).reports[0];
+}
+
+"""The walker error code of `w` performed by `caller`, or "" when it worked."""
+def _op_code(caller: str, w: WalkerArchetype) -> str {
+    first = _op_first(caller, w);
+    return first.code if isinstance(first, WalkerError) else "";
+}
+
+test "perform: a user reads and changes their own deck" {
+    id = _new_deck(ALICE, "Alice's own deck");
+    shock = _oracle_id("Shock");
+    assert _op_code(ALICE, AddCard(deck_id=id, oracle_id=shock)) == "";
+    view = _op_first(ALICE, GetDeck(deck_id=id)) as DeckView;
+    assert [(l.name, l.zone, l.count) for l in view.cards] == [("Shock", "main", 1)];
+    assert _op_code(ALICE, SetCardCount(deck_id=id, oracle_id=shock, count=3)) == "";
+    assert _op_code(ALICE, RenameDeck(deck_id=id, name="Alice's renamed deck")) == "";
+    assert _op_code(ALICE, SetDeckFormat(deck_id=id, format="modern")) == "";
+    after = _op_first(ALICE, GetDeck(deck_id=id)) as DeckView;
+    assert after.name == "Alice's renamed deck" and after.format == "modern" and after.cards[0].count == 3;
+    assert _op_code(ALICE, RemoveCard(deck_id=id, oracle_id=shock)) == "";
+    assert (_op_first(ALICE, GetDeck(deck_id=id)) as DeckView).cards == [];
+    assert "Alice's renamed deck" in _deck_names(ALICE);
+}
+
+test "another user's deck is readable but not changeable: not-your-deck" {
+    id = _new_deck(ALICE, "Alice's read-only-to-Bob deck");
+    shock = _oracle_id("Shock");
+    assert _op_code(ALICE, AddCard(deck_id=id, oracle_id=shock)) == "";
+    seen = _op_first(BOB, GetDeck(deck_id=id)) as DeckView;
+    assert seen.name == "Alice's read-only-to-Bob deck" and len(seen.cards) == 1;
+    assert "Shock" in (_op_first(BOB, DeckExport(deck_id=id, format="text")) as ExportResult).content;
+    assert _op_code(BOB, AddCard(deck_id=id, oracle_id=shock)) == "not-your-deck";
+    assert _op_code(BOB, SetCardCount(deck_id=id, oracle_id=shock, count=4)) == "not-your-deck";
+    assert _op_code(BOB, RemoveCard(deck_id=id, oracle_id=shock)) == "not-your-deck";
+    assert _op_code(BOB, RenameDeck(deck_id=id, name="Bob's")) == "not-your-deck";
+    assert _op_code(BOB, SetDeckFormat(deck_id=id, format="modern")) == "not-your-deck";
+    assert _op_code(BOB, EditDeck(deck_id=id, changes=[])) == "not-your-deck";
+    unchanged = _op_first(ALICE, GetDeck(deck_id=id)) as DeckView;
+    assert unchanged.name == "Alice's read-only-to-Bob deck" and unchanged.cards[0].count == 1;
+}
+
+test "an id that names no deck answers no-such-deck, read or change" {
+    nothing = str(uuid4());
+    assert _op_code(BOB, GetDeck(deck_id=nothing)) == "no-such-deck";
+    assert _op_code(BOB, GetDeck(deck_id="not an id")) == "no-such-deck";
+    assert _op_code(BOB, AddCard(deck_id=nothing, oracle_id=_oracle_id("Shock"))) == "no-such-deck";
+    assert _op_code(BOB, CopyOtherDeck(deck_id=nothing)) == "no-such-deck";
+}
+
+test "copying another user's deck makes the copier's own deck" {
+    id = _new_deck(ALICE, "Alice's copyable deck");
+    assert _op_code(ALICE, AddCard(deck_id=id, oracle_id=_oracle_id("Shock"))) == "";
+    copy = _op_first(BOB, CopyOtherDeck(deck_id=id)) as DeckView;
+    assert copy.name == "Alice's copyable deck (copy)" and copy.id != id;
+    assert [(l.name, l.count) for l in copy.cards] == [("Shock", 1)];
+    assert "Alice's copyable deck (copy)" in _deck_names(BOB);
+    assert _op_code(BOB, AddCard(deck_id=copy.id, oracle_id=_oracle_id("Lightning Bolt"))) == "";
+}
+
+test "listing other users' decks shows theirs with the owner's name, never the caller's own" {
+    _new_deck(ALICE, "Alice's listed deck");
+    _new_deck(BOB, "Bob's unlisted-to-himself deck");
+    call_function(ALICE, lambda () -> object { save_display_name("Alice Archer"); return None; });
+    seen = [(d.owner, d.name) for d in _op_first(BOB, ListOtherDecks()) as list[DeckSummary]];
+    assert ("Alice Archer", "Alice's listed deck") in seen;
+    assert all(n != "Bob's unlisted-to-himself deck" for (_, n) in seen);
+}
+
+test "an operation outside the table is refused, and a format's rules are an ordinary operation" {
+    refused = False;
+    try {
+        perform(ALICE, RefreshCards(offset=0, size=1));
+    } except TypeError {
+        refused = True;
+    }
+    assert refused;
+    assert _op_code(ALICE, GetFormatRules(format="modern")) == "";
+}
+
+test "the table says how every operation runs, and flows name their function" {
+    for (name, op) in OPERATIONS.items() {
+        assert op.kind.__name__ == name;
+        assert op.runs in [OWN, OWNER, FLOW];
+        assert (op.across is not None) == (op.runs == FLOW);
+    }
+    assert set(page_walkers().keys()) == {n for (n, op) in OPERATIONS.items() if op.page};
 }

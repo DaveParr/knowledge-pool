@@ -2,7 +2,7 @@
 
 Every deck action runs as a caller (a user id) on that caller's own root,
 from `ensure_user_root(<id>)`. `run_walker` and `call_function` are the
-caller's entries; every MCP tool goes through them. `run_as_guest` is the
+caller's entries; deck work reaches them through `perform` in `deck_operations.jac`. `run_as_guest` is the
 second entry, for the app's own work on what every user shares (the cards
 and the formats). Nothing a request reaches calls it.
 
@@ -23,7 +23,7 @@ outside the database before the commit: they read the card catalogue and
 change the graph, nothing else. A walker must keep it that way.
 
 A write Jac refuses reaches the runner only after the app's own checks have
-passed (a deck the caller does not own answers `no-such-deck` before any
+passed (a deck the caller does not own answers `not-your-deck` before any
 write), so it is an app fault: the call is rolled back, the caller gets the
 walker error `internal-error`, and the log names the walker and the caller.
 
@@ -52,8 +52,7 @@ import from jaclang.server.identity.user_manager { UserManager }
 import from cards { open_catalog, RefreshCards, REFRESH_BATCH, catalogue_version, refreshed_version, record_refresh, duplicate_oracle_ids }
 import from legality { open_formats }
 import from walker_errors { WalkerError }
-import from decks { DeckSummary, CopySource, CopyDeck, GetDeck, deck_owner, deck_summaries }
-import from deck_io { DeckExport }
+import from decks { DeckSummary, CopySource, CopyDeck, deck_owner, deck_summaries }
 
 glob APP_DIR: str = os.path.dirname(os.path.abspath(__file__)),
      LOCK: threading.RLock = threading.RLock(),
@@ -65,8 +64,6 @@ glob APP_DIR: str = os.path.dirname(os.path.abspath(__file__)),
      STARTED_FOR_GUEST: list[str] = [],
      # The `sub` of the token the front door verified for the request being served (hosted mode).
      VERIFIED_SUB: contextvars.ContextVar[str | None] = contextvars.ContextVar("verified_sub"),
-     # The walkers `run_read` will run on another user's root: the ones that change nothing.
-     READ_WALKERS: list[type] = [GetDeck, DeckExport, CopySource],
      USER_PAGE: int = 100,
      RERUNS: int = 3,
      RERUN_WAIT_S: tuple[float, float] = (0.01, 0.05),
@@ -264,14 +261,12 @@ def failed_walker(w: WalkerArchetype, failed: CallFailed) -> WalkerArchetype {
 
 """Spawn the read-only walker `w` (one that acts on the deck `deck_id`) as the
 deck's owner, on the owner's root, for `caller`: any signed-in user may read
-any deck. The app has decided that read is allowed; it runs only the walkers in `READ_WALKERS`, which change nothing, and gives the caller no grant, edge or access of any kind. An
+any deck. The app has decided that read is allowed: only `perform` (`deck_operations.jac`, whose table
+lists the read-only walkers) and `copy_deck` call it, and the walker must change nothing. It gives the caller no grant, edge or access of any kind. An
 id that names no deck runs as the caller, so it answers no-such-deck. No caller
 is a refusal. Like `run_walker`, a call the runner could not finish returns a
 copy of `w` whose one report is the walker error."""
 def run_read(caller: str | None, deck_id: str, w: WalkerArchetype) -> WalkerArchetype {
-    if type(w) not in READ_WALKERS {
-        raise TypeError(f"{type(w).__name__} is not a read-only walker: it cannot run as another user's deck owner.");
-    }
     try {
         owner = call_function(caller, lambda () -> object { return deck_owner(deck_id); }, name="deck_owner") as str | None;
         if owner is None {
