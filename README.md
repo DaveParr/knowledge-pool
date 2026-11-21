@@ -93,6 +93,8 @@ docker run --rm -p 8080:8080 -e PORT=8080 -e JAC_DB_URL=postgresql://... \
 curl localhost:8080/healthz   # ok
 ```
 
+Every Monday at 06:00 UTC the `Weekly catalogue rebuild` workflow (`.github/workflows/weekly-catalogue.yml`) checks out `main`, writes the current date and time into `catalogue_date.txt` (in its checkout only, nothing is committed) and runs `railway up --ci --service knowledge-pool`, so Railway rebuilds the image with a fresh catalogue. A failed build fails the workflow; a new deployment that fails its health check leaves the old one serving. It needs the repository secret `RAILWAY_TOKEN`, a Railway project token for production (the deploy wizard sets it), and can be run by hand from the Actions tab. At start the app logs the catalogue version it serves (`Card catalogue <MTGJSON version> @ <build time>: ...`).
+
 Until the browser sign-in lands, hosted mode answers the health path and refuses everything else without a WorkOS bearer token, the page included.
 
 Hosted mode limits request rates in the front door's memory (`rate_limits.jac`): `KP_RATE_LIMIT_ADDRESS` (default 30 a minute) per address, from `X-Real-IP`, for requests without a valid token, and `KP_RATE_LIMIT_USER` (default 300 a minute) per user, browser and connector together. A refusal is a 429 with `Retry-After`; only `/healthz` is exempt.
@@ -128,6 +130,7 @@ The hosted app runs on Railway at `https://knowledge-pool.engi.ai`. `scripts/dep
 - `jac.toml` the Jac version pin, dependencies, and `[scripts]`, the repo's commands (`jac x` lists them): `check`, `up`, `down`, `status`, `catalogue`, `test-ui`
 - `scripts/dev.sh` runs the front door (and its child) for this worktree (`up|down|status|port`)
 - `Dockerfile`, `.dockerignore`, `catalogue_date.txt` the hosted container image
+- `.github/workflows/weekly-catalogue.yml` the weekly catalogue rebuild on Railway
 - `scripts/install_jac.sh` installs the Jac version `jac.toml` pins
 - `scripts/board.sh` moves an issue on the project board (`scripts/board.sh <issue> <status>`)
 - `scripts/fixture_cards.py` adds cards to `tests/fixtures/atomic_small.json`

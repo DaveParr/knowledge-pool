@@ -1,0 +1,50 @@
+name: Weekly catalogue rebuild
+
+# New card data reaches the hosted app every week with nobody doing anything
+# (#137). The Dockerfile copies catalogue_date.txt just before the catalogue
+# step, so writing a new value into it makes Railway rebuild the catalogue
+# from MTGJSON and Scryfall instead of reusing the cached layer. The file is
+# only changed in this run's checkout: nothing is committed.
+#
+# Needs one repository secret, RAILWAY_TOKEN: a Railway project token for the
+# production environment (deploy wizard, "GitHub: Railway project token").
+
+on:
+  schedule:
+    - cron: "0 6 * * 1" # Monday 06:00 UTC
+  workflow_dispatch: # run by hand from the Actions tab
+
+concurrency:
+  group: weekly-catalogue
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+
+jobs:
+  rebuild:
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          ref: main
+
+      # Date and time, not just the date, so a second run on the same day
+      # (by hand, say) still rebuilds the catalogue.
+      - name: Write the date file
+        run: |
+          date -u +%Y-%m-%dT%H:%M:%SZ > catalogue_date.txt
+          echo "catalogue_date.txt: $(cat catalogue_date.txt)"
+
+      - name: Install the Railway CLI
+        run: npm install --global @railway/cli@5.71.0
+
+      # --ci streams the build log and exits when the build ends: non-zero if
+      # it failed, which fails this workflow. The new deployment's health check
+      # runs after that on Railway; if it fails, the old one keeps serving and
+      # Railway emails the admin.
+      - name: Build and deploy on Railway
+        env:
+          RAILWAY_TOKEN: ${{ secrets.RAILWAY_TOKEN }}
+        run: railway up --ci --service knowledge-pool

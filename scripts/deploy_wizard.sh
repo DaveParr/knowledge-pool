@@ -357,6 +357,7 @@ write_env PRED_LOCKS "$PRED_LOCKS"
 stage "Railway: the app service"
 note "Rebuilding a lost project (Restore 2)? Restore the dump into Postgres first: docs/backups-and-restores.md."
 step "Create → GitHub Repo → $REPO (accept the GitHub permission Railway asks for)."
+step "App service → Settings: name the service knowledge-pool (the weekly rebuild deploys to it by that name)."
 step "App service → Settings → Source: branch main, 'Wait for CI' ON."
 step "Settings → Build: Dockerfile (the repo root's Dockerfile is picked up)."
 step "Settings → Deploy: health check path $HEALTH_PATH, restart policy 'On failure'."
@@ -403,7 +404,7 @@ step "Railway project → Settings → Tokens: create a token for production, na
 ask_secret RAILWAY_TOKEN "Paste the project token (hidden):"
 set_secret RAILWAY_TOKEN "$RAILWAY_TOKEN"
 unset RAILWAY_TOKEN
-note "Step 28 of #109 (running the weekly rebuild by hand once) is checked in #137."
+note "After the first deploy: Actions → Weekly catalogue rebuild → Run workflow, once (step 28 of #109, see #137)."
 pause
 
 # ── B. First deploy ───────────────────────────────────────────────────────
