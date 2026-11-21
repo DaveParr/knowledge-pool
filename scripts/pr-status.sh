@@ -25,8 +25,8 @@ is_number "$pr" || usage "scripts/pr-status.sh <pr-number>"
 
 info="$(gh pr view "$pr" --json number,url,state,isDraft,baseRefName,headRefOid,mergeable,labels,body,closingIssuesReferences,comments,statusCheckRollup)"
 
-# The ticket: the issue the PR closes, else the `Ticket: #<n>` line of its body.
-ticket="$(jq -r '(.closingIssuesReferences[0].number // (.body | capture("(?m)^Ticket: #(?<n>[0-9]+)").n)) // empty' <<<"$info")"
+# The ticket: the PR body's `Ticket: #<n>` line, else the first issue the PR closes.
+ticket="$(jq -r '((.body | capture("(?m)^Ticket: #(?<n>[0-9]+)").n) // .closingIssuesReferences[0].number) // empty' <<<"$info")"
 [ -n "$ticket" ] || die "PR #$pr names no ticket: it closes no issue and has no 'Ticket: #<n>' line."
 
 ticket_labels="$(gh api graphql -F owner="$REPO_OWNER" -F name="$REPO_NAME" -F n="$ticket" -f query='
