@@ -316,6 +316,8 @@ def test_no_view_keeps_its_own_list_of_zones():
     """Zones and their titles are listed once, in zones.jac."""
     root = Path(__file__).parent.parent
     for source in root.glob("*.jac"):
+        if not source.is_file():
+            continue
         if source.name in ("zones.jac", "legality.jac", "commander.jac"):
             continue
         text = source.read_text()
