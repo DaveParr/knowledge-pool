@@ -17,8 +17,8 @@ An entry also says whether the web page may call the walker (`page`): the front
 door's table of page-callable walkers is `page_walkers()`, derived from here.
 Every page-callable walker must still be `:protect` (ADR-0004).
 
-Adding a deck action means writing the walker, adding one entry here, and (for a page-callable
-one) importing it in `main.jac`, which a test checks.
+Adding a deck action means writing the walker and adding one entry here; a page-callable
+one must also be imported in `main.jac`, which a test checks.
 """
 
 import from jaclang.runtime.constructs { WalkerArchetype }

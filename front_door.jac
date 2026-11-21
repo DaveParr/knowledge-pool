@@ -68,7 +68,6 @@ import from browser_session { SessionUser, SessionCheckUnavailable, check_sessio
 import from hosted_auth { AuthKitVerifier }
 import from rate_limits { Buckets, RateLimits, rate_limits, UNKNOWN_ADDRESS }
 import from decks { list_formats }
-import from jaclang.runtime.constructs { WalkerArchetype }
 import from cards { search_cards }
 
 glob HEALTH_PATH: str = "/healthz",

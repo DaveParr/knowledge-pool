@@ -40,7 +40,7 @@ import from mcp.server.stdio { stdio_server }
 import from mcp.server.streamable_http { TransportSecuritySettings }
 import from cards { CardSearch, search_cards as catalog_search, find_card, resolve_names as catalog_resolve_names, check_catalogue }
 import from decks {
-    Deck, DeckAction, DeckView, DeckSummary, CreateDeck, ListDecks, ListOtherDecks, CopyOtherDeck, GetDeck, SetDeckFormat, RenameDeck, EditDeck
+    Deck, DeckView, DeckSummary, CreateDeck, ListDecks, ListOtherDecks, CopyOtherDeck, GetDeck, SetDeckFormat, RenameDeck, EditDeck
 }
 import from deck_io { DeckExport, DeckImport }
 import from deck_operations { perform }
