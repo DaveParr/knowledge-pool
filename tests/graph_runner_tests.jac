@@ -23,7 +23,7 @@ import from profile { save_display_name, UNKNOWN_USER }
 import from deck_io { DeckExport, ExportResult }
 import from walker_errors { WalkerError }
 import from graph_runner { refresh_cards, guest_root_id, user_root_id, run_walker, run_read, list_other_decks, copy_deck, owns_deck, call_function, run_as_guest, in_context, start, request_caller, check_bind, LOCAL_USER, RERUNS, CallFailed, LOG }
-import from cards { Card, RefreshCards, new_card, card_nodes_for }
+import from cards { Card, RefreshCards, new_card, card_nodes_for, catalogue_version }
 import from json_object { JsonObject }
 import from legality { Format, FormatRules, GetFormatRules }
 
@@ -554,6 +554,18 @@ test "the refresh warns, naming the oracle id of each card with more than one no
     messages = [str(call.args) for call in warned.call_args_list];
     assert any(_oracle_id("Counterspell") in m for m in messages);
     assert not any(_oracle_id("Lightning Bolt") in m for m in messages);
+}
+
+test "the refresh logs the catalogue version, whether it ran or not" {
+    _deck_with(ALICE, "Alice's logged deck", "Lightning Bolt");
+    version = catalogue_version();
+    with patch.object(LOG, "info") as told {
+        assert refresh_cards();
+        assert not refresh_cards();
+    }
+    messages = [str(call.args) for call in told.call_args_list];
+    assert len(messages) == 2;
+    assert all(version in m for m in messages);
 }
 
 test "a refresh with no duplicate cards logs no warning" {

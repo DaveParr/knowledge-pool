@@ -202,6 +202,8 @@ MCP_URL="$APP_URL/mcp"
 HEALTH_PATH="/healthz"
 CALLBACK_URL="$APP_URL/auth/callback"
 REPO="DaveParr/knowledge-pool"
+# The app service: .github/workflows/weekly-catalogue.yml and scripts/backup.sh name it too.
+APP_SERVICE="knowledge-pool"
 BASE="main"   # the branch every ticket merges into and Railway deploys
 ISSUE=136
 
@@ -357,6 +359,7 @@ write_env PRED_LOCKS "$PRED_LOCKS"
 stage "Railway: the app service"
 note "Rebuilding a lost project (Restore 2)? Restore the dump into Postgres first: docs/backups-and-restores.md."
 step "Create → GitHub Repo → $REPO (accept the GitHub permission Railway asks for)."
+step "App service → Settings: name the service $APP_SERVICE (the catalogue rebuild deploys to it by that name)."
 step "App service → Settings → Source: branch main, 'Wait for CI' ON."
 step "Settings → Build: Dockerfile (the repo root's Dockerfile is picked up)."
 step "Settings → Deploy: health check path $HEALTH_PATH, restart policy 'On failure'."
@@ -398,12 +401,12 @@ step "GitHub → Actions: notifications for failed workflows ON (email)."
 pause
 
 stage "GitHub: Railway project token"
-say "For the weekly catalogue rebuild (#137): a token that can only deploy this project."
-step "Railway project → Settings → Tokens: create a token for production, name it github-weekly-rebuild."
+say "For the catalogue rebuild workflow (#137, run by hand for now): a token that can only deploy this project."
+step "Railway project → Settings → Tokens: create a token for production, name it github-catalogue-rebuild."
 ask_secret RAILWAY_TOKEN "Paste the project token (hidden):"
 set_secret RAILWAY_TOKEN "$RAILWAY_TOKEN"
 unset RAILWAY_TOKEN
-note "Step 28 of #109 (running the weekly rebuild by hand once) is checked in #137."
+note "After the first deploy: Actions → Catalogue rebuild → Run workflow, once (step 28 of #109, see #137)."
 pause
 
 # ── B. First deploy ───────────────────────────────────────────────────────

@@ -1,0 +1,69 @@
+name: Catalogue rebuild
+
+# Rebuilds the hosted app with fresh card data (#137). The Dockerfile copies
+# catalogue_date.txt just before the catalogue step, so writing a new value
+# into it makes Railway rebuild the catalogue from MTGJSON and Scryfall instead
+# of reusing the cached layer. The file is only changed in this run's
+# checkout: nothing is committed.
+#
+# Needs one repository secret, RAILWAY_TOKEN: a Railway project token for the
+# production environment (deploy wizard, "GitHub: Railway project token").
+
+on:
+  # Run by hand only for now: Actions → Catalogue rebuild → Run workflow.
+  # The weekly schedule (Monday 06:00 UTC) is off. To turn it back on, put
+  # these two lines back under `on:` (uncommented):
+  #   schedule:
+  #     - cron: "0 6 * * 1"
+  workflow_dispatch:
+
+concurrency:
+  group: weekly-catalogue
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+  actions: read
+
+jobs:
+  rebuild:
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    steps:
+      # `railway up` skips Railway's "Wait for CI", so build the newest commit
+      # on main whose Test run passed, never one whose tests failed.
+      - name: Find the newest tested commit on main
+        id: tested
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          sha=$(gh run list --repo "$GITHUB_REPOSITORY" --workflow test.yml --branch main \
+            --event push --status success --limit 1 --json headSha --jq '.[0].headSha')
+          test -n "$sha" || { echo "No passing Test run on main"; exit 1; }
+          echo "Building main at $sha"
+          echo "sha=$sha" >> "$GITHUB_OUTPUT"
+
+      - uses: actions/checkout@v7
+        with:
+          ref: ${{ steps.tested.outputs.sha }}
+
+      # Date and time, not just the date, so a second run on the same day
+      # (by hand, say) still rebuilds the catalogue.
+      - name: Write the date file
+        run: |
+          date -u +%Y-%m-%dT%H:%M:%SZ > catalogue_date.txt
+          echo "catalogue_date.txt: $(cat catalogue_date.txt)"
+
+      - name: Install the Railway CLI
+        run: npm install --global @railway/cli@5.71.0
+
+      # The app service's name, as the deploy wizard (APP_SERVICE) and
+      # scripts/backup.sh (KP_APP_SERVICE) have it.
+      # --ci streams the build log and exits when the build ends: non-zero if
+      # it failed, which fails this workflow. The new deployment's health check
+      # runs after that on Railway; if it fails, the old one keeps serving and
+      # Railway emails the admin.
+      - name: Build and deploy on Railway
+        env:
+          RAILWAY_TOKEN: ${{ secrets.RAILWAY_TOKEN }}
+        run: railway up --ci --service knowledge-pool

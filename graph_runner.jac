@@ -380,7 +380,9 @@ guest, if it is a different build from the one they were last refreshed
 against. Runs in batches of `batch` cards, each its own commit, and records
 the version only after the last, so a refresh that fails part way runs again
 at the next start. Names every oracle id with more than one Card node in a
-warning. A failure raises, which fails the start. Returns whether it ran."""
+warning, and logs the catalogue version it found either way (so a deploy's
+logs show which build is serving). A failure raises, which fails the start.
+Returns whether it ran."""
 def refresh_cards(batch: int = REFRESH_BATCH) -> bool {
     start();
     version = catalogue_version();
@@ -389,6 +391,7 @@ def refresh_cards(batch: int = REFRESH_BATCH) -> bool {
         guest, lambda () -> object { return refreshed_version(root); }, name="refresh_cards", caller=Con.GUEST.value
     ) as str;
     if last_version == version {
+        LOG.info("Card catalogue %s: the card nodes are already refreshed against it", version);
         return False;
     }
     offset = 0;
@@ -406,5 +409,6 @@ def refresh_cards(batch: int = REFRESH_BATCH) -> bool {
     for oid in duplicated {
         LOG.warning("More than one Card node for oracle id %s: the catalogue always uses the lowest id", oid);
     }
+    LOG.info("Card catalogue %s: refreshed the card nodes (they were against %s)", version, last_version or "none");
     return True;
 }
