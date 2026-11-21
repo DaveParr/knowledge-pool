@@ -22,10 +22,11 @@ Load the `orchestration` skill first and use its commands (written `<orca>` belo
 ## The board
 
 Your scripts set a ticket's Status on the Knowledge Pool board (project #7) for the moves
-GitHub cannot see: **In progress** when claimed, **In review** when held for the human,
-**Backlog** when parked. They add the ticket's card if it has none. The board's own
-workflows do the rest: a ticket closes when its linked PR merges into main, and "Item
-closed" moves its card to **Done**, whoever merged. PRs get no card of their own; they show
+GitHub cannot see: **In progress** when claimed, **Backlog** when parked, and **In review**
+again when you hold a PR for the human. They add the ticket's card if it has none. The
+board's own workflows do the rest: "Pull request linked to issue" moves the ticket to
+**In review** when its PR opens, a ticket closes when its linked PR merges into main, and
+"Item closed" moves it to **Done**, whoever merged. PRs get no card of their own; they show
 in the ticket card's "Linked pull requests" field.
 
 ## Startup (and after any restart)
