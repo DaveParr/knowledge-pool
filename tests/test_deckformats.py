@@ -313,10 +313,11 @@ def test_every_offered_export_format_is_one_the_package_can_write():
 
 
 def test_no_view_keeps_its_own_list_of_zones():
-    """Zones are listed once, in decks.jac (ZONES, ZONE_TITLES)."""
+    """Zones and their titles are listed once, in zones.jac."""
     root = Path(__file__).parent.parent
     for source in root.glob("*.jac"):
-        if source.name in ("decks.jac", "legality.jac", "commander.jac"):
+        if source.name in ("zones.jac", "legality.jac", "commander.jac"):
             continue
-        assert '"companion", "main"' not in source.read_text(), source.name
-        assert '"Main deck"' not in source.read_text() or source.name == "decks.jac", source.name
+        text = source.read_text()
+        assert '"companion", "main"' not in text, source.name
+        assert '"Main deck"' not in text, source.name
