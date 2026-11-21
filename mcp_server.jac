@@ -27,6 +27,7 @@ is not reachable from a connector that calls in from outside this machine.
 
 import io;
 import os;
+import logging;
 import sys;
 import anyio;
 import httpx2;
@@ -48,6 +49,7 @@ import from json_object { JsonObject }
 import from ui_pages { view_page }
 import from front_door { FrontDoorConfig, front_door_app, start_upstream, stop_upstream, stop_child_on_sigterm, exit_when_upstream_dies, expect_upstream_to_stop }
 import from urllib.parse { urlparse }
+import from log_setup { use_json_logs }
 import from browser_session { WorkOSSessions }
 import from hosted_auth { AuthKitVerifier, HostedSettings, HostedSettingsMissing, hosted_settings, jwks_key_finder }
 import from graph_runner { APP_DIR, HOSTED, app_mode, check_bind, request_caller, run_walker, run_read, CallFailed, copy_deck, list_other_decks, owns_deck, call_function, start, refresh_cards }
@@ -350,15 +352,19 @@ def export_brief -> str {
 """The text a view-bound tool gives the model: `brief` when the client renders
 MCP Apps (the user already sees the view, so the full text would only make
 the model repeat it), `full` otherwise. Logs the client's advertised
-extensions once, to stderr, so it is easy to see which branch a host gets."""
+extensions once, to stderr (to the info log when hosted), so it is easy to see which branch a host gets."""
 def view_text(ctx: Context, full: str, brief: str) -> str {  # jac:ignore[W1036]: the SDK finds the context by this bare annotation
     apps = client_supports_apps(ctx);
     if apps not in LOGGED_CLIENT_UI {
         LOGGED_CLIENT_UI.append(apps);
         caps = ctx.client_capabilities;
-        sys.stderr.write(  # jac:ignore[E1099]
-            f"MCP client renders MCP Apps: {apps} (extensions: {caps.extensions if caps else None})\n"
-        );
+        note = f"MCP client renders MCP Apps: {apps} (extensions: {caps.extensions if caps else None})";
+        if app_mode() == HOSTED {
+            # Hosted logs are JSON on stdout, where this routine note is info (`log_setup.jac`).
+            logging.getLogger("knowledge_pool.mcp").info(note);
+        } else {
+            sys.stderr.write(note + "\n");  # jac:ignore[E1099]
+        }
     }
     return brief if apps else full;
 }
@@ -665,7 +671,7 @@ async def serve_http(host: str, port: int, upstream: str, hosted: HostedSettings
     mcp_app = server.streamable_http_app(host=host, transport_security=security);
     own_origins = [f"http://127.0.0.1:{port}", f"http://localhost:{port}"] + origins;
     config = FrontDoorConfig(upstream=upstream, origins=own_origins, client=httpx2.AsyncClient(), auth=auth, sessions=sessions, public_origin=public_origin);
-    listener = uvicorn.Server(uvicorn.Config(front_door_app(mcp_app, config), host=host, port=port, log_level="info"));
+    listener = uvicorn.Server(uvicorn.Config(front_door_app(mcp_app, config), host=host, port=port, log_level="info", log_config=(None if hosted is not None else uvicorn.config.LOGGING_CONFIG)));
     await listener.serve();
 }
 
@@ -685,6 +691,8 @@ with entry:__main__ {
             sys.stderr.write("Hosted mode serves over HTTP only: set KP_TRANSPORT=http.\n");  # jac:ignore[E1099]
             sys.exit(1);
         }
+        # Railway reads each line's level from its JSON, not from its stream.
+        use_json_logs();
     }
     # The guest makes the shared Catalog and Format nodes before any user call.
     start();
@@ -696,7 +704,7 @@ with entry:__main__ {
         http_port = int(os.environ.get("KP_HTTP_PORT", "8020"));
         check_bind(http_host);
         # Jac's server hands out the page from a child on 127.0.0.1; if it dies, this process exits.
-        (child, upstream) = start_upstream(int(os.environ.get("KP_UPSTREAM_PORT", "0")));
+        (child, upstream) = start_upstream(int(os.environ.get("KP_UPSTREAM_PORT", "0")), to_stdout=hosted is not None);
         exit_when_upstream_dies(child);
         stop_child_on_sigterm(child);
         try {
