@@ -42,6 +42,8 @@ import from cards { CardSearch, search_cards as catalog_search, find_card, resol
 import from decks {
     Deck, DeckAction, DeckView, DeckSummary, CreateDeck, ListDecks, GetDeck, SetDeckFormat, RenameDeck, EditDeck
 }
+import from deckformats { export_format_choices }
+import from zones { ZONES, ZONE_TITLES, zone_choices, zone_options }
 import from deck_io { DeckExport, DeckImport }
 import from legality { GetFormatRules }
 import from walker_errors { WalkerError }
@@ -61,16 +63,17 @@ glob LOGGED_CLIENT_UI: list[bool] = [],
      COLOUR_NAMES: dict[str, str] = {"W": "White", "U": "Blue", "B": "Black", "R": "Red", "G": "Green"},
      SEARCH_UI: str = "ui://knowledge-pool/card-search.html",
      EXPORT_UI: str = "ui://knowledge-pool/deck-export.html",
-     # The export view's format buttons, in order: key, label, lossless, file
-     # extension. Same list as the web app's export panel (export_panel.jac).
-     EXPORT_FORMATS: list[JsonObject] = [
-         {"key": "arena", "label": "MTGA/MTGO", "lossless": False, "ext": "txt"},
-         {"key": "moxfield", "label": "Moxfield", "lossless": False, "ext": "txt"},
-         {"key": "text", "label": "Plain text", "lossless": False, "ext": "txt"},
-         {"key": "mtgdeck1", "label": "mtgdeck/1", "lossless": True, "ext": "json"},
-         {"key": "mtgjson", "label": "MTGJSON", "lossless": True, "ext": "json"}
-     ],
      LOSSY_DROPS: str = "keeps card names and counts for the main deck and sideboard only. It drops other zones, roles, tags, locks and reasons.";
+
+"""Fill the {zones} and {formats} placeholders in a tool's description from the zones
+module and the deckformats package, so a new zone or format reaches it with no edit."""
+def with_choices(tool: Callable) -> Callable {
+    formats = ", ".join(
+        [f"{f['key']} ({f['label']}, {'lossless' if f['lossless'] else 'lossy'})" for f in export_format_choices()]
+    );
+    tool.__doc__ = (tool.__doc__ or "").replace("{zones}", zone_options()).replace("{formats}", formats);
+    return tool;
+}
 
 """Show a deck to the user as a table in the chat: cards by zone, totals and legality.
 Clients that support MCP Apps (Claude Desktop and claude.ai) render it as an HTML list
@@ -81,7 +84,7 @@ def deck_show(deck_id: str, ctx: Context) -> CallToolResult {  # jac:ignore[W103
     if "error" in view {
         return CallToolResult(content=[TextContent(text=view["error"])], is_error=True);
     }
-    return view_result(ctx, view, deck_markdown(view), deck_brief(view));
+    return view_result(ctx, {**view, "zones": zone_choices()}, deck_markdown(view), deck_brief(view));
 }
 
 """What the model gets when the user already sees the deck view: the deck's
@@ -121,7 +124,8 @@ def deck_markdown(view: JsonObject) -> str {
     if note {
         lines.append(note);
     }
-    for (zone, title) in [("commander", "Commander"), ("main", "Main deck"), ("sideboard", "Sideboard")] {
+    for zone in ZONES {
+        title = ZONE_TITLES[zone];
         rows = [c for c in view["cards"] if c["zone"] == zone];
         if rows {
             lines += ["", f"### {title}", "", "| # | Card | Cost | Type | P/T |", "|--:|---|---|---|--:|"];
@@ -316,12 +320,12 @@ def search_markdown(result: JsonObject) -> str {
     return "\n".join(lines);
 }
 
-"""Export a deck as a deck list. Formats: arena (MTGA/MTGO, the default), moxfield
-and text are lossy (main deck and sideboard names and counts only); mtgdeck1 and
-mtgjson are lossless JSON. Clients that support MCP Apps
+"""Export a deck as a deck list. Formats: {formats}. A lossy list keeps main deck and
+sideboard names and counts only; a lossless one is JSON that keeps everything. The default is arena. Clients that support MCP Apps
 show the export in a view with format buttons, Copy and Download; the text result
 always carries the full export too. A lossless JSON export is long: the user sees
 it in the view, so offer to show it or save it to a file rather than pasting it."""
+@with_choices
 def deck_export(deck_id: str, ctx: Context, format: str = "arena") -> CallToolResult {  # jac:ignore[W1036]: the SDK finds the context by this bare annotation
     done = outcome(read(DeckExport(deck_id=deck_id, format=format)));
     if "error" in done {
@@ -332,7 +336,7 @@ def deck_export(deck_id: str, ctx: Context, format: str = "arena") -> CallToolRe
         "name": done["name"],
         "format": done["format"],
         "content": done["content"],
-        "formats": EXPORT_FORMATS,
+        "formats": export_format_choices(),
         "lossy_drops": LOSSY_DROPS
     };
     text = export_text(result);
@@ -387,7 +391,7 @@ JSON, so a client without the view (Claude Code) can still show or save it."""
 def export_text(result: JsonObject) -> str {
     label = result["format"];
     lossless = False;
-    for f in EXPORT_FORMATS {
+    for f in export_format_choices() {
         if f["key"] == result["format"] {
             label = f["label"];
             lossless = f["lossless"] as bool;
@@ -564,9 +568,10 @@ def deck_copy(deck_id: str) -> JsonObject {
 }
 
 """Create a deck, optionally with seed cards. Each card is
-{"oracle_id": ..., "count": n, "zone": "main" | "sideboard" | "commander" | "companion" | "maybeboard", "reason": ...};
+{"oracle_id": ..., "count": n, "zone": {zones}, "reason": ...};
 get oracle ids from resolve_names first. Returns the deck with its legality."""
 @server.tool()
+@with_choices
 def deck_create(name: str, format: str = "standard", cards: list[JsonObject] | None = None) -> JsonObject {
     made = outcome(walk(CreateDeck(name=name, format=format)));
     if "error" in made {
@@ -587,12 +592,13 @@ def deck_get(deck_id: str) -> JsonObject {
 }
 
 """Change one of your own decks (another user's answers not-your-deck: copy it first). Each change is
-{"oracle_id": ..., "count": n, "zone": "main" | "sideboard" | "commander" | "companion" | "maybeboard", "reason": "why"}
+{"oracle_id": ..., "count": n, "zone": {zones}, "reason": "why"}
 and sets that card's count in that zone (0 removes it). Every change needs a reason.
 Pass "format" to change the deck's format, and "name" to rename it (trimmed; a blank name is refused;
 the history gets one "Renamed from X to Y" line). Changes with an unknown oracle id or no
 reason are rejected and listed under "rejected"; the rest are applied."""
 @server.tool()
+@with_choices
 def deck_edit(deck_id: str, changes: list[JsonObject] | None = None, format: str = "", name: str | None = None) -> JsonObject {
     if name is not None {
         renamed = outcome(walk(RenameDeck(deck_id=deck_id, name=name)));

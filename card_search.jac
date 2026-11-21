@@ -10,6 +10,7 @@ import from .mana_cost { ManaCost }
 import from .walker_failure { failureMessage, thrownLine }
 
 import from decks { DeckView, AddCard }
+import from zones { ZONES, ZONE_TITLES }
 import from card_lines { CardLine }
 import from walker_errors { WalkerError }
 import from cards { CardHit, CardSearch, search_cards }
@@ -65,7 +66,7 @@ def:pub AddCards(deckId: str, format: str, cards: list[CardLine], onChanged: Cal
                             <span className="cs-name">{hit.name}</span>
                             <span className="cs-cost"><ManaCost cost={hit.mana_cost}/></span>
                             <span className="cs-type">{hit.type_line}</span>
-                            {for zone in ["commander", "companion", "main", "sideboard", "maybeboard"] {
+                            {for zone in ZONES {
                                 if heldIn(hit.oracle_id, zone) > 0 {
                                     <span key={zone} className="pill ok">{str(heldIn(hit.oracle_id, zone)) + " in " + zone}</span>
                                 }
