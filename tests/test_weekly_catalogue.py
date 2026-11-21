@@ -36,6 +36,10 @@ def test_the_workflow_deploys_with_the_project_token_and_waits_for_the_build():
     args = _railway_up()
     # Not detached: the build's result is the workflow's.
     assert "--ci" in args and not {"-d", "--detach", "--no-wait"} & set(args)
+
+
+def test_the_workflow_deploys_to_the_app_service():
+    args = _railway_up()
     assert args[args.index("--service") + 1] == "knowledge-pool"
 
 

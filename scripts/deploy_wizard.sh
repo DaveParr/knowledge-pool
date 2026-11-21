@@ -202,7 +202,7 @@ MCP_URL="$APP_URL/mcp"
 HEALTH_PATH="/healthz"
 CALLBACK_URL="$APP_URL/auth/callback"
 REPO="DaveParr/knowledge-pool"
-# The weekly rebuild (.github/workflows/weekly-catalogue.yml) deploys to the app service by this name.
+# The app service: .github/workflows/weekly-catalogue.yml and scripts/backup.sh name it too.
 APP_SERVICE="knowledge-pool"
 BASE="DaveParr/planning-deployment"   # the integration branch every ticket merges into
 ISSUE=136

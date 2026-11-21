@@ -54,6 +54,8 @@ jobs:
       - name: Install the Railway CLI
         run: npm install --global @railway/cli@5.71.0
 
+      # The app service's name, as the deploy wizard (APP_SERVICE) and
+      # scripts/backup.sh (KP_APP_SERVICE) have it.
       # --ci streams the build log and exits when the build ends: non-zero if
       # it failed, which fails this workflow. The new deployment's health check
       # runs after that on Railway; if it fails, the old one keeps serving and
