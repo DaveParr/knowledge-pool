@@ -17,13 +17,13 @@ An entry also says whether the web page may call the walker (`page`): the front
 door's table of page-callable walkers is `page_walkers()`, derived from here.
 Every page-callable walker must still be `:protect` (ADR-0004).
 
-Adding a deck action means writing the walker and adding one entry here.
+Adding a deck action means writing the walker, adding one entry here, and (for a page-callable
+one) importing it in `main.jac`, which a test checks.
 """
 
 import from jaclang.runtime.constructs { WalkerArchetype }
-import from decks { DeckAction }
 import from graph_runner { run_walker, run_read, copy_deck, list_other_decks, failed_walker, CallFailed }
-import from decks { CreateDeck, ListDecks, ListOtherDecks, CopyOtherDeck, CopySource, GetDeck, SetDeckFormat, RenameDeck, AddCard, SetCardCount, RemoveCard, EditDeck }
+import from decks { DeckAction, CreateDeck, ListDecks, ListOtherDecks, CopyOtherDeck, CopySource, GetDeck, SetDeckFormat, RenameDeck, AddCard, SetCardCount, RemoveCard, EditDeck }
 import from deck_io { DeckExport, DeckImport, CreateDeckFromList }
 import from legality { GetFormatRules }
 
@@ -56,24 +56,27 @@ obj DeckOperation {
         across: Callable[[str | None, WalkerArchetype], WalkerArchetype] | None = None;
 }
 
-glob OPERATIONS: dict[str, DeckOperation] = {
-    "CreateDeck": DeckOperation(kind=CreateDeck, runs=OWN, page=True),
-    "ListDecks": DeckOperation(kind=ListDecks, runs=OWN, page=True),
-    "ListOtherDecks": DeckOperation(kind=ListOtherDecks, runs=FLOW, page=True, across=list_others_flow),
-    "CopyOtherDeck": DeckOperation(kind=CopyOtherDeck, runs=FLOW, page=True, across=copy_flow),
-    "GetDeck": DeckOperation(kind=GetDeck, runs=OWNER, page=True),
-    "SetDeckFormat": DeckOperation(kind=SetDeckFormat, runs=OWN, page=True),
-    "RenameDeck": DeckOperation(kind=RenameDeck, runs=OWN, page=True),
-    "AddCard": DeckOperation(kind=AddCard, runs=OWN, page=True),
-    "SetCardCount": DeckOperation(kind=SetCardCount, runs=OWN, page=True),
-    "RemoveCard": DeckOperation(kind=RemoveCard, runs=OWN, page=True),
-    "DeckExport": DeckOperation(kind=DeckExport, runs=OWNER, page=True),
-    "DeckImport": DeckOperation(kind=DeckImport, runs=OWN, page=True),
-    "CreateDeckFromList": DeckOperation(kind=CreateDeckFromList, runs=OWN, page=True),
-    "EditDeck": DeckOperation(kind=EditDeck, runs=OWN),
-    "CopySource": DeckOperation(kind=CopySource, runs=OWNER),
-    "GetFormatRules": DeckOperation(kind=GetFormatRules, runs=OWN)
-};
+glob ALL: list[DeckOperation] = [
+    DeckOperation(kind=CreateDeck, runs=OWN, page=True),
+    DeckOperation(kind=ListDecks, runs=OWN, page=True),
+    DeckOperation(kind=ListOtherDecks, runs=FLOW, page=True, across=list_others_flow),
+    DeckOperation(kind=CopyOtherDeck, runs=FLOW, page=True, across=copy_flow),
+    DeckOperation(kind=GetDeck, runs=OWNER, page=True),
+    DeckOperation(kind=SetDeckFormat, runs=OWN, page=True),
+    DeckOperation(kind=RenameDeck, runs=OWN, page=True),
+    DeckOperation(kind=AddCard, runs=OWN, page=True),
+    DeckOperation(kind=SetCardCount, runs=OWN, page=True),
+    DeckOperation(kind=RemoveCard, runs=OWN, page=True),
+    DeckOperation(kind=DeckExport, runs=OWNER, page=True),
+    DeckOperation(kind=DeckImport, runs=OWN, page=True),
+    DeckOperation(kind=CreateDeckFromList, runs=OWN, page=True),
+    DeckOperation(kind=EditDeck, runs=OWN),
+    DeckOperation(kind=CopySource, runs=OWNER),
+    DeckOperation(kind=GetFormatRules, runs=OWN)
+];
+
+"""The table: each operation by its walker's name."""
+glob OPERATIONS: dict[str, DeckOperation] = {op.kind.__name__: op for op in ALL};
 
 """The walkers the web page may call, by name: the front door's table, derived."""
 def page_walkers -> dict[str, type] {
@@ -86,7 +89,7 @@ or a walker error. A call the runner could not finish reports `try-again` or
 `internal-error`. No caller is a refusal (`PermissionError`)."""
 def perform(caller: str | None, w: WalkerArchetype) -> WalkerArchetype {
     op = OPERATIONS.get(type(w).__name__);
-    if op is None or op.kind is not type(w) {
+    if op is None {
         raise TypeError(f"{type(w).__name__} is not a deck operation: add it to OPERATIONS in deck_operations.jac.");
     }
     if op.runs == FLOW {
