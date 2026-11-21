@@ -15,6 +15,7 @@ import from .walker_failure { failureMessage, thrownLine }
 import from decks {
     ChangeNote, DeckView, FormatInfo, GetDeck, CopyOtherDeck, SetDeckFormat, RenameDeck, SetCardCount, RemoveCard, list_formats
 }
+import from zones { ZONES, ZONE_TITLES }
 import from legality { Violation }
 import from commander { GameChangers }
 import from mana { ManaProfile }
@@ -30,15 +31,6 @@ def:pub formatName(name: str, formats: list[FormatInfo]) -> str {
     }
     return name;
 }
-
-"""Zones in display order, with their headings."""
-glob ZONES: list[tuple[str, str]] = [
-    ("commander", "Commander"),
-    ("companion", "Companion"),
-    ("main", "Main deck"),
-    ("sideboard", "Sideboard"),
-    ("maybeboard", "Maybeboard")
-];
 
 """One card line's key: a card can be in more than one zone."""
 def rowKey(line: CardLine) -> str {
@@ -263,7 +255,8 @@ def:pub DeckDetail(
             {if len(deck.cards) == 0 {
                 <p className="empty">This deck has no cards yet. Search below to add some.</p>
             }}
-            {for (zone, title) in ZONES {
+            {for zone in ZONES {
+                title = ZONE_TITLES[zone];
                 rows = [c for c in deck.cards if c.zone == zone];
                 if len(rows) > 0 {
                     <div key={zone}>

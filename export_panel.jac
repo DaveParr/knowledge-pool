@@ -8,16 +8,7 @@ which opens below the button's row.
 import "./export_panel.css";
 import from .walker_failure { failureMessage }
 
-import from deck_io { DeckExport, ExportResult }
-
-"""Export formats: key, label, lossless, file extension."""
-glob EXPORT_FORMATS: list[tuple[str, str, bool, str]] = [
-    ("arena", "MTGA/MTGO", False, "txt"),
-    ("moxfield", "Moxfield", False, "txt"),
-    ("text", "Plain text", False, "txt"),
-    ("mtgdeck1", "mtgdeck/1", True, "json"),
-    ("mtgjson", "MTGJSON", True, "json")
-];
+import from deck_io { DeckExport, ExportResult, ExportFormatInfo, export_formats }
 
 glob DEFAULT_EXPORT: str = "arena";
 
@@ -26,7 +17,8 @@ def:pub ExportPanel(deckId: str, deckName: str) -> JsxElement {
         format: str = DEFAULT_EXPORT,
         content: str = "",
         error: str = "",
-        status: str = "";
+        status: str = "",
+        choices: list[ExportFormatInfo] = [];
 
     async def load(fmt: str) -> None;
     async def copy -> None;
@@ -43,11 +35,11 @@ def:pub ExportPanel(deckId: str, deckName: str) -> JsxElement {
     label = "";
     lossless = False;
     ext = "txt";
-    for (k, l, ll, x) in EXPORT_FORMATS {
-        if k == format {
-            label = l;
-            lossless = ll;
-            ext = x;
+    for choice in choices {
+        if choice.key == format {
+            label = choice.label;
+            lossless = choice.lossless;
+            ext = choice.ext;
         }
     }
     lines = len(content.split(chr(10))) if content else 0;
@@ -64,15 +56,15 @@ def:pub ExportPanel(deckId: str, deckName: str) -> JsxElement {
             </button>
             {<section className="ex-panel" aria-label={"Export " + deckName}>
                 <div className="ex-formats" role="group" aria-label="Export format">
-                    {for (k, l, ll, _x) in EXPORT_FORMATS {
+                    {for choice in choices {
                         <button
-                            key={k}
+                            key={choice.key}
                             className="ex-format"
-                            aria-pressed={k == format}
-                            onClick={lambda (_e: MouseEvent) { load(k); }}
+                            aria-pressed={choice.key == format}
+                            onClick={lambda (_e: MouseEvent) { load(choice.key); }}
                         >
-                            {l}
-                            <span className="ex-sub">{"lossless" if ll else "lossy"}</span>
+                            {choice.label}
+                            <span className="ex-sub">{"lossless" if choice.lossless else "lossy"}</span>
                         </button>
                     }}
                 </div>

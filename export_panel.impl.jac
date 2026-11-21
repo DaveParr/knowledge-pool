@@ -1,6 +1,14 @@
 """Handlers for the export panel."""
 
 impl ExportPanel.load(fmt: str) -> None {
+    if not choices {
+        try {
+            choices = await export_formats();
+        } except Exception {
+            error = "The export formats could not be loaded.";
+            return;
+        }
+    }
     format = fmt;
     status = "";
     result = root spawn DeckExport(deck_id=deckId, format=fmt);
@@ -30,9 +38,9 @@ impl ExportPanel.copy -> None {
 
 impl ExportPanel.saveFile(_e: MouseEvent) -> None {
     ext = "txt";
-    for (k, _l, _ll, x) in EXPORT_FORMATS {
-        if k == format {
-            ext = x;
+    for choice in choices {
+        if choice.key == format {
+            ext = choice.ext;
         }
     }
     blob = new(Blob, [content], {"type": "text/plain"});  # jac:ignore[E1053,W1051,W2001]

@@ -45,7 +45,7 @@ impl AddCards.addCard(hit: CardHit, zone: str) -> None {
             now += c.count;
         }
     }
-    where = {"main": "main deck", "sideboard": "sideboard", "commander": "commander zone", "companion": "companion zone"}.get(zone, zone);
+    where = ZONE_TITLES.get(zone, zone).lower();
     toast = "Added 1 " + hit.name + " to " + where + " (now " + str(now) + ").";
     onChanged(view);
 }

@@ -299,3 +299,24 @@ def test_commander_first_paste_with_no_main_header_still_mis_zones_main_deck(nam
         ("Lightning Bolt", "commander"),
         ("Mountain", "commander"),
     ]
+
+
+def test_every_offered_export_format_is_one_the_package_can_write():
+    from deckformats import EXPORT_FORMATS, FORMATS, export_format_choices
+
+    assert [f.key for f in EXPORT_FORMATS] == list(FORMATS)
+    for choice in export_format_choices():
+        fmt = get_format(choice["key"])
+        assert fmt.render(_sample_deck()), choice["key"]
+        assert choice["label"] and choice["ext"] in {"txt", "json"}
+        assert isinstance(choice["lossless"], bool)
+
+
+def test_no_view_keeps_its_own_list_of_zones():
+    """Zones are listed once, in decks.jac (ZONES, ZONE_TITLES)."""
+    root = Path(__file__).parent.parent
+    for source in root.glob("*.jac"):
+        if source.name in ("decks.jac", "legality.jac", "commander.jac"):
+            continue
+        assert '"companion", "main"' not in source.read_text(), source.name
+        assert '"Main deck"' not in source.read_text() or source.name == "decks.jac", source.name
