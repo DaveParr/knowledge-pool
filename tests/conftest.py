@@ -90,7 +90,12 @@ def pytest_collection_modifyitems(config, items):
     spec = os.environ.get("KP_SHARD")
     if not spec:
         return
-    k, n = (int(x) for x in spec.split("/"))
+    try:
+        k, n = (int(x) for x in spec.split("/"))
+    except ValueError:
+        raise pytest.UsageError(f"KP_SHARD must look like 2/4, not {spec!r}") from None
+    if not 1 <= k <= n:
+        raise pytest.UsageError(f"KP_SHARD={spec}: the shard number must be from 1 to {n}")
     files = sorted({str(item.path) for item in items})
     mine = set(split_into_shards(files, n)[k - 1])
     chosen = [item for item in items if str(item.path) in mine]

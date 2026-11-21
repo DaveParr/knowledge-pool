@@ -14,3 +14,9 @@ def test_split_into_shards_places_every_file_in_one_shard():
 
 def test_split_into_shards_ignores_input_order():
     assert split_into_shards(FILES, 4) == split_into_shards(list(reversed(FILES)), 4)
+
+
+def test_every_timed_file_still_exists():
+    from tests.conftest import FILE_SECONDS
+
+    assert set(FILE_SECONDS) <= {Path(f).name for f in FILES}
