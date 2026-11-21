@@ -1,4 +1,4 @@
-"""The weekly catalogue rebuild workflow (#137): the rules that keep it honest
+"""The catalogue rebuild workflow (#137), run by hand for now: the rules that keep it honest
 without running it (the run against Railway is checked by hand, see the PR)."""
 
 import re
@@ -14,11 +14,16 @@ def _railway_up() -> list[str]:
     return line.split()
 
 
-def test_the_workflow_runs_on_monday_mornings_and_by_hand():
-    cron = re.search(r'cron: "([^"]+)"', WORKFLOW).group(1)
+def test_the_workflow_runs_only_by_hand_for_now():
+    assert re.search(r"^  workflow_dispatch:", WORKFLOW, re.MULTILINE)
+    # The weekly schedule is off: no uncommented `schedule:` trigger.
+    assert not re.search(r"^\s*schedule:", WORKFLOW, re.MULTILINE)
+
+
+def test_the_workflow_keeps_the_monday_morning_schedule_to_turn_back_on():
+    cron = re.search(r'^\s*#\s+- cron: "([^"]+)"', WORKFLOW, re.MULTILINE).group(1)
     minute, hour, _, _, weekday = cron.split()
     assert weekday == "1" and int(hour) < 12
-    assert "workflow_dispatch:" in WORKFLOW
 
 
 def test_the_workflow_builds_the_newest_commit_on_main_whose_tests_passed():

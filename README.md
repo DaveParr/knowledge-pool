@@ -93,7 +93,7 @@ docker run --rm -p 8080:8080 -e PORT=8080 -e JAC_DB_URL=postgresql://... \
 curl localhost:8080/healthz   # ok
 ```
 
-The `Weekly catalogue rebuild` workflow (`.github/workflows/weekly-catalogue.yml`) redeploys every Monday with a fresh catalogue, and can be run by hand from the Actions tab; its header says how, and it needs the repository secret `RAILWAY_TOKEN` (the deploy wizard sets it). At start the app logs the catalogue version it serves (`graph_runner.refresh_cards`).
+The `Catalogue rebuild` workflow (`.github/workflows/weekly-catalogue.yml`) redeploys with a fresh catalogue. For now it runs only by hand (Actions → Catalogue rebuild → Run workflow); its weekly schedule is off, and its header says how to turn it back on. It needs the repository secret `RAILWAY_TOKEN` (the deploy wizard sets it). At start the app logs the catalogue version it serves (`graph_runner.refresh_cards`).
 
 Until the browser sign-in lands, hosted mode answers the health path and refuses everything else without a WorkOS bearer token, the page included.
 
@@ -130,7 +130,7 @@ The hosted app runs on Railway at `https://knowledge-pool.engi.ai`. `scripts/dep
 - `jac.toml` the Jac version pin, dependencies, and `[scripts]`, the repo's commands (`jac x` lists them): `check`, `up`, `down`, `status`, `catalogue`, `test-ui`
 - `scripts/dev.sh` runs the front door (and its child) for this worktree (`up|down|status|port`)
 - `Dockerfile`, `.dockerignore`, `catalogue_date.txt` the hosted container image
-- `.github/workflows/weekly-catalogue.yml` the weekly catalogue rebuild on Railway
+- `.github/workflows/weekly-catalogue.yml` the catalogue rebuild on Railway (by hand for now)
 - `scripts/install_jac.sh` installs the Jac version `jac.toml` pins
 - `scripts/board.sh` moves an issue on the project board (`scripts/board.sh <issue> <status>`)
 - `scripts/fixture_cards.py` adds cards to `tests/fixtures/atomic_small.json`
