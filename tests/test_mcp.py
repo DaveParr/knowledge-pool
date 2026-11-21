@@ -101,3 +101,17 @@ def test_hosted_mode_refuses_to_start_when_one_setting_is_missing(fixture_catalo
     assert run.returncode != 0
     assert missing in run.stderr
     assert all(other not in run.stderr for other in ALL_HOSTED_SETTINGS if other != missing)
+
+
+def test_tool_descriptions_list_every_zone_and_export_format():
+    import anyio
+    import mcp_server
+    from deckformats import EXPORT_FORMATS
+    from zones import ZONES
+
+    tools = {t.name: t.description for t in anyio.run(mcp_server.server.list_tools)}
+    for name in ("deck_create", "deck_edit"):
+        assert all(f'"{z}"' in tools[name] for z in ZONES), name
+        assert "{zones}" not in tools[name]
+    assert all(f.key in tools["deck_export"] for f in EXPORT_FORMATS)
+    assert "{formats}" not in tools["deck_export"]

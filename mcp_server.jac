@@ -65,6 +65,16 @@ glob LOGGED_CLIENT_UI: list[bool] = [],
      EXPORT_UI: str = "ui://knowledge-pool/deck-export.html",
      LOSSY_DROPS: str = "keeps card names and counts for the main deck and sideboard only. It drops other zones, roles, tags, locks and reasons.";
 
+"""Fill the {zones} and {formats} placeholders in a tool's description from the zones
+module and the deckformats package, so a new zone or format reaches it with no edit."""
+def with_choices(tool: Callable) -> Callable {
+    formats = ", ".join(
+        [f"{f['key']} ({f['label']}, {'lossless' if f['lossless'] else 'lossy'})" for f in export_format_choices()]
+    );
+    tool.__doc__ = (tool.__doc__ or "").replace("{zones}", zone_options()).replace("{formats}", formats);
+    return tool;
+}
+
 """Show a deck to the user as a table in the chat: cards by zone, totals and legality.
 Clients that support MCP Apps (Claude Desktop and claude.ai) render it as an HTML list
 where each card expands to its rules text, stats, keywords, deck notes and tags; others
@@ -315,6 +325,7 @@ sideboard names and counts only; a lossless one is JSON that keeps everything. T
 show the export in a view with format buttons, Copy and Download; the text result
 always carries the full export too. A lossless JSON export is long: the user sees
 it in the view, so offer to show it or save it to a file rather than pasting it."""
+@with_choices
 def deck_export(deck_id: str, ctx: Context, format: str = "arena") -> CallToolResult {  # jac:ignore[W1036]: the SDK finds the context by this bare annotation
     done = outcome(read(DeckExport(deck_id=deck_id, format=format)));
     if "error" in done {
@@ -476,16 +487,6 @@ def plain(value: object) -> object {
         return out;
     }
     return value;
-}
-
-"""Fill the {zones} and {formats} placeholders in a tool's description from the decks
-module and the deckformats package, so a new zone or format reaches it with no edit."""
-def with_choices(tool: Callable) -> Callable {
-    formats = ", ".join(
-        [f"{f['key']} ({f['label']}, {'lossless' if f['lossless'] else 'lossy'})" for f in export_format_choices()]
-    );
-    tool.__doc__ = (tool.__doc__ or "").replace("{zones}", zone_options()).replace("{formats}", formats);
-    return tool;
 }
 
 """A finished walker's result as tool output: its first report as plain data,
