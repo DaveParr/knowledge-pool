@@ -245,7 +245,7 @@ expect_status() {
   fi
 }
 
-TOTAL_STAGES=21
+TOTAL_STAGES=22
 
 banner "Knowledge Pool: deploy checklist and first deploy"
 
@@ -355,11 +355,12 @@ ask PRED_LOCKS "What does SHOW max_pred_locks_per_transaction answer now?"
 write_env PRED_LOCKS "$PRED_LOCKS"
 
 stage "Railway: the app service"
+note "Rebuilding a lost project (Restore 2)? Restore the dump into Postgres first: docs/backups-and-restores.md."
 step "Create → GitHub Repo → $REPO (accept the GitHub permission Railway asks for)."
 step "App service → Settings → Source: branch main, 'Wait for CI' ON."
 step "Settings → Build: Dockerfile (the repo root's Dockerfile is picked up)."
 step "Settings → Deploy: health check path $HEALTH_PATH, restart policy 'On failure'."
-step "main has no Dockerfile yet, so a build Railway starts now fails: leave it. The first real deploy is stage 16."
+step "On the first deploy main had no Dockerfile, so this build failed: leave it. The first real deploy is stage 16."
 pause "Press Enter once the service is linked."
 
 stage "Railway: the app's variables"
@@ -486,6 +487,19 @@ say "Claude Code over HTTP:"
 step "claude mcp add --transport http knowledge-pool $MCP_URL   then /mcp in Claude Code to sign in."
 step "Ask it to list your decks."
 ask_note "Claude Code over HTTP" "What happened?"
+
+stage "Backups: a dump, a scratch restore and the daily timer"
+say "Hobby has no Railway volume backups: a daily dump on this machine is the only layer (#138)."
+say "docs/backups-and-restores.md has the commands and both restores."
+step "Take a dump:  scripts/backup.sh   (it finds the database the app uses)."
+step "Restore it into a scratch Postgres 18 here and compare row counts with production"
+step "  (docs/backups-and-restores.md, 'A scratch restore on this machine')."
+ask_note "Dump drill" "Dump and scratch-restore times, and did the row counts match?"
+step "Restore 2 once into a second Postgres service, point the app at it, check a deck, point it"
+step "  back and delete the second service (the runbook's 'Drills')."
+ask_note "Restore 2 drill" "How long from app down to healthy?"
+step "Install the timer from this checkout:  scripts/backup.sh install-timer"
+pause "Press Enter once the timer is listed."
 
 stage "Runbook, and posting the notes"
 say "Every deploy: a failed Test or build emails you and the old version keeps serving."

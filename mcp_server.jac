@@ -39,7 +39,7 @@ import from mcp.server.stdio { stdio_server }
 import from mcp.server.streamable_http { TransportSecuritySettings }
 import from cards { CardSearch, search_cards as catalog_search, find_card, resolve_names as catalog_resolve_names, check_catalogue }
 import from decks {
-    Deck, DeckAction, DeckView, DeckSummary, CreateDeck, ListDecks, GetDeck, SetDeckFormat, EditDeck
+    Deck, DeckAction, DeckView, DeckSummary, CreateDeck, ListDecks, GetDeck, SetDeckFormat, RenameDeck, EditDeck
 }
 import from deck_io { DeckExport, DeckImport }
 import from legality { GetFormatRules }
@@ -583,10 +583,17 @@ def deck_get(deck_id: str) -> JsonObject {
 """Change one of your own decks (another user's answers not-your-deck: copy it first). Each change is
 {"oracle_id": ..., "count": n, "zone": "main" | "sideboard" | "commander" | "companion" | "maybeboard", "reason": "why"}
 and sets that card's count in that zone (0 removes it). Every change needs a reason.
-Pass "format" to change the deck's format. Changes with an unknown oracle id or no
+Pass "format" to change the deck's format, and "name" to rename it (trimmed; a blank name is refused;
+the history gets one "Renamed from X to Y" line). Changes with an unknown oracle id or no
 reason are rejected and listed under "rejected"; the rest are applied."""
 @server.tool()
-def deck_edit(deck_id: str, changes: list[JsonObject] | None = None, format: str = "") -> JsonObject {
+def deck_edit(deck_id: str, changes: list[JsonObject] | None = None, format: str = "", name: str | None = None) -> JsonObject {
+    if name is not None {
+        renamed = outcome(walk(RenameDeck(deck_id=deck_id, name=name)));
+        if "error" in renamed {
+            return renamed;
+        }
+    }
     if format {
         reformatted = outcome(walk(SetDeckFormat(deck_id=deck_id, format=format)));
         if "error" in reformatted {
