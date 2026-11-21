@@ -93,7 +93,7 @@ docker run --rm -p 8080:8080 -e PORT=8080 -e JAC_DB_URL=postgresql://... \
 curl localhost:8080/healthz   # ok
 ```
 
-Every Monday at 06:00 UTC the `Weekly catalogue rebuild` workflow (`.github/workflows/weekly-catalogue.yml`) checks out `main`, writes the current date and time into `catalogue_date.txt` (in its checkout only, nothing is committed) and runs `railway up --ci --service knowledge-pool`, so Railway rebuilds the image with a fresh catalogue. A failed build fails the workflow; a new deployment that fails its health check leaves the old one serving. It needs the repository secret `RAILWAY_TOKEN`, a Railway project token for production (the deploy wizard sets it), and can be run by hand from the Actions tab. At start the app logs the catalogue version it serves (`Card catalogue <MTGJSON version> @ <build time>: ...`).
+The `Weekly catalogue rebuild` workflow (`.github/workflows/weekly-catalogue.yml`) redeploys every Monday with a fresh catalogue, and can be run by hand from the Actions tab; its header says how, and it needs the repository secret `RAILWAY_TOKEN` (the deploy wizard sets it). At start the app logs the catalogue version it serves (`Card catalogue <MTGJSON version> @ <build time>: ...`).
 
 Until the browser sign-in lands, hosted mode answers the health path and refuses everything else without a WorkOS bearer token, the page included.
 

@@ -556,7 +556,7 @@ test "the refresh warns, naming the oracle id of each card with more than one no
     assert not any(_oracle_id("Lightning Bolt") in m for m in messages);
 }
 
-test "the start logs the catalogue version, whether it refreshed or not" {
+test "the refresh logs the catalogue version, whether it ran or not" {
     _deck_with(ALICE, "Alice's logged deck", "Lightning Bolt");
     version = catalogue_version();
     with patch.object(LOG, "info") as told {

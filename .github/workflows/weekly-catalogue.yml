@@ -20,15 +20,29 @@ concurrency:
 
 permissions:
   contents: read
+  actions: read
 
 jobs:
   rebuild:
     runs-on: ubuntu-latest
     timeout-minutes: 45
     steps:
+      # `railway up` skips Railway's "Wait for CI", so build the newest commit
+      # on main whose Test run passed, never one whose tests failed.
+      - name: Find the newest tested commit on main
+        id: tested
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          sha=$(gh run list --repo "$GITHUB_REPOSITORY" --workflow test.yml --branch main \
+            --event push --status success --limit 1 --json headSha --jq '.[0].headSha')
+          test -n "$sha" || { echo "No passing Test run on main"; exit 1; }
+          echo "Building main at $sha"
+          echo "sha=$sha" >> "$GITHUB_OUTPUT"
+
       - uses: actions/checkout@v7
         with:
-          ref: main
+          ref: ${{ steps.tested.outputs.sha }}
 
       # Date and time, not just the date, so a second run on the same day
       # (by hand, say) still rebuilds the catalogue.

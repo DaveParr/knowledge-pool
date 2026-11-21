@@ -6,35 +6,39 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent.parent
 WORKFLOW = (ROOT / ".github" / "workflows" / "weekly-catalogue.yml").read_text()
-RUNS = re.findall(r"^\s*(?:- )?run: (.+)$", WORKFLOW, re.MULTILINE) + re.findall(
-    r"run: \|\n((?:\s{10,}.+\n)+)", WORKFLOW
-)
 
 
-def test_it_runs_on_monday_mornings_and_by_hand():
+def _railway_up() -> list[str]:
+    """The arguments of the workflow's one `railway up` command."""
+    (line,) = re.findall(r"^\s*run: railway up(.*)$", WORKFLOW, re.MULTILINE)
+    return line.split()
+
+
+def test_the_workflow_runs_on_monday_mornings_and_by_hand():
     cron = re.search(r'cron: "([^"]+)"', WORKFLOW).group(1)
     minute, hour, _, _, weekday = cron.split()
     assert weekday == "1" and int(hour) < 12
     assert "workflow_dispatch:" in WORKFLOW
 
 
-def test_it_builds_main():
-    assert re.search(r"uses: actions/checkout@\S+\n\s+with:\n\s+ref: main\n", WORKFLOW)
+def test_the_workflow_builds_the_newest_commit_on_main_whose_tests_passed():
+    assert "--workflow test.yml --branch main" in WORKFLOW and "--status success" in WORKFLOW
+    assert "ref: ${{ steps.tested.outputs.sha }}" in WORKFLOW
 
 
-def test_it_writes_the_file_the_catalogue_step_depends_on():
+def test_the_workflow_writes_the_file_the_catalogue_step_depends_on():
     # The file the Dockerfile copies just before `jac x catalogue` (test_dockerfile.py).
-    assert any("> catalogue_date.txt" in run for run in RUNS)
+    assert re.search(r"^\s*date .*> catalogue_date\.txt$", WORKFLOW, re.MULTILINE)
 
 
-def test_it_deploys_with_the_project_token_and_waits_for_the_build():
+def test_the_workflow_deploys_with_the_project_token_and_waits_for_the_build():
     assert "RAILWAY_TOKEN: ${{ secrets.RAILWAY_TOKEN }}" in WORKFLOW
-    up = next(run for run in RUNS if "railway up" in run)
+    args = _railway_up()
     # Not detached: the build's result is the workflow's.
-    assert "--ci" in up and "--detach" not in up and "-d " not in up
-    assert "--service knowledge-pool" in up
+    assert "--ci" in args and not {"-d", "--detach", "--no-wait"} & set(args)
+    assert args[args.index("--service") + 1] == "knowledge-pool"
 
 
-def test_it_commits_nothing():
+def test_the_workflow_commits_nothing():
     assert "contents: read" in WORKFLOW
     assert not re.search(r"\bgit (commit|push)\b", WORKFLOW)

@@ -202,6 +202,8 @@ MCP_URL="$APP_URL/mcp"
 HEALTH_PATH="/healthz"
 CALLBACK_URL="$APP_URL/auth/callback"
 REPO="DaveParr/knowledge-pool"
+# The weekly rebuild (.github/workflows/weekly-catalogue.yml) deploys to the app service by this name.
+APP_SERVICE="knowledge-pool"
 BASE="DaveParr/planning-deployment"   # the integration branch every ticket merges into
 ISSUE=136
 
@@ -357,7 +359,7 @@ write_env PRED_LOCKS "$PRED_LOCKS"
 stage "Railway: the app service"
 note "Rebuilding a lost project (Restore 2)? Restore the dump into Postgres first: docs/backups-and-restores.md."
 step "Create → GitHub Repo → $REPO (accept the GitHub permission Railway asks for)."
-step "App service → Settings: name the service knowledge-pool (the weekly rebuild deploys to it by that name)."
+step "App service → Settings: name the service $APP_SERVICE (the weekly rebuild deploys to it by that name)."
 step "App service → Settings → Source: branch main, 'Wait for CI' ON."
 step "Settings → Build: Dockerfile (the repo root's Dockerfile is picked up)."
 step "Settings → Deploy: health check path $HEALTH_PATH, restart policy 'On failure'."
