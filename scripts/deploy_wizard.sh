@@ -204,7 +204,7 @@ CALLBACK_URL="$APP_URL/auth/callback"
 REPO="DaveParr/knowledge-pool"
 # The app service: .github/workflows/weekly-catalogue.yml and scripts/backup.sh name it too.
 APP_SERVICE="knowledge-pool"
-BASE="DaveParr/planning-deployment"   # the integration branch every ticket merges into
+BASE="main"   # the branch every ticket merges into and Railway deploys
 ISSUE=136
 
 # gh secret set picks the repo from the working directory: run from the checkout.
@@ -412,12 +412,9 @@ pause
 # ── B. First deploy ───────────────────────────────────────────────────────
 
 stage "First deploy: Test, build, health"
-say "Railway deploys main, and main does not have the hosted app yet: it is on $BASE."
-step "Open a PR from $BASE into main and merge it (a merge commit, no squash)."
-open_url "https://github.com/$REPO/compare/main...$BASE?expand=1"
-pause "Press Enter once it is merged."
+say "Railway deploys $BASE, which has the hosted app (#184)."
 open_url "https://github.com/$REPO/actions/workflows/test.yml"
-step "Watch Test pass on main, then the Railway build and health check."
+step "Watch Test pass on $BASE, then the Railway build and health check."
 pause "Press Enter once Railway shows the deployment Active (the wizard then polls $HEALTH_PATH)."
 health=""
 for _ in $(seq 1 30); do

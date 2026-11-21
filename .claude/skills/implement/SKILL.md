@@ -16,7 +16,7 @@ Don't report done until this step has run. Ticket workers (`docs/agents/ticket-w
 
 Run /code-review with:
 
-- **Fixed point**: the branch your work merges into, e.g. `origin/DaveParr/planning-deployment` (the diff is against its merge-base). Don't ask the user for one.
+- **Fixed point**: the branch your work merges into, e.g. `origin/main` (the diff is against its merge-base). Don't ask the user for one.
 - **Spec**: the ticket(s) you implemented, or the spec you were given.
 
 Fix every finding, rerun the tests, and review again until nothing is left. A finding you deliberately leave unfixed needs a one-line reason.

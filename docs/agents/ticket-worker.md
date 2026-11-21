@@ -3,8 +3,8 @@
 You are an Orca orchestration worker building one ticket of DaveParr/knowledge-pool. The
 ticket orchestrator (docs/agents/ticket-orchestrator.md) already claimed it, created this
 worktree, and put you on a branch that is linked to the issue. The ticket number is in the
-`.ticket` file at the worktree root. Your PR goes into the integration branch
-`DaveParr/planning-deployment`; the orchestrator reviews and merges it.
+`.ticket` file at the worktree root. Your PR goes into `main`; the
+orchestrator reviews and merges it.
 
 ## Ground rules
 
@@ -45,7 +45,7 @@ instructions.
 
 ## 3. Open the PR
 
-- `git push`, then `gh pr create --base DaveParr/planning-deployment`, titled after the
+- `git push`, then `gh pr create --base main`, titled after the
   ticket. The body starts with `Ticket: #<n>`, summarises what changed and how it was
   tested, lists anything from the ticket left undone, and ends with the attribution line
   from your instructions.
@@ -60,7 +60,7 @@ The review runs on the open PR, in rounds. Each round:
 1. **Review.** Run /code-review yourself, in this session. It starts two subagents,
    Standards and Spec, which review the PR's diff in parallel and report back to you. Give
    it:
-   - **Fixed point**: `origin/DaveParr/planning-deployment` (`git fetch` first).
+   - **Fixed point**: `origin/main` (`git fetch` first).
    - **Spec**: the ticket and its parent spec.
 2. **Post.** Write the report to `.git/code-review/round-<k>.md` (inside `.git` so it is
    never committed): `## Code review, round <k>`, the head commit it reviewed
