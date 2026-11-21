@@ -1,5 +1,11 @@
 name: Test
 
+# `jac x check` runs three things one after another: the type check, the walker
+# tests and pytest. Here each runs as a job of its own at the same time, and
+# pytest is split into shards by test file (tests/conftest.py, `KP_SHARD`), so
+# the workflow takes as long as its slowest job. Keep the three in step with the
+# `check` script in jac.toml.
+
 on:
   pull_request:
     branches: [main]
@@ -7,29 +13,63 @@ on:
   push:
     branches: [main]
 
+env:
+  JAC_STRICT_PERMISSIONS: "1"
+
 jobs:
-  test:
+  types:
+    name: Type check
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v7
-
       - name: Install Jac (the version jac.toml pins)
         run: |
           scripts/install_jac.sh
           echo "$HOME/.local/bin" >> "$GITHUB_PATH"
-
       - name: Install dependencies
         run: jac install --dev --frozen
+      - name: Type check
+        run: jac check *.jac
 
-      - name: Check
+  walkers:
+    name: Walker tests
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - name: Install Jac (the version jac.toml pins)
+        run: |
+          scripts/install_jac.sh
+          echo "$HOME/.local/bin" >> "$GITHUB_PATH"
+      - name: Install dependencies
+        run: jac install --dev --frozen
+      - name: Walker tests
+        run: scripts/jac_test.sh
+
+  pytest:
+    name: pytest (shard ${{ matrix.shard }} of 4)
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        shard: [1, 2, 3, 4]
+    steps:
+      - uses: actions/checkout@v7
+      - name: Install Jac (the version jac.toml pins)
+        run: |
+          scripts/install_jac.sh
+          echo "$HOME/.local/bin" >> "$GITHUB_PATH"
+      - name: Install dependencies
+        run: jac install --dev --frozen
+      - name: pytest
         env:
           KP_REQUIRE_BROWSER: "1"
-        run: jac x check
+          KP_SHARD: ${{ matrix.shard }}/4
+        run: jac x pytest tests
 
       - name: Upload test output
         if: failure()
         uses: actions/upload-artifact@v7.0.2
         with:
-          name: test-output
+          name: test-output-${{ matrix.shard }}
           path: test-artifacts/
           if-no-files-found: ignore

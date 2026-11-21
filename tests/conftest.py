@@ -1,6 +1,7 @@
 """Point the app at a catalogue built from the small MTGJSON fixture, and give
 tests that start Jac processes a database of their own."""
 
+import os
 import socket
 from pathlib import Path
 
@@ -54,3 +55,40 @@ def jac_db_url(test_postgres, monkeypatch):
     with fresh_database(test_postgres) as url:
         monkeypatch.setenv("JAC_DB_URL", url)
         yield url
+
+
+# The slow files, in seconds, from the CI run that sized the shards. A file not
+# listed here counts as `DEFAULT_SECONDS`.
+FILE_SECONDS = {
+    "test_ui_smoke.py": 93, "test_dev_script.py": 66, "test_commander.py": 53,
+    "test_mcp.py": 40, "test_front_door_process.py": 36, "test_seed.py": 32,
+    "test_deck_io.py": 29,
+}
+DEFAULT_SECONDS = 5
+
+
+def shard_of(files, count):
+    """Split test file names into `count` shards of similar total time: the
+    slowest first, each into the shard with the least so far. The split depends
+    only on the names, so every CI job computes the same one."""
+    shards = [[] for _ in range(count)]
+    totals = [0] * count
+    for name in sorted(files, key=lambda f: (-FILE_SECONDS.get(Path(f).name, DEFAULT_SECONDS), f)):
+        i = totals.index(min(totals))
+        shards[i].append(name)
+        totals[i] += FILE_SECONDS.get(Path(name).name, DEFAULT_SECONDS)
+    return shards
+
+
+def pytest_collection_modifyitems(config, items):
+    """With `KP_SHARD=<k>/<n>` (k from 1), run only the k-th of n shards of the
+    test files; the CI matrix runs one shard per job. Without it, run all."""
+    spec = os.environ.get("KP_SHARD")
+    if not spec:
+        return
+    k, n = (int(x) for x in spec.split("/"))
+    files = sorted({str(item.path) for item in items})
+    mine = set(shard_of(files, n)[k - 1])
+    chosen = [item for item in items if str(item.path) in mine]
+    config.hook.pytest_deselected(items=[i for i in items if str(i.path) not in mine])
+    items[:] = chosen
