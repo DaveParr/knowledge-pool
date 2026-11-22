@@ -106,9 +106,13 @@ def test_the_body_check_never_overrides_merged_or_the_round_limit(env):
     assert status(env, body=bad, comments=rounds)["next"] == "round-limit"
 
 
+def merge(env, *args):
+    return subprocess.run([str(MERGE_TICKET), "7", *args], env=env, capture_output=True, text=True)
+
+
 def test_merge_ticket_refuses_a_pr_whose_body_is_stale(env):
     Path(env["FAKE_PR"]).write_text(json.dumps(pr(body=body(describes=OLD[:7]))))
-    out = subprocess.run([str(MERGE_TICKET), "7"], env=env, capture_output=True, text=True)
+    out = merge(env)
     assert out.returncode == 1
     assert "next is 'pr-body'" in out.stderr
     assert "pr merge" not in Path(env["FAKE_LOG"]).read_text()
@@ -119,7 +123,7 @@ def ticket(env, risk):
 
 
 @pytest.mark.parametrize("risk, next_", [("High", "approve"), ("Medium", "merge"), ("Low", "merge"), (None, "merge")])
-def test_a_high_risk_ticket_waits_for_a_human_to_approve_the_merge(env, risk, next_):
+def test_only_a_high_risk_ticket_waits_for_a_human_to_approve_the_merge(env, risk, next_):
     ticket(env, risk)
     s = status(env)
     assert (s["risk"], s["next"]) == (risk, next_)
@@ -128,10 +132,6 @@ def test_a_high_risk_ticket_waits_for_a_human_to_approve_the_merge(env, risk, ne
 def test_a_review_by_human_label_holds_before_high_risk_asks_for_approval(env):
     ticket(env, "High")
     assert status(env, labels=[{"name": "review-by-human"}])["next"] == "hold"
-
-
-def merge(env, *args):
-    return subprocess.run([str(MERGE_TICKET), "7", *args], env=env, capture_output=True, text=True)
 
 
 def test_merge_ticket_refuses_a_high_risk_pr_without_approval(env):

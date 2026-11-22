@@ -42,7 +42,7 @@ ticket_labels="$(gh api graphql -F owner="$REPO_OWNER" -F name="$REPO_NAME" -F n
   --jq ".data.repository.issue | {ticket: [.labels.nodes[].name], parent: .parent.number,
         parentLabels: [(.parent.labels.nodes // [])[].name],
         risk: ([(.projectItems.nodes // [])[]
-                | select(.project.number == $BOARD_NUMBER and .project.owner.login == \"$REPO_OWNER\")
+                | $BOARD_CARD
                 | .fieldValueByName.name // empty] | first)}")"
 
 jq --argjson t "$ticket" --argjson tl "$ticket_labels" '

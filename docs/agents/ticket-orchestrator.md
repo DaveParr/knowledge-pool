@@ -21,12 +21,9 @@ Load the `orchestration` skill first and use its commands (written `<orca>` belo
 
 ## The board
 
-`docs/agents/issue-tracker.md` says what each Status means. Once you claim a ticket it goes
-**In progress**, and from there only to **Blocked** or **In review**: never back to Backlog,
-Designing or Ready, except Blocked → Ready when its human has answered. A ticket stops for a
-human in one of two places: **Blocked** when work stopped before its PR opened (parked), and
-**In review** when the PR is open (held for the human, a High-risk ticket waiting for
-approval, or the review round limit). A ticket in review that needs a human stays there.
+`docs/agents/issue-tracker.md` says what each Status means and how a ticket moves between
+them. For you: a ticket that needs a human before its PR opens is parked (**Blocked**); once
+its PR is open, it stays **In review** whatever it waits for.
 
 Your scripts set a ticket's Status on the Knowledge Pool board (project #7) for the moves
 GitHub cannot see: **In progress** when claimed, **Blocked** when parked, and **In review**
@@ -133,8 +130,8 @@ review instead), release the worker, pick up work.
    user-visible or large: if it should not merge unattended, the human labels it or sets
    its Risk.
 5. **Merge.** `scripts/merge-ticket.sh <pr>`. It re-runs `pr-status.sh` and refuses
-   anything but `merge` (or `approve`, given `--approved`), then merges (merge commit, branch kept), labels `auto-merged`,
-   comments why, makes sure the ticket is closed, and sets its Target date. If it fails
+   anything but `merge` (or `approve`, given `--approved`), then merges (merge commit,
+   branch kept), labels `auto-merged` (not when approved), comments why, makes sure the ticket is closed, and sets its Target date. If it fails
    after merging (`pr-status.sh <pr>` says `merged`), run
    `scripts/target-date.sh <n> <pr>`. Never close or edit a parent spec or any other
    issue.
@@ -145,8 +142,8 @@ review instead), release the worker, pick up work.
 ## Human-merged PRs
 
 When the user tells you they merged a PR you left for them, GitHub has already closed the
-ticket and the board has moved it to Done (`scripts/pr-status.sh <pr>` says `merged`).
-Run `scripts/target-date.sh <n> <pr>` to set its Target date to the merge date, release
-its worker if it is still held, and pick up work. If they closed the PR unmerged, the
-ticket stays open with no PR: ask them whether to park it. If they close a ticket without a PR, run
-`scripts/target-date.sh <n>`: it sets the close date.
+ticket and the board has moved it to Done (`scripts/pr-status.sh <pr>` says `merged`). Run
+`scripts/target-date.sh <n> <pr>` to set its Target date to the merge date, release its
+worker if it is still held, and pick up work. If they closed the PR unmerged, the ticket
+stays open with no PR: ask them what it needs, and park it (Blocked) with that. If they
+close a ticket without a PR, run `scripts/target-date.sh <n>`: it sets the close date.

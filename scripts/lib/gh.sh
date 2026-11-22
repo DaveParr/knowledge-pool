@@ -16,6 +16,9 @@ REPO_OWNER="DaveParr"
 REPO_NAME="knowledge-pool"
 export GH_REPO="$REPO_OWNER/$REPO_NAME"   # every `gh` subcommand targets this repo
 BOARD_NUMBER=7                             # the "Knowledge Pool" user project
+# jq filter that keeps, of an issue's `projectItems` nodes (each selecting
+# `project{ number owner{ ... on User{ login } } }`), the one card on this board.
+BOARD_CARD="select(.project.number == $BOARD_NUMBER and .project.owner.login == \"$REPO_OWNER\")"
 
 die() { echo "$*" >&2; exit 1; }
 usage() { echo "usage: $*" >&2; exit 2; }
@@ -84,7 +87,7 @@ board_date_get() {
         issue(number:$n){ projectItems(first:50){ nodes{ project{ number owner{ ... on User{ login } } }
           fieldValueByName(name:$field){ ... on ProjectV2ItemFieldDateValue{ date } } } } } } }' \
       --jq ".data.repository.issue.projectItems.nodes[]
-            | select(.project.number == $BOARD_NUMBER and .project.owner.login == \"$REPO_OWNER\")
+            | $BOARD_CARD
             | \"card \" + (.fieldValueByName.date // \"\")")"
     [ -n "$items" ] || die "#$1 has no card on the board (project #$BOARD_NUMBER); add it with scripts/board.sh $1 <status>."
     items="$(head -n 1 <<<"$items")"
