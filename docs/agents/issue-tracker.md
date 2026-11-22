@@ -5,12 +5,12 @@ Issues and specs for this repo are GitHub issues in `DaveParr/knowledge-pool`, a
 ## Conventions
 
 - **Create an issue**: `gh issue create --title "..." --body-file <file>`. Write multi-line bodies to a file first.
-- **Read an issue**: `gh issue view <number> --json title,body,labels,comments,state`. Bare `gh issue view` and `--comments` fail here with the Projects (classic) deprecation error, so always pass `--json`.
+- **Read an issue**: `gh issue view <number> --json title,body,labels,comments,state`. Prefer `--json` for anything a script or agent parses.
 - **List issues**: `gh issue list --state open --json number,title,body,labels,comments --jq '[.[] | {number, title, body, labels: [.labels[].name], comments: [.comments[].body]}]'`, with `--label` and `--state` filters as needed.
 - **Comment on an issue**: `gh issue comment <number> --body-file <file>`
 - **Apply or remove labels**: `gh issue edit <number> --add-label "..."` or `--remove-label "..."`
 - **Close**: `gh issue close <number> --comment "..."`
-- **Update a PR body**: `gh api -X PATCH repos/DaveParr/knowledge-pool/pulls/<n> -F body=@<file>`
+- **Update a PR body**: `gh pr edit <n> --body-file <file>`
 
 `gh` infers the repo from `git remote -v` when it runs inside a clone.
 
@@ -19,8 +19,8 @@ Issues and specs for this repo are GitHub issues in `DaveParr/knowledge-pool`, a
 Work moves through the board's Status column: **Backlog**, **Ready**, **In progress**, **In review** and **Done**.
 
 - **Add a new issue to the board**: `gh project item-add 7 --owner DaveParr --url <issue url>`. Every map, ticket and spec belongs on the board.
-- **Set its status**: `scripts/board.sh <issue> <status>`. A newly added card has no status until you set one.
-- **Choosing a status**: an issue that can be picked up now goes in **Ready**. One that waits on an open issue goes in **Backlog**, and moves to Ready when its last blocker closes. Move a card to **In progress** when you claim it, to **In review** when its PR is open, and to **Done** when it closes.
+- **Set its status**: `scripts/board.sh <issue> <status>`, which also adds the card if it is missing. The board's workflows move a card to **Done** when its issue closes, and close an issue whose card is set to Done.
+- **Choosing a status**: an issue that can be picked up now goes in **Ready**. One that waits on an open issue goes in **Backlog**, and moves to Ready when its last blocker closes. A ticket parked for a decision only a human can make (`needs-info`) goes in **Blocked**, and back to **Ready** once it is answered and relabelled `ready-for-agent`. Move a card to **In progress** when you claim it, to **In review** when its PR is open, and to **Done** when it closes.
 - **Triage labels and board status sit side by side.** A label says what kind of work an issue is (for example `ready-for-agent`); its board status says where that work has got to.
 
 ## Pull requests as a triage surface

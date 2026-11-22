@@ -12,38 +12,27 @@
 #   - the branch is still one of the issue's linked branches (a PR into any other base).
 # A missing `Ticket: #<n>` line is added to the PR body. Anything else fails with exit 1
 # and says what is wrong.
-#
-# Uses REST/GraphQL directly: `gh pr edit` fails in this repo with the Projects (classic)
-# deprecation error.
 set -euo pipefail
-
-OWNER="DaveParr"; NAME="knowledge-pool"; REPO="$OWNER/$NAME"
+source "$(dirname "$0")/lib/gh.sh"
 
 n="${1:-}"
-case "$n" in '' | *[!0-9]*) echo "usage: scripts/check-ticket-link.sh <issue-number> [<branch>]" >&2; exit 2 ;; esac
+is_number "$n" || usage "scripts/check-ticket-link.sh <issue-number> [<branch>]"
 branch="${2:-$(git branch --show-current)}"
 
-pr="$(gh api "repos/$REPO/pulls?head=$OWNER:$branch&state=open" --jq '.[0] // empty')"
-if [ -z "$pr" ]; then
-    echo "No open PR from '$branch'." >&2; exit 1
-fi
-pr_num="$(jq -r .number <<<"$pr")"
+pr="$(gh pr list --head "$branch" --state open --json number --jq '.[0].number // empty')"
+[ -n "$pr" ] || die "No open PR from '$branch'."
 
-links="$(gh api graphql -F owner="$OWNER" -F name="$NAME" -F n="$n" -F pr="$pr_num" -f query='
-  query($owner:String!,$name:String!,$n:Int!,$pr:Int!){ repository(owner:$owner,name:$name){
-    issue(number:$n){ linkedBranches(first:50){ nodes{ ref{ name } } } }
-    pullRequest(number:$pr){ closingIssuesReferences(first:50){ nodes{ number } } } } }')"
-linked="$(jq -r '.data.repository.issue.linkedBranches.nodes[].ref.name' <<<"$links")"
-closes="$(jq -r '.data.repository.pullRequest.closingIssuesReferences.nodes[].number' <<<"$links")"
-if ! grep -qxF "$n" <<<"$closes" && ! grep -qxF "$branch" <<<"$linked"; then
-    echo "PR #$pr_num from '$branch' is not in issue #$n's Development field: the PR is not linked to the issue and the branch is not one of its linked branches." >&2
-    linked="${linked//$'\n'/, }"
-    echo "Linked branches: ${linked:-none}. Open the PR from the branch scripts/start-ticket.sh linked." >&2
-    exit 1
+info="$(gh pr view "$pr" --json closingIssuesReferences,body)"
+closes="$(jq -r '.closingIssuesReferences[].number' <<<"$info")"
+if ! grep -qxF "$n" <<<"$closes"; then
+    linked="$(linked_branches "$n")"
+    grep -qxF "$branch" <<<"$linked" || die "PR #$pr from '$branch' is not in issue #$n's Development field: \
+the PR is not linked to the issue and the branch is not one of its linked branches \
+(linked branches: $(paste -sd, <<<"${linked:-none}")). Open the PR from the branch scripts/start-ticket.sh linked."
 fi
 
-body="$(jq -r '.body // ""' <<<"$pr")"
+body="$(jq -r .body <<<"$info")"
 if ! grep -qE "^Ticket: #$n\b" <<<"$body"; then
-    gh api -X PATCH "repos/$REPO/pulls/$pr_num" -f body="Ticket: #$n"$'\n\n'"$body" >/dev/null
+    printf 'Ticket: #%s\n\n%s' "$n" "$body" | gh pr edit "$pr" --body-file - >/dev/null
 fi
-echo "$pr_num"
+echo "$pr"

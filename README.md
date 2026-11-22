@@ -4,11 +4,13 @@ Personal knowledge/working repo, set up with [Matt Pocock's Claude Code skills](
 
 ## Skills
 
-The 25 skills from the `engineering` and `productivity` buckets of [mattpocock/skills](https://github.com/mattpocock/skills) (commit `5b15a47`) are copied into [.claude/skills/](.claude/skills/) as editable project skills. See that repo's `README.md` for what each skill does.
+[mattpocock/skills](https://github.com/mattpocock/skills) comes as the `mattpocock-skills` plugin, pinned to v1.3.2 in [.claude/settings.json](.claude/settings.json), which enables it for this project. Its skills are named `/mattpocock-skills:<skill>` (for example `/mattpocock-skills:tdd`, `/mattpocock-skills:pr`). A few skills this repo has changed are kept as project copies in [.claude/skills/](.claude/skills/) under bare names (`/code-review`, `/implement`). See mattpocock/skills' `README.md` for what each skill does.
 
 Attribution: these skill files are copied from mattpocock/skills, MIT licensed by Matt Pocock — see [.claude/skills/LICENSE-mattpocock-skills](.claude/skills/LICENSE-mattpocock-skills).
 
 ## Setup
+
+Install the plugin once per machine: `claude plugin install mattpocock-skills@mattpocock`. Installing it at user scope and then disabling it there is fine, because the project's settings enable it. `scripts/start-ticket.sh` stops if it isn't installed.
 
 Run `/setup-matt-pocock-skills` once in a Claude Code session in this repo to configure issue tracker, triage labels, and docs location.
 
@@ -133,6 +135,7 @@ The hosted app runs on Railway at `https://knowledge-pool.engi.ai`. `scripts/dep
 - `.github/workflows/weekly-catalogue.yml` the catalogue rebuild on Railway (by hand for now)
 - `scripts/install_jac.sh` installs the Jac version `jac.toml` pins
 - `scripts/board.sh` moves an issue on the project board (`scripts/board.sh <issue> <status>`)
+- `scripts/ready-tickets.sh`, `start-ticket.sh`, `check-ticket-link.sh`, `pr-status.sh`, `merge-ticket.sh`, `park-ticket.sh` the ticket orchestrator's GitHub steps (`docs/agents/ticket-orchestrator.md`), sharing `scripts/lib/gh.sh`
 - `scripts/fixture_cards.py` adds cards to `tests/fixtures/atomic_small.json`
 - `CODING_STANDARDS.md` recurring review findings
 
