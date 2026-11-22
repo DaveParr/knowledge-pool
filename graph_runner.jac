@@ -431,7 +431,7 @@ def refresh_steps(batch: int) -> bool {
     while True {
         reports = run_as_guest(RefreshCards(offset=offset, size=batch)).reports;
         if isinstance(reports[0], WalkerError) {
-            raise RuntimeError(f"The card refresh could not finish: {reports[0].message}");
+            raise CallFailed(error=reports[0]);
         }
         offset += batch;
         if reports[1] as int < batch {
