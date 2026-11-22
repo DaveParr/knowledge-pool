@@ -13,6 +13,8 @@ from pathlib import Path
 
 import pytest
 
+from tests.test_pr_status_script import pr
+
 ROOT = Path(__file__).resolve().parent.parent
 BOARD_DATE = ROOT / "scripts" / "board-date.sh"
 TARGET_DATE = ROOT / "scripts" / "target-date.sh"
@@ -67,8 +69,7 @@ elif cmd == "api graphql":
         reply({"data": {"repository": {"issue": {"projectItems": {"nodes": nodes}}}}})
     elif "timelineItems" in query:
         issue = board["issue"]
-        closer = {"mergedAt": issue["mergedAt"]} if issue.get("mergedAt") else {}
-        nodes = [{"closer": closer}] if issue["state"] == "CLOSED" else []
+        nodes = [{"closer": {"mergedAt": m} if m else {}} for m in issue.get("closers", [])]
         reply({"data": {"repository": {"issue": {"state": issue["state"], "closedAt": issue.get("closedAt"),
                                                  "timelineItems": {"nodes": nodes}}}}})
     elif "labels(first" in query:
@@ -88,18 +89,7 @@ else:
     sys.exit("fake gh: unexpected: " + " ".join(args))
 '''
 
-HEAD = "def5678" + "0" * 33
-PR = {
-    "number": 7, "url": "https://github.com/DaveParr/knowledge-pool/pull/7", "state": "OPEN", "isDraft": False,
-    "baseRefName": "main", "headRefOid": HEAD, "mergeable": "MERGEABLE", "labels": [],
-    "body": f"Ticket: #42\n\n## Summary\n\nx\n\n## Evidence\n\nDescribes: `{HEAD[:7]}`\n\n"
-            "## Merge Danger\n\n**Door:** two-way\n\n**Blast Radius:** none",
-    "closingIssuesReferences": [{"number": 42}],
-    "comments": [{"body": f"## Code review, round 1\n\nReviewed `{HEAD[:7]}`."}],
-    "statusCheckRollup": [{"__typename": "CheckRun", "name": "test", "status": "COMPLETED",
-                           "conclusion": "SUCCESS", "detailsUrl": "x"}],
-    "mergedAt": "2026-11-21T23:59:59Z",
-}
+PR = pr(mergedAt="2026-11-21T23:59:59Z")
 
 
 def make_bin(tmp_path, name, text):
@@ -196,16 +186,32 @@ def test_board_date_fails_closed_when_the_ticket_has_no_card(env):
 
 
 def test_target_date_is_the_merge_date_when_a_pr_closed_the_ticket(env):
-    board(env, issue={"state": "CLOSED", "closedAt": "2026-11-22T00:00:05Z", "mergedAt": "2026-11-21T23:59:59Z"})
+    board(env, issue={"state": "CLOSED", "closedAt": "2026-11-22T00:00:05Z",
+                      "closers": ["2026-11-21T23:59:59Z"]})
     out = run(env, TARGET_DATE, "42")
     assert out.returncode == 0, out.stderr
     assert date_writes(env) == [("Target date", "2026-11-21")]
 
 
 def test_target_date_is_the_close_date_when_no_pr_closed_the_ticket(env):
-    board(env, issue={"state": "CLOSED", "closedAt": "2026-11-19T10:00:00Z"})
+    board(env, issue={"state": "CLOSED", "closedAt": "2026-11-19T10:00:00Z", "closers": [None]})
     assert run(env, TARGET_DATE, "42").returncode == 0
     assert date_writes(env) == [("Target date", "2026-11-19")]
+
+
+def test_target_date_keeps_the_merge_date_when_a_reopened_ticket_is_closed_by_hand(env):
+    board(env, issue={"state": "CLOSED", "closedAt": "2026-11-25T10:00:00Z",
+                      "closers": ["2026-11-21T23:59:59Z", None]})
+    assert run(env, TARGET_DATE, "42").returncode == 0
+    assert date_writes(env) == [("Target date", "2026-11-21")]
+
+
+def test_target_date_fails_when_the_ticket_has_no_card(env):
+    board(env, card=False, issue={"state": "CLOSED", "closedAt": "2026-11-19T10:00:00Z", "closers": [None]})
+    out = run(env, TARGET_DATE, "42")
+    assert out.returncode == 1
+    assert "#42 has no card on the board" in out.stderr
+    assert "Target date ->" not in out.stdout
 
 
 def test_target_date_refuses_an_open_ticket(env):

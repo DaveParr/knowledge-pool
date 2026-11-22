@@ -64,6 +64,8 @@ board_move() {
 # date field of the board, by its exact name ("Start date", "Target date"). Checks the date,
 # the field and the card before writing, and never adds a card: a ticket gets its card when
 # it is claimed (board_move), so a missing card means something else went wrong.
+# board_target_date <issue> <timestamp>: set "Target date" to the day of a GitHub timestamp
+# (ISO 8601, always UTC: the date is the part before the "T").
 board_check_date_field() {
     local fields
     fields="$(gh api graphql -F owner="$REPO_OWNER" -F number="$BOARD_NUMBER" -f query='
@@ -76,6 +78,7 @@ Date fields: $(paste -sd, <<<"$fields" | sed 's/,/, /g')."
 board_date_get() {
     local items
     board_check_date_field "$2"
+    # One line "card <date>" per card, so a card with no date differs from no card at all.
     items="$(gh api graphql -F owner="$REPO_OWNER" -F name="$REPO_NAME" -F n="$1" -F field="$2" -f query='
       query($owner:String!,$name:String!,$n:Int!,$field:String!){ repository(owner:$owner,name:$name){
         issue(number:$n){ projectItems(first:50){ nodes{ project{ number owner{ ... on User{ login } } }
@@ -94,6 +97,10 @@ board_date() {
     board_date_get "$1" "$2" >/dev/null   # the field and the card exist
     gh project item-edit "$BOARD_NUMBER" --owner "$REPO_OWNER" --url "$url" \
         --field "$2" --date "$3" >/dev/null
+}
+board_target_date() {
+    board_date "$1" "Target date" "${2%%T*}"
+    echo "${2%%T*}"
 }
 
 # linked_branches <issue>: the branches in the issue's Development field, one per line.

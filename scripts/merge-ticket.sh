@@ -29,6 +29,5 @@ gh pr comment "$pr" --body "Merged automatically by the ticket orchestrator: rev
 if [ "$(gh issue view "$ticket" --json state --jq .state)" = OPEN ]; then
     gh issue close "$ticket" --reason completed --comment "Merged in #$pr." >/dev/null
 fi
-merged="$(gh pr view "$pr" --json mergedAt --jq .mergedAt)"
-board_date "$ticket" "Target date" "${merged%%T*}"   # GitHub timestamps are UTC
-echo "merged #$pr; ticket #$ticket closed, Target date ${merged%%T*}"
+target="$(board_target_date "$ticket" "$(gh pr view "$pr" --json mergedAt --jq .mergedAt)")"
+echo "merged #$pr; ticket #$ticket closed, Target date $target"
