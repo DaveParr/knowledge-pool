@@ -198,8 +198,8 @@ def _as_guest(f: Callable[[], object]) -> object {
 }
 
 """The ids of the two Card nodes the guest makes for the card `name`, in the
-order made. Ids are random, so which is lowest is left to chance: the tests
-that use this assert on `min` of them, never on the order made."""
+order made. Ids are random, so which is lowest is left to chance: a test
+that compares them must use `min`, never the order made."""
 def _duplicate_cards(name: str) -> list[str] {
     oid = _oracle_id(name);
     c = store.get_card(oid) as JsonObject;

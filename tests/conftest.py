@@ -57,14 +57,18 @@ def jac_db_url(test_postgres, monkeypatch):
         yield url
 
 
-# The slow files, in seconds, from the CI run that sized the shards. A file not
-# listed here counts as `DEFAULT_SECONDS`.
+# Seconds per test file on CI (run 44915907844), for the files that take 10 s
+# or more. A file not listed here counts as `DEFAULT_SECONDS`.
 FILE_SECONDS = {
-    "test_ui_smoke.py": 93, "test_dev_script.py": 66, "test_commander.py": 53,
-    "test_mcp.py": 40, "test_front_door_process.py": 36, "test_seed.py": 32,
-    "test_deck_io.py": 29,
+    "test_front_door_process.py": 122, "test_dev_script.py": 107,
+    "test_ui_smoke.py": 103, "test_commander.py": 48, "test_mcp.py": 46,
+    "test_deck_io.py": 43, "test_seed.py": 41, "test_browser_session.py": 39,
+    "test_catalog_schema.py": 39, "test_front_door.py": 31,
+    "test_legality.py": 30, "test_api.py": 29, "test_backup_script.py": 29,
+    "test_mana_curve.py": 17, "test_hosted_auth.py": 17,
+    "test_rate_limits.py": 11, "test_deck_cards.py": 10,
 }
-DEFAULT_SECONDS = 5
+DEFAULT_SECONDS = 2
 
 
 def _cost(name):
@@ -97,7 +101,9 @@ def pytest_collection_modifyitems(config, items):
     if not 1 <= k <= n:
         raise pytest.UsageError(f"KP_SHARD={spec}: the shard number must be from 1 to {n}")
     files = sorted({str(item.path) for item in items})
-    mine = set(split_into_shards(files, n)[k - 1])
-    chosen = [item for item in items if str(item.path) in mine]
-    config.hook.pytest_deselected(items=[i for i in items if str(i.path) not in mine])
-    items[:] = chosen
+    shard_files = set(split_into_shards(files, n)[k - 1])
+    kept, dropped = [], []
+    for item in items:
+        (kept if str(item.path) in shard_files else dropped).append(item)
+    config.hook.pytest_deselected(items=dropped)
+    items[:] = kept
