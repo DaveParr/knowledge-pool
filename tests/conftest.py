@@ -81,11 +81,22 @@ def split_into_shards(files, count):
     only on the names, so every CI job computes the same one."""
     shards = [[] for _ in range(count)]
     totals = [0] * count
-    for name in sorted(files, key=lambda f: (-_cost(f), f)):
-        i = totals.index(min(totals))
-        shards[i].append(name)
-        totals[i] += _cost(name)
+    for cost, name in sorted((-_cost(f), f) for f in files):
+        lightest = totals.index(min(totals))
+        shards[lightest].append(name)
+        totals[lightest] -= cost
     return shards
+
+
+def parse_shard(spec):
+    """`KP_SHARD`'s value `<k>/<n>` as (k, n), with k from 1 to n."""
+    try:
+        k, n = (int(x) for x in spec.split("/"))
+    except ValueError:
+        raise pytest.UsageError(f"KP_SHARD must look like 2/4, not {spec!r}") from None
+    if not 1 <= k <= n:
+        raise pytest.UsageError(f"KP_SHARD={spec}: the shard number must be from 1 to {n}")
+    return k, n
 
 
 def pytest_collection_modifyitems(config, items):
@@ -94,12 +105,7 @@ def pytest_collection_modifyitems(config, items):
     spec = os.environ.get("KP_SHARD")
     if not spec:
         return
-    try:
-        k, n = (int(x) for x in spec.split("/"))
-    except ValueError:
-        raise pytest.UsageError(f"KP_SHARD must look like 2/4, not {spec!r}") from None
-    if not 1 <= k <= n:
-        raise pytest.UsageError(f"KP_SHARD={spec}: the shard number must be from 1 to {n}")
+    k, n = parse_shard(spec)
     files = sorted({str(item.path) for item in items})
     shard_files = set(split_into_shards(files, n)[k - 1])
     kept, dropped = [], []
