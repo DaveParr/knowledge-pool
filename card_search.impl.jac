@@ -29,7 +29,7 @@ impl AddCards.runSearch(e: FormEvent) -> None {
 }
 
 impl AddCards.addCard(hit: CardHit, zone: str) -> None {
-    result = root spawn AddCard(deck_id=deckId, oracle_id=hit.oracle_id, count=1, zone=zone);
+    result = root spawn EditDeck(deck_id=deckId, changes=[{"oracle_id": hit.oracle_id, "count": 1, "zone": zone, "reason": WEB_EDIT_REASON, "mode": "add"}]);
     reports: list[DeckView | WalkerError] = result.reports;
     why = failureMessage(reports);
     if why {
@@ -37,8 +37,12 @@ impl AddCards.addCard(hit: CardHit, zone: str) -> None {
         addError = why;
         return;
     }
-    addError = "";
     view = reports[0] as DeckView;
+    addError = "; ".join(view.rejected);
+    if addError {
+        toast = "";
+        return;
+    }
     now = 0;
     for c in view.cards {
         if c.oracle_id == hit.oracle_id and c.zone == zone {

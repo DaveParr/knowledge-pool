@@ -13,9 +13,10 @@ import from .mana_cost { ManaCost }
 import from .walker_failure { failureMessage, thrownLine }
 
 import from decks {
-    ChangeNote, DeckView, FormatInfo, GetDeck, CopyOtherDeck, SetDeckFormat, RenameDeck, SetCardCount, RemoveCard, list_formats
+    ChangeNote, DeckView, FormatInfo, GetDeck, CopyOtherDeck, EditDeck, list_formats
 }
 import from zones { ZONES, ZONE_TITLES }
+import from edit_reason { WEB_EDIT_REASON }
 import from legality { Violation }
 import from commander { GameChangers }
 import from mana { ManaProfile }

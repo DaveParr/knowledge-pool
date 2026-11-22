@@ -18,7 +18,7 @@ import from jaclang.server.session { Session }
 import from pathlib { Path }
 import from catalog.ingest { build, load_atomic, load_oracle_tags }
 import catalog.store as store;
-import from decks { Deck, DeckView, CreateDeck, ListDecks, ListOtherDecks, CopyOtherDeck, GetDeck, AddCard, SetCardCount, RemoveCard, SetDeckFormat, RenameDeck, EditDeck, DeckSummary, holdings }
+import from decks { Deck, DeckView, CreateDeck, ListDecks, ListOtherDecks, CopyOtherDeck, GetDeck, EditDeck, DeckSummary, holdings }
 import from profile { save_display_name, UNKNOWN_USER }
 import from deck_io { DeckExport, ExportResult }
 import from walker_errors { WalkerError }
@@ -40,6 +40,16 @@ with entry {
     );
     os.environ["KP_CATALOG"] = str(CATALOG.resolve());
     store.reset();
+}
+
+"""The edit that adds `count` copies of a card to `zone` of a deck."""
+def _add(deck_id: str, oracle_id: str, count: int = 1, zone: str = "main") -> EditDeck {
+    return EditDeck(deck_id=deck_id, changes=[{"oracle_id": oracle_id, "count": count, "zone": zone, "reason": "test", "mode": "add"}]);
+}
+
+"""The edit that sets the count of a card in the main zone of a deck."""
+def _set(deck_id: str, oracle_id: str, count: int) -> EditDeck {
+    return EditDeck(deck_id=deck_id, changes=[{"oracle_id": oracle_id, "count": count, "zone": "main", "reason": "test"}]);
 }
 
 """A new deck made by `caller`, as its id."""
@@ -73,10 +83,10 @@ test "changing another user's deck answers not-your-deck, and an id that names n
     alices = _new_deck(ALICE, "Alice's change-guarded deck");
     assert _error_code(ALICE, GetDeck(deck_id=alices)) == "";
     bolt = store.find_by_name("Lightning Bolt")["oracle_id"] as str;
-    assert _error_code(BOB, AddCard(deck_id=alices, oracle_id=bolt)) == "not-your-deck";
-    assert _error_code(BOB, SetDeckFormat(deck_id=alices, format="modern")) == "not-your-deck";
-    assert _error_code(BOB, AddCard(deck_id=str(uuid4()), oracle_id=bolt)) == "no-such-deck";
-    assert _error_code(BOB, AddCard(deck_id="not an id", oracle_id=bolt)) == "no-such-deck";
+    assert _error_code(BOB, _add(alices, bolt)) == "not-your-deck";
+    assert _error_code(BOB, EditDeck(deck_id=alices, format="modern")) == "not-your-deck";
+    assert _error_code(BOB, _add(str(uuid4()), bolt)) == "no-such-deck";
+    assert _error_code(BOB, _add("not an id", bolt)) == "no-such-deck";
     view = run_walker(ALICE, GetDeck(deck_id=alices)).reports[0] as DeckView;
     assert view.cards == [];
 }
@@ -84,7 +94,7 @@ test "changing another user's deck answers not-your-deck, and an id that names n
 test "the not-your-deck message points to copying" {
     alices = _new_deck(ALICE, "Alice's copy-pointer deck");
     bolt = store.find_by_name("Lightning Bolt")["oracle_id"] as str;
-    err = run_walker(BOB, AddCard(deck_id=alices, oracle_id=bolt)).reports[0] as WalkerError;
+    err = run_walker(BOB, _add(alices, bolt)).reports[0] as WalkerError;
     assert "copy" in err.message.lower();
 }
 
@@ -93,8 +103,8 @@ test "a card id or a root id is no deck: it answers no-such-deck, never not-your
     card_id = _card_ids(ALICE, alices)[0];
     root_id = user_root_id(ALICE);
     bolt = store.find_by_name("Lightning Bolt")["oracle_id"] as str;
-    assert _error_code(BOB, AddCard(deck_id=card_id, oracle_id=bolt)) == "no-such-deck";
-    assert _error_code(BOB, AddCard(deck_id=root_id, oracle_id=bolt)) == "no-such-deck";
+    assert _error_code(BOB, _add(card_id, bolt)) == "no-such-deck";
+    assert _error_code(BOB, _add(root_id, bolt)) == "no-such-deck";
 }
 
 test "a deck another user can read answers not-your-deck to a change: only the owner's root counts" {
@@ -103,7 +113,7 @@ test "a deck another user can read answers not-your-deck to a change: only the o
     seen = call_function(BOB, lambda () -> object { return jobj(alices); });
     assert isinstance(seen, Deck);  # Jac lets Bob read it now
     bolt = store.find_by_name("Lightning Bolt")["oracle_id"] as str;
-    assert _error_code(BOB, AddCard(deck_id=alices, oracle_id=bolt)) == "not-your-deck";
+    assert _error_code(BOB, _add(alices, bolt)) == "not-your-deck";
 }
 
 """The id of the oracle card `name`."""
@@ -114,7 +124,7 @@ def _oracle_id(name: str) -> str {
 """`caller`'s new deck holding one `card_name` in the main deck, as its id."""
 def _deck_with(caller: str, deck_name: str, card_name: str) -> str {
     deck_id = _new_deck(caller, deck_name);
-    assert _error_code(caller, AddCard(deck_id=deck_id, oracle_id=_oracle_id(card_name))) == "";
+    assert _error_code(caller, _add(deck_id, _oracle_id(card_name))) == "";
     return deck_id;
 }
 
@@ -670,14 +680,14 @@ def _copy_view(caller: str, deck_id: str) -> DeckView {
 
 test "copying another user's deck makes the copier's own deck named '<name> (copy)', with cards, zones, counts and format" {
     alices = _annotated_deck(ALICE, "Alice's burn deck");
-    run_walker(ALICE, SetDeckFormat(deck_id=alices, format="modern"));
+    run_walker(ALICE, EditDeck(deck_id=alices, format="modern"));
     copy = _copy_view(BOB, alices);
     assert copy.name == "Alice's burn deck (copy)";
     assert copy.format == "modern";
     assert [(l.name, l.zone, l.count) for l in copy.cards] == [("Shock", "main", 3), ("Lightning Bolt", "sideboard", 2)];
     assert "Alice's burn deck (copy)" in _deck_names(BOB);
     assert copy.id != alices;
-    assert _error_code(BOB, AddCard(deck_id=copy.id, oracle_id=_oracle_id("Shock"))) == "";
+    assert _error_code(BOB, _add(copy.id, _oracle_id("Shock"))) == "";
 }
 
 test "a copy carries the per-card notes: roles, tags, locked and reason" {
@@ -707,7 +717,7 @@ test "copying leaves the original untouched" {
     alices = _annotated_deck(ALICE, "Alice's untouched deck");
     before = run_walker(ALICE, GetDeck(deck_id=alices)).reports[0] as DeckView;
     copy = _copy_view(BOB, alices);
-    run_walker(BOB, AddCard(deck_id=copy.id, oracle_id=_oracle_id("Goblin Guide")));
+    run_walker(BOB, _add(copy.id, _oracle_id("Goblin Guide")));
     after = run_walker(ALICE, GetDeck(deck_id=alices)).reports[0] as DeckView;
     assert _shape(after) == _shape(before);
     assert _deck_names(ALICE).count("Alice's untouched deck") == 1;
@@ -717,8 +727,8 @@ test "copying leaves the original untouched" {
 test "a copy stays as it was when the original changes later" {
     alices = _annotated_deck(ALICE, "Alice's later-changed deck");
     copy = _copy_view(BOB, alices);
-    run_walker(ALICE, AddCard(deck_id=alices, oracle_id=_oracle_id("Goblin Guide")));
-    run_walker(ALICE, SetDeckFormat(deck_id=alices, format="commander"));
+    run_walker(ALICE, _add(alices, _oracle_id("Goblin Guide")));
+    run_walker(ALICE, EditDeck(deck_id=alices, format="commander"));
     again = run_walker(BOB, GetDeck(deck_id=copy.id)).reports[0] as DeckView;
     assert _shape(again) == _shape(copy);
 }
@@ -775,7 +785,7 @@ test "a user owns the decks they made, and no one else's, and no id that names n
 
 test "the owner renames a deck: the name is trimmed, shows in the list and the history gets one line" {
     id = _new_deck(ALICE, "Alice's old name");
-    view = run_walker(ALICE, RenameDeck(deck_id=id, name="  Alice's new name  ")).reports[0] as DeckView;
+    view = run_walker(ALICE, EditDeck(deck_id=id, name="  Alice's new name  ")).reports[0] as DeckView;
     assert view.name == "Alice's new name";
     assert view.history[-1].reason == "Renamed from Alice's old name to Alice's new name";
     assert "Alice's new name" in _deck_names(ALICE);
@@ -784,14 +794,14 @@ test "the owner renames a deck: the name is trimmed, shows in the list and the h
 
 test "another user cannot rename a deck: not-your-deck, and the name stays" {
     id = _new_deck(ALICE, "Alice's guarded name");
-    assert _error_code(BOB, RenameDeck(deck_id=id, name="Bob's name")) == "not-your-deck";
+    assert _error_code(BOB, EditDeck(deck_id=id, name="Bob's name")) == "not-your-deck";
     assert "Alice's guarded name" in _deck_names(ALICE);
-    assert _error_code(BOB, RenameDeck(deck_id=str(uuid4()), name="x")) == "no-such-deck";
+    assert _error_code(BOB, EditDeck(deck_id=str(uuid4()), name="x")) == "no-such-deck";
 }
 
 test "a blank name renames nothing and writes no history" {
     id = _new_deck(ALICE, "Alice's kept name");
-    assert _error_code(ALICE, RenameDeck(deck_id=id, name="   ")) == "blank-name";
+    assert _error_code(ALICE, EditDeck(deck_id=id, name="   ")) == "blank-name";
     view = run_walker(ALICE, GetDeck(deck_id=id)).reports[0] as DeckView;
     assert view.name == "Alice's kept name" and view.history == [];
 }
@@ -799,7 +809,7 @@ test "a blank name renames nothing and writes no history" {
 test "a copy keeps its own name when the original is renamed" {
     id = _new_deck(ALICE, "Alice's original");
     copied = (copy_deck(BOB, id).reports[0] as DeckView).id;
-    run_walker(ALICE, RenameDeck(deck_id=id, name="Alice's renamed"));
+    run_walker(ALICE, EditDeck(deck_id=id, name="Alice's renamed"));
     bobs = run_walker(BOB, GetDeck(deck_id=copied)).reports[0] as DeckView;
     assert bobs.name == "Alice's original (copy)";
 }
@@ -814,15 +824,15 @@ def _op_first(caller: str, w: WalkerArchetype) -> object {
 test "perform: a user reads and changes their own deck" {
     id = _new_deck(ALICE, "Alice's own deck");
     shock = _oracle_id("Shock");
-    assert _error_code(ALICE, AddCard(deck_id=id, oracle_id=shock)) == "";
+    assert _error_code(ALICE, _add(id, shock)) == "";
     view = _op_first(ALICE, GetDeck(deck_id=id)) as DeckView;
     assert [(l.name, l.zone, l.count) for l in view.cards] == [("Shock", "main", 1)];
-    assert _error_code(ALICE, SetCardCount(deck_id=id, oracle_id=shock, count=3)) == "";
-    assert _error_code(ALICE, RenameDeck(deck_id=id, name="Alice's renamed deck")) == "";
-    assert _error_code(ALICE, SetDeckFormat(deck_id=id, format="modern")) == "";
+    assert _error_code(ALICE, _set(id, shock, 3)) == "";
+    assert _error_code(ALICE, EditDeck(deck_id=id, name="Alice's renamed deck")) == "";
+    assert _error_code(ALICE, EditDeck(deck_id=id, format="modern")) == "";
     after = _op_first(ALICE, GetDeck(deck_id=id)) as DeckView;
     assert after.name == "Alice's renamed deck" and after.format == "modern" and after.cards[0].count == 3;
-    assert _error_code(ALICE, RemoveCard(deck_id=id, oracle_id=shock)) == "";
+    assert _error_code(ALICE, _set(id, shock, 0)) == "";
     assert (_op_first(ALICE, GetDeck(deck_id=id)) as DeckView).cards == [];
     assert "Alice's renamed deck" in _deck_names(ALICE);
 }
@@ -830,15 +840,15 @@ test "perform: a user reads and changes their own deck" {
 test "another user's deck is readable but not changeable: not-your-deck" {
     id = _new_deck(ALICE, "Alice's read-only-to-Bob deck");
     shock = _oracle_id("Shock");
-    assert _error_code(ALICE, AddCard(deck_id=id, oracle_id=shock)) == "";
+    assert _error_code(ALICE, _add(id, shock)) == "";
     seen = _op_first(BOB, GetDeck(deck_id=id)) as DeckView;
     assert seen.name == "Alice's read-only-to-Bob deck" and len(seen.cards) == 1;
     assert "Shock" in (_op_first(BOB, DeckExport(deck_id=id, format="text")) as ExportResult).content;
-    assert _error_code(BOB, AddCard(deck_id=id, oracle_id=shock)) == "not-your-deck";
-    assert _error_code(BOB, SetCardCount(deck_id=id, oracle_id=shock, count=4)) == "not-your-deck";
-    assert _error_code(BOB, RemoveCard(deck_id=id, oracle_id=shock)) == "not-your-deck";
-    assert _error_code(BOB, RenameDeck(deck_id=id, name="Bob's")) == "not-your-deck";
-    assert _error_code(BOB, SetDeckFormat(deck_id=id, format="modern")) == "not-your-deck";
+    assert _error_code(BOB, _add(id, shock)) == "not-your-deck";
+    assert _error_code(BOB, _set(id, shock, 4)) == "not-your-deck";
+    assert _error_code(BOB, _set(id, shock, 0)) == "not-your-deck";
+    assert _error_code(BOB, EditDeck(deck_id=id, name="Bob's")) == "not-your-deck";
+    assert _error_code(BOB, EditDeck(deck_id=id, format="modern")) == "not-your-deck";
     assert _error_code(BOB, EditDeck(deck_id=id, changes=[])) == "not-your-deck";
     unchanged = _op_first(ALICE, GetDeck(deck_id=id)) as DeckView;
     assert unchanged.name == "Alice's read-only-to-Bob deck" and unchanged.cards[0].count == 1;
@@ -848,18 +858,18 @@ test "an id that names no deck answers no-such-deck, read or change" {
     nothing = str(uuid4());
     assert _error_code(BOB, GetDeck(deck_id=nothing)) == "no-such-deck";
     assert _error_code(BOB, GetDeck(deck_id="not an id")) == "no-such-deck";
-    assert _error_code(BOB, AddCard(deck_id=nothing, oracle_id=_oracle_id("Shock"))) == "no-such-deck";
+    assert _error_code(BOB, _add(nothing, _oracle_id("Shock"))) == "no-such-deck";
     assert _error_code(BOB, CopyOtherDeck(deck_id=nothing)) == "no-such-deck";
 }
 
 test "copying another user's deck makes the copier's own deck" {
     id = _new_deck(ALICE, "Alice's copyable deck");
-    assert _error_code(ALICE, AddCard(deck_id=id, oracle_id=_oracle_id("Shock"))) == "";
+    assert _error_code(ALICE, _add(id, _oracle_id("Shock"))) == "";
     copy = _op_first(BOB, CopyOtherDeck(deck_id=id)) as DeckView;
     assert copy.name == "Alice's copyable deck (copy)" and copy.id != id;
     assert [(l.name, l.count) for l in copy.cards] == [("Shock", 1)];
     assert "Alice's copyable deck (copy)" in _deck_names(BOB);
-    assert _error_code(BOB, AddCard(deck_id=copy.id, oracle_id=_oracle_id("Lightning Bolt"))) == "";
+    assert _error_code(BOB, _add(copy.id, _oracle_id("Lightning Bolt"))) == "";
 }
 
 test "listing other users' decks shows theirs with the owner's name, never the caller's own" {
@@ -889,4 +899,104 @@ test "the table says how every operation runs, and flows name their function" {
         assert (op.across is not None) == (op.runs == FLOW);
     }
     assert set(page_walkers().keys()) == {n for (n, op) in OPERATIONS.items() if op.page};
+}
+
+# The edit walker (`EditDeck`): one walker, one commit per deck edit.
+
+"""`caller`'s deck `deck_id` as its owner sees it."""
+def _deck(caller: str, deck_id: str) -> DeckView {
+    return perform(caller, GetDeck(deck_id=deck_id)).reports[0] as DeckView;
+}
+
+test "an edit with a name, a format and changes is applied together" {
+    id = _new_deck(ALICE, "Alice's whole edit");
+    done = perform(
+        ALICE,
+        EditDeck(
+            deck_id=id,
+            name="  Alice's edited deck ",
+            format="modern",
+            changes=[{"oracle_id": _oracle_id("Shock"), "count": 3, "zone": "main", "reason": "burn"}]
+        )
+    ).reports[0] as DeckView;
+    assert done.name == "Alice's edited deck" and done.format == "modern" and done.rejected == [];
+    assert [(l.name, l.count) for l in done.cards] == [("Shock", 3)];
+    assert [n.reason for n in _deck(ALICE, id).history] == ["Renamed from Alice's whole edit to Alice's edited deck", "burn"];
+}
+
+test "a refused rename or format change leaves the deck's cards, name and format as they were" {
+    id = _new_deck(ALICE, "Alice's atomic deck");
+    shock = _oracle_id("Shock");
+    assert _error_code(ALICE, _add(id, shock, 2)) == "";
+    cards = [{"oracle_id": shock, "count": 4, "zone": "main", "reason": "more burn"}];
+    assert _error_code(ALICE, EditDeck(deck_id=id, name="   ", changes=cards)) == "blank-name";
+    assert _error_code(ALICE, EditDeck(deck_id=id, format="vintage", changes=cards)) == "unknown-format";
+    assert _error_code(ALICE, EditDeck(deck_id=id, name="Renamed anyway", format="vintage", changes=cards)) == "unknown-format";
+    after = _deck(ALICE, id);
+    assert after.name == "Alice's atomic deck" and after.format == "standard";
+    assert [(l.name, l.count) for l in after.cards] == [("Shock", 2)];
+    assert len(after.history) == 1;
+}
+
+test "an add change raises the count on top of what the zone holds, and a set change replaces it" {
+    id = _new_deck(ALICE, "Alice's adding deck");
+    shock = _oracle_id("Shock");
+    assert _error_code(ALICE, _add(id, shock, 2)) == "";
+    assert _error_code(ALICE, _add(id, shock, 3)) == "";
+    assert [(l.zone, l.count) for l in _deck(ALICE, id).cards] == [("main", 5)];
+    assert _error_code(ALICE, _add(id, shock, 1, "sideboard")) == "";
+    assert [(l.zone, l.count) for l in _deck(ALICE, id).cards] == [("main", 5), ("sideboard", 1)];
+    assert _error_code(ALICE, _set(id, shock, 2)) == "";
+    view = _deck(ALICE, id);
+    assert [(l.zone, l.count) for l in view.cards] == [("main", 2), ("sideboard", 1)];
+    assert [(n.before, n.after) for n in view.history] == [(0, 2), (2, 5), (0, 1), (5, 2)];
+}
+
+test "changes with an unknown oracle id, no reason or a bad mode are rejected and listed, and the rest applied" {
+    id = _new_deck(ALICE, "Alice's partly refused deck");
+    shock = _oracle_id("Shock");
+    view = perform(
+        ALICE,
+        EditDeck(
+            deck_id=id,
+            changes=[
+                {"oracle_id": "not-a-card", "count": 1, "zone": "main", "reason": "x"},
+                {"oracle_id": shock, "count": 1, "zone": "main", "reason": ""},
+                {"oracle_id": shock, "count": 1, "zone": "main", "reason": "x", "mode": "double"},
+                {"oracle_id": shock, "count": 2, "zone": "main", "reason": "good one", "mode": "add"}
+            ]
+        )
+    ).reports[0] as DeckView;
+    assert len(view.rejected) == 3;
+    assert view.rejected[0].startswith("Change 1 (not-a-card): ");
+    assert view.rejected[1].startswith("Change 2 (") and "reason" in view.rejected[1];
+    assert view.rejected[2].startswith("Change 3 (") and "mode" in view.rejected[2];
+    assert [(l.name, l.count) for l in view.cards] == [("Shock", 2)];
+}
+
+test "creating a deck with cards makes and fills it in one call, and lists the cards it refused" {
+    view = perform(
+        ALICE,
+        CreateDeck(
+            name="Alice's seeded deck",
+            format="modern",
+            changes=[
+                {"oracle_id": _oracle_id("Shock"), "count": 4, "zone": "main", "reason": "seed card"},
+                {"oracle_id": "not-a-card", "count": 1, "zone": "main", "reason": "seed card"}
+            ]
+        )
+    ).reports[0] as DeckView;
+    assert view.name == "Alice's seeded deck" and view.format == "modern";
+    assert [(l.name, l.count) for l in view.cards] == [("Shock", 4)];
+    assert len(view.rejected) == 1 and "Alice's seeded deck" in _deck_names(ALICE);
+    assert _error_code(ALICE, CreateDeck(name="Alice's refused deck", format="vintage", changes=[])) == "unknown-format";
+    assert "Alice's refused deck" not in _deck_names(ALICE);
+}
+
+test "two adds in a row give two copies" {
+    id = _new_deck(ALICE, "Alice's twice-added deck");
+    shock = _oracle_id("Shock");
+    assert _error_code(ALICE, _add(id, shock)) == "";
+    assert _error_code(ALICE, _add(id, shock)) == "";
+    assert [(l.name, l.count) for l in _deck(ALICE, id).cards] == [("Shock", 2)];
 }

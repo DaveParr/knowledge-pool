@@ -98,7 +98,7 @@ def test_function_call_answers_in_jacs_envelope(client):
 
 def test_unknown_walker_or_function_answers_404(client):
     assert client.post("/walker/DeckAction", json={}).status_code == 404
-    assert client.post("/walker/EditDeck", json={}).status_code == 404
+    assert client.post("/walker/CopySource", json={}).status_code == 404
     assert client.post("/function/find_card", json={}).status_code == 404
 
 
@@ -159,7 +159,7 @@ def test_the_front_door_walkers_are_the_deck_operations_the_page_may_call():
     import deck_operations
 
     assert front_door.WALKERS == deck_operations.page_walkers()
-    assert {"ListOtherDecks", "CopyOtherDeck", "RenameDeck"} <= set(front_door.WALKERS)
+    assert {"ListOtherDecks", "CopyOtherDeck", "EditDeck"} <= set(front_door.WALKERS)
 
 
 def test_the_app_imports_every_page_callable_walker():

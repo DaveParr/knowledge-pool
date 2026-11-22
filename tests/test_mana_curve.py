@@ -41,14 +41,14 @@ def test_curve_excludes_lands_and_sideboard_counts_x_spells_and_mdfcs(tmp_path):
         fireball = _oracle_id("Fireball")
         valakut = _oracle_id("Valakut Awakening // Valakut Stoneforge")
 
-        _reports(client.post("/walker/AddCard", json={"deck_id": deck_id, "oracle_id": bolt, "count": 4}))
-        _reports(client.post("/walker/AddCard", json={"deck_id": deck_id, "oracle_id": mountain, "count": 20}))
-        _reports(client.post("/walker/AddCard", json={"deck_id": deck_id, "oracle_id": fireball, "count": 1}))
-        _reports(client.post("/walker/AddCard", json={"deck_id": deck_id, "oracle_id": valakut, "count": 1}))
+        _reports(client.post("/walker/EditDeck", json={"deck_id": deck_id, "changes": [{"oracle_id": bolt, "count": 4, "reason": "Edited in the app", "mode": "add"}]}))
+        _reports(client.post("/walker/EditDeck", json={"deck_id": deck_id, "changes": [{"oracle_id": mountain, "count": 20, "reason": "Edited in the app", "mode": "add"}]}))
+        _reports(client.post("/walker/EditDeck", json={"deck_id": deck_id, "changes": [{"oracle_id": fireball, "count": 1, "reason": "Edited in the app", "mode": "add"}]}))
+        _reports(client.post("/walker/EditDeck", json={"deck_id": deck_id, "changes": [{"oracle_id": valakut, "count": 1, "reason": "Edited in the app", "mode": "add"}]}))
         _reports(
             client.post(
-                "/walker/AddCard",
-                json={"deck_id": deck_id, "oracle_id": bolt, "count": 2, "zone": "sideboard"},
+                "/walker/EditDeck",
+                json={"deck_id": deck_id, "changes": [{"oracle_id": bolt, "count": 2, "zone": "sideboard", "reason": "test deck", "mode": "add"}]},
             )
         )
 
@@ -66,7 +66,7 @@ def test_curve_is_zero_for_an_all_land_deck(tmp_path):
         deck_id = _new_deck(client, "All land")
         mountain = _oracle_id("Mountain")
         view = _reports(
-            client.post("/walker/AddCard", json={"deck_id": deck_id, "oracle_id": mountain, "count": 40})
+            client.post("/walker/EditDeck", json={"deck_id": deck_id, "changes": [{"oracle_id": mountain, "count": 40, "reason": "Edited in the app", "mode": "add"}]})
         )[0]
 
         assert view["curve"]["buckets"] == _buckets()
@@ -82,23 +82,23 @@ def test_every_edit_reports_the_curve_after_that_edit(tmp_path):
         bolt = _oracle_id("Lightning Bolt")
         fireball = _oracle_id("Fireball")
 
-        added = _reports(client.post("/walker/AddCard", json={"deck_id": deck_id, "oracle_id": bolt, "count": 4}))[0]
+        added = _reports(client.post("/walker/EditDeck", json={"deck_id": deck_id, "changes": [{"oracle_id": bolt, "count": 4, "reason": "Edited in the app", "mode": "add"}]}))[0]
         assert added["curve"]["buckets"] == _buckets(mv1=4)
 
         counted = _reports(
-            client.post("/walker/SetCardCount", json={"deck_id": deck_id, "oracle_id": bolt, "count": 2})
+            client.post("/walker/EditDeck", json={"deck_id": deck_id, "changes": [{"oracle_id": bolt, "count": 2, "reason": "Edited in the app"}]})
         )[0]
         assert counted["curve"]["buckets"] == _buckets(mv1=2)
 
-        _reports(client.post("/walker/AddCard", json={"deck_id": deck_id, "oracle_id": fireball, "count": 1}))
+        _reports(client.post("/walker/EditDeck", json={"deck_id": deck_id, "changes": [{"oracle_id": fireball, "count": 1, "reason": "Edited in the app", "mode": "add"}]}))
         removed = _reports(
-            client.post("/walker/RemoveCard", json={"deck_id": deck_id, "oracle_id": bolt})
+            client.post("/walker/EditDeck", json={"deck_id": deck_id, "changes": [{"oracle_id": bolt, "count": 0, "reason": "Edited in the app"}]})
         )[0]
         # The fixture catalogue gives Fireball ({X}{R}) mana value 0.
         assert removed["curve"]["buckets"] == _buckets(mv0=1)
 
         reformatted = _reports(
-            client.post("/walker/SetDeckFormat", json={"deck_id": deck_id, "format": "modern"})
+            client.post("/walker/EditDeck", json={"deck_id": deck_id, "format": "modern"})
         )[0]
         assert reformatted["format"] == "modern"
         assert reformatted["curve"]["buckets"] == _buckets(mv0=1)

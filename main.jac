@@ -13,13 +13,9 @@ import from decks {
     CreateDeck,
     ListDecks,
     GetDeck,
-    SetDeckFormat,
-    RenameDeck,
+    EditDeck,
     ListOtherDecks,
     CopyOtherDeck,
-    AddCard,
-    SetCardCount,
-    RemoveCard,
     list_formats
 }
 import from legality { Violation }

@@ -28,8 +28,8 @@ def test_export_mtgdeck1_contains_every_card_in_the_right_zone(tmp_path):
     client = FrontDoorClient(tmp_path)
     try:
         deck_id = _new_deck(client)
-        client.post("/walker/AddCard", json={"deck_id": deck_id, "oracle_id": _oracle_id("Lightning Bolt"), "count": 4})
-        client.post("/walker/AddCard", json={"deck_id": deck_id, "oracle_id": _oracle_id("Mountain"), "count": 20, "zone": "sideboard"})
+        client.post("/walker/EditDeck", json={"deck_id": deck_id, "changes": [{"oracle_id": _oracle_id("Lightning Bolt"), "count": 4, "reason": "Edited in the app", "mode": "add"}]})
+        client.post("/walker/EditDeck", json={"deck_id": deck_id, "changes": [{"oracle_id": _oracle_id("Mountain"), "count": 20, "zone": "sideboard", "reason": "Edited in the app", "mode": "add"}]})
 
         exported = _reports(client.post("/walker/DeckExport", json={"deck_id": deck_id, "format": "mtgdeck1"}))[0]
         doc = json.loads(exported["content"])
@@ -61,8 +61,8 @@ def test_export_mtgdeck1_then_import_round_trips(tmp_path):
     client = FrontDoorClient(tmp_path)
     try:
         deck_id = _new_deck(client)
-        client.post("/walker/AddCard", json={"deck_id": deck_id, "oracle_id": _oracle_id("Lightning Bolt"), "count": 4})
-        client.post("/walker/AddCard", json={"deck_id": deck_id, "oracle_id": _oracle_id("Mountain"), "count": 20, "zone": "sideboard"})
+        client.post("/walker/EditDeck", json={"deck_id": deck_id, "changes": [{"oracle_id": _oracle_id("Lightning Bolt"), "count": 4, "reason": "Edited in the app", "mode": "add"}]})
+        client.post("/walker/EditDeck", json={"deck_id": deck_id, "changes": [{"oracle_id": _oracle_id("Mountain"), "count": 20, "zone": "sideboard", "reason": "Edited in the app", "mode": "add"}]})
         exported = _reports(client.post("/walker/DeckExport", json={"deck_id": deck_id, "format": "mtgdeck1"}))[0]
 
         imported = _reports(client.post("/walker/DeckImport", json={
@@ -95,7 +95,7 @@ def test_importing_a_new_list_replaces_what_was_there_before(tmp_path):
     client = FrontDoorClient(tmp_path)
     try:
         deck_id = _new_deck(client)
-        client.post("/walker/AddCard", json={"deck_id": deck_id, "oracle_id": _oracle_id("Goblin Guide"), "count": 4})
+        client.post("/walker/EditDeck", json={"deck_id": deck_id, "changes": [{"oracle_id": _oracle_id("Goblin Guide"), "count": 4, "reason": "Edited in the app", "mode": "add"}]})
         result = _reports(client.post("/walker/DeckImport", json={
             "deck_id": deck_id, "format": "text", "text": "4 Lightning Bolt\n",
         }))[0]
@@ -139,7 +139,7 @@ def test_import_flags_an_invalid_zone_instead_of_bricking_the_deck(tmp_path):
     client = FrontDoorClient(tmp_path)
     try:
         deck_id = _new_deck(client)
-        client.post("/walker/AddCard", json={"deck_id": deck_id, "oracle_id": _oracle_id("Goblin Guide"), "count": 4})
+        client.post("/walker/EditDeck", json={"deck_id": deck_id, "changes": [{"oracle_id": _oracle_id("Goblin Guide"), "count": 4, "reason": "Edited in the app", "mode": "add"}]})
         text = json.dumps({
             "schema": "mtgdeck/1", "name": "bad zone test", "format": "modern",
             "zones": {
@@ -163,7 +163,7 @@ def test_importing_plain_text_as_mtgdeck1_reports_a_parse_error_and_keeps_the_de
     client = FrontDoorClient(tmp_path)
     try:
         deck_id = _new_deck(client)
-        client.post("/walker/AddCard", json={"deck_id": deck_id, "oracle_id": _oracle_id("Goblin Guide"), "count": 4})
+        client.post("/walker/EditDeck", json={"deck_id": deck_id, "changes": [{"oracle_id": _oracle_id("Goblin Guide"), "count": 4, "reason": "Edited in the app", "mode": "add"}]})
         result = _reports(client.post("/walker/DeckImport", json={
             "deck_id": deck_id, "format": "mtgdeck1", "text": "4 Lightning Bolt",
         }))[0]
@@ -232,7 +232,7 @@ def test_a_paste_where_nothing_resolves_leaves_the_deck_untouched(tmp_path):
     client = FrontDoorClient(tmp_path)
     try:
         deck_id = _new_deck(client)
-        client.post("/walker/AddCard", json={"deck_id": deck_id, "oracle_id": _oracle_id("Goblin Guide"), "count": 4})
+        client.post("/walker/EditDeck", json={"deck_id": deck_id, "changes": [{"oracle_id": _oracle_id("Goblin Guide"), "count": 4, "reason": "Edited in the app", "mode": "add"}]})
         for text, unresolved in [
             ("this is not a deck\nneither is this\n", ["this is not a deck", "neither is this"]),
             ("4 Flargle the Unreal\n", ["Flargle the Unreal"]),
@@ -274,7 +274,7 @@ def test_an_import_with_no_cards_leaves_the_deck_untouched(tmp_path, fmt, text):
     client = FrontDoorClient(tmp_path)
     try:
         deck_id = _new_deck(client)
-        client.post("/walker/AddCard", json={"deck_id": deck_id, "oracle_id": _oracle_id("Goblin Guide"), "count": 4})
+        client.post("/walker/EditDeck", json={"deck_id": deck_id, "changes": [{"oracle_id": _oracle_id("Goblin Guide"), "count": 4, "reason": "Edited in the app", "mode": "add"}]})
         result = _reports(client.post("/walker/DeckImport", json={"deck_id": deck_id, "format": fmt, "text": text}))[0]
         assert len(result["unresolved"]) == 1
         view = _reports(client.post("/walker/GetDeck", json={"deck_id": deck_id}))[0]
