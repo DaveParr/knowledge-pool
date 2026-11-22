@@ -11,5 +11,5 @@ set -euo pipefail
 source "$(dirname "$0")/lib/gh.sh"
 
 [ "$#" -eq 2 ] && is_number "$1" || usage "scripts/board.sh <issue-number> <status>"
-board_move "$1" "$2"
-echo "#$1 -> ${2//[-_]/ }"
+status="$(board_move "$1" "$2")"
+echo "#$1 -> $status"

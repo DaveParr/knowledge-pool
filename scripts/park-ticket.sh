@@ -14,8 +14,8 @@ source "$(dirname "$0")/lib/gh.sh"
 n="${1:-}" file="${2:-}"
 is_number "$n" && [ -s "$file" ] || usage "scripts/park-ticket.sh <issue-number> <comment-file>"
 
-board_check_status Blocked
+board_check_status Blocked >/dev/null
 gh issue edit "$n" --remove-label ready-for-agent --add-label needs-info --remove-assignee @me >/dev/null
 gh issue comment "$n" --body-file "$file" >/dev/null
-board_move "$n" Blocked
+board_move "$n" Blocked >/dev/null
 echo "#$n parked: needs-info, Blocked"

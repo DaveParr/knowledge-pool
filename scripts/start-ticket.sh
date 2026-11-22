@@ -36,7 +36,7 @@ want_branch="DaveParr/$n-${slug:-ticket}"
 
 # 1. Claim
 gh issue edit "$n" --add-assignee @me >/dev/null
-board_move "$n" "In progress"
+board_move "$n" "In progress" >/dev/null
 
 # 2. Worktree
 git fetch -q origin "$BASE"

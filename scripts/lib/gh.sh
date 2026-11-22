@@ -9,6 +9,8 @@
 # `gh api graphql` exits 1 when a reply carries `errors`, even next to `data`, so
 # `set -e` in the caller is enough to fail loudly on a partial GraphQL reply.
 
+shopt -s inherit_errexit   # `die` inside $(...) stops the script, not just the subshell
+
 GH_MIN_VERSION="2.97.0"
 REPO_OWNER="DaveParr"
 REPO_NAME="knowledge-pool"
@@ -28,7 +30,8 @@ require_gh() {
     fi
 }
 
-# board_check_status <status>: fail unless the board's Status field has that option.
+# board_check_status <status>: print the board's own spelling of that Status option, or
+# fail naming the valid ones.
 # board_move <issue> <status>: put the issue on the board if it is not there yet, then set
 # its Status. <status> is a Status option, in any case; "-" and "_" read as spaces. It
 # checks the option exists before touching the board, and fails naming the valid ones: add
@@ -36,18 +39,21 @@ require_gh() {
 # single-select field's options can clear every card's Status). `item-add` returns the
 # existing item when the issue is already on the board, so this never makes a second card.
 board_check_status() {
-    local status="${1//[-_]/ }" options
+    local status="${1//[-_]/ }" options match
     options="$(gh project field-list "$BOARD_NUMBER" --owner "$REPO_OWNER" --format json \
         --jq '.fields[] | select(.name == "Status") | .options[].name')"
-    grep -qixF "$status" <<<"$options" || die "The board (project #$BOARD_NUMBER) has no Status \"$status\"; \
+    match="$(grep -ixF "$status" <<<"$options" | head -n 1)" || true
+    [ -n "$match" ] || die "The board (project #$BOARD_NUMBER) has no Status \"$status\"; \
 add it in the board's settings first. Valid: $(paste -sd, <<<"$options" | sed 's/,/, /g')."
+    echo "$match"
 }
 board_move() {
-    local url="https://github.com/$GH_REPO/issues/$1" status="${2//[-_]/ }"
-    board_check_status "$status"
+    local url="https://github.com/$GH_REPO/issues/$1" status
+    status="$(board_check_status "$2")"
     gh project item-add "$BOARD_NUMBER" --owner "$REPO_OWNER" --url "$url" >/dev/null
     gh project item-edit "$BOARD_NUMBER" --owner "$REPO_OWNER" --url "$url" \
         --field Status --value "$status" >/dev/null
+    echo "$status"
 }
 
 # linked_branches <issue>: the branches in the issue's Development field, one per line.
