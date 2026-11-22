@@ -18,6 +18,7 @@ import from legality { Violation, FORMAT_LABELS, format_node, check_lines, unkno
 import from commander { GameChangers, game_changers }
 import from mana { ManaProfile, ManaCurve, mana_profile, mana_curve }
 import from walker_errors { WalkerError }
+import from zones { ZONES, ZONE_TITLES, zone_choices, zone_options }
 import from json_object { JsonObject }
 
 """One change to how many copies of a card a zone of a deck holds, with the
@@ -46,12 +47,6 @@ node Deck {
         format: str = "standard",
         history: list[ChangeNote] = [];
 }
-
-"""Every zone a deck can hold cards in (the mtgdeck/1 zones), in display
-order. The one list of zones: every holdings change and every import checks
-against it. Constructed legality looks only at main and sideboard (see
-legality.LEGALITY_ZONES); Commander also counts the commander and companion zones."""
-glob ZONES: list[str] = ["commander", "companion", "main", "sideboard", "maybeboard"];
 
 """Create a deck and report it. A blank name or an unknown format creates
 nothing and reports a WalkerError (blank-name, unknown-format)."""

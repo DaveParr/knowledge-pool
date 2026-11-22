@@ -9,7 +9,12 @@
 #      main, with the issue linked in Orca's metadata. Orca adds a numeric
 #      suffix if the branch name is taken, so the real name is read back from Orca.
 #   3. `gh issue develop` creates that branch on GitHub as a linked branch, which puts it
-#      in the issue's Development field before any PR exists.
+#      in the issue's Development field before any PR exists. The script then reads the
+#      issue's linked branches back and fails if the branch is not among them: GitHub can
+#      link only a branch it creates, so when the name is already on the remote `develop`
+#      links nothing and fails with an unhelpful git refspec error; the script checks
+#      first and says so plainly. (Once a PR from the branch opens into main, GitHub swaps the
+#      branch link for the PR; `scripts/check-ticket-link.sh` accepts either.)
 #   4. Point the local branch at the linked remote branch and write the `.ticket` marker.
 #
 # Prints one JSON line: {"issue":n,"branch":"...","worktreeId":"...","path":"..."}.
@@ -47,7 +52,21 @@ wt_id="$(jq -r .id <<<"$wt")"
 branch="$(jq -r .branch <<<"$wt")"; branch="${branch#refs/heads/}"
 
 # 3. Linked branch on GitHub (fills the issue's Development field)
+if git ls-remote --exit-code -q origin "refs/heads/$branch" >/dev/null; then
+    echo "Branch '$branch' is already on origin; GitHub cannot link an existing branch to #$n." >&2
+    echo "Remove the worktree ($path) and the remote branch, or pick another name, then retry." >&2
+    exit 1
+fi
 gh issue develop "$n" -R "$REPO" --name "$branch" --base "$BASE" >/dev/null
+linked="$(gh api graphql -F owner="${REPO%/*}" -F name="${REPO#*/}" -F n="$n" -f query='
+  query($owner:String!,$name:String!,$n:Int!){ repository(owner:$owner,name:$name){ issue(number:$n){
+    linkedBranches(first:50){ nodes{ ref{ name } } } } } }' \
+  --jq '.data.repository.issue.linkedBranches.nodes[].ref.name')"
+if ! grep -qxF "$branch" <<<"$linked"; then
+    linked="${linked//$'\n'/, }"
+    echo "gh issue develop did not link '$branch' to #$n (linked branches: ${linked:-none})." >&2
+    exit 1
+fi
 
 # 4. Track the linked branch, and mark the worktree as a ticket worktree
 git -C "$path" fetch -q origin "$branch"

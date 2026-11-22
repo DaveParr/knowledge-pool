@@ -11,7 +11,7 @@ import from pathlib { Path }
 import from catalog.ingest { build, load_atomic, load_oracle_tags }
 import catalog.store as store;
 import from decks {
-    Deck, Holds, ZONES, HoldingEntry, CreateDeck, change_holding, replace_holdings, holdings, deck_view
+    Deck, Holds, ZONES, ZONE_TITLES, zone_choices, zone_options, HoldingEntry, CreateDeck, change_holding, replace_holdings, holdings, deck_view
 }
 import from cards { Card, catalog_node }
 
@@ -57,6 +57,13 @@ test "Holds defaults carry no roles, tags, lock or reason" {
 
 test "ZONES is the one list of all five mtgdeck/1 zones" {
     assert ZONES == ["commander", "companion", "main", "sideboard", "maybeboard"];
+}
+
+test "every zone has a title, and the choices keep ZONES order" {
+    assert list(ZONE_TITLES.keys()) == ZONES;
+    assert [z["key"] for z in zone_choices()] == ZONES;
+    assert [z["title"] for z in zone_choices()][2] == "Main deck";
+    assert zone_options() == '"commander" | "companion" | "main" | "sideboard" | "maybeboard"';
 }
 
 test "change_holding sets, adds on top, and removes at zero" {

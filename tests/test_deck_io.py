@@ -402,3 +402,18 @@ def test_mtgjson_export_then_import_round_trips(tmp_path):
         assert _zone_counts(after) == _zone_counts(before)
     finally:
         client.close()
+
+
+def test_the_page_is_offered_exactly_the_formats_the_package_writes(tmp_path):
+    from deckformats import export_format_choices
+
+    client = FrontDoorClient(tmp_path)
+    try:
+        offered = client.post("/function/export_formats", json={}).json()["data"]["result"]
+        assert [{k: f[k] for k in ("key", "label", "lossless", "ext")} for f in offered] == export_format_choices()
+        deck_id = _new_deck(client)
+        for f in offered:
+            [done] = _reports(client.post("/walker/DeckExport", json={"deck_id": deck_id, "format": f["key"]}))
+            assert done["format"] == f["key"]
+    finally:
+        client.close()

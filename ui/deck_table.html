@@ -192,10 +192,7 @@
         ${violations.length ? `<ul>${violations.map((v) => `<li>${esc(v.message)}</li>`).join("")}</ul>` : ""}
         ${gc ? `<div class="gc"><p>${esc(gcLine)}</p><p>${esc("Bracket hint: " + gc.bracket_hint + " (from Game Changers only, not a full bracket rating)")}</p></div>` : ""}
       </div>
-      ${zoneList("Commander", "commander", cards.filter((c) => c.zone === "commander"))}
-      ${zoneList("Companion", "companion", cards.filter((c) => c.zone === "companion"))}
-      ${zoneList("Main deck", "main", cards.filter((c) => c.zone === "main"))}
-      ${zoneList("Sideboard", "sideboard", cards.filter((c) => c.zone === "sideboard"))}
+      ${(deck.zones || []).map((z) => zoneList(z.title, z.key, cards.filter((c) => c.zone === z.key))).join("")}
       ${cards.length ? "" : `<p class="empty">This deck has no cards yet.</p>`}`;
   }
 

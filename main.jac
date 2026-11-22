@@ -32,7 +32,7 @@ import from cards {
     catalog_info,
     check_catalogue
 }
-import from deck_io { DeckExport, DeckImport, CreateDeckFromList }
+import from deck_io { DeckExport, DeckImport, CreateDeckFromList, export_formats }
 
 # Refuse to serve a catalogue built by older code: the error names the ingest command.
 with entry {

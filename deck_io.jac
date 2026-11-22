@@ -3,7 +3,7 @@ deckformats.FORMATS: the walkers below depend only on the DeckFormat
 protocol, never on a specific format's parsing or rendering code.
 """
 
-import from deckformats { DeckFormat, get_format, ExportEntry, ExportDeck, ParsedEntry }
+import from deckformats { DeckFormat, EXPORT_FORMATS, get_format, ExportEntry, ExportDeck, ParsedEntry }
 import from cards { find_card }
 import from decks { Deck, DeckAction, DeckView, HoldingEntry, ZONES, new_deck, card_lines, deck_view, replace_holdings }
 import from legality { FORMAT_LABELS }
@@ -18,6 +18,19 @@ obj ExportResult {
 obj ImportResult {
     has deck: DeckView,
         unresolved: list[str] = [];
+}
+
+"""One export format as the web page and the connector's export view offer it."""
+obj ExportFormatInfo {
+    has key: str,
+        label: str,
+        lossless: bool,
+        ext: str;
+}
+
+"""The export formats, in the order they are offered, from the deckformats package."""
+def:protect export_formats -> list[ExportFormatInfo] {
+    return [ExportFormatInfo(key=f.key, label=f.label, lossless=f.lossless, ext=f.ext) for f in EXPORT_FORMATS];
 }
 
 """The deck list format named `format`, or the unknown-list-format error."""

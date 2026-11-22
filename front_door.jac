@@ -68,6 +68,7 @@ import from browser_session { SessionUser, SessionCheckUnavailable, check_sessio
 import from hosted_auth { AuthKitVerifier }
 import from rate_limits { Buckets, RateLimits, rate_limits, UNKNOWN_ADDRESS }
 import from decks { list_formats }
+import from deck_io { export_formats }
 import from cards { search_cards }
 
 glob HEALTH_PATH: str = "/healthz",
@@ -78,7 +79,7 @@ glob HEALTH_PATH: str = "/healthz",
      MCP_PREFIXES: list[str] = ["/mcp", "/.well-known/"],
      # The walkers the page may call: the deck operations table's page-callable entries.
      WALKERS: dict[str, any] = page_walkers(),  # jac:ignore[W1037]
-     FUNCTIONS: dict[str, any] = {"list_formats": list_formats, "search_cards": search_cards},  # jac:ignore[W1037]
+     FUNCTIONS: dict[str, any] = {"list_formats": list_formats, "export_formats": export_formats, "search_cards": search_cards},  # jac:ignore[W1037]
      # The request headers worth passing to Jac's server for the page and its files.
      FORWARDED_REQUEST_HEADERS: list[str] = ["accept", "if-none-match", "if-modified-since"],
      FORWARDED_RESPONSE_HEADERS: list[str] = ["content-type", "cache-control", "etag", "last-modified"],

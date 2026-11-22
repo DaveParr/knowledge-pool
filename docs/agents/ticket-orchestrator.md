@@ -43,7 +43,9 @@ Do this at startup, after closing a ticket down, and whenever woken with "ticket
 2. `scripts/ready-tickets.sh` lists startable tickets, lowest first. If none, stop.
 3. For the lowest one:
    - `scripts/start-ticket.sh <n>`: claims it, creates worktree `ticket-<n>` on a branch
-     linked to the issue (this fills its Development field), and writes `.ticket`.
+     linked to the issue (this fills its Development field), and writes `.ticket`. It
+     fails if GitHub did not link the branch. When the worker's PR opens into main, GitHub
+     moves the link from the branch to the PR, which `check-ticket-link.sh` accepts.
      If it fails, report the error to the user and do not retry that ticket.
    - `<orca> orchestration worker-start --worktree issue:<n> --agent claude --model claude-sonnet-5-5 --task-title "#<n> <title>" --spec-file -`
      with the spec: "Build ticket #<n> of DaveParr/knowledge-pool. Follow
