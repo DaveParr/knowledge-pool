@@ -268,7 +268,7 @@ def card_search(deck_id: str, query: str, ctx: Context, limit: int = 20) -> Call
     }
     result = search_with_holdings(view, query, limit, mine);
     if result["error"] {
-        raise ToolFailure(error=WalkerError(code="card-search-failed", message=result["error"] as str));
+        raise card_search_failure(result["error"] as str);
     }
     return view_result(ctx, result, search_markdown(result), search_brief(result));
 }
@@ -536,12 +536,17 @@ def outcome_list(w: WalkerArchetype) -> list[JsonObject] {
     return plain(first) as list[JsonObject];
 }
 
+"""The tool failure for a catalogue search that could not run, with its message."""
+def card_search_failure(message: str) -> ToolFailure {
+    return ToolFailure(error=WalkerError(code="card-search-failed", message=message));
+}
+
 """Search card names, type lines and rules text. Every word must match, as a prefix."""
 @mcp_tool
 def search_cards(query: str, limit: int = 20) -> list[JsonObject] {
     found = ask(lambda () -> object { return catalog_search(query, limit); }) as CardSearch;
     if found.error {
-        raise ToolFailure(error=WalkerError(code="card-search-failed", message=found.error));
+        raise card_search_failure(found.error);
     }
     return [plain(hit) as JsonObject for hit in found.hits];
 }
