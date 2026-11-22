@@ -56,7 +56,12 @@ if args[0] == "--version":
     print("gh version 2.105.0 (2026-11-17)")
 elif cmd == "api graphql":
     query = var("query")
-    if "fields(first" in query:
+    if "labels(first" in query:
+        risk = {"name": board["risk"]} if board.get("risk") else None
+        items = [{"project": {"number": 7, "owner": {"login": "DaveParr"}}, "fieldValueByName": risk}]
+        reply({"data": {"repository": {"issue": {"labels": {"nodes": []}, "parent": None,
+                                                 "projectItems": {"nodes": items}}}}})
+    elif "fields(first" in query:
         nodes = [{"name": f, "dataType": "DATE"} for f in board["dateFields"]] + [{}]
         reply({"data": {"user": {"projectV2": {"fields": {"nodes": nodes}}}}})
     elif "projectItems" in query:
@@ -72,8 +77,6 @@ elif cmd == "api graphql":
         nodes = [{"closer": {"mergedAt": m} if m else {}} for m in issue.get("closers", [])]
         reply({"data": {"repository": {"issue": {"state": issue["state"], "closedAt": issue.get("closedAt"),
                                                  "timelineItems": {"nodes": nodes}}}}})
-    elif "labels(first" in query:
-        reply({"data": {"repository": {"issue": {"labels": {"nodes": []}, "parent": None}}}})
     else:
         sys.exit("fake gh: unexpected query")
 elif cmd == "project field-list":
@@ -110,9 +113,9 @@ def env(tmp_path):
     }
 
 
-def board(env, card=True, dates=None, fields=("Start date", "Target date"), issue=None, pr=None):
+def board(env, card=True, dates=None, fields=("Start date", "Target date"), issue=None, pr=None, risk=None):
     Path(env["FAKE_BOARD"]).write_text(json.dumps({
-        "card": card, "dates": dates or {}, "dateFields": list(fields),
+        "card": card, "dates": dates or {}, "dateFields": list(fields), "risk": risk,
         "issue": issue or {"state": "OPEN"}, "pr": pr or PR,
     }))
 
@@ -249,6 +252,15 @@ def test_merge_ticket_sets_the_target_date_to_the_merge_date(env):
     board(env, issue={"state": "CLOSED"})
     out = run(env, MERGE_TICKET, "7")
     assert out.returncode == 0, out.stderr
+    assert date_writes(env) == [("Target date", "2026-11-21")]
+
+
+def test_merge_ticket_merges_a_high_risk_pr_once_approved_without_the_auto_merged_label(env):
+    board(env, issue={"state": "CLOSED"}, risk="High")
+    out = run(env, MERGE_TICKET, "7", "--approved")
+    assert out.returncode == 0, out.stderr
+    assert any(c[:2] == ["pr", "merge"] for c in calls(env))
+    assert not any("auto-merged" in c for c in calls(env))
     assert date_writes(env) == [("Target date", "2026-11-21")]
 
 

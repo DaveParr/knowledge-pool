@@ -4,7 +4,7 @@
 #   scripts/pr-status.sh <pr-number>
 #
 # Prints one JSON object: the PR, its ticket, the review rounds, CI, the review-by-human
-# labels, and `next` with a `reason`. `next` is the first of these that holds, in the
+# labels, the ticket's Risk on the board, and `next` with a `reason`. `next` is the first of these that holds, in the
 # order docs/agents/ticket-orchestrator.md checks them:
 #   merged       already merged (by the human, or an earlier run); `closed` likewise.
 #   round-limit  3 `## Code review, round` comments, or a `## Code review: round limit
@@ -18,6 +18,8 @@
 #   wait         CI is still running, or GitHub has not worked out mergeability yet.
 #   hold         a draft, a base other than main, or a `review-by-human` label on the
 #                PR, the ticket or the ticket's parent spec: leave it for the human.
+#   approve      the ticket's Risk is High: merge only once a human has said it can go in
+#                (`scripts/merge-ticket.sh <pr> --approved`).
 #   merge        none of the above: `scripts/merge-ticket.sh` may merge it.
 # Whether every finding in the last round was fixed or answered stays the reader's call.
 set -euo pipefail
@@ -34,9 +36,14 @@ ticket="$(jq -r '((.body | capture("(?m)^Ticket: #(?<n>[0-9]+)").n) // .closingI
 
 ticket_labels="$(gh api graphql -F owner="$REPO_OWNER" -F name="$REPO_NAME" -F n="$ticket" -f query='
   query($owner:String!,$name:String!,$n:Int!){ repository(owner:$owner,name:$name){ issue(number:$n){
-    labels(first:50){ nodes{ name } } parent{ number labels(first:50){ nodes{ name } } } } } }' \
-  --jq '.data.repository.issue | {ticket: [.labels.nodes[].name], parent: .parent.number,
-        parentLabels: [(.parent.labels.nodes // [])[].name]}')"
+    labels(first:50){ nodes{ name } } parent{ number labels(first:50){ nodes{ name } } }
+    projectItems(first:50){ nodes{ project{ number owner{ ... on User{ login } } }
+      fieldValueByName(name:"Risk"){ ... on ProjectV2ItemFieldSingleSelectValue{ name } } } } } } }' \
+  --jq ".data.repository.issue | {ticket: [.labels.nodes[].name], parent: .parent.number,
+        parentLabels: [(.parent.labels.nodes // [])[].name],
+        risk: ([(.projectItems.nodes // [])[]
+                | select(.project.number == $BOARD_NUMBER and .project.owner.login == \"$REPO_OWNER\")
+                | .fieldValueByName.name // empty] | first)}")"
 
 jq --argjson t "$ticket" --argjson tl "$ticket_labels" '
   def bucket:
@@ -68,7 +75,7 @@ jq --argjson t "$ticket" --argjson tl "$ticket_labels" '
      reviewRounds: ($rounds | length), lastRoundIsCurrent: $current,
      bodyMissing: $missing, bodyDescribes: $describes,
      draft: .isDraft, base: .baseRefName, mergeable, ci: $ci,
-     failing: [$checks[] | select(.bucket == "fail")], reviewByHuman: $human}
+     failing: [$checks[] | select(.bucket == "fail")], reviewByHuman: $human, risk: $tl.risk}
   | . + (
       if .state != "OPEN" then {next: (.state | ascii_downcase), reason: "the PR is \(.state | ascii_downcase)"}
       elif .reviewRounds >= 3 or $limit_comment then {next: "round-limit", reason: "\(.reviewRounds) review rounds or a round-limit comment"}
@@ -84,5 +91,6 @@ jq --argjson t "$ticket" --argjson tl "$ticket_labels" '
       elif .draft then {next: "hold", reason: "draft PR"}
       elif .base != "main" then {next: "hold", reason: "base is \(.base), not main"}
       elif (.reviewByHuman | length) > 0 then {next: "hold", reason: "review-by-human on \(.reviewByHuman | join(", "))"}
-      else {next: "merge", reason: "reviewed and described at head, CI green, no review-by-human label"} end)
+      elif .risk == "High" then {next: "approve", reason: "ticket #\(.ticket) is High risk: merge once a human says it can go in"}
+      else {next: "merge", reason: "reviewed and described at head, CI green, no review-by-human label, not High risk"} end)
 ' <<<"$info"
