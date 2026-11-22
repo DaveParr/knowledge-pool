@@ -29,6 +29,11 @@ board's own workflows do the rest: "Pull request linked to issue" moves the tick
 "Item closed" moves it to **Done**, whoever merged. PRs get no card of their own; they show
 in the ticket card's "Linked pull requests" field.
 
+The scripts also keep the card's dates for the Roadmap view: **Start date** is the day
+(UTC) a ticket is first claimed, and **Target date** the day its PR merged, or the day it
+closed if no PR closed it. Parking changes neither. `scripts/board-date.sh <n> "<field>"`
+prints one.
+
 ## Startup (and after any restart)
 
 1. `<orca> orchestration run-current`. If there is no Run, create one. Tell the user the
@@ -51,7 +56,8 @@ Do this at startup, after closing a ticket down, and whenever woken with "ticket
 1. Count tickets in flight (live workers). If at the cap, stop.
 2. `scripts/ready-tickets.sh` lists startable tickets, lowest first. If none, stop.
 3. For the lowest one:
-   - `scripts/start-ticket.sh <n>` claims it (assignee, In progress), creates worktree
+   - `scripts/start-ticket.sh <n>` claims it (assignee, In progress, Start date unless it
+     has one), creates worktree
      `ticket-<n>` on a branch linked to the issue, and writes `.ticket`. If it fails,
      report the error to the user and do not retry that ticket.
    - `<orca> orchestration worker-start --worktree issue:<n> --agent claude --model claude-sonnet-5-5 --task-title "#<n> <title>" --spec-file -`
@@ -111,7 +117,7 @@ work.
    human labels it.
 5. **Merge.** `scripts/merge-ticket.sh <pr>`. It re-runs `pr-status.sh` and refuses
    anything but `merge`, then merges (merge commit, branch kept), labels `auto-merged`,
-   comments why, and makes sure the ticket is closed. Never close or edit a parent spec or
+   comments why, makes sure the ticket is closed, and sets its Target date. Never close or edit a parent spec or
    any other issue.
 6. **Release** the worker (`<orca> orchestration worker-release`). Leave the worktree
    itself in place; do not delete it or its branch.
@@ -121,5 +127,7 @@ work.
 
 When the user tells you they merged a PR you left for them, GitHub has already closed the
 ticket and the board has moved it to Done (`scripts/pr-status.sh <pr>` says `merged`).
-Release its worker if it is still held, and pick up work. If they closed it unmerged, the
-ticket stays open: ask them whether to park it.
+Run `scripts/target-date.sh <n>` to set its Target date to the merge date, release its
+worker if it is still held, and pick up work. If they closed the PR unmerged, the ticket
+stays open: ask them whether to park it. If they close a ticket without a PR, run
+`scripts/target-date.sh <n>` too: it sets the close date.

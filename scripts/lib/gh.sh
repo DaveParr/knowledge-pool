@@ -56,6 +56,46 @@ board_move() {
     echo "$status"
 }
 
+# board_check_date_field <field>: fail unless the board has a date field by that exact
+# name, naming the ones it has.
+# board_date_get <issue> <field>: print the issue's <field> date on the board (YYYY-MM-DD,
+# or nothing when unset). Fails if the board has no such date field or the issue no card.
+# board_date <issue> <field> <YYYY-MM-DD>: set that date on the issue's card. <field> is a
+# date field of the board, by its exact name ("Start date", "Target date"). Checks the date,
+# the field and the card before writing, and never adds a card: a ticket gets its card when
+# it is claimed (board_move), so a missing card means something else went wrong.
+board_check_date_field() {
+    local fields
+    fields="$(gh api graphql -F owner="$REPO_OWNER" -F number="$BOARD_NUMBER" -f query='
+      query($owner:String!,$number:Int!){ user(login:$owner){ projectV2(number:$number){
+        fields(first:100){ nodes{ ... on ProjectV2Field{ name dataType } } } } } }' \
+      --jq '.data.user.projectV2.fields.nodes[] | select(.dataType == "DATE") | .name')"
+    grep -qxF "$1" <<<"$fields" || die "The board (project #$BOARD_NUMBER) has no date field \"$1\". \
+Date fields: $(paste -sd, <<<"$fields" | sed 's/,/, /g')."
+}
+board_date_get() {
+    local items
+    board_check_date_field "$2"
+    items="$(gh api graphql -F owner="$REPO_OWNER" -F name="$REPO_NAME" -F n="$1" -F field="$2" -f query='
+      query($owner:String!,$name:String!,$n:Int!,$field:String!){ repository(owner:$owner,name:$name){
+        issue(number:$n){ projectItems(first:50){ nodes{ project{ number owner{ ... on User{ login } } }
+          fieldValueByName(name:$field){ ... on ProjectV2ItemFieldDateValue{ date } } } } } } }' \
+      --jq ".data.repository.issue.projectItems.nodes[]
+            | select(.project.number == $BOARD_NUMBER and .project.owner.login == \"$REPO_OWNER\")
+            | \"card \" + (.fieldValueByName.date // \"\")")"
+    [ -n "$items" ] || die "#$1 has no card on the board (project #$BOARD_NUMBER); add it with scripts/board.sh $1 <status>."
+    items="$(head -n 1 <<<"$items")"
+    echo "${items#card }"
+}
+board_date() {
+    local url="https://github.com/$GH_REPO/issues/$1"
+    [[ "$3" =~ ^[0-9]{4}-(0[1-9]|1[0-2])-(0[1-9]|[12][0-9]|3[01])$ ]] \
+        || die "Not a date: \"$3\" (want YYYY-MM-DD)."
+    board_date_get "$1" "$2" >/dev/null   # the field and the card exist
+    gh project item-edit "$BOARD_NUMBER" --owner "$REPO_OWNER" --url "$url" \
+        --field "$2" --date "$3" >/dev/null
+}
+
 # linked_branches <issue>: the branches in the issue's Development field, one per line.
 linked_branches() {
     gh api graphql -F owner="$REPO_OWNER" -F name="$REPO_NAME" -F n="$1" -f query='

@@ -7,6 +7,7 @@
 # fails before anything changes), comments <comment-file> (what is needed, exactly) on the
 # ticket, and moves its card to Blocked (Backlog is for tickets still being prepared).
 # The board's Status needs a "Blocked" option; this fails before changing anything if not.
+# The card's Start date and Target date are left as they are.
 # To unpark, a human answers, relabels it `ready-for-agent` and moves the card to Ready.
 set -euo pipefail
 source "$(dirname "$0")/lib/gh.sh"

@@ -9,7 +9,8 @@
 # Then: merge commit (the branch is kept), label `auto-merged`, comment why. The PR is
 # linked to its ticket, so GitHub closes the ticket on merge and the board's "Item closed"
 # workflow moves its card to Done; if the ticket is still open afterwards (the PR reached it
-# only through its branch), it is closed here.
+# only through its branch), it is closed here. Last, the ticket's "Target date" on the board
+# is set to the merge date (UTC).
 set -euo pipefail
 source "$(dirname "$0")/lib/gh.sh"
 
@@ -28,4 +29,6 @@ gh pr comment "$pr" --body "Merged automatically by the ticket orchestrator: rev
 if [ "$(gh issue view "$ticket" --json state --jq .state)" = OPEN ]; then
     gh issue close "$ticket" --reason completed --comment "Merged in #$pr." >/dev/null
 fi
-echo "merged #$pr; ticket #$ticket closed"
+merged="$(gh pr view "$pr" --json mergedAt --jq .mergedAt)"
+board_date "$ticket" "Target date" "${merged%%T*}"   # GitHub timestamps are UTC
+echo "merged #$pr; ticket #$ticket closed, Target date ${merged%%T*}"
