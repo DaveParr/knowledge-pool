@@ -9,7 +9,8 @@ import "./card_search.css";
 import from .mana_cost { ManaCost }
 import from .walker_failure { failureMessage, REFUSED_LINE }
 
-import from decks { DeckView, AddCard }
+import from decks { DeckView, EditDeck }
+import from edit_reason { WEB_EDIT_REASON }
 import from zones { ZONES, ZONE_TITLES }
 import from card_lines { CardLine }
 import from walker_errors { WalkerError }

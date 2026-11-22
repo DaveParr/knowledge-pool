@@ -42,8 +42,8 @@ def _build(client, deck) -> dict:
         for name, count in deck[zone].items():
             view = _reports(
                 client.post(
-                    "/walker/SetCardCount",
-                    json={"deck_id": deck_id, "oracle_id": _oracle_id(name), "count": count, "zone": zone},
+                    "/walker/EditDeck",
+                    json={"deck_id": deck_id, "changes": [{"oracle_id": _oracle_id(name), "count": count, "zone": zone, "reason": "test deck"}]},
                 )
             )[0]
     return view
@@ -75,9 +75,9 @@ def test_changing_format_revalidates(client):
     deck = {"name": "Bolts", "format": "standard", "main": {"Lightning Bolt": 4, "Mountain": 56}, "sideboard": {}}
     view = _build(client, deck)
     assert not view["legal"]
-    view = _reports(client.post("/walker/SetDeckFormat", json={"deck_id": view["id"], "format": "modern"}))[0]
+    view = _reports(client.post("/walker/EditDeck", json={"deck_id": view["id"], "format": "modern"}))[0]
     assert view["legal"] and view["format"] == "modern"
-    [err] = _reports(client.post("/walker/SetDeckFormat", json={"deck_id": view["id"], "format": "vintage"}))
+    [err] = _reports(client.post("/walker/EditDeck", json={"deck_id": view["id"], "format": "vintage"}))
     assert err["code"] == "unknown-format"
     assert err["message"].startswith("Unknown format vintage. Use one of: standard")
 

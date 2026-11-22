@@ -25,17 +25,17 @@ impl DeckDetail.setCount(oracleId: str, zone: str, value: str) -> None {
     if n < 0 {
         return;
     }
-    result = root spawn SetCardCount(deck_id=deckId, oracle_id=oracleId, count=n, zone=zone);
+    result = root spawn EditDeck(deck_id=deckId, changes=[{"oracle_id": oracleId, "count": n, "zone": zone, "reason": WEB_EDIT_REASON}]);
     show(result.reports);
 }
 
 impl DeckDetail.removeCard(oracleId: str, zone: str) -> None {
-    result = root spawn RemoveCard(deck_id=deckId, oracle_id=oracleId, zone=zone);
+    result = root spawn EditDeck(deck_id=deckId, changes=[{"oracle_id": oracleId, "count": 0, "zone": zone, "reason": WEB_EDIT_REASON}]);
     show(result.reports);
 }
 
 impl DeckDetail.setFormat(value: str) -> None {
-    result = root spawn SetDeckFormat(deck_id=deckId, format=value);
+    result = root spawn EditDeck(deck_id=deckId, format=value);
     show(result.reports);
 }
 
@@ -44,6 +44,8 @@ impl DeckDetail.show(reports: list[DeckView | WalkerError]) -> None {
     error = why;
     if not why {
         deck = reports[0] as DeckView;
+        # Changes the walker refused are listed on the view; the rest were applied.
+        error = "; ".join(deck.rejected);
     }
 }
 
@@ -58,7 +60,7 @@ impl DeckDetail.copyDeck -> None {
 }
 
 impl DeckDetail.renameDeck -> None {
-    result = root spawn RenameDeck(deck_id=deckId, name=draft);
+    result = root spawn EditDeck(deck_id=deckId, name=draft);
     why = failureMessage(result.reports);
     error = why;
     if not why {

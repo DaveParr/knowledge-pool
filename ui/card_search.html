@@ -68,7 +68,7 @@
 <script>
 // MCP Apps view (spec 2026-01-26) with no SDK: JSON-RPC over postMessage.
 // Renders card_search results from ui/notifications/tool-result, re-runs the
-// search and adds cards with tools/call (card_search, deck_get, deck_edit)
+// search and adds cards with tools/call (card_search, deck_edit)
 // through the host, and tells the model about each add with
 // ui/update-model-context (falling back to ui/message if the host refuses it).
 (() => {
@@ -227,21 +227,18 @@
     }
   }
 
-  // deck_edit sets a count, so read the deck's current count first and add one to it.
+  // One deck_edit call adds a copy on top of whatever the deck holds, so two quick adds give two copies.
   async function add(hit, zone) {
     if (!state.deck || state.busy) return;
     state.busy = true; renderResults();
     try {
-      const read = await request("tools/call", { name: "deck_get", arguments: { deck_id: state.deck.id } });
-      const current = resultData(read);
-      if (read.isError || !current) throw new Error(resultText(read) || "Could not read the deck.");
-      const now = ((holdings(current)[hit.oracle_id] || {})[zone] || 0) + 1;
       const res = await request("tools/call", { name: "deck_edit", arguments: { deck_id: state.deck.id,
-        changes: [{ oracle_id: hit.oracle_id, count: now, zone, reason: REASON }] } });
+        changes: [{ oracle_id: hit.oracle_id, count: 1, zone, reason: REASON, mode: "add" }] } });
       const view = resultData(res);
       if (res.isError || !view) throw new Error(resultText(res) || "The deck was not changed.");
       if ((view.rejected || []).length) throw new Error(view.rejected.join("; "));
       syncDeck(view);
+      const now = ((holdings(view)[hit.oracle_id] || {})[zone] || 0);
       toast(`Added 1 ${hit.name} to ${where(zone)} (now ${now}).`);
       state.adds.push({ oracle_id: hit.oracle_id, name: hit.name, zone, count: now });
       tellModel(hit, zone, now);

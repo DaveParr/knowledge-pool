@@ -27,7 +27,7 @@ page-callable one must also be imported in `main.jac`, which a test checks.
 
 import from jaclang.runtime.constructs { WalkerArchetype }
 import from graph_runner { run_walker, run_read, copy_deck, list_other_decks }
-import from decks { DeckAction, CreateDeck, ListDecks, ListOtherDecks, CopyOtherDeck, CopySource, GetDeck, SetDeckFormat, RenameDeck, AddCard, SetCardCount, RemoveCard, EditDeck }
+import from decks { DeckAction, CreateDeck, ListDecks, ListOtherDecks, CopyOtherDeck, CopySource, GetDeck, EditDeck }
 import from deck_io { DeckExport, DeckImport, CreateDeckFromList }
 import from legality { GetFormatRules }
 
@@ -63,15 +63,10 @@ glob OPERATION_LIST: list[DeckOperation] = [
     DeckOperation(kind=ListOtherDecks, runs=FLOW, page=True, across=list_others_flow),
     DeckOperation(kind=CopyOtherDeck, runs=FLOW, page=True, across=copy_flow),
     DeckOperation(kind=GetDeck, runs=OWNER, page=True),
-    DeckOperation(kind=SetDeckFormat, runs=OWN, page=True),
-    DeckOperation(kind=RenameDeck, runs=OWN, page=True),
-    DeckOperation(kind=AddCard, runs=OWN, page=True),
-    DeckOperation(kind=SetCardCount, runs=OWN, page=True),
-    DeckOperation(kind=RemoveCard, runs=OWN, page=True),
+    DeckOperation(kind=EditDeck, runs=OWN, page=True),
     DeckOperation(kind=DeckExport, runs=OWNER, page=True),
     DeckOperation(kind=DeckImport, runs=OWN, page=True),
     DeckOperation(kind=CreateDeckFromList, runs=OWN, page=True),
-    DeckOperation(kind=EditDeck, runs=OWN),
     DeckOperation(kind=CopySource, runs=OWNER),
     DeckOperation(kind=GetFormatRules, runs=OWN)
 ];
