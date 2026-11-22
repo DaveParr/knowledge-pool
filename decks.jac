@@ -21,6 +21,9 @@ import from walker_errors { WalkerError }
 import from zones { ZONES, ZONE_TITLES, zone_choices, zone_options }
 import from json_object { JsonObject }
 
+glob SET: str = "set",
+     ADD: str = "add";
+
 """One change to how many copies of a card a zone of a deck holds, with the
 reason given for it. Every holdings change writes one (see change_holding)."""
 obj ChangeNote {
@@ -49,11 +52,15 @@ node Deck {
 }
 
 """Create a deck and report it. A blank name or an unknown format creates
-nothing and reports a WalkerError (blank-name, unknown-format)."""
+nothing and reports a WalkerError (blank-name, unknown-format). With `changes`
+(see EditDeck) the deck is made and filled in this one walker, and the report is
+its DeckView, with any rejected changes listed; a deck made with none reports
+the bare Deck."""
 walker:protect CreateDeck {
     has name: str,
         format: str = "standard",
-        reports: list[Deck | WalkerError] = [];
+        changes: list[JsonObject] = [],
+        reports: list[Deck | DeckView | WalkerError] = [];
 
     can create with Root entry {
         name = self.name.strip();
@@ -65,7 +72,12 @@ walker:protect CreateDeck {
             report unknown_format(self.format);
             disengage;
         }
-        report new_deck(here, name, self.format);
+        deck = new_deck(here, name, self.format);
+        if not self.changes {
+            report deck;
+            disengage;
+        }
+        report edited_view(deck, self.changes);
     }
 }
 
@@ -342,11 +354,6 @@ def replace_holdings(deck: Deck, entries: list[HoldingEntry], reason: str) -> li
     return refused;
 }
 
-"""The error for a holdings change that change_holding refused, with its reason."""
-def refused_change(why: str) -> WalkerError {
-    return WalkerError(code="refused-change", message=f"Change refused: {why}");
-}
-
 """The caller's own deck with id `deck_id`: one that hangs off the caller's
 root. None for an id that names no deck, or names another user's deck even
 when Jac would let the caller read it."""
@@ -419,117 +426,69 @@ walker:protect GetDeck(DeckAction) {
     }
 }
 
-"""Change the format a deck is checked against."""
-walker:protect SetDeckFormat(DeckAction) {
-    has format: str;
-
-    can set_format with Deck entry {
-        if self.format not in FORMAT_LABELS {
-            report unknown_format(self.format);
-            disengage;
-        }
-        here.format = self.format;
-        report deck_view(here);
+"""One change of an edit: `count` copies of a card in a zone, why, and whether
+it sets the count (the default) or adds on top of what the zone holds."""
+def apply_change(deck: Deck, ch: JsonObject) -> str {
+    mode = str(ch.get("mode", SET));
+    if mode not in [SET, ADD] {
+        return f"mode must be {SET} or {ADD}.";
     }
+    return change_holding(
+        deck, str(ch.get("oracle_id", "")), str(ch.get("zone", "main")), ch.get("count") as int, str(ch.get("reason", "")), add=mode == ADD
+    );
 }
 
-"""Rename a deck. The new name is trimmed; a blank one renames nothing and
-reports a blank-name WalkerError. The rename is logged as one history line
-("Renamed from X to Y"). A name that is already the deck's is applied but not
-logged. Copies carry no tie to the original, so they keep their own names."""
-walker:protect RenameDeck(DeckAction) {
-    has name: str;
+"""Apply `changes` to `deck`, one `change_holding` each, and report the deck's
+view with the refused ones (with their position and oracle id) under `rejected`;
+the valid ones are applied."""
+def edited_view(deck: Deck, changes: list[JsonObject]) -> DeckView {
+    rejected: list[str] = [];
+    for (i, ch) in enumerate(changes) {
+        why = apply_change(deck, ch);
+        if why {
+            rejected.append(f"Change {i + 1} ({ch.get('oracle_id', '')}): {why}");
+        }
+    }
+    view = deck_view(deck);
+    view.rejected = rejected;
+    return view;
+}
 
-    can rename with Deck entry {
-        name = self.name.strip();
-        if not name {
+"""Edit a deck: the one walker for what a user does to one of their decks, run
+as one commit. It takes an optional new `name`, an optional `format` and a batch
+of `changes`, each {"oracle_id", "count", "zone", "reason"} and optionally
+"mode": "set" (the default: the zone holds `count` copies, 0 removes the card) or
+"add" (`count` more copies on top of what the zone holds). Every change goes
+through change_holding, so zone, count and reason checks and the change notes are
+the same as ever. A change that is refused (unknown oracle id, no reason, bad
+zone or count) is listed under the view's `rejected` and the rest are applied. A
+refused rename or format change (blank-name, unknown-format) refuses the whole
+call before anything is written: the deck is unchanged. A name that is the deck's
+own is applied but not logged. The rename is one history line ("Renamed from X to
+Y")."""
+walker:protect EditDeck(DeckAction) {
+    has name: str | None = None,
+        format: str | None = None,
+        changes: list[JsonObject] = [];
+
+    can edit with Deck entry {
+        name = self.name.strip() if self.name is not None else None;
+        if name is not None and not name {
             report WalkerError(code="blank-name", message="A deck needs a name.");
             disengage;
         }
-        if name != here.name {
-            here.history.append(
-                deck_note(f"Renamed from {here.name} to {name}")
-            );
+        if self.format is not None and self.format not in FORMAT_LABELS {
+            report unknown_format(self.format);
+            disengage;
+        }
+        if name is not None and name != here.name {
+            here.history.append(deck_note(f"Renamed from {here.name} to {name}"));
             here.name = name;
         }
-        report deck_view(here);
-    }
-}
-
-"""The reason logged for a change made in the web app, which asks for none."""
-glob WEB_EDIT_REASON: str = "Edited in the app";
-
-"""Add copies of a card to a zone of a deck (on top of any already there).
-A refused change (see change_holding) reports a refused-change WalkerError."""
-walker:protect AddCard(DeckAction) {
-    has oracle_id: str,
-        count: int = 1,
-        zone: str = "main";
-
-    can add with Deck entry {
-        why = change_holding(here, self.oracle_id, self.zone, self.count, WEB_EDIT_REASON, add=True);
-        if why {
-            report refused_change(why);
-            disengage;
+        if self.format is not None {
+            here.format = self.format;
         }
-        report deck_view(here);
-    }
-}
-
-"""Apply a batch of changes, each with a reason, and log each one on the deck.
-
-Each change is {"oracle_id", "count", "zone", "reason"} and sets that card's
-count in that zone. Bad changes are skipped and listed in the view's `rejected`.
-"""
-walker EditDeck(DeckAction) {
-    has changes: list[JsonObject] = [];
-
-    can edit with Deck entry {
-        rejected: list[str] = [];
-        for (i, ch) in enumerate(self.changes) {
-            oid = str(ch.get("oracle_id", ""));
-            why = change_holding(
-                here, oid, str(ch.get("zone", "main")), ch.get("count") as int, str(ch.get("reason", ""))
-            );
-            if why {
-                rejected.append(f"Change {i + 1} ({oid}): {why}");
-            }
-        }
-        view = deck_view(here);
-        view.rejected = rejected;
-        report view;
-    }
-}
-
-"""Set how many copies of a card a zone holds. Zero removes the card from that
-zone. A refused change (see change_holding) reports a refused-change WalkerError."""
-walker:protect SetCardCount(DeckAction) {
-    has oracle_id: str,
-        count: int,
-        zone: str = "main";
-
-    can set_count with Deck entry {
-        why = change_holding(here, self.oracle_id, self.zone, self.count, WEB_EDIT_REASON);
-        if why {
-            report refused_change(why);
-            disengage;
-        }
-        report deck_view(here);
-    }
-}
-
-"""Take a card out of one zone of a deck. An unknown zone reports a refused-change WalkerError."""
-walker:protect RemoveCard(DeckAction) {
-    has oracle_id: str,
-        zone: str = "main";
-
-    can remove with Deck entry {
-        why = change_holding(here, self.oracle_id, self.zone, 0, WEB_EDIT_REASON);
-        if why {
-            report refused_change(why);
-            disengage;
-        }
-        report deck_view(here);
+        report edited_view(here, self.changes);
     }
 }
 

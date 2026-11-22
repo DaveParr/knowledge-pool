@@ -104,7 +104,7 @@ def test_game_changers_only_on_commander_decks(client):
     view = _build(client, PRECON_TIMEY_WIMEY)
     assert view["game_changers"] is not None
     deck_id = view["id"]
-    client.post("/walker/SetDeckFormat", json={"deck_id": deck_id, "format": "modern"})
+    client.post("/walker/EditDeck", json={"deck_id": deck_id, "format": "modern"})
     assert _reports(client.post("/walker/GetDeck", json={"deck_id": deck_id}))[0]["game_changers"] is None
-    client.post("/walker/SetDeckFormat", json={"deck_id": deck_id, "format": "commander"})
+    client.post("/walker/EditDeck", json={"deck_id": deck_id, "format": "commander"})
     assert _reports(client.post("/walker/GetDeck", json={"deck_id": deck_id}))[0]["game_changers"] is not None

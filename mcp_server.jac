@@ -40,7 +40,7 @@ import from mcp.server.stdio { stdio_server }
 import from mcp.server.streamable_http { TransportSecuritySettings }
 import from cards { CardSearch, search_cards as catalog_search, find_card, resolve_names as catalog_resolve_names, check_catalogue }
 import from decks {
-    Deck, DeckView, DeckSummary, CreateDeck, ListDecks, ListOtherDecks, CopyOtherDeck, GetDeck, SetDeckFormat, RenameDeck, EditDeck
+    Deck, DeckView, DeckSummary, CreateDeck, ListDecks, ListOtherDecks, CopyOtherDeck, GetDeck, EditDeck
 }
 import from deckformats { export_format_choices }
 import from zones { ZONES, ZONE_TITLES, zone_choices, zone_options }
@@ -561,16 +561,12 @@ get oracle ids from resolve_names first. Returns the deck with its legality."""
 @server.tool()
 @with_choices
 def deck_create(name: str, format: str = "standard", cards: list[JsonObject] | None = None) -> JsonObject {
-    made = outcome(perform(request_caller(), CreateDeck(name=name, format=format)));
-    if "error" in made {
+    changes = [{**c, "reason": c.get("reason") or "seed card"} for c in cards or []];
+    made = outcome(perform(request_caller(), CreateDeck(name=name, format=format, changes=changes)));
+    if "error" in made or cards {
         return made;
     }
-    deck_id = str(made["id"]);
-    if not cards {
-        return deck_get(deck_id);
-    }
-    changes = [{**c, "reason": c.get("reason") or "seed card"} for c in cards];
-    return deck_edit(deck_id, changes);
+    return deck_get(str(made["id"]));
 }
 
 """A deck, yours or another user's: its cards, totals, legality and recent change history."""
@@ -581,26 +577,18 @@ def deck_get(deck_id: str) -> JsonObject {
 
 """Change one of your own decks (another user's answers not-your-deck: copy it first). Each change is
 {"oracle_id": ..., "count": n, "zone": {zones}, "reason": "why"}
-and sets that card's count in that zone (0 removes it). Every change needs a reason.
+and sets that card's count in that zone (0 removes it); add "mode": "add" to add `count`
+copies on top of what the zone already holds instead. Every change needs a reason.
 Pass "format" to change the deck's format, and "name" to rename it (trimmed; a blank name is refused;
-the history gets one "Renamed from X to Y" line). Changes with an unknown oracle id or no
+the history gets one "Renamed from X to Y" line). The whole call is one commit: a refused rename or
+format leaves the deck as it was. Changes with an unknown oracle id or no
 reason are rejected and listed under "rejected"; the rest are applied."""
 @server.tool()
 @with_choices
 def deck_edit(deck_id: str, changes: list[JsonObject] | None = None, format: str = "", name: str | None = None) -> JsonObject {
-    if name is not None {
-        renamed = outcome(perform(request_caller(), RenameDeck(deck_id=deck_id, name=name)));
-        if "error" in renamed {
-            return renamed;
-        }
-    }
-    if format {
-        reformatted = outcome(perform(request_caller(), SetDeckFormat(deck_id=deck_id, format=format)));
-        if "error" in reformatted {
-            return reformatted;
-        }
-    }
-    return outcome(perform(request_caller(), EditDeck(deck_id=deck_id, changes=changes or [])));
+    return outcome(
+        perform(request_caller(), EditDeck(deck_id=deck_id, name=name, format=format or None, changes=changes or []))
+    );
 }
 
 """Check a deck against its format. Returns legal (true or false), each violation and, for a

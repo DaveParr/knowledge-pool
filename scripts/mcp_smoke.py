@@ -137,6 +137,20 @@ async def main() -> None:
         check("deck_list shows the new name", "MCP Burn v2" in [d["name"] for d in await call(session, "deck_list")])
         deck = await call(session, "deck_edit", deck_id=deck["id"], name="MCP Burn")
 
+        deck = await call(session, "deck_edit", deck_id=deck["id"], changes=[
+            {"oracle_id": ids["Lightning Bolt"], "count": 1, "zone": "main", "reason": "one more", "mode": "add"},
+        ])
+        check("an add change adds on top of the count", {c["name"]: c["count"] for c in deck["cards"] if c["zone"] == "main"}["Lightning Bolt"] == 5, deck)
+        kept = await call(session, "deck_edit", deck_id=deck["id"], name="  ", changes=[
+            {"oracle_id": ids["Lightning Bolt"], "count": 1, "zone": "main", "reason": "refused with its rename"},
+        ])
+        check("a refused rename refuses the whole edit", kept.get("code") == "blank-name", kept)
+        deck = await call(session, "deck_get", deck_id=deck["id"])
+        check("a refused rename leaves the cards unchanged", {c["name"]: c["count"] for c in deck["cards"] if c["zone"] == "main"}["Lightning Bolt"] == 5, deck)
+        deck = await call(session, "deck_edit", deck_id=deck["id"], changes=[
+            {"oracle_id": ids["Lightning Bolt"], "count": 4, "zone": "main", "reason": "back to four"},
+        ])
+
         arena = await session.call_tool("deck_export", {"deck_id": deck["id"]})
         check("deck_export gives a client without MCP Apps no structured content", arena.structured_content is None, arena.structured_content)
         check(

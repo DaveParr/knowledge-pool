@@ -67,21 +67,21 @@ def test_add_change_remove(tmp_path):
         deck_id = _new_deck(client)
         bolt, mountain = _oracle_id("Lightning Bolt"), _oracle_id("Mountain")
 
-        view = _reports(client.post("/walker/AddCard", json={"deck_id": deck_id, "oracle_id": bolt, "count": 4}))[0]
+        view = _reports(client.post("/walker/EditDeck", json={"deck_id": deck_id, "changes": [{"oracle_id": bolt, "count": 4, "reason": "Edited in the app", "mode": "add"}]}))[0]
         assert _lines(view) == {"Lightning Bolt": 4}
 
-        view = _reports(client.post("/walker/AddCard", json={"deck_id": deck_id, "oracle_id": mountain, "count": 20}))[0]
-        view = _reports(client.post("/walker/AddCard", json={"deck_id": deck_id, "oracle_id": mountain}))[0]
+        view = _reports(client.post("/walker/EditDeck", json={"deck_id": deck_id, "changes": [{"oracle_id": mountain, "count": 20, "reason": "Edited in the app", "mode": "add"}]}))[0]
+        view = _reports(client.post("/walker/EditDeck", json={"deck_id": deck_id, "changes": [{"oracle_id": mountain, "count": 1, "reason": "Edited in the app", "mode": "add"}]}))[0]
         assert _lines(view) == {"Lightning Bolt": 4, "Mountain": 21}
         assert view["main_total"] == 25
 
-        view = _reports(client.post("/walker/SetCardCount", json={"deck_id": deck_id, "oracle_id": bolt, "count": 2}))[0]
+        view = _reports(client.post("/walker/EditDeck", json={"deck_id": deck_id, "changes": [{"oracle_id": bolt, "count": 2, "reason": "Edited in the app"}]}))[0]
         assert _lines(view)["Lightning Bolt"] == 2
 
-        view = _reports(client.post("/walker/SetCardCount", json={"deck_id": deck_id, "oracle_id": bolt, "count": 0}))[0]
+        view = _reports(client.post("/walker/EditDeck", json={"deck_id": deck_id, "changes": [{"oracle_id": bolt, "count": 0, "reason": "Edited in the app"}]}))[0]
         assert _lines(view) == {"Mountain": 21}
 
-        view = _reports(client.post("/walker/RemoveCard", json={"deck_id": deck_id, "oracle_id": mountain}))[0]
+        view = _reports(client.post("/walker/EditDeck", json={"deck_id": deck_id, "changes": [{"oracle_id": mountain, "count": 0, "reason": "Edited in the app"}]}))[0]
         assert view["cards"] == [] and view["main_total"] == 0
         # Web edits are logged like any other holdings change.
         assert [(h["name"], h["before"], h["after"]) for h in view["history"]][-2:] == [
@@ -97,21 +97,27 @@ def _error(reports: list) -> dict:
     return {k: only[k] for k in ("code", "message")}
 
 
-def test_a_refused_change_reports_why(tmp_path):
+def test_a_refused_change_is_listed_as_rejected_and_the_rest_applied(tmp_path):
     # Which changes are refused is tested on change_holding (tests/holdings_tests.jac);
-    # this only checks the walkers pass the refusal on as their one report.
+    # this only checks the walker lists each refusal and applies the others.
     client = FrontDoorClient(tmp_path)
     try:
         deck_id = _new_deck(client)
-        assert _error(_reports(client.post("/walker/AddCard", json={"deck_id": deck_id, "oracle_id": "not-a-card"}))) == {
-            "code": "refused-change", "message": "Change refused: not-a-card is not a known oracle id.",
-        }
         bolt = _oracle_id("Lightning Bolt")
-        assert _error(_reports(client.post("/walker/SetCardCount", json={"deck_id": deck_id, "oracle_id": bolt, "count": -1}))) == {
-            "code": "refused-change", "message": "Change refused: count must be a whole number, 0 or more.",
-        }
-        assert _error(_reports(client.post("/walker/RemoveCard", json={"deck_id": deck_id, "oracle_id": bolt, "zone": "attic"})))["code"] == "refused-change"
-        assert _reports(client.post("/walker/GetDeck", json={"deck_id": deck_id}))[0]["cards"] == []
+        view = _reports(client.post("/walker/EditDeck", json={"deck_id": deck_id, "changes": [
+            {"oracle_id": "not-a-card", "count": 1, "reason": "Edited in the app", "mode": "add"},
+            {"oracle_id": bolt, "count": -1, "reason": "Edited in the app"},
+            {"oracle_id": bolt, "count": 0, "zone": "attic", "reason": "Edited in the app"},
+            {"oracle_id": bolt, "count": 1, "reason": ""},
+            {"oracle_id": bolt, "count": 3, "reason": "Edited in the app"},
+        ]}))[0]
+        assert view["rejected"] == [
+            "Change 1 (not-a-card): not-a-card is not a known oracle id.",
+            f"Change 2 ({bolt}): count must be a whole number, 0 or more.",
+            f"Change 3 ({bolt}): zone must be one of: commander, companion, main, sideboard, maybeboard.",
+            f"Change 4 ({bolt}): every change needs a reason.",
+        ]
+        assert _lines(view) == {"Lightning Bolt": 3}
     finally:
         client.close()
 
@@ -122,10 +128,7 @@ def test_every_deck_walker_says_when_there_is_no_such_deck(tmp_path):
         bolt = _oracle_id("Lightning Bolt")
         for walker, body in [
             ("GetDeck", {}),
-            ("AddCard", {"oracle_id": bolt}),
-            ("SetCardCount", {"oracle_id": bolt, "count": 2}),
-            ("RemoveCard", {"oracle_id": bolt}),
-            ("SetDeckFormat", {"format": "modern"}),
+            ("EditDeck", {"format": "modern", "changes": [{"oracle_id": bolt, "count": 2, "reason": "r"}]}),
             ("DeckExport", {"format": "text"}),
             ("DeckImport", {"format": "text", "text": "4 Lightning Bolt"}),
         ]:
@@ -141,8 +144,8 @@ def test_deck_view_carries_each_cards_oracle_tags(tmp_path):
     try:
         deck_id = _new_deck(client)
         bolt, mountain = _oracle_id("Lightning Bolt"), _oracle_id("Mountain")
-        client.post("/walker/AddCard", json={"deck_id": deck_id, "oracle_id": bolt})
-        view = _reports(client.post("/walker/AddCard", json={"deck_id": deck_id, "oracle_id": mountain}))[0]
+        client.post("/walker/EditDeck", json={"deck_id": deck_id, "changes": [{"oracle_id": bolt, "count": 1, "reason": "Edited in the app", "mode": "add"}]})
+        view = _reports(client.post("/walker/EditDeck", json={"deck_id": deck_id, "changes": [{"oracle_id": mountain, "count": 1, "reason": "Edited in the app", "mode": "add"}]}))[0]
 
         by_name = {c["name"]: c["oracle_tags"] for c in view["cards"]}
         assert sorted(by_name["Lightning Bolt"]) == ["burn", "removal"]
@@ -157,8 +160,8 @@ def test_deck_view_carries_commander_facts_for_each_card(tmp_path):
     try:
         deck_id = _new_deck(client)
         krenko, study = _oracle_id("Krenko, Mob Boss"), _oracle_id("Rhystic Study")
-        client.post("/walker/AddCard", json={"deck_id": deck_id, "oracle_id": krenko})
-        view = _reports(client.post("/walker/AddCard", json={"deck_id": deck_id, "oracle_id": study}))[0]
+        client.post("/walker/EditDeck", json={"deck_id": deck_id, "changes": [{"oracle_id": krenko, "count": 1, "reason": "Edited in the app", "mode": "add"}]})
+        view = _reports(client.post("/walker/EditDeck", json={"deck_id": deck_id, "changes": [{"oracle_id": study, "count": 1, "reason": "Edited in the app", "mode": "add"}]}))[0]
 
         by_name = {c["name"]: c for c in view["cards"]}
         assert by_name["Krenko, Mob Boss"]["colour_identity"] == ["R"]
@@ -174,7 +177,7 @@ def test_card_details_come_back_from_the_database_including_each_face(tmp_path):
     client = FrontDoorClient(tmp_path)
     deck_id = _new_deck(client)
     for name in ("Goblin Guide", "Delver of Secrets // Insectile Aberration", "Jace, the Mind Sculptor"):
-        _reports(client.post("/walker/AddCard", json={"deck_id": deck_id, "oracle_id": _oracle_id(name)}))
+        _reports(client.post("/walker/EditDeck", json={"deck_id": deck_id, "changes": [{"oracle_id": _oracle_id(name), "count": 1, "reason": "Edited in the app", "mode": "add"}]}))
     try:
         view = _reports(client.post("/walker/GetDeck", json={"deck_id": deck_id}))[0]
         by_name = {c["name"]: c for c in view["cards"]}
@@ -197,8 +200,8 @@ def test_two_decks_share_one_card_node(tmp_path):
         bolt = _oracle_id("Lightning Bolt")
         first = _new_deck(client, "First")
         second = _new_deck(client, "Second")
-        a = _reports(client.post("/walker/AddCard", json={"deck_id": first, "oracle_id": bolt}))[0]
-        b = _reports(client.post("/walker/AddCard", json={"deck_id": second, "oracle_id": bolt}))[0]
+        a = _reports(client.post("/walker/EditDeck", json={"deck_id": first, "changes": [{"oracle_id": bolt, "count": 1, "reason": "Edited in the app", "mode": "add"}]}))[0]
+        b = _reports(client.post("/walker/EditDeck", json={"deck_id": second, "changes": [{"oracle_id": bolt, "count": 1, "reason": "Edited in the app", "mode": "add"}]}))[0]
         assert _lines(a) == _lines(b) == {"Lightning Bolt": 1}
     finally:
         client.close()
@@ -210,7 +213,7 @@ def test_two_decks_share_one_card_node(tmp_path):
 def test_cards_in_a_deck_come_back_from_the_database(tmp_path):
     client = FrontDoorClient(tmp_path)
     deck_id = _new_deck(client)
-    _reports(client.post("/walker/AddCard", json={"deck_id": deck_id, "oracle_id": _oracle_id("Goblin Guide"), "count": 4}))
+    _reports(client.post("/walker/EditDeck", json={"deck_id": deck_id, "changes": [{"oracle_id": _oracle_id("Goblin Guide"), "count": 4, "reason": "Edited in the app", "mode": "add"}]}))
     try:
         view = _reports(client.post("/walker/GetDeck", json={"deck_id": deck_id}))[0]
         assert _lines(view) == {"Goblin Guide": 4}
@@ -223,10 +226,10 @@ def test_a_removed_card_stays_removed_when_read_back(tmp_path):
     client = FrontDoorClient(tmp_path)
     deck_id = _new_deck(client)
     bolt, guide = _oracle_id("Lightning Bolt"), _oracle_id("Goblin Guide")
-    _reports(client.post("/walker/AddCard", json={"deck_id": deck_id, "oracle_id": bolt, "count": 4}))
-    _reports(client.post("/walker/AddCard", json={"deck_id": deck_id, "oracle_id": guide, "count": 4}))
-    _reports(client.post("/walker/AddCard", json={"deck_id": deck_id, "oracle_id": bolt, "count": 2, "zone": "sideboard"}))
-    _reports(client.post("/walker/RemoveCard", json={"deck_id": deck_id, "oracle_id": bolt}))
+    _reports(client.post("/walker/EditDeck", json={"deck_id": deck_id, "changes": [{"oracle_id": bolt, "count": 4, "reason": "Edited in the app", "mode": "add"}]}))
+    _reports(client.post("/walker/EditDeck", json={"deck_id": deck_id, "changes": [{"oracle_id": guide, "count": 4, "reason": "Edited in the app", "mode": "add"}]}))
+    _reports(client.post("/walker/EditDeck", json={"deck_id": deck_id, "changes": [{"oracle_id": bolt, "count": 2, "zone": "sideboard", "reason": "Edited in the app", "mode": "add"}]}))
+    _reports(client.post("/walker/EditDeck", json={"deck_id": deck_id, "changes": [{"oracle_id": bolt, "count": 0, "reason": "Edited in the app"}]}))
     try:
         view = _reports(client.post("/walker/GetDeck", json={"deck_id": deck_id}))[0]
         assert {(c["name"], c["zone"]): c["count"] for c in view["cards"]} == {
@@ -245,12 +248,12 @@ def test_mana_analysis_in_deck_view(tmp_path):
         elves = _oracle_id("Llanowar Elves")
         forest = _oracle_id("Forest")
 
-        client.post("/walker/AddCard", json={"deck_id": deck_id, "oracle_id": mountain, "count": 4})
-        client.post("/walker/AddCard", json={"deck_id": deck_id, "oracle_id": bolt, "count": 2})
-        client.post("/walker/AddCard", json={"deck_id": deck_id, "oracle_id": elves, "count": 1})
+        client.post("/walker/EditDeck", json={"deck_id": deck_id, "changes": [{"oracle_id": mountain, "count": 4, "reason": "Edited in the app", "mode": "add"}]})
+        client.post("/walker/EditDeck", json={"deck_id": deck_id, "changes": [{"oracle_id": bolt, "count": 2, "reason": "Edited in the app", "mode": "add"}]})
+        client.post("/walker/EditDeck", json={"deck_id": deck_id, "changes": [{"oracle_id": elves, "count": 1, "reason": "Edited in the app", "mode": "add"}]})
         # sideboard cards must not count towards lands, pips or sources
         client.post(
-            "/walker/AddCard", json={"deck_id": deck_id, "oracle_id": forest, "count": 3, "zone": "sideboard"}
+            "/walker/EditDeck", json={"deck_id": deck_id, "changes": [{"oracle_id": forest, "count": 3, "zone": "sideboard", "reason": "Edited in the app", "mode": "add"}]}
         )
 
         view = _reports(client.post("/walker/GetDeck", json={"deck_id": deck_id}))[0]
