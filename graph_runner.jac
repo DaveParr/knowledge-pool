@@ -2,8 +2,8 @@
 
 Every deck action runs as a caller (a user id) on that caller's own root,
 from `ensure_user_root(<id>)`. `run_walker` and `call_function` are the
-caller's entries; deck work reaches them through `perform` in `deck_operations.jac`. `run_as_guest` is the
-second entry, for the app's own work on what every user shares (the cards
+caller's entries; deck work reaches them through `perform` in
+`deck_operations.jac`. `run_as_guest` is the second entry, for the app's own work on what every user shares (the cards
 and the formats). Nothing a request reaches calls it.
 
 The guest root is registered as Jac's shared root (`root.shared`), so the
@@ -261,9 +261,10 @@ def failed_walker(w: WalkerArchetype, failed: CallFailed) -> WalkerArchetype {
 
 """Spawn the read-only walker `w` (one that acts on the deck `deck_id`) as the
 deck's owner, on the owner's root, for `caller`: any signed-in user may read
-any deck. The app has decided that read is allowed: only `perform` (`deck_operations.jac`, whose table
-lists the read-only walkers) and `copy_deck` call it, and the walker must change nothing. It gives the caller no grant, edge or access of any kind. An
-id that names no deck runs as the caller, so it answers no-such-deck. No caller
+any deck. The app has decided that read is allowed: only `perform`
+(`deck_operations.jac`, whose table lists the read-only walkers) and
+`copy_deck` call it, and the walker must change nothing. It gives the caller
+no grant, edge or access of any kind. An id that names no deck runs as the caller, so it answers no-such-deck. No caller
 is a refusal. Like `run_walker`, a call the runner could not finish returns a
 copy of `w` whose one report is the walker error."""
 def run_read(caller: str | None, deck_id: str, w: WalkerArchetype) -> WalkerArchetype {

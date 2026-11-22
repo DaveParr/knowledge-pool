@@ -2,14 +2,18 @@
 call, `perform`, that both edges (the front door for the web page, the MCP tools
 for the connector) make to do it.
 
-Each entry of `OPERATIONS` names a walker (every one the edges call, including `GetFormatRules`, which reads the shared rules and takes no deck) and says how it runs:
+Each entry of `OPERATIONS` names a walker (every one the edges call, including
+`GetFormatRules`, which reads the shared rules and takes no deck) and says how
+it runs:
 
 - `OWN`: on the caller's own root (`run_walker`). A walker that acts on one deck
   answers `not-your-deck` for another user's deck and `no-such-deck` for an id
   that names no deck, so every change is the owner's alone.
 - `OWNER`: on the root of the deck's owner, for a read-only walker (`run_read`):
   any user may read any deck (CONTEXT.md, "Reading another user's deck"). The
-  walker must change nothing; this table is the one list of the ones `perform` runs so (`copy_deck` also reads `CopySource` this way, listed for completeness).
+  walker must change nothing; this table is the one list of the ones `perform`
+  runs so (`copy_deck` also reads `CopySource` this way, listed for
+  completeness).
 - `FLOW`: a runner flow across users' roots that no single walker can make,
   named by the entry's `across` (listing other users' decks, copying a deck).
 
@@ -17,8 +21,8 @@ An entry also says whether the web page may call the walker (`page`): the front
 door's table of page-callable walkers is `page_walkers()`, derived from here.
 Every page-callable walker must still be `:protect` (ADR-0004).
 
-Adding a deck action means writing the walker and adding one entry here; a page-callable
-one must also be imported in `main.jac`, which a test checks.
+Adding a deck action means writing the walker and adding one entry here; a
+page-callable one must also be imported in `main.jac`, which a test checks.
 """
 
 import from jaclang.runtime.constructs { WalkerArchetype }
@@ -47,8 +51,9 @@ def copy_flow(caller: str | None, w: WalkerArchetype) -> WalkerArchetype {
     return copy_deck(caller, (w as DeckAction).deck_id);
 }
 
-"""One deck operation: the walker class `kind` that does it, how it `runs` (`OWN`, `OWNER` or
-`FLOW`), the `across` function that runs it when it is a `FLOW`, and whether the web `page` may call it."""
+"""One deck operation: the walker class `kind` that does it, how it `runs`
+(`OWN`, `OWNER` or `FLOW`), the `across` function that runs it when it is a
+`FLOW`, and whether the web `page` may call it."""
 obj DeckOperation {
     has kind: type,
         runs: str,
@@ -56,7 +61,7 @@ obj DeckOperation {
         across: Callable[[str | None, WalkerArchetype], WalkerArchetype] | None = None;
 }
 
-glob LISTED: list[DeckOperation] = [
+glob OPERATION_LIST: list[DeckOperation] = [
     DeckOperation(kind=CreateDeck, runs=OWN, page=True),
     DeckOperation(kind=ListDecks, runs=OWN, page=True),
     DeckOperation(kind=ListOtherDecks, runs=FLOW, page=True, across=list_others_flow),
@@ -76,7 +81,7 @@ glob LISTED: list[DeckOperation] = [
 ];
 
 """The table: each operation by its walker's name."""
-glob OPERATIONS: dict[str, DeckOperation] = {op.kind.__name__: op for op in LISTED};
+glob OPERATIONS: dict[str, DeckOperation] = {op.kind.__name__: op for op in OPERATION_LIST};
 
 """The walkers the web page may call, by name: the front door's table, derived."""
 def page_walkers -> dict[str, type] {
