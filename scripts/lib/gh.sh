@@ -99,8 +99,9 @@ board_date() {
         --field "$2" --date "$3" >/dev/null
 }
 board_target_date() {
-    board_date "$1" "Target date" "${2%%T*}"
-    echo "${2%%T*}"
+    local day="${2%%T*}"
+    board_date "$1" "Target date" "$day"
+    echo "$day"
 }
 
 # linked_branches <issue>: the branches in the issue's Development field, one per line.

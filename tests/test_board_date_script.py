@@ -13,7 +13,7 @@ from pathlib import Path
 
 import pytest
 
-from tests.test_pr_status_script import pr
+from tests.ticket_fakes import pr
 
 ROOT = Path(__file__).resolve().parent.parent
 BOARD_DATE = ROOT / "scripts" / "board-date.sh"
@@ -212,6 +212,29 @@ def test_target_date_fails_when_the_ticket_has_no_card(env):
     assert out.returncode == 1
     assert "#42 has no card on the board" in out.stderr
     assert "Target date ->" not in out.stdout
+
+
+def test_target_date_with_a_merged_pr_uses_its_merge_date_even_on_an_open_ticket(env):
+    board(env)  # the PR reached the ticket only through its branch, so the merge left it open
+    out = run(env, TARGET_DATE, "42", "7")
+    assert out.returncode == 0, out.stderr
+    assert date_writes(env) == [("Target date", "2026-11-21")]
+
+
+def test_target_date_refuses_an_unmerged_pr(env):
+    board(env, pr=pr())
+    out = run(env, TARGET_DATE, "42", "7")
+    assert out.returncode == 1
+    assert "PR #7 is not merged." in out.stderr
+    assert date_writes(env) == []
+
+
+@pytest.mark.parametrize("args", [(), ("x",), ("42", "x"), ("42", "7", "8")])
+def test_target_date_rejects_bad_arguments_with_usage(env, args):
+    board(env)
+    out = run(env, TARGET_DATE, *args)
+    assert out.returncode == 2
+    assert out.stderr.startswith("usage: scripts/target-date.sh")
 
 
 def test_target_date_refuses_an_open_ticket(env):

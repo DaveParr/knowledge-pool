@@ -107,7 +107,7 @@ work.
      worker, pick up work.
    - `merge`: go on to step 3.
    - `merged` / `closed`: someone got there first. If `merged`, run
-     `scripts/target-date.sh <n>`. Release the worker and pick up work.
+     `scripts/target-date.sh <n> <pr>`. Release the worker and pick up work.
 3. **Check the review.** Read the last `## Code review, round <k>` comment
    (`gh pr view <pr> --json comments`). `pr-status.sh` has checked it names the head
    commit; you check every finding has a fix or a one-line reason in the worker's reply.
@@ -119,7 +119,9 @@ work.
 5. **Merge.** `scripts/merge-ticket.sh <pr>`. It re-runs `pr-status.sh` and refuses
    anything but `merge`, then merges (merge commit, branch kept), labels `auto-merged`,
    comments why, makes sure the ticket is closed, and sets its Target date. If it fails
-   after merging (`pr-status.sh <pr>` says `merged`), run `scripts/target-date.sh <n>`. Never close or edit a parent spec or any other issue.
+   after merging (`pr-status.sh <pr>` says `merged`), run
+   `scripts/target-date.sh <n> <pr>`. Never close or edit a parent spec or any other
+   issue.
 6. **Release** the worker (`<orca> orchestration worker-release`). Leave the worktree
    itself in place; do not delete it or its branch.
 7. Pick up work: the merge may have unblocked the next ticket.
@@ -128,7 +130,7 @@ work.
 
 When the user tells you they merged a PR you left for them, GitHub has already closed the
 ticket and the board has moved it to Done (`scripts/pr-status.sh <pr>` says `merged`).
-Run `scripts/target-date.sh <n>` to set its Target date to the merge date, release its
-worker if it is still held, and pick up work. If they closed the PR unmerged, the ticket
-stays open: ask them whether to park it. If they close a ticket without a PR, run
-`scripts/target-date.sh <n>` too: it sets the close date.
+Run `scripts/target-date.sh <n> <pr>` to set its Target date to the merge date, release
+its worker if it is still held, and pick up work. If they closed the PR unmerged, the
+ticket stays open: ask them whether to park it. If they close a ticket without a PR, run
+`scripts/target-date.sh <n>`: it sets the close date.
