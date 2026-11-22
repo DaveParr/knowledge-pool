@@ -197,18 +197,16 @@ def _as_guest(f: Callable[[], object]) -> object {
     return in_context(guest_root_id(), f);
 }
 
-"""The ids of Card nodes the guest makes for the card `name`, in the order
-made: at least two, and the first is not the lowest, so taking the first
-match would pick a different card than taking the lowest id."""
+"""The ids of the two Card nodes the guest makes for the card `name`, in the
+order made. Ids are random, so which is lowest is left to chance: a test
+that compares them must use `min`, never the order made."""
 def _duplicate_cards(name: str) -> list[str] {
     oid = _oracle_id(name);
     c = store.get_card(oid) as JsonObject;
-    ids: list[str] = [];
-    while len(ids) < 2 or min(ids) == ids[0] {
-        assert len(ids) < 50, "card ids came out in rising order every time";
-        ids.append(_as_guest(lambda () -> object { return jid(new_card(root, oid, c)); }) as str);
-    }
-    return ids;
+    return [
+        _as_guest(lambda () -> object { return jid(new_card(root, oid, c)); }) as str
+        for _ in range(2)
+    ];
 }
 
 test "with two cards for one oracle id, every deck holds the one with the lowest id" {

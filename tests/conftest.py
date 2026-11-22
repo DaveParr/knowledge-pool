@@ -1,6 +1,7 @@
 """Point the app at a catalogue built from the small MTGJSON fixture, and give
 tests that start Jac processes a database of their own."""
 
+import os
 import socket
 from pathlib import Path
 
@@ -54,3 +55,61 @@ def jac_db_url(test_postgres, monkeypatch):
     with fresh_database(test_postgres) as url:
         monkeypatch.setenv("JAC_DB_URL", url)
         yield url
+
+
+# Seconds per test file on CI (run 44915907844), for the files that take 10 s
+# or more. A file not listed here counts as `DEFAULT_SECONDS`.
+FILE_SECONDS = {
+    "test_front_door_process.py": 122, "test_dev_script.py": 107,
+    "test_ui_smoke.py": 103, "test_commander.py": 48, "test_mcp.py": 46,
+    "test_deck_io.py": 43, "test_seed.py": 41, "test_browser_session.py": 39,
+    "test_catalog_schema.py": 39, "test_front_door.py": 31,
+    "test_legality.py": 30, "test_api.py": 29, "test_backup_script.py": 29,
+    "test_mana_curve.py": 17, "test_hosted_auth.py": 17,
+    "test_rate_limits.py": 11, "test_deck_cards.py": 10,
+}
+DEFAULT_SECONDS = 2
+
+
+def _cost(name):
+    return FILE_SECONDS.get(Path(name).name, DEFAULT_SECONDS)
+
+
+def split_into_shards(files, count):
+    """Split test file names into `count` shards of similar total time: the
+    slowest first, each into the shard with the least so far. The split depends
+    only on the names, so every CI job computes the same one."""
+    shards = [[] for _ in range(count)]
+    totals = [0] * count
+    for cost, name in sorted((-_cost(f), f) for f in files):
+        lightest = totals.index(min(totals))
+        shards[lightest].append(name)
+        totals[lightest] -= cost
+    return shards
+
+
+def parse_shard(spec):
+    """`KP_SHARD`'s value `<k>/<n>` as (k, n), with k from 1 to n."""
+    try:
+        k, n = (int(x) for x in spec.split("/"))
+    except ValueError:
+        raise pytest.UsageError(f"KP_SHARD must look like 2/4, not {spec!r}") from None
+    if not 1 <= k <= n:
+        raise pytest.UsageError(f"KP_SHARD={spec}: the shard number must be from 1 to {n}")
+    return k, n
+
+
+def pytest_collection_modifyitems(config, items):
+    """With `KP_SHARD=<k>/<n>` (k from 1), run only the k-th of n shards of the
+    test files; the CI matrix runs one shard per job. Without it, run all."""
+    spec = os.environ.get("KP_SHARD")
+    if not spec:
+        return
+    k, n = parse_shard(spec)
+    files = sorted({str(item.path) for item in items})
+    shard_files = set(split_into_shards(files, n)[k - 1])
+    kept, dropped = [], []
+    for item in items:
+        (kept if str(item.path) in shard_files else dropped).append(item)
+    config.hook.pytest_deselected(items=dropped)
+    items[:] = kept
