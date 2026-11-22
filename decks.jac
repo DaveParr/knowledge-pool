@@ -21,8 +21,10 @@ import from walker_errors { WalkerError }
 import from zones { ZONES, ZONE_TITLES, zone_choices, zone_options }
 import from json_object { JsonObject }
 
-glob SET: str = "set",
-     ADD: str = "add";
+"""The two modes of a change: `MODE_SET` makes the zone hold `count` copies,
+`MODE_ADD` adds `count` copies on top of what it holds."""
+glob MODE_SET: str = "set",
+     MODE_ADD: str = "add";
 
 """One change to how many copies of a card a zone of a deck holds, with the
 reason given for it. Every holdings change writes one (see change_holding)."""
@@ -63,9 +65,9 @@ walker:protect CreateDeck {
         reports: list[Deck | DeckView | WalkerError] = [];
 
     can create with Root entry {
-        name = self.name.strip();
-        if not name {
-            report WalkerError(code="blank-name", message="A deck needs a name.");
+        name = trimmed_name(self.name);
+        if isinstance(name, WalkerError) {
+            report name;
             disengage;
         }
         if self.format not in FORMAT_LABELS {
@@ -79,6 +81,15 @@ walker:protect CreateDeck {
         }
         report edited_view(deck, self.changes);
     }
+}
+
+"""The name trimmed, or the blank-name WalkerError when nothing is left of it."""
+def trimmed_name(name: str) -> str | WalkerError {
+    trimmed = name.strip();
+    if not trimmed {
+        return WalkerError(code="blank-name", message="A deck needs a name.");
+    }
+    return trimmed;
 }
 
 """Create a deck under `owner` (the root) and return it. Callers check the name and format."""
@@ -429,12 +440,12 @@ walker:protect GetDeck(DeckAction) {
 """One change of an edit: `count` copies of a card in a zone, why, and whether
 it sets the count (the default) or adds on top of what the zone holds."""
 def apply_change(deck: Deck, ch: JsonObject) -> str {
-    mode = str(ch.get("mode", SET));
-    if mode not in [SET, ADD] {
-        return f"mode must be {SET} or {ADD}.";
+    mode = str(ch.get("mode", MODE_SET));
+    if mode not in [MODE_SET, MODE_ADD] {
+        return f"mode must be {MODE_SET} or {MODE_ADD}.";
     }
     return change_holding(
-        deck, str(ch.get("oracle_id", "")), str(ch.get("zone", "main")), ch.get("count") as int, str(ch.get("reason", "")), add=mode == ADD
+        deck, str(ch.get("oracle_id", "")), str(ch.get("zone", "main")), ch.get("count") as int, str(ch.get("reason", "")), add=mode == MODE_ADD
     );
 }
 
@@ -472,9 +483,9 @@ walker:protect EditDeck(DeckAction) {
         changes: list[JsonObject] = [];
 
     can edit with Deck entry {
-        name = self.name.strip() if self.name is not None else None;
-        if name is not None and not name {
-            report WalkerError(code="blank-name", message="A deck needs a name.");
+        name = trimmed_name(self.name) if self.name is not None else None;
+        if isinstance(name, WalkerError) {
+            report name;
             disengage;
         }
         if self.format is not None and self.format not in FORMAT_LABELS {

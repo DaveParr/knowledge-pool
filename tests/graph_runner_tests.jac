@@ -992,3 +992,11 @@ test "creating a deck with cards makes and fills it in one call, and lists the c
     assert _error_code(ALICE, CreateDeck(name="Alice's refused deck", format="vintage", changes=[])) == "unknown-format";
     assert "Alice's refused deck" not in _deck_names(ALICE);
 }
+
+test "two adds in a row give two copies" {
+    id = _new_deck(ALICE, "Alice's twice-added deck");
+    shock = _oracle_id("Shock");
+    assert _error_code(ALICE, _add(id, shock)) == "";
+    assert _error_code(ALICE, _add(id, shock)) == "";
+    assert [(l.name, l.count) for l in _deck(ALICE, id).cards] == [("Shock", 2)];
+}
