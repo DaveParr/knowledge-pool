@@ -82,9 +82,9 @@ work.
 2. **Status.** `scripts/pr-status.sh <pr>` prints the PR's state as JSON, with `next` and a
    `reason`. Act on `next`:
    - `review`: `send` the worker back to section 4 of its brief; wait for it to report.
-   - `pr-body`: the PR body is not the `/pr` template, or its `Describes:` sha is not the
+   - `pr-body`: the PR body is not the `/mattpocock-skills:pr` template, or its `Describes:` sha is not the
      head commit. `send` the worker the `reason` and section 3 of its brief: rewrite the
-     body with /pr for the head commit (`gh pr edit <pr> --body-file`), then report again.
+     body with that skill for the head commit (`gh pr edit <pr> --body-file`), then report again.
      No new review round is needed for a body-only edit.
    - `round-limit` (3 review rounds, or a round-limit comment): **get a human**, whatever
      else is wrong. `gh pr edit <pr> --add-label review-by-human`,

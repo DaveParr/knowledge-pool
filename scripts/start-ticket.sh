@@ -3,7 +3,7 @@
 #
 #   scripts/start-ticket.sh <issue-number>
 #
-# Steps, in order:
+# Steps, in order (after checking the mattpocock-skills plugin is installed):
 #   1. Claim: assign @me and move the card to "In progress" (adding the card if missing).
 #   2. Create an Orca worktree `ticket-<n>` on branch `DaveParr/<n>-<slug>`, based on
 #      main, with the issue linked in Orca's metadata. Orca adds a numeric
@@ -29,6 +29,12 @@ ORCA="${ORCA_CLI_COMMAND:-orca}"
 n="${1:-}"
 is_number "$n" || usage "scripts/start-ticket.sh <issue-number>"
 cd "$(git rev-parse --show-toplevel)"
+
+# Workers use the mattpocock-skills plugin (/mattpocock-skills:tdd, :pr), which the project
+# enables but each machine installs once. Its user-scope "disabled" state does not matter.
+command -v claude >/dev/null || die "claude is not on PATH; workers need Claude Code with the mattpocock-skills plugin."
+claude plugin list --json 2>/dev/null | jq -e 'any(.[]; .id == "mattpocock-skills@mattpocock")' >/dev/null \
+    || die "The mattpocock-skills plugin is not installed, so workers cannot load /mattpocock-skills:tdd or :pr. Install it once: claude plugin install mattpocock-skills@mattpocock"
 
 title="$(gh issue view "$n" --json title --jq .title)"
 slug="$(printf '%s' "$title" | tr '[:upper:]' '[:lower:]' | sed -E 's/[^a-z0-9]+/-/g; s/^-+|-+$//g' | cut -c1-40 | sed -E 's/-+$//')"

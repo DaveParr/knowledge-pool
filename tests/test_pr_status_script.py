@@ -1,5 +1,5 @@
 """scripts/pr-status.sh and scripts/merge-ticket.sh: what the ticket orchestrator does next
-with a ticket PR.
+with a ticket PR; and scripts/start-ticket.sh's check for the mattpocock-skills plugin.
 
 `gh` is a fake on PATH: `gh pr view` prints the PR JSON a test writes, `gh api graphql`
 prints the ticket's labels (already in the shape the script's --jq makes), and every call
@@ -151,3 +151,26 @@ def test_merge_ticket_refuses_a_pr_whose_body_is_stale(env):
     assert out.returncode == 1
     assert "next is 'pr-body'" in out.stderr
     assert "pr merge" not in Path(env["FAKE_LOG"]).read_text()
+
+
+START_TICKET = ROOT / "scripts" / "start-ticket.sh"
+
+
+@pytest.mark.parametrize(
+    "plugins, installed",
+    [("[]", False), ('[{"id": "superpowers@claude-plugins-official"}]', False),
+     ('[{"id": "mattpocock-skills@mattpocock", "enabled": false}]', True)],
+)
+def test_start_ticket_stops_before_claiming_when_the_plugin_is_missing(env, tmp_path, plugins, installed):
+    claude = Path(env["PATH"].split(":")[0]) / "claude"
+    claude.write_text(f"#!/usr/bin/env bash\necho '{plugins}'\n")
+    claude.chmod(claude.stat().st_mode | stat.S_IEXEC)
+    Path(env["FAKE_PR"]).write_text("{}")
+    out = subprocess.run([str(START_TICKET), "42"], env=env, capture_output=True, text=True)
+    assert out.returncode != 0  # the fake gh cannot claim, so it stops either way
+    log = Path(env["FAKE_LOG"]).read_text()
+    if installed:
+        assert "issue view" in log  # got past the check, even though disabled at user scope
+    else:
+        assert "claude plugin install mattpocock-skills@mattpocock" in out.stderr
+        assert "issue" not in log

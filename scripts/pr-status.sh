@@ -10,7 +10,7 @@
 #   round-limit  3 `## Code review, round` comments, or a `## Code review: round limit
 #                reached` comment: hand the PR to the human, never review again.
 #   review       no review round, or the last one does not name the PR's head commit.
-#   pr-body      the body does not follow the `/pr` template (`## Summary`, `## Evidence`,
+#   pr-body      the body does not follow the `/mattpocock-skills:pr` template (`## Summary`, `## Evidence`,
 #                `## Merge Danger` with `**Door:**` and `**Blast Radius:**`), or its
 #                `Describes: <sha>` line is missing or is not the head commit.
 #   conflict     the PR conflicts with its base.
@@ -74,7 +74,7 @@ jq --argjson t "$ticket" --argjson tl "$ticket_labels" '
       elif .reviewRounds >= 3 or $limit_comment then {next: "round-limit", reason: "\(.reviewRounds) review rounds or a round-limit comment"}
       elif .reviewRounds == 0 then {next: "review", reason: "no review round on the PR"}
       elif (.lastRoundIsCurrent | not) then {next: "review", reason: "the last review round does not name head \(.head)"}
-      elif (.bodyMissing | length) > 0 then {next: "pr-body", reason: "PR body lacks \(.bodyMissing | join(", ")): rewrite it with /pr"}
+      elif (.bodyMissing | length) > 0 then {next: "pr-body", reason: "PR body lacks \(.bodyMissing | join(", ")): rewrite it with /mattpocock-skills:pr"}
       elif .bodyDescribes == null then {next: "pr-body", reason: "PR body has no Describes: <sha> line"}
       elif (.bodyDescribes as $d | .headOid | startswith($d) | not) then {next: "pr-body", reason: "PR body describes \(.bodyDescribes), head is \(.head)"}
       elif .mergeable == "CONFLICTING" then {next: "conflict", reason: "conflicts with \(.base)"}
