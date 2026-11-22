@@ -3,8 +3,8 @@
 #
 #   scripts/start-ticket.sh <issue-number>
 #
-# Steps, in order:
-#   1. Claim: assign @me and move the card to "In progress".
+# Steps, in order (after checking the mattpocock-skills plugin is installed):
+#   1. Claim: assign @me and move the card to "In progress" (adding the card if missing).
 #   2. Create an Orca worktree `ticket-<n>` on branch `DaveParr/<n>-<slug>`, based on
 #      main, with the issue linked in Orca's metadata. Orca adds a numeric
 #      suffix if the branch name is taken, so the real name is read back from Orca.
@@ -20,23 +20,29 @@
 # Prints one JSON line: {"issue":n,"branch":"...","worktreeId":"...","path":"..."}.
 # Start the worker afterwards with `orca orchestration worker-start --worktree issue:<n>`.
 set -euo pipefail
+source "$(dirname "$0")/lib/gh.sh"
 
-REPO="DaveParr/knowledge-pool"
 REPO_ID="d0c89184-5aee-4d56-91c1-4faa754134e8"   # Orca repo id for knowledge-pool
 BASE="main"
 ORCA="${ORCA_CLI_COMMAND:-orca}"
 
 n="${1:-}"
-case "$n" in '' | *[!0-9]*) echo "usage: scripts/start-ticket.sh <issue-number>" >&2; exit 2 ;; esac
+is_number "$n" || usage "scripts/start-ticket.sh <issue-number>"
 cd "$(git rev-parse --show-toplevel)"
 
-title="$(gh api "repos/$REPO/issues/$n" --jq .title)"
+# Workers use the mattpocock-skills plugin (/mattpocock-skills:tdd, :pr), which the project
+# enables but each machine installs once. Its user-scope "disabled" state does not matter.
+command -v claude >/dev/null || die "claude is not on PATH; workers need Claude Code with the mattpocock-skills plugin."
+claude plugin list --json 2>/dev/null | jq -e 'any(.[]; .id == "mattpocock-skills@mattpocock")' >/dev/null \
+    || die "The mattpocock-skills plugin is not installed, so workers cannot load /mattpocock-skills:tdd or :pr. Install it once: claude plugin install mattpocock-skills@mattpocock"
+
+title="$(gh issue view "$n" --json title --jq .title)"
 slug="$(printf '%s' "$title" | tr '[:upper:]' '[:lower:]' | sed -E 's/[^a-z0-9]+/-/g; s/^-+|-+$//g' | cut -c1-40 | sed -E 's/-+$//')"
 want_branch="DaveParr/$n-${slug:-ticket}"
 
 # 1. Claim
-gh issue edit "$n" -R "$REPO" --add-assignee @me >/dev/null
-scripts/board.sh "$n" "In progress" >&2
+gh issue edit "$n" --add-assignee @me >/dev/null
+board_move "$n" "In progress" >/dev/null
 
 # 2. Worktree
 git fetch -q origin "$BASE"
@@ -44,9 +50,7 @@ git fetch -q origin "$BASE"
     --base-branch "origin/$BASE" --issue "$n" --no-parent --json >/dev/null
 wt="$("$ORCA" worktree list --repo "id:$REPO_ID" --json \
     | jq -c --arg n "$n" '[.result.worktrees[] | select((.linkedIssue|tostring) == $n and (.isArchived|not))] | max_by(.sortOrder)')"
-if [ -z "$wt" ] || [ "$wt" = "null" ]; then
-    echo "Orca created no worktree linked to #$n" >&2; exit 1
-fi
+[ -n "$wt" ] && [ "$wt" != "null" ] || die "Orca created no worktree linked to #$n"
 path="$(jq -r .path <<<"$wt")"
 wt_id="$(jq -r .id <<<"$wt")"
 branch="$(jq -r .branch <<<"$wt")"; branch="${branch#refs/heads/}"
@@ -57,16 +61,10 @@ if git ls-remote --exit-code -q origin "refs/heads/$branch" >/dev/null; then
     echo "Remove the worktree ($path) and the remote branch, or pick another name, then retry." >&2
     exit 1
 fi
-gh issue develop "$n" -R "$REPO" --name "$branch" --base "$BASE" >/dev/null
-linked="$(gh api graphql -F owner="${REPO%/*}" -F name="${REPO#*/}" -F n="$n" -f query='
-  query($owner:String!,$name:String!,$n:Int!){ repository(owner:$owner,name:$name){ issue(number:$n){
-    linkedBranches(first:50){ nodes{ ref{ name } } } } } }' \
-  --jq '.data.repository.issue.linkedBranches.nodes[].ref.name')"
-if ! grep -qxF "$branch" <<<"$linked"; then
-    linked="${linked//$'\n'/, }"
-    echo "gh issue develop did not link '$branch' to #$n (linked branches: ${linked:-none})." >&2
-    exit 1
-fi
+gh issue develop "$n" --name "$branch" --base "$BASE" >/dev/null
+linked="$(linked_branches "$n")"
+grep -qxF "$branch" <<<"$linked" \
+    || die "gh issue develop did not link '$branch' to #$n (linked branches: $(paste -sd, <<<"${linked:-none}"))."
 
 # 4. Track the linked branch, and mark the worktree as a ticket worktree
 git -C "$path" fetch -q origin "$branch"
