@@ -22,7 +22,7 @@ Load the `orchestration` skill first and use its commands (written `<orca>` belo
 ## The board
 
 Your scripts set a ticket's Status on the Knowledge Pool board (project #7) for the moves
-GitHub cannot see: **In progress** when claimed, **Backlog** when parked, and **In review**
+GitHub cannot see: **In progress** when claimed, **Blocked** when parked (the board needs that Status option), and **In review**
 again when you hold a PR for the human. They add the ticket's card if it has none. The
 board's own workflows do the rest: "Pull request linked to issue" moves the ticket to
 **In review** when its PR opens, a ticket closes when its linked PR merges into main, and
@@ -66,7 +66,9 @@ Answer with `<orca> orchestration reply` when the ticket, its parent spec, the A
 CONTEXT.md settle it. Otherwise ask the user. If the user can't settle it now (the spec
 needs a decision first), tell the worker to stop, then park the ticket: write exactly what
 is needed to a file and run `scripts/park-ticket.sh <n> <file>` (comments it, swaps
-`ready-for-agent` for `needs-info`, unassigns @me, moves it to Backlog). Then pick up work.
+`ready-for-agent` for `needs-info`, unassigns @me, moves it to Blocked). Then pick up work. When the human
+has answered, they relabel it `ready-for-agent` and move it to Ready (`scripts/board.sh <n>
+Ready`); `ready-tickets.sh` then offers it again.
 
 ## When a worker reports `worker_done`
 

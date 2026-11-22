@@ -28,12 +28,23 @@ require_gh() {
     fi
 }
 
+# board_check_status <status>: fail unless the board's Status field has that option.
 # board_move <issue> <status>: put the issue on the board if it is not there yet, then set
-# its Status. <status> is a Status option, in any case; "-" and "_" read as spaces. An
-# unknown option fails and lists the valid ones. `item-add` returns the existing item when
-# the issue is already on the board, so this never makes a second card.
+# its Status. <status> is a Status option, in any case; "-" and "_" read as spaces. It
+# checks the option exists before touching the board, and fails naming the valid ones: add
+# a missing option in the board's settings, never through the API (replacing a
+# single-select field's options can clear every card's Status). `item-add` returns the
+# existing item when the issue is already on the board, so this never makes a second card.
+board_check_status() {
+    local status="${1//[-_]/ }" options
+    options="$(gh project field-list "$BOARD_NUMBER" --owner "$REPO_OWNER" --format json \
+        --jq '.fields[] | select(.name == "Status") | .options[].name')"
+    grep -qixF "$status" <<<"$options" || die "The board (project #$BOARD_NUMBER) has no Status \"$status\"; \
+add it in the board's settings first. Valid: $(paste -sd, <<<"$options" | sed 's/,/, /g')."
+}
 board_move() {
     local url="https://github.com/$GH_REPO/issues/$1" status="${2//[-_]/ }"
+    board_check_status "$status"
     gh project item-add "$BOARD_NUMBER" --owner "$REPO_OWNER" --url "$url" >/dev/null
     gh project item-edit "$BOARD_NUMBER" --owner "$REPO_OWNER" --url "$url" \
         --field Status --value "$status" >/dev/null

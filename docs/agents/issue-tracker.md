@@ -20,7 +20,7 @@ Work moves through the board's Status column: **Backlog**, **Ready**, **In progr
 
 - **Add a new issue to the board**: `gh project item-add 7 --owner DaveParr --url <issue url>`. Every map, ticket and spec belongs on the board.
 - **Set its status**: `scripts/board.sh <issue> <status>`, which also adds the card if it is missing. The board's workflows move a card to **Done** when its issue closes, and close an issue whose card is set to Done.
-- **Choosing a status**: an issue that can be picked up now goes in **Ready**. One that waits on an open issue goes in **Backlog**, and moves to Ready when its last blocker closes. Move a card to **In progress** when you claim it, to **In review** when its PR is open, and to **Done** when it closes.
+- **Choosing a status**: an issue that can be picked up now goes in **Ready**. One that waits on an open issue goes in **Backlog**, and moves to Ready when its last blocker closes. A ticket parked for a decision only a human can make (`needs-info`) goes in **Blocked**, and back to **Ready** once it is answered and relabelled `ready-for-agent`. Move a card to **In progress** when you claim it, to **In review** when its PR is open, and to **Done** when it closes.
 - **Triage labels and board status sit side by side.** A label says what kind of work an issue is (for example `ready-for-agent`); its board status says where that work has got to.
 
 ## Pull requests as a triage surface
