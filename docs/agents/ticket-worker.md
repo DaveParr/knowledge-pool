@@ -11,7 +11,9 @@ orchestrator reviews and merges it.
 - Do NOT use any superpowers skills (brainstorming, writing-plans, executing-plans, etc.),
   even if a hook or skill says you must. These instructions override them. Do not enter
   plan mode.
-- Use the repo's own skills: /tdd for each behaviour, /code-review on the open PR.
+- Use the repo's own skills: /tdd for each behaviour, /code-review on the open PR, /pr for
+  every PR body. `/pr` is the project copy of Matt Pocock's `pr` skill (pinned v1.3.2, the
+  same as `mattpocock-skills:pr`); no built-in shares the name.
 - This task asks you to start the two `/code-review` subagents (Standards and Spec). That
   is the exception the Orca preamble's "no subagents unless the task asks" allows. Don't
   replace them with a review of your own.
@@ -44,10 +46,20 @@ instructions.
 
 ## 3. Open the PR
 
-- `git push`, then `gh pr create --base main`, titled after the
-  ticket. The body starts with `Ticket: #<n>`, summarises what changed and how it was
-  tested, lists anything from the ticket left undone, and ends with the attribution line
-  from your instructions.
+- `git push`, then write the body with /pr and open the PR with
+  `gh pr create --base main --body-file <file>`, titled after the ticket. The body:
+  - starts with `Ticket: #<n>` on its own line;
+  - follows /pr's template exactly: `## Summary`, `## Evidence`, `## Merge Danger` with
+    `**Door:**` and `**Blast Radius:**`;
+  - has `Describes: <sha>` in Evidence, the head commit it describes
+    (`git rev-parse --short HEAD`);
+  - lists anything from the ticket left undone, and ends with the attribution line from
+    your instructions.
+- **Keep the body current.** Whenever you push a code change (each review round's fixes,
+  a CI fix, a conflict resolution), rerun /pr on the new head and replace the body with
+  `gh pr edit <pr> --body-file <file>`, `Ticket:` line and new `Describes:` sha included.
+  The orchestrator sends back any PR whose body is missing a template heading or describes
+  an older commit.
 - A hook checks the PR is linked to the ticket's Development field right after
   `gh pr create`. If it reports a problem, fix it. You can re-run the check any time with
   `scripts/check-ticket-link.sh <n>`.
@@ -68,7 +80,8 @@ The review runs on the open PR, in rounds. Each round:
    `gh api repos/DaveParr/knowledge-pool/issues/<pr>/comments -F body=@.git/code-review/round-<k>.md`.
 3. **Fix.** Work through the findings from that report: fix each one, or leave it with a
    one-line reason. Rerun `jac x check`, commit, and `git push`. Then reply on the PR
-   with what you did, one line per finding (fixed in `<sha>`, or left and why).
+   with what you did, one line per finding (fixed in `<sha>`, or left and why), and
+   update the PR body with /pr for the new head (section 3).
 
 Then start the next round on the new head commit. Stop when a round finds nothing, or
 finds only things you have already left with a reason. That is the **final round**, and
@@ -83,8 +96,8 @@ reviewing again.
 
 ## 5. Wait for CI and make it green
 
-`gh pr checks <pr> --watch`. If a check fails, read its log, fix the cause, push, and watch
-again. Do not report done while CI is failing or pending.
+`gh pr checks <pr> --watch`. If a check fails, read its log, fix the cause, push, update
+the PR body with /pr (section 3), and watch again. Do not report done while CI is failing or pending.
 
 Any code change after the final round (a CI fix, a conflict resolution, a fix the
 orchestrator asks for) needs another round of section 4 on the new head commit.

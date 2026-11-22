@@ -10,6 +10,9 @@
 #   round-limit  3 `## Code review, round` comments, or a `## Code review: round limit
 #                reached` comment: hand the PR to the human, never review again.
 #   review       no review round, or the last one does not name the PR's head commit.
+#   pr-body      the body does not follow the `/pr` template (`## Summary`, `## Evidence`,
+#                `## Merge Danger` with `**Door:**` and `**Blast Radius:**`), or its
+#                `Describes: <sha>` line is missing or is not the head commit.
 #   conflict     the PR conflicts with its base.
 #   ci-failed    a check failed (`failing` lists them with links).
 #   wait         CI is still running, or GitHub has not worked out mergeability yet.
@@ -48,6 +51,12 @@ jq --argjson t "$ticket" --argjson tl "$ticket_labels" '
   | [.comments[].body | select(startswith("## Code review, round"))] as $rounds
   | ($rounds[-1] // "" | [scan("\\b[0-9a-f]{7,40}\\b")] | any(. as $s | $head | startswith($s))) as $current
   | ([.comments[].body | select(startswith("## Code review: round limit reached"))] | length > 0) as $limit_comment
+  | (.body // "") as $body
+  | [ {k: "## Summary", re: "(?m)^## Summary\\s*$"}, {k: "## Evidence", re: "(?m)^## Evidence\\s*$"},
+      {k: "## Merge Danger", re: "(?m)^## Merge Danger\\s*$"},
+      {k: "**Door:**", re: "\\*\\*Door:\\*\\*"}, {k: "**Blast Radius:**", re: "\\*\\*Blast Radius:\\*\\*"}
+    | .re as $re | select($body | test($re) | not) | .k ] as $missing
+  | ([$body | scan("Describes:\\**\\s*`?([0-9a-f]{7,40})")[0]] | last) as $describes
   | [.statusCheckRollup[] | {name: (.name // .context), bucket: bucket, link: (.detailsUrl // .targetUrl)}] as $checks
   | (if ($checks | length) == 0 or any($checks[]; .bucket == "pending") then "pending"
      elif any($checks[]; .bucket == "fail") then "fail" else "pass" end) as $ci
@@ -57,6 +66,7 @@ jq --argjson t "$ticket" --argjson tl "$ticket_labels" '
     ] as $human
   | {pr: .number, url, state, ticket: $t, parent: $tl.parent, head: $head[0:7], headOid: $head,
      reviewRounds: ($rounds | length), lastRoundIsCurrent: $current,
+     bodyMissing: $missing, bodyDescribes: $describes,
      draft: .isDraft, base: .baseRefName, mergeable, ci: $ci,
      failing: [$checks[] | select(.bucket == "fail")], reviewByHuman: $human}
   | . + (
@@ -64,6 +74,9 @@ jq --argjson t "$ticket" --argjson tl "$ticket_labels" '
       elif .reviewRounds >= 3 or $limit_comment then {next: "round-limit", reason: "\(.reviewRounds) review rounds or a round-limit comment"}
       elif .reviewRounds == 0 then {next: "review", reason: "no review round on the PR"}
       elif (.lastRoundIsCurrent | not) then {next: "review", reason: "the last review round does not name head \(.head)"}
+      elif (.bodyMissing | length) > 0 then {next: "pr-body", reason: "PR body lacks \(.bodyMissing | join(", ")): rewrite it with /pr"}
+      elif .bodyDescribes == null then {next: "pr-body", reason: "PR body has no Describes: <sha> line"}
+      elif (.bodyDescribes as $d | .headOid | startswith($d) | not) then {next: "pr-body", reason: "PR body describes \(.bodyDescribes), head is \(.head)"}
       elif .mergeable == "CONFLICTING" then {next: "conflict", reason: "conflicts with \(.base)"}
       elif .ci == "fail" then {next: "ci-failed", reason: "failing: \([.failing[].name] | join(", "))"}
       elif .ci == "pending" then {next: "wait", reason: "CI is still running"}
@@ -71,5 +84,5 @@ jq --argjson t "$ticket" --argjson tl "$ticket_labels" '
       elif .draft then {next: "hold", reason: "draft PR"}
       elif .base != "main" then {next: "hold", reason: "base is \(.base), not main"}
       elif (.reviewByHuman | length) > 0 then {next: "hold", reason: "review-by-human on \(.reviewByHuman | join(", "))"}
-      else {next: "merge", reason: "reviewed at head, CI green, no review-by-human label"} end)
+      else {next: "merge", reason: "reviewed and described at head, CI green, no review-by-human label"} end)
 ' <<<"$info"
