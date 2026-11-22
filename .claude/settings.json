@@ -17,6 +17,7 @@
       "Bash(gh issue list *)",
       "Bash(gh issue view *)",
       "Bash(gh issue edit *)",
+      "Bash(gh issue create *)",
       "Bash(gh issue comment *)",
       "Bash(gh api repos/DaveParr/knowledge-pool/issues/*)",
       "Bash(gh pr create *)",
