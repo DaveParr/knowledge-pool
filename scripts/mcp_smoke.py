@@ -149,7 +149,7 @@ async def main() -> None:
             {"oracle_id": ids["Lightning Bolt"], "count": 1, "zone": "main", "reason": "one more", "mode": "add"},
         ])
         check("an add change adds on top of the count", {c["name"]: c["count"] for c in deck["cards"] if c["zone"] == "main"}["Lightning Bolt"] == 5, deck)
-        kept = await call(session, "deck_edit", deck_id=deck["id"], name="  ", changes=[
+        kept = await fails(session, "deck_edit", deck_id=deck["id"], name="  ", changes=[
             {"oracle_id": ids["Lightning Bolt"], "count": 1, "zone": "main", "reason": "refused with its rename"},
         ])
         check("a refused rename refuses the whole edit", kept.get("code") == "blank-name", kept)
