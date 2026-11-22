@@ -14,16 +14,17 @@ impl AddCards.runSearch(e: FormEvent) -> None {
     result: CardSearch | None = None;
     try {
         result = await search_cards(q);
-    } except Exception as failure {
+    } except Exception {
         hits = [];
-        searchError = thrownLine(failure);
+        searchError = REFUSED_LINE;
         lastQuery = q;
         searched = True;
         return;
     }
-    # None means the call itself failed (the client stub found no result).
-    hits = result.hits if result is not None else [];
-    searchError = result.error if result is not None else "Card search failed.";
+    # A call that failed answers with its walker error in place of the search.
+    why = failureMessage([result]);
+    hits = [] if why or result is None else result.hits;
+    searchError = why or (result.error if result is not None else "Card search failed.");
     lastQuery = q;
     searched = True;
 }

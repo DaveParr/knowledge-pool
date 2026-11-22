@@ -136,11 +136,34 @@ def test_the_connectors_paths_go_to_the_mcp_app(client):
 
 def test_a_call_that_still_conflicts_answers_503_try_again(client, monkeypatch):
     def conflicts(caller, f, name=""):
-        raise graph_runner.CallFailed(error=graph_runner.try_again())
+        return graph_runner.try_again()
 
     monkeypatch.setattr(front_door, "call_function", conflicts)
     reply = client.post("/function/list_formats", json={})
     assert reply.status_code == 503 and reply.json()["error"]["code"] == "TRY-AGAIN"
+
+
+def test_a_function_call_the_runner_cannot_finish_answers_500_for_an_internal_error(client, monkeypatch):
+    monkeypatch.setattr(front_door, "call_function", lambda caller, f, name="": graph_runner.internal_error())
+    reply = client.post("/function/search_cards", json={"query": "bolt"})
+    assert reply.status_code == 500 and reply.json()["error"]["code"] == "INTERNAL-ERROR"
+
+
+def test_every_failed_call_gives_the_page_one_message_to_show(client, monkeypatch):
+    """A walker error, a try-again and an internal error each reach the page as the
+    one WalkerError `failureMessage` reads: a walker's as its report, and the runner's
+    two as a report too (`perform` returns them) or, for a function call, as the error
+    envelope the page's session guard turns into the same."""
+    missing = client.post("/walker/GetDeck", json={"deck_id": "nope"}).json()["data"]["reports"]
+    assert [r["code"] for r in missing] == ["no-such-deck"]
+    for error in (graph_runner.try_again(), graph_runner.internal_error()):
+        monkeypatch.setattr(front_door, "call_function", lambda caller, f, name="", error=error: error)
+        monkeypatch.setattr(graph_runner, "in_context", lambda *a, error=error, **k: (_ for _ in ()).throw(
+            graph_runner.CallFailed(error=error)))
+        walker = client.post("/walker/ListDecks", json={}).json()["data"]["reports"]
+        assert [(r["code"], r["message"]) for r in walker] == [(error.code, error.message)]
+        function = client.post("/function/list_formats", json={}).json()["error"]
+        assert (function["code"], function["message"]) == (error.code.upper(), error.message)
 
 
 def _protected_names() -> set[str]:

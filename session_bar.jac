@@ -55,12 +55,14 @@ async def:pub checkSession -> SessionInfo | None {
 glob guardInstalled: bool = False,
      sessionCheckRunning: bool = False;
 
-"""A walker call the front door refused (a 429, `try-again`, the internal
-error), as the reply a walker that failed gives: one WalkerError report, which
-the page's walker failure display already shows (`failureMessage`)."""
+"""A walker or function call the front door refused (a 429, `try-again`, the
+internal error), as the reply a call that failed gives: one WalkerError, as the
+walker's one report and as a function's result, which the page reads with
+`failureMessage` like any other failure."""
 async def refusedAsReport(reply: any) -> any {  # jac:ignore[W1037]
     line = refusalLine(int(reply.status), str(await reply.text()));
-    body = {"ok": True, "type": "response", "data": {"result": None, "reports": [{"code": REFUSED_CODE, "message": line}]}, "error": None};
+    failed = {"code": REFUSED_CODE, "message": line};
+    body = {"ok": True, "type": "response", "data": {"result": failed, "reports": [failed]}, "error": None};
     return new(Response, JSON.stringify(body), {"status": 200, "headers": {"Content-Type": "application/json"}});  # jac:ignore[E1053,W1051,W2001]
 }
 
@@ -68,7 +70,7 @@ async def refusedAsReport(reply: any) -> any {  # jac:ignore[W1037]
 deck call, whether the caller reads it as an empty reply or a thrown error) is
 followed by a session check, so a session that has ended sends the user to sign
 in instead of showing an empty page. A walker call refused for any other reason
-(401 aside) comes back as a failed walker's report, so the page says why in one
+(401 aside) comes back as a failed call's WalkerError, so the page says why in one
 line instead of showing nothing. Installed once, when this module loads."""
 def installSessionGuard {
     if guardInstalled {
@@ -98,7 +100,7 @@ def installSessionGuard {
                 if reply.status != 429 {
                     recheck();
                 }
-                if reply.status != 401 and reply.url.indexOf("/walker/") >= 0 {
+                if reply.status != 401 and (reply.url.indexOf("/walker/") >= 0 or reply.url.indexOf("/function/") >= 0) {
                     return refusedAsReport(reply);
                 }
                 return reply;

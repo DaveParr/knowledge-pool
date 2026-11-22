@@ -3,9 +3,15 @@
 impl app.loadDecks -> None {
     if not formats {
         try {
-            formats = await list_formats();
-        } except Exception as failure {
-            error = thrownLine(failure);
+            loaded = await list_formats();
+            why = failureMessage([loaded]);
+            if why {
+                error = why;
+                return;
+            }
+            formats = loaded;
+        } except Exception {
+            error = REFUSED_LINE;
             return;
         }
     }

@@ -30,19 +30,13 @@ def:pub refusalLine(status: int, body: str) -> str {
     return REFUSED_LINE;
 }
 
-"""The one line to show for a call that threw instead of answering (a function
-call the front door refused): its status and the body it came back with."""
-def:pub thrownLine(failure: any) -> str {  # jac:ignore[W1037]
-    detail = str(failure.detail or "");
-    marker = " failed: ";
-    at = detail.find(marker);
-    body: str = detail[at + len(marker):] if at >= 0 else detail;
-    return refusalLine(int(failure.status or 0), body);
-}
-
-"""The message of the WalkerError a failed walker reported, or "" if it succeeded."""
+"""The message of the WalkerError a failed call reported, or "" if it succeeded.
+This is the one way the page reads a failure. A walker's reports come in as they
+are; a function call has no reports, so pass its result as `[result]`: a call that
+failed answers with the WalkerError as its result (`refusedAsReport`,
+`session_bar.jac`), and no result of a call that succeeded has a `code`."""
 def:pub failureMessage(reports: Sequence[object]) -> str {
-    if len(reports) == 0 {
+    if len(reports) == 0 or reports[0] is None {
         return "";
     }
     first = reports[0] as WalkerError;

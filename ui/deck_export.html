@@ -130,9 +130,9 @@
   // A deck_export CallToolResult, from the first tool-result or a re-call.
   function takeResult(result) {
     const sc = result && result.structuredContent;
-    if (!result || result.isError || !sc || sc.error) {
+    if (!result || result.isError || !sc) {
       const text = result && (result.content || []).filter((c) => c.type === "text").map((c) => c.text).join(" ");
-      error = (sc && sc.error) || text || "The export failed.";
+      error = text || "The export failed.";
     } else {
       state = sc;
       error = "";

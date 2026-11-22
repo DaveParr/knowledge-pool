@@ -128,7 +128,7 @@
     }
     const text = ((res.content || []).find((c) => c.type === "text") || {}).text;
     if (text === undefined) return null;
-    try { return JSON.parse(text); } catch { return { error: text }; }
+    try { return JSON.parse(text); } catch { return null; }
   }
   const resultText = (res) => (((res && res.content) || []).find((c) => c.type === "text") || {}).text || "";
 
@@ -182,12 +182,12 @@
       state.query = data.query ?? state.query;
       state.limit = data.limit || state.limit;
       state.hits = data.hits || [];
-      state.error = data.error || "";
+      state.error = "";
       $("q").value = state.query;
     } else {
-      // No deck (unknown deck id) or a result we can't read: say why.
+      // A failed search (an unknown deck, the catalogue) or a result we can't read: say why.
       state.hits = state.hits || [];
-      state.error = resultText(res) || (data && data.error) || "Card search failed.";
+      state.error = resultText(res) || "Card search failed.";
     }
     render();
   }
@@ -232,13 +232,14 @@
     if (!state.deck || state.busy) return;
     state.busy = true; renderResults();
     try {
-      const current = resultData(await request("tools/call", { name: "deck_get", arguments: { deck_id: state.deck.id } }));
-      if (!current || current.error) throw new Error((current && current.error) || "Could not read the deck.");
+      const read = await request("tools/call", { name: "deck_get", arguments: { deck_id: state.deck.id } });
+      const current = resultData(read);
+      if (read.isError || !current) throw new Error(resultText(read) || "Could not read the deck.");
       const now = ((holdings(current)[hit.oracle_id] || {})[zone] || 0) + 1;
       const res = await request("tools/call", { name: "deck_edit", arguments: { deck_id: state.deck.id,
         changes: [{ oracle_id: hit.oracle_id, count: now, zone, reason: REASON }] } });
       const view = resultData(res);
-      if (res.isError || !view || view.error) throw new Error((view && view.error) || resultText(res) || "The deck was not changed.");
+      if (res.isError || !view) throw new Error(resultText(res) || "The deck was not changed.");
       if ((view.rejected || []).length) throw new Error(view.rejected.join("; "));
       syncDeck(view);
       toast(`Added 1 ${hit.name} to ${where(zone)} (now ${now}).`);
