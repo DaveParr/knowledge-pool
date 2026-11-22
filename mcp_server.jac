@@ -26,6 +26,7 @@ is not reachable from a connector that calls in from outside this machine.
 """
 
 import io;
+import json;
 import os;
 import logging;
 import sys;
@@ -33,6 +34,7 @@ import anyio;
 import httpx2;
 import uvicorn;
 import from datetime { datetime, timezone }
+import from functools { wraps }
 import from mcp.server.mcpserver { MCPServer, Context }
 import from mcp.server.apps { Apps, ResourcePermissions, client_supports_apps }
 import from mcp_types { CallToolResult, TextContent }
@@ -55,7 +57,7 @@ import from urllib.parse { urlparse }
 import from log_setup { use_json_logs }
 import from browser_session { WorkOSSessions }
 import from hosted_auth { AuthKitVerifier, HostedSettings, HostedSettingsMissing, hosted_settings, jwks_key_finder }
-import from graph_runner { APP_DIR, HOSTED, app_mode, check_bind, request_caller, CallFailed, owns_deck, call_function, start, refresh_cards }
+import from graph_runner { APP_DIR, HOSTED, app_mode, check_bind, request_caller, owns_deck, call_function, start, refresh_cards }
 import from jaclang.runtime.constructs { WalkerArchetype }
 
 glob LOGGED_CLIENT_UI: list[bool] = [],
@@ -76,15 +78,61 @@ def with_choices(tool: Callable) -> Callable {
     return tool;
 }
 
+"""A tool that cannot give its result: `error` is the walker error the caller
+gets. Raised by `outcome` and `ask`; `adapted` turns it into the tool result."""
+obj ToolFailure(Exception) {
+    has error: WalkerError;
+
+    def postinit {
+        super.init(self.error.message);
+    }
+}
+
+"""A failed tool's one result shape, whichever tool failed: `is_error` with the
+message as its text and `{error, code}` as its structured content."""
+def tool_error(error: WalkerError) -> CallToolResult {
+    return CallToolResult(
+        content=[TextContent(text=error.message)],
+        structured_content={"error": error.message, "code": error.code},
+        is_error=True
+    );
+}
+
+"""A tool's data as its result: the JSON as text, and as structured content in
+the SDK's {"result": ...} wrapper, the way it wraps every return type that is
+not a plain dict (`JsonObject` is an alias, so a deck is wrapped too)."""
+def tool_success(data: object) -> CallToolResult {
+    return CallToolResult(content=[TextContent(text=json.dumps(data, indent=2))], structured_content={"result": data});
+}
+
+"""`f` as a tool: what it returns is its result and a `ToolFailure` it raises is
+the failure result, the one place that makes a tool result from either. It keeps
+`f`'s signature and annotations, so the SDK still reads the tool from them."""
+def adapted(f: Callable) -> Callable {
+    @wraps(f)
+    def run(*args: any, **kwargs: any) -> CallToolResult {  # jac:ignore[W1037]
+        try {
+            done = f(*args, **kwargs);
+        } except ToolFailure as failed {
+            return tool_error(failed.error);
+        }
+        return done if isinstance(done, CallToolResult) else tool_success(done);
+    }
+    return run;
+}
+
+"""Register `f` as an MCP tool through `adapted`, and give `f` back."""
+def mcp_tool(f: Callable) -> Callable {
+    server.tool()(adapted(f));
+    return f;
+}
+
 """Show a deck to the user as a table in the chat: cards by zone, totals and legality.
 Clients that support MCP Apps (Claude Desktop and claude.ai) render it as an HTML list
 where each card expands to its rules text, stats, keywords, deck notes and tags; others
 get a compact Markdown table. Use deck_get when you only need the data."""
 def deck_show(deck_id: str, ctx: Context) -> CallToolResult {  # jac:ignore[W1036]: the SDK finds the context by this bare annotation
     view = outcome(perform(request_caller(), GetDeck(deck_id=deck_id)));
-    if "error" in view {
-        return CallToolResult(content=[TextContent(text=view["error"])], is_error=True);
-    }
     return view_result(ctx, {**view, "zones": zone_choices()}, deck_markdown(view), deck_brief(view));
 }
 
@@ -155,9 +203,6 @@ same analysis with the whole deck; this tool returns only the analysis.
 Clients that support MCP Apps show it as a chart; others get it as Markdown."""
 def deck_analyze(deck_id: str, ctx: Context) -> CallToolResult {  # jac:ignore[W1036]: the SDK finds the context by this bare annotation
     view = deck_get(deck_id);
-    if "error" in view {
-        return CallToolResult(content=[TextContent(text=view["error"])], is_error=True);
-    }
     analysis = {
         "id": view["id"],
         "name": view["name"],
@@ -217,21 +262,13 @@ support MCP Apps render a search panel where the user can add hits to the deck
 themselves; others get a Markdown table. Use search_cards when no deck is involved."""
 def card_search(deck_id: str, query: str, ctx: Context, limit: int = 20) -> CallToolResult {  # jac:ignore[W1036]: the SDK finds the context by this bare annotation
     view = outcome(perform(request_caller(), GetDeck(deck_id=deck_id)));
-    if "error" in view {
-        return CallToolResult(content=[TextContent(text=view["error"])], is_error=True);
-    }
-    try {
-        mine = owns_deck(request_caller(), deck_id);
-    } except CallFailed as failed {
-        return CallToolResult(content=[TextContent(text=failed.error.message)], is_error=True);
+    mine = owns_deck(request_caller(), deck_id);
+    if isinstance(mine, WalkerError) {
+        raise ToolFailure(error=mine);
     }
     result = search_with_holdings(view, query, limit, mine);
     if result["error"] {
-        return CallToolResult(
-            content=[TextContent(text=(result["error"] as str).rstrip(".") + ". The deck is unchanged.")],
-            structured_content=result,
-            is_error=True
-        );
+        raise ToolFailure(error=WalkerError(code="card-search-failed", message=result["error"] as str));
     }
     return view_result(ctx, result, search_markdown(result), search_brief(result));
 }
@@ -329,9 +366,6 @@ it in the view, so offer to show it or save it to a file rather than pasting it.
 @with_choices
 def deck_export(deck_id: str, ctx: Context, format: str = "arena") -> CallToolResult {  # jac:ignore[W1036]: the SDK finds the context by this bare annotation
     done = outcome(perform(request_caller(), DeckExport(deck_id=deck_id, format=format)));
-    if "error" in done {
-        return CallToolResult(content=[TextContent(text=done["error"])], structured_content=done, is_error=True);
-    }
     result = {
         "deck_id": deck_id,
         "name": done["name"],
@@ -418,13 +452,13 @@ iframe and fills from the tool result. The search and export views also call
 their tools (and deck_edit) back through the host."""
 def make_apps -> Apps {
     apps = Apps();
-    apps.tool(resource_uri=DECK_UI)(deck_show);
-    apps.tool(resource_uri=MANA_UI)(deck_analyze);
+    apps.tool(resource_uri=DECK_UI)(adapted(deck_show));
+    apps.tool(resource_uri=MANA_UI)(adapted(deck_analyze));
     apps.add_html_resource(DECK_UI, view_page("deck_table.html"), title="Deck table", prefers_border=True);
     apps.add_html_resource(MANA_UI, view_page("mana_analysis.html"), title="Mana analysis", prefers_border=True);
-    apps.tool(resource_uri=SEARCH_UI)(card_search);
+    apps.tool(resource_uri=SEARCH_UI)(adapted(card_search));
     apps.add_html_resource(SEARCH_UI, view_page("card_search.html"), title="Card search", prefers_border=True);
-    apps.tool(resource_uri=EXPORT_UI)(deck_export);
+    apps.tool(resource_uri=EXPORT_UI)(adapted(deck_export));
     apps.add_html_resource(
         EXPORT_UI, view_page("deck_export.html"), title="Deck export", prefers_border=True,
         # Ask for the clipboard so Copy works; the view selects the text when the host says no.
@@ -451,9 +485,13 @@ glob server: MCPServer[object] = MCPServer(
 );
 
 """Call `f` through the runner as whoever is asking, for the tools that
-read only the card catalogue."""
+read only the card catalogue. A call the runner could not finish fails the tool."""
 def ask(f: Callable[[], object]) -> object {
-    return call_function(request_caller(), f);
+    done = call_function(request_caller(), f);
+    if isinstance(done, WalkerError) {
+        raise ToolFailure(error=done);
+    }
+    return done;
 }
 
 """Plain JSON-ready data from walker reports (objs and nodes become dicts)."""
@@ -477,23 +515,33 @@ def plain(value: object) -> object {
     return value;
 }
 
-"""A finished walker's result as tool output: its first report as plain data,
-or {"error": message, "code": code} when it reported a WalkerError. The
-walker says why it failed, so no tool has to guess."""
+"""A finished walker's first report as plain data. When it reported a
+WalkerError the tool fails with it (`ToolFailure`): the walker says why, so no
+tool has to guess."""
 def outcome(w: WalkerArchetype) -> JsonObject {
     first = w.reports[0];
     if isinstance(first, WalkerError) {
-        return {"error": first.message, "code": first.code};
+        raise ToolFailure(error=first);
     }
     return plain(first) as JsonObject;
 }
 
+"""A finished walker's first report as a list of plain data, failing the tool
+with a WalkerError report as `outcome` does."""
+def outcome_list(w: WalkerArchetype) -> list[JsonObject] {
+    first = w.reports[0];
+    if isinstance(first, WalkerError) {
+        raise ToolFailure(error=first);
+    }
+    return plain(first) as list[JsonObject];
+}
+
 """Search card names, type lines and rules text. Every word must match, as a prefix."""
-@server.tool()
+@mcp_tool
 def search_cards(query: str, limit: int = 20) -> list[JsonObject] {
     found = ask(lambda () -> object { return catalog_search(query, limit); }) as CardSearch;
     if found.error {
-        raise RuntimeError(found.error);
+        raise ToolFailure(error=WalkerError(code="card-search-failed", message=found.error));
     }
     return [plain(hit) as JsonObject for hit in found.hits];
 }
@@ -502,11 +550,15 @@ def search_cards(query: str, limit: int = 20) -> list[JsonObject] {
 power/toughness, loyalty and defence (front face), keywords, each face of a
 multi-face card (name, cost, type, text, stats), format legalities and Scryfall
 oracle tags."""
-@server.tool()
+@mcp_tool
 def get_card(oracle_id_or_name: str) -> JsonObject {
     card = ask(lambda () -> object { return find_card(oracle_id_or_name); }) as JsonObject | None;
     if card is None {
-        return {"error": f"No card matches {oracle_id_or_name}. Try resolve_names or search_cards."};
+        raise ToolFailure(
+            error=WalkerError(
+                code="no-such-card", message=f"No card matches {oracle_id_or_name}. Try resolve_names or search_cards."
+            )
+        );
     }
     return card;
 }
@@ -514,21 +566,21 @@ def get_card(oracle_id_or_name: str) -> JsonObject {
 """Match card names to oracle ids. Returns `exact` matches, `fuzzy` matches with
 candidates to choose from, and `unknown` names. Only exact matches (or a candidate
 the user confirms) should go into a deck."""
-@server.tool()
+@mcp_tool
 def resolve_names(names: list[str]) -> JsonObject {
     return ask(lambda () -> object { return catalog_resolve_names(names); }) as JsonObject;
 }
 
 """Deck-construction rules for a format: standard, pioneer, modern or commander."""
-@server.tool()
+@mcp_tool
 def get_format_rules(format: str) -> JsonObject {
     return outcome(perform(request_caller(), GetFormatRules(format=format)));
 }
 
 """List the user's decks (id, name, format)."""
-@server.tool()
+@mcp_tool
 def deck_list -> list[JsonObject] {
-    decks = plain(perform(request_caller(), ListDecks()).reports[0]) as list[JsonObject];
+    decks = outcome_list(perform(request_caller(), ListDecks()));
     return [{"id": d["id"], "name": d["name"], "format": d["format"]} for d in decks];
 }
 
@@ -536,21 +588,17 @@ def deck_list -> list[JsonObject] {
 never your own. Every user can see and copy every deck, but only its owner can
 change it: pass an id to deck_get or deck_show to look at one, or to deck_copy to
 make your own copy to change."""
-@server.tool()
+@mcp_tool
 def deck_browse -> list[JsonObject] {
-    done = perform(request_caller(), ListOtherDecks());
-    others = done.reports[0];
-    if isinstance(others, WalkerError) {
-        return [{"error": others.message, "code": others.code}];
-    }
-    return [{"id": d.id, "name": d.name, "format": d.format, "owner": d.owner} for d in others];
+    others = outcome_list(perform(request_caller(), ListOtherDecks()));
+    return [{"id": d["id"], "name": d["name"], "format": d["format"], "owner": d["owner"]} for d in others];
 }
 
 """Copy any user's deck (see deck_browse for ids) into your own decks as
 "<name> (copy)": its cards, zones, counts, format and per-card notes, with its own
 history starting from one line saying it was copied. The copy is yours to change
 and is not tied to the original. Returns the new deck."""
-@server.tool()
+@mcp_tool
 def deck_copy(deck_id: str) -> JsonObject {
     return outcome(perform(request_caller(), CopyOtherDeck(deck_id=deck_id)));
 }
@@ -558,13 +606,10 @@ def deck_copy(deck_id: str) -> JsonObject {
 """Create a deck, optionally with seed cards. Each card is
 {"oracle_id": ..., "count": n, "zone": {zones}, "reason": ...};
 get oracle ids from resolve_names first. Returns the deck with its legality."""
-@server.tool()
+@mcp_tool
 @with_choices
 def deck_create(name: str, format: str = "standard", cards: list[JsonObject] | None = None) -> JsonObject {
     made = outcome(perform(request_caller(), CreateDeck(name=name, format=format)));
-    if "error" in made {
-        return made;
-    }
     deck_id = str(made["id"]);
     if not cards {
         return deck_get(deck_id);
@@ -574,7 +619,7 @@ def deck_create(name: str, format: str = "standard", cards: list[JsonObject] | N
 }
 
 """A deck, yours or another user's: its cards, totals, legality and recent change history."""
-@server.tool()
+@mcp_tool
 def deck_get(deck_id: str) -> JsonObject {
     return outcome(perform(request_caller(), GetDeck(deck_id=deck_id)));
 }
@@ -585,32 +630,23 @@ and sets that card's count in that zone (0 removes it). Every change needs a rea
 Pass "format" to change the deck's format, and "name" to rename it (trimmed; a blank name is refused;
 the history gets one "Renamed from X to Y" line). Changes with an unknown oracle id or no
 reason are rejected and listed under "rejected"; the rest are applied."""
-@server.tool()
+@mcp_tool
 @with_choices
 def deck_edit(deck_id: str, changes: list[JsonObject] | None = None, format: str = "", name: str | None = None) -> JsonObject {
     if name is not None {
-        renamed = outcome(perform(request_caller(), RenameDeck(deck_id=deck_id, name=name)));
-        if "error" in renamed {
-            return renamed;
-        }
+        outcome(perform(request_caller(), RenameDeck(deck_id=deck_id, name=name)));
     }
     if format {
-        reformatted = outcome(perform(request_caller(), SetDeckFormat(deck_id=deck_id, format=format)));
-        if "error" in reformatted {
-            return reformatted;
-        }
+        outcome(perform(request_caller(), SetDeckFormat(deck_id=deck_id, format=format)));
     }
     return outcome(perform(request_caller(), EditDeck(deck_id=deck_id, changes=changes or [])));
 }
 
 """Check a deck against its format. Returns legal (true or false), each violation and, for a
 Commander deck, game_changers (count, cards and a bracket hint; null for other formats)."""
-@server.tool()
+@mcp_tool
 def deck_validate(deck_id: str) -> JsonObject {
     view = deck_get(deck_id);
-    if "error" in view {
-        return view;
-    }
     return {
         "deck_id": deck_id,
         "format": view["format"],
@@ -623,7 +659,7 @@ def deck_validate(deck_id: str) -> JsonObject {
 """Import a deck list, replacing the deck's current cards. Accepts mtgdeck1,
 mtgjson (an MTGJSON deck file, such as a precon), text, arena or moxfield. Lines that don't resolve to a known card are listed
 under "unresolved" and never added."""
-@server.tool()
+@mcp_tool
 def deck_import(deck_id: str, format: str, text: str) -> JsonObject {
     return outcome(perform(request_caller(), DeckImport(deck_id=deck_id, format=format, text=text)));
 }

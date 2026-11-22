@@ -23,7 +23,7 @@ import from profile { save_display_name, UNKNOWN_USER }
 import from deck_io { DeckExport, ExportResult }
 import from walker_errors { WalkerError }
 import from deck_operations { perform, page_walkers, OPERATIONS, OWN, OWNER, FLOW }
-import from graph_runner { refresh_cards, guest_root_id, user_root_id, run_walker, run_read, list_other_decks, copy_deck, owns_deck, call_function, run_as_guest, in_context, start, request_caller, check_bind, LOCAL_USER, RERUNS, CallFailed, LOG }
+import from graph_runner { refresh_cards, guest_root_id, user_root_id, run_walker, run_read, list_other_decks, copy_deck, owns_deck, call_function, run_as_guest, in_context, start, request_caller, check_bind, LOCAL_USER, RERUNS, LOG }
 import from cards { Card, RefreshCards, new_card, card_nodes_for, catalogue_version }
 import from json_object { JsonObject }
 import from legality { Format, FormatRules, GetFormatRules }
@@ -136,12 +136,8 @@ test "two users' decks hold the one shared card node" {
 """Whether `change` as `caller` was refused: Jac raised, the runner rolled the
 call back and gave the caller its internal error."""
 def _refused(caller: str, change: Callable[[], object]) -> bool {
-    try {
-        call_function(caller, change);
-    } except CallFailed as failed {
-        return failed.error.code == "internal-error";
-    }
-    return False;
+    done = call_function(caller, change);
+    return isinstance(done, WalkerError) and done.code == "internal-error";
 }
 
 test "Jac hides another user's deck from a direct lookup" {
@@ -382,18 +378,44 @@ test "a call still conflicting after its re-runs gets try-again, and writes noth
     assert name not in _deck_names(ALICE);
 }
 
-test "a function call still conflicting after its re-runs fails with try-again" {
-    (code, _) = _with_failing_commits(
-        RERUNS + 1, _write_conflict, lambda () -> object {
-            try {
-                call_function(ALICE, lambda () -> object { return None; });
-            } except CallFailed as failed {
-                return failed.error.code;
-            }
-            return "";
-        }
+test "a function call still conflicting after its re-runs returns the try-again walker error" {
+    (done, _) = _with_failing_commits(
+        RERUNS + 1, _write_conflict, lambda () -> object { return call_function(ALICE, lambda () -> object { return None; }); }
     );
-    assert code == "try-again";
+    assert isinstance(done, WalkerError);
+    assert done.code == "try-again";
+}
+
+test "listing other users' decks that still conflicts returns the try-again walker error" {
+    (done, _) = _with_failing_commits(
+        RERUNS + 1, _write_conflict, lambda () -> object { return list_other_decks(ALICE); }
+    );
+    assert isinstance(done, WalkerError);
+    assert done.code == "try-again";
+}
+
+test "asking who owns a deck, when the call still conflicts, returns the try-again walker error" {
+    (done, _) = _with_failing_commits(
+        RERUNS + 1, _write_conflict, lambda () -> object { return owns_deck(ALICE, str(uuid4())); }
+    );
+    assert isinstance(done, WalkerError);
+    assert done.code == "try-again";
+}
+
+test "perform never raises: every kind of operation still conflicting reports try-again" {
+    for w in [ListDecks(), GetDeck(deck_id="x"), ListOtherDecks(), CopyOtherDeck(deck_id="x")] {
+        (done, _) = _with_failing_commits(
+            RERUNS + 1, _write_conflict, lambda () -> object { return perform(ALICE, w); }
+        );
+        assert (done as WalkerArchetype).reports[0].code == "try-again";
+    }
+}
+
+test "reading another user's deck that still conflicts reports the try-again walker error" {
+    (done, _) = _with_failing_commits(
+        RERUNS + 1, _write_conflict, lambda () -> object { return run_read(ALICE, str(uuid4()), GetDeck(deck_id="x")); }
+    );
+    assert (done as WalkerArchetype).reports[0].code == "try-again";
 }
 
 test "an error that is not a conflict is not re-run" {
@@ -408,19 +430,12 @@ test "an error that is not a conflict is not re-run" {
     assert unused_failures == 1;
 }
 
-test "the guest's own work that cannot finish raises, so work at start fails the start" {
-    (_, unused_failures) = _with_failing_commits(
-        RERUNS + 1, _write_conflict, lambda () -> object {
-            try {
-                run_as_guest(ListDecks());
-                assert False, "the guest's failed work returned";
-            } except CallFailed as failed {
-                assert failed.error.code == "try-again";
-            }
-            return None;
-        }
+test "the guest's own work that cannot finish reports the try-again walker error" {
+    (done, unused_failures) = _with_failing_commits(
+        RERUNS + 1, _write_conflict, lambda () -> object { return run_as_guest(ListDecks()); }
     );
     assert unused_failures == 0;
+    assert (done as WalkerArchetype).reports[0].code == "try-again";
 }
 
 """Renames any deck by id, with none of the app's ownership checks: a stand-in
@@ -534,7 +549,7 @@ test "a refresh that fails fails the start, and the next start runs it again" {
         RERUNS + 1, _write_conflict, lambda () -> object {
             try {
                 refresh_cards();
-            } except CallFailed {
+            } except RuntimeError {
                 return True;
             }
             return False;
@@ -738,7 +753,7 @@ test "copying an id that names no deck answers no-such-deck and makes nothing" {
 
 """The summaries of the decks `caller` can see that belong to other users."""
 def _others(caller: str) -> list[DeckSummary] {
-    return list_other_decks(caller);
+    return list_other_decks(caller) as list[DeckSummary];
 }
 
 test "listing other users' decks gives owner display name, deck name and format, and never the caller's own" {
