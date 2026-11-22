@@ -396,7 +396,7 @@ def deck_refusal(deck_id: str) -> WalkerError {
 """Base for walkers that act on one deck. An id that names no deck of the
 caller's is handled here, once: the walker reports a WalkerError and stops
 (not-your-deck for another user's deck, no-such-deck for an id that names no
-deck). Read-only walkers run as the deck's owner through `run_read`
+deck). Read-only walkers (`OWNER` entries of the deck operations table) run as the deck's owner through `run_read`
 (graph_runner.jac), where the deck is the caller's, so they find it here."""
 walker DeckAction {
     has deck_id: str,
@@ -612,14 +612,14 @@ walker CopyDeck {
 }
 
 """List every other user's decks (never the caller's own), for the web page.
-The front door fills the report from the runner (`list_other_decks`): the
+The deck operations table runs it as a flow (`list_other_decks`): the
 decks are on other users' roots, which no walker can visit."""
 walker:protect ListOtherDecks {
     has reports: list[list[DeckSummary]] = [];
 }
 
 """Copy another user's deck (or any deck) into the caller's own, for the web
-page. The front door runs it through the runner (`copy_deck`), which reads
+page. The deck operations table runs it as a flow (`copy_deck`), which reads
 the deck as its owner and creates the copy as the caller; it reports the new
 deck's view, or a WalkerError."""
 walker:protect CopyOtherDeck {

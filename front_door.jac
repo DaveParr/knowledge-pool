@@ -14,7 +14,8 @@ are not forwarded either. The front door runs them itself, through the runner
 (`data.reports` for a walker, `data.result` for a function), serialised with
 Jac's own serialiser in API mode. The walkers and functions the page calls are
 `:protect` (the page does not compile with them plain) and never `:pub`; each
-one must be in `WALKERS` or `FUNCTIONS` below as well. Jac's server refuses a
+one must be a page-callable entry of the deck operations table (`deck_operations.jac`,
+which derives `WALKERS`) or be in `FUNCTIONS` below. Jac's server refuses a
 call to them without a Jac token, and no Jac token is ever issued.
 
 A health path answers a bare "ok" without touching Jac, for any host.
@@ -60,14 +61,14 @@ import from starlette.routing { Route }
 import from jaclang.data.serializer { Serializer }
 import from mcp.server.auth.routes { build_resource_metadata_url }
 import from pydantic { AnyHttpUrl }
-import from graph_runner { APP_DIR, HOSTED, VERIFIED_SUB, app_mode, request_caller, run_walker, run_read, READ_WALKERS, call_function, CallFailed, copy_deck, list_other_decks, failed_walker }
+import from graph_runner { APP_DIR, HOSTED, VERIFIED_SUB, app_mode, request_caller, call_function, CallFailed }
+import from deck_operations { perform, page_walkers }
 import from profile { save_display_name, display_name }
 import from browser_session { SessionUser, SessionCheckUnavailable, check_session }
 import from hosted_auth { AuthKitVerifier }
 import from rate_limits { Buckets, RateLimits, rate_limits, UNKNOWN_ADDRESS }
-import from decks { DeckAction, CreateDeck, ListDecks, ListOtherDecks, CopyOtherDeck, GetDeck, SetDeckFormat, RenameDeck, AddCard, SetCardCount, RemoveCard, list_formats }
-import from deck_io { DeckExport, DeckImport, CreateDeckFromList, export_formats }
-import from jaclang.runtime.constructs { WalkerArchetype }
+import from decks { list_formats }
+import from deck_io { export_formats }
 import from cards { search_cards }
 
 glob HEALTH_PATH: str = "/healthz",
@@ -76,22 +77,8 @@ glob HEALTH_PATH: str = "/healthz",
      LOOPBACK: str = "127.0.0.1",
      # The MCP SDK's app answers these paths (the connector, and later its OAuth discovery).
      MCP_PREFIXES: list[str] = ["/mcp", "/.well-known/"],
-     # What the page may call. Adding one to the page means adding it here, as `:protect`.
-     WALKERS: dict[str, any] = {  # jac:ignore[W1037]
-         "CreateDeck": CreateDeck,
-         "ListDecks": ListDecks,
-         "ListOtherDecks": ListOtherDecks,
-         "CopyOtherDeck": CopyOtherDeck,
-         "GetDeck": GetDeck,
-         "SetDeckFormat": SetDeckFormat,
-         "RenameDeck": RenameDeck,
-         "AddCard": AddCard,
-         "SetCardCount": SetCardCount,
-         "RemoveCard": RemoveCard,
-         "DeckExport": DeckExport,
-         "DeckImport": DeckImport,
-         "CreateDeckFromList": CreateDeckFromList
-     },
+     # The walkers the page may call: the deck operations table's page-callable entries.
+     WALKERS: dict[str, any] = page_walkers(),  # jac:ignore[W1037]
      FUNCTIONS: dict[str, any] = {"list_formats": list_formats, "export_formats": export_formats, "search_cards": search_cards},  # jac:ignore[W1037]
      # The request headers worth passing to Jac's server for the page and its files.
      FORWARDED_REQUEST_HEADERS: list[str] = ["accept", "if-none-match", "if-modified-since"],
@@ -200,26 +187,6 @@ def fits(target: any, fields: dict[str, any]) -> bool {  # jac:ignore[W1037]
     return True;
 }
 
-"""Run the page's walker `w` as `caller`. A read of a deck (any user's) runs as the deck's owner;
-listing other users' decks and copying one go through the runner's own calls for them."""
-def run_page_walker(caller: str | None, w: WalkerArchetype) -> WalkerArchetype {
-    if isinstance(w, ListOtherDecks) {
-        try {
-            w.reports = [list_other_decks(caller)];
-        } except CallFailed as failed {
-            return failed_walker(w, failed);
-        }
-        return w;
-    }
-    if isinstance(w, CopyOtherDeck) {
-        return copy_deck(caller, w.deck_id);
-    }
-    if isinstance(w, DeckAction) and type(w) in READ_WALKERS {
-        return run_read(caller, w.deck_id, w);
-    }
-    return run_walker(caller, w);
-}
-
 """`POST /walker/<name>`: run the walker as the caller, answer in Jac's envelope."""
 async def walker_call(request: Request, config: FrontDoorConfig) -> Response {  # jac:ignore[W1036]
     (caller, refused) = check_data_call(request, config);
@@ -235,7 +202,7 @@ async def walker_call(request: Request, config: FrontDoorConfig) -> Response {  
         return refusal(422, "INVALID_REQUEST", "The call's fields do not fit this walker.");
     }
     w = cls(**fields);
-    done = await anyio.to_thread.run_sync(lambda -> any { return run_page_walker(caller, w); });
+    done = await anyio.to_thread.run_sync(lambda -> any { return perform(caller, w); });
     return JSONResponse(envelope(done, done.reports));
 }
 
