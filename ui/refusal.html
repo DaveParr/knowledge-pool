@@ -16,7 +16,6 @@ function refusalOf(result, thrown) {
   const sc = result.structuredContent;
   const text = (result.content || []).filter((c) => c.type === "text").map((c) => c.text).join(" ");
   if (result.isError) return oneLine(text || "The call failed.");
-  if (sc && sc.error) return oneLine(sc.error);
   if (!sc) return oneLine(text || "The call did not return anything.");
   return "";
 }

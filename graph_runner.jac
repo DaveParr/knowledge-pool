@@ -6,6 +6,13 @@ caller's entries; deck work reaches them through `perform` in
 `deck_operations.jac`. `run_as_guest` is the second entry, for the app's own work on what every user shares (the cards
 and the formats). Nothing a request reaches calls it.
 
+No entry raises `CallFailed` to its caller. A call the runner could not finish
+comes back as the walker error `try-again` or `internal-error`: a walker entry
+returns a copy of the walker whose one report it is, and an entry that returns
+a value (`call_function`, `list_other_decks`, `owns_deck`) returns it in place of
+the value. `in_context`, `attempt` and `start` are the primitives under the
+entries and do raise it.
+
 The guest root is registered as Jac's shared root (`root.shared`), so the
 card catalogue and the formats are looked up there, never under the
 caller's root. Before the first call, the guest creates the `Catalog` and
@@ -70,7 +77,8 @@ glob APP_DIR: str = os.path.dirname(os.path.abspath(__file__)),
      LOG: logging.Logger = logging.getLogger("knowledge_pool.runner");
 
 """A call the runner could not finish, rolled back: `error` is the walker
-error the caller gets (`try-again` or `internal-error`)."""
+error the caller gets (`try-again` or `internal-error`). Raised by the runner's
+primitives; every entry catches it and hands the error back."""
 obj CallFailed(Exception) {
     has error: WalkerError;
 
@@ -245,17 +253,17 @@ finished walker. No caller is a refusal, never a fall back to the guest.
 A call the runner could not finish returns a copy of `w` whose one report
 is the walker error (`try-again` or `internal-error`)."""
 def run_walker(caller: str | None, w: WalkerArchetype) -> WalkerArchetype {
-    try {
-        return call_function(caller, lambda () -> object { return spawn_on_root(w); }, name=type(w).__name__) as WalkerArchetype;
-    } except CallFailed as failed {
-        return failed_walker(w, failed);
+    done = call_function(caller, lambda () -> object { return spawn_on_root(w); }, name=type(w).__name__);
+    if isinstance(done, WalkerError) {
+        return failed_walker(w, done);
     }
+    return done as WalkerArchetype;
 }
 
-"""A copy of `w` whose one report is the walker error of `failed`."""
-def failed_walker(w: WalkerArchetype, failed: CallFailed) -> WalkerArchetype {
+"""A copy of `w` whose one report is the walker error `error`."""
+def failed_walker(w: WalkerArchetype, error: WalkerError) -> WalkerArchetype {
     done = copy.deepcopy(w);
-    done.reports = [failed.error];
+    done.reports = [error];
     return done;
 }
 
@@ -268,16 +276,19 @@ no grant, edge or access of any kind. An id that names no deck runs as the calle
 is a refusal. Like `run_walker`, a call the runner could not finish returns a
 copy of `w` whose one report is the walker error."""
 def run_read(caller: str | None, deck_id: str, w: WalkerArchetype) -> WalkerArchetype {
+    owner = call_function(caller, lambda () -> object { return deck_owner(deck_id); }, name="deck_owner");
+    if isinstance(owner, WalkerError) {
+        return failed_walker(w, owner);
+    }
+    if owner is None {
+        return run_walker(caller, w);
+    }
     try {
-        owner = call_function(caller, lambda () -> object { return deck_owner(deck_id); }, name="deck_owner") as str | None;
-        if owner is None {
-            return run_walker(caller, w);
-        }
         return in_context(
-            owner, lambda () -> object { return spawn_on_root(w); }, name=type(w).__name__, caller=str(caller)
+            owner as str, lambda () -> object { return spawn_on_root(w); }, name=type(w).__name__, caller=str(caller)
         ) as WalkerArchetype;
     } except CallFailed as failed {
-        return failed_walker(w, failed);
+        return failed_walker(w, failed.error);
     }
 }
 
@@ -318,48 +329,65 @@ def user_root_ids -> list[str] {
 }
 
 """Whether the deck `deck_id` is `caller`'s own: the views use this to hide the
-controls that change a deck the caller does not own. False for an id that names no deck."""
-def owns_deck(caller: str | None, deck_id: str) -> bool {
-    owner = call_function(caller, lambda () -> object { return deck_owner(deck_id); }, name="deck_owner") as str | None;
+controls that change a deck the caller does not own. False for an id that names no
+deck. A call the runner could not finish returns its walker error."""
+def owns_deck(caller: str | None, deck_id: str) -> bool | WalkerError {
+    owner = call_function(caller, lambda () -> object { return deck_owner(deck_id); }, name="deck_owner");
+    if isinstance(owner, WalkerError) {
+        return owner;
+    }
     # The deck's anchor spells its root with dashes, the user record without.
-    return owner is not None and owner.replace("-", "") == user_root_id(caller).replace("-", "");
+    return owner is not None and (owner as str).replace("-", "") == user_root_id(caller).replace("-", "");
 }
 
 """Every deck of every other user (not `caller`'s own), by owner then deck
 name. Each user's decks are read on that user's root, with their stored
-display name. A call the runner could not finish raises `CallFailed`."""
-def list_other_decks(caller: str | None) -> list[DeckSummary] {
-    start();
-    mine = user_root_id(caller);
-    others: list[DeckSummary] = [];
-    for root_id in user_root_ids() {
-        if root_id == mine {
-            continue;
+display name. A call the runner could not finish returns its walker error."""
+def list_other_decks(caller: str | None) -> list[DeckSummary] | WalkerError {
+    try {
+        start();
+        mine = user_root_id(caller);
+        others: list[DeckSummary] = [];
+        for root_id in user_root_ids() {
+            if root_id == mine {
+                continue;
+            }
+            others += in_context(
+                root_id, lambda () -> object { return deck_summaries(); }, name="list_other_decks", caller=str(caller)
+            ) as list[DeckSummary];
         }
-        others += in_context(
-            root_id, lambda () -> object { return deck_summaries(); }, name="list_other_decks", caller=str(caller)
-        ) as list[DeckSummary];
+        return sorted(others, key=lambda (d: DeckSummary) { return (d.owner, d.name); });
+    } except CallFailed as failed {
+        return failed.error;
     }
-    return sorted(others, key=lambda (d: DeckSummary) { return (d.owner, d.name); });
 }
 
 """Call `f` (a page function, or other read of the graph) as `caller` on
 that caller's own root, and return what it returns. A call the runner could
-not finish raises `CallFailed`. `name` names the call in the log."""
+not finish returns its walker error instead. `name` names the call in the log."""
 def call_function(caller: str | None, f: Callable[[], object], name: str = "") -> object {
-    start();
-    root_id = user_root_id(caller);
-    return in_context(root_id, f, name=name or getattr(f, "__name__", "function"), caller=str(caller));
+    try {
+        start();
+        root_id = user_root_id(caller);
+        return in_context(root_id, f, name=name or getattr(f, "__name__", "function"), caller=str(caller));
+    } except CallFailed as failed {
+        return failed.error;
+    }
 }
 
 """Spawn walker `w` as the guest, for the app's own work on the cards and
 formats every user shares. Never reached from a request. A call the runner
-could not finish raises `CallFailed`, so work done at start fails the start."""
+could not finish returns a copy of `w` whose one report is the walker error;
+work done at start (`refresh_cards`) raises on it, which fails the start."""
 def run_as_guest(w: WalkerArchetype) -> WalkerArchetype {
-    start();
-    return in_context(
-        guest_root_id(), lambda () -> object { return spawn_on_root(w); }, name=type(w).__name__, caller=Con.GUEST.value
-    ) as WalkerArchetype;
+    try {
+        start();
+        return in_context(
+            guest_root_id(), lambda () -> object { return spawn_on_root(w); }, name=type(w).__name__, caller=Con.GUEST.value
+        ) as WalkerArchetype;
+    } except CallFailed as failed {
+        return failed_walker(w, failed.error);
+    }
 }
 
 """Spawn a copy of `w` on the acting root (a sync walker, so never a coroutine).
@@ -377,9 +405,18 @@ against. Runs in batches of `batch` cards, each its own commit, and records
 the version only after the last, so a refresh that fails part way runs again
 at the next start. Names every oracle id with more than one Card node in a
 warning, and logs the catalogue version it found either way (so a deploy's
-logs show which build is serving). A failure raises, which fails the start.
-Returns whether it ran."""
+logs show which build is serving). A failure raises `RuntimeError`, which
+fails the start. Returns whether it ran."""
 def refresh_cards(batch: int = REFRESH_BATCH) -> bool {
+    try {
+        return refresh_steps(batch);
+    } except CallFailed as failed {
+        raise RuntimeError(f"The card refresh could not finish: {failed.error.message}") from failed;
+    }
+}
+
+"""The steps of `refresh_cards`, which raises `CallFailed` where a step meets it."""
+def refresh_steps(batch: int) -> bool {
     start();
     version = catalogue_version();
     guest = guest_root_id();
@@ -393,6 +430,9 @@ def refresh_cards(batch: int = REFRESH_BATCH) -> bool {
     offset = 0;
     while True {
         reports = run_as_guest(RefreshCards(offset=offset, size=batch)).reports;
+        if isinstance(reports[0], WalkerError) {
+            raise CallFailed(error=reports[0]);
+        }
         offset += batch;
         if reports[1] as int < batch {
             break;

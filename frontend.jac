@@ -4,7 +4,7 @@ import "./global.css";
 import "./frontend.css";
 import from .deck_detail { DeckDetail, formatName }
 import from .export_panel { ExportPanel }
-import from .walker_failure { failureMessage, thrownLine }
+import from .walker_failure { failureMessage, REFUSED_LINE }
 import from .session_bar { SessionBar }
 
 import from decks { Deck, DeckSummary, FormatInfo, CreateDeck, ListDecks, ListOtherDecks, list_formats }

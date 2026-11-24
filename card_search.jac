@@ -7,7 +7,7 @@ reports the change back (here to the deck page, there to Claude).
 
 import "./card_search.css";
 import from .mana_cost { ManaCost }
-import from .walker_failure { failureMessage, thrownLine }
+import from .walker_failure { failureMessage, REFUSED_LINE }
 
 import from decks { DeckView, EditDeck }
 import from edit_reason { WEB_EDIT_REASON }

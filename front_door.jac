@@ -61,13 +61,14 @@ import from starlette.routing { Route }
 import from jaclang.data.serializer { Serializer }
 import from mcp.server.auth.routes { build_resource_metadata_url }
 import from pydantic { AnyHttpUrl }
-import from graph_runner { APP_DIR, HOSTED, VERIFIED_SUB, app_mode, request_caller, call_function, CallFailed }
+import from graph_runner { APP_DIR, HOSTED, VERIFIED_SUB, app_mode, request_caller, call_function }
 import from deck_operations { perform, page_walkers }
 import from profile { save_display_name, display_name }
 import from browser_session { SessionUser, SessionCheckUnavailable, check_session }
 import from hosted_auth { AuthKitVerifier }
 import from rate_limits { Buckets, RateLimits, rate_limits, UNKNOWN_ADDRESS }
 import from decks { list_formats }
+import from walker_errors { WalkerError }
 import from deck_io { export_formats }
 import from cards { search_cards }
 
@@ -139,11 +140,12 @@ def envelope(result: any, reports: any) -> dict[str, any] {  # jac:ignore[W1037]
     };
 }
 
-"""A call the runner could not finish, as the reply the page shows through
-its failure display."""
-def failed_call(failed: CallFailed) -> Response {
-    status = 503 if failed.error.code == "try-again" else 500;
-    return refusal(status, failed.error.code.upper(), failed.error.message);
+"""A call the runner could not finish, as Jac's error envelope: the one place
+a walker error becomes a failure reply here. (A walker's own failure is a report
+in an ordinary reply; the page reads this one as a refusal, `refusedAsReport`.)"""
+def failed_call(error: WalkerError) -> Response {
+    status = 503 if error.code == "try-again" else 500;
+    return refusal(status, error.code.upper(), error.message);
 }
 
 """Why a browser data call is refused before it runs, or None to let it run.
@@ -220,12 +222,11 @@ async def function_call(request: Request, config: FrontDoorConfig) -> Response {
     if args is None or not fits(fn, args) {
         return refusal(422, "INVALID_REQUEST", "The call's arguments do not fit this function.");
     }
-    try {
-        result = await anyio.to_thread.run_sync(
-            lambda -> any { return call_function(caller, lambda -> any { return fn(**args); }, name=fn.__name__); }
-        );
-    } except CallFailed as failed {
-        return failed_call(failed);
+    result = await anyio.to_thread.run_sync(
+        lambda -> any { return call_function(caller, lambda -> any { return fn(**args); }, name=fn.__name__); }
+    );
+    if isinstance(result, WalkerError) {
+        return failed_call(result);
     }
     return JSONResponse(envelope(result, []));
 }
@@ -295,10 +296,9 @@ def redirect(where: str, status: int = 302) -> RedirectResponse {
 """Run `work` as `caller` on their own root, off the event loop; a call the runner
 could not finish is answered as a failed call."""
 async def as_caller(caller: str, work: Callable[[], any], name: str) -> tuple[any, Response | None] {  # jac:ignore[W1036,W1037]
-    try {
-        done = await anyio.to_thread.run_sync(lambda -> any { return call_function(caller, work, name=name); });
-    } except CallFailed as failed {
-        return (None, failed_call(failed));
+    done = await anyio.to_thread.run_sync(lambda -> any { return call_function(caller, work, name=name); });
+    if isinstance(done, WalkerError) {
+        return (None, failed_call(done));
     }
     return (done, None);
 }

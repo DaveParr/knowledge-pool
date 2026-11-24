@@ -102,8 +102,8 @@
   }
 
   function render(d) {
-    if (!d || d.error) {
-      app.innerHTML = `<p class="empty">${esc(d ? d.error : "No deck.")}</p>`;
+    if (!d) {
+      app.innerHTML = `<p class="empty">No deck.</p>`;
       return;
     }
     const mana = d.mana || { land_count: 0, pips: {}, sources: {} };

@@ -10,7 +10,7 @@ import from .export_panel { ExportPanel }
 import from .mana_panel { ManaPanel }
 import from .card_search { AddCards }
 import from .mana_cost { ManaCost }
-import from .walker_failure { failureMessage, thrownLine }
+import from .walker_failure { failureMessage, REFUSED_LINE }
 
 import from decks {
     ChangeNote, DeckView, FormatInfo, GetDeck, CopyOtherDeck, EditDeck, list_formats

@@ -3,7 +3,13 @@
 impl ExportPanel.load(fmt: str) -> None {
     if not choices {
         try {
-            choices = await export_formats();
+            loaded = await export_formats();
+            why = failureMessage([loaded]);
+            if why {
+                error = why;
+                return;
+            }
+            choices = loaded;
         } except Exception {
             error = "The export formats could not be loaded.";
             return;

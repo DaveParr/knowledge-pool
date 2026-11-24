@@ -26,7 +26,7 @@ page-callable one must also be imported in `main.jac`, which a test checks.
 """
 
 import from jaclang.runtime.constructs { WalkerArchetype }
-import from graph_runner { run_walker, run_read, copy_deck, list_other_decks, failed_walker, CallFailed }
+import from graph_runner { run_walker, run_read, copy_deck, list_other_decks }
 import from decks { DeckAction, CreateDeck, ListDecks, ListOtherDecks, CopyOtherDeck, CopySource, GetDeck, EditDeck }
 import from deck_io { DeckExport, DeckImport, CreateDeckFromList }
 import from legality { GetFormatRules }
@@ -35,14 +35,10 @@ glob OWN: str = "own",
      OWNER: str = "owner",
      FLOW: str = "flow";
 
-"""How a flow runs `w` for `caller`: the finished walker, its one report the result
-or a walker error."""
+"""How a flow runs `w` for `caller`: the finished walker, its one report the
+result or a walker error."""
 def list_others_flow(caller: str | None, w: WalkerArchetype) -> WalkerArchetype {
-    try {
-        w.reports = [list_other_decks(caller)];
-    } except CallFailed as failed {
-        return failed_walker(w, failed);
-    }
+    w.reports = [list_other_decks(caller)];
     return w;
 }
 
@@ -85,8 +81,9 @@ def page_walkers -> dict[str, type] {
 
 """Run the operation `w` (a walker with its fields set) as `caller`, the way its
 table entry says, and return the finished walker: its first report is the result,
-or a walker error. A call the runner could not finish reports `try-again` or
-`internal-error`. No caller is a refusal (`PermissionError`)."""
+or a walker error. It never raises `CallFailed`: a call the runner could not
+finish reports `try-again` or `internal-error`. No caller is a refusal
+(`PermissionError`)."""
 def perform(caller: str | None, w: WalkerArchetype) -> WalkerArchetype {
     op = OPERATIONS.get(type(w).__name__);
     if op is None {

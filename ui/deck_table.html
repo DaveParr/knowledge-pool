@@ -176,8 +176,8 @@
   });
 
   function render(deck) {
-    if (!deck || deck.error) {
-      app.innerHTML = `<p class="empty">${esc(deck ? deck.error : "No deck.")}</p>`;
+    if (!deck) {
+      app.innerHTML = `<p class="empty">No deck.</p>`;
       return;
     }
     const cards = deck.cards || [];

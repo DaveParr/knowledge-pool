@@ -33,6 +33,14 @@ async def call(session: ClientSession, tool: str, **args):
     return json.loads(result.content[0].text)
 
 
+async def fails(session: ClientSession, tool: str, **args):
+    """A tool that must fail: its structured content, which is `{error, code}`."""
+    result = await session.call_tool(tool, args)
+    assert result.is_error, (tool, result.content)
+    assert set(result.structured_content) == {"error", "code"}, (tool, result.structured_content)
+    return result.structured_content
+
+
 def check(label: str, ok: bool, detail="") -> None:
     print(("PASS " if ok else "FAIL ") + label + (f": {detail}" if detail and not ok else ""))
     if not ok:
@@ -130,7 +138,7 @@ async def main() -> None:
         verdict = await call(session, "deck_validate", deck_id=deck["id"])
         check("switching to Standard makes it illegal, with reasons", not verdict["legal"] and {v["rule"] for v in verdict["violations"]} == {"not-legal"}, verdict)
 
-        blank = await call(session, "deck_edit", deck_id=deck["id"], name="  ")
+        blank = await fails(session, "deck_edit", deck_id=deck["id"], name="  ")
         check("a blank name is refused with a message to show", blank.get("code") == "blank-name" and blank.get("error") == "A deck needs a name.", blank)
         deck = await call(session, "deck_edit", deck_id=deck["id"], name="  MCP Burn v2 ")
         check("deck_edit renames the deck, trimmed, with one history line", deck["name"] == "MCP Burn v2" and deck["history"][-1]["reason"] == "Renamed from MCP Burn to MCP Burn v2", deck)
@@ -141,7 +149,7 @@ async def main() -> None:
             {"oracle_id": ids["Lightning Bolt"], "count": 1, "zone": "main", "reason": "one more", "mode": "add"},
         ])
         check("an add change adds on top of the count", {c["name"]: c["count"] for c in deck["cards"] if c["zone"] == "main"}["Lightning Bolt"] == 5, deck)
-        kept = await call(session, "deck_edit", deck_id=deck["id"], name="  ", changes=[
+        kept = await fails(session, "deck_edit", deck_id=deck["id"], name="  ", changes=[
             {"oracle_id": ids["Lightning Bolt"], "count": 1, "zone": "main", "reason": "refused with its rename"},
         ])
         check("a refused rename refuses the whole edit", kept.get("code") == "blank-name", kept)
@@ -246,11 +254,11 @@ async def main() -> None:
         search_missing = await session.call_tool("card_search", {"deck_id": "nope", "query": "bolt"})
         check("card_search on an unknown deck is a tool error", search_missing.is_error and search_missing.content[0].text == "No deck with id nope.", search_missing.content)
 
-        missing = await call(session, "deck_get", deck_id="nope")
+        missing = await fails(session, "deck_get", deck_id="nope")
         check("an unknown deck id says so", missing == {"error": "No deck with id nope.", "code": "no-such-deck"}, missing)
         no_cards = await call(session, "deck_import", deck_id=deck["id"], format="mtgjson", text="{}")
         check("an MTGJSON deck with no cards imports nothing", no_cards.get("unresolved") == ["Nothing to import: no cards found."], no_cards)
-        bad_format = await call(session, "deck_edit", deck_id=deck["id"], format="vintage")
+        bad_format = await fails(session, "deck_edit", deck_id=deck["id"], format="vintage")
         check("an unknown play format says so", bad_format.get("code") == "unknown-format", bad_format)
         shown_missing = await session.call_tool("deck_show", {"deck_id": "nope"})
         check("deck_show gives the reason as a tool error", shown_missing.is_error and shown_missing.content[0].text == "No deck with id nope.", shown_missing.content)
@@ -263,7 +271,7 @@ async def main() -> None:
         check("deck_browse lists no deck of the local user's own", "MCP Burn" not in [d["name"] for d in browsed], browsed)
         copied = await call(session, "deck_copy", deck_id=deck["id"])
         check("deck_copy makes the caller's own '<name> (copy)'", copied["name"] == "MCP Burn (copy)" and copied["id"] != deck["id"], copied)
-        copy_missing = await call(session, "deck_copy", deck_id="nope")
+        copy_missing = await fails(session, "deck_copy", deck_id="nope")
         check("deck_copy gives an unknown deck as an error with its code", copy_missing.get("code") == "no-such-deck", copy_missing)
         listed = await call(session, "deck_list")
         check("deck_list lists the copy after", "MCP Burn (copy)" in [d["name"] for d in listed], listed)
