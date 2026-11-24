@@ -3,7 +3,6 @@ MCP Apps reads, and the brief a client with them gives the model. Every function
 here is pure (no graph, catalogue or server), so it is tested with plain data in
 `tests/mcp_builders_tests.jac`. The tools that call them are in `mcp_tools.jac`."""
 
-import json;
 import from zones { ZONES, ZONE_TITLES }
 import from deckformats { export_format_choices }
 import from json_object { JsonObject }
