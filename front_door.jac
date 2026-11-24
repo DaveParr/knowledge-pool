@@ -32,7 +32,7 @@ import from starlette.applications { Starlette }
 import from starlette.requests { Request }
 import from starlette.responses { Response, PlainTextResponse }
 import from starlette.routing { Route }
-import from gatekeeper { Caller, GatekeeperConfig, HEALTH_PATH, check_data_call, guarded, is_mcp_path, is_page_path, sign_in_routes }
+import from gatekeeper { GatekeeperConfig, HEALTH_PATH, check_data_call, guarded, is_mcp_path, is_page_path, sign_in_routes }
 import from deck_call { walker_call, function_call }
 
 # The request headers worth passing to Jac's server for the page and its files.
@@ -65,7 +65,7 @@ async def forward_page(request: Request, config: FrontDoorConfig) -> Response { 
 }
 
 """Everything else: the page and its files, or 404."""
-async def other(request: Request, config: FrontDoorConfig) -> Response {  # jac:ignore[W1036]
+async def forward_or_not_found(request: Request, config: FrontDoorConfig) -> Response {  # jac:ignore[W1036]
     if request.method in ["GET", "HEAD"] and is_page_path(request.url.path) {
         return await forward_page(request, config);
     }
@@ -80,11 +80,11 @@ async def health(_request: Request) -> Response {  # jac:ignore[W1036]
 """A route for a deck call: the gatekeeper's check first, then `handler` as the caller it found."""
 def deck_call_route(handler: any, config: FrontDoorConfig) -> any {  # jac:ignore[W1036,W1037]
     async def route(request: Request) -> Response {  # jac:ignore[W1036]
-        (caller, refused) = check_data_call(request, config.gate);
-        if refused is not None {
-            return refused;
+        caller = check_data_call(request, config.gate);
+        if isinstance(caller, Response) {
+            return caller;
         }
-        return await handler(caller as Caller, request);
+        return await handler(caller, request);
     }
     return route;
 }
@@ -92,7 +92,7 @@ def deck_call_route(handler: any, config: FrontDoorConfig) -> any {  # jac:ignor
 """The front door's own routes, apart from the MCP SDK's."""
 def web_app(config: FrontDoorConfig) -> Starlette {
     async def other_route(request: Request) -> Response {  # jac:ignore[W1036]
-        return await other(request, config);
+        return await forward_or_not_found(request, config);
     }
     return Starlette(
         routes=[

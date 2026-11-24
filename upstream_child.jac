@@ -19,7 +19,7 @@ import from graph_runner { APP_DIR }
 
 glob LOOPBACK: str = "127.0.0.1",
      UPSTREAM_BOOT_S: float = 120.0,
-     STOPPING: list[bool] = [];
+     STOPPING: threading.Event = threading.Event();
 
 """A TCP port nothing listens on now."""
 def free_port -> int {
@@ -90,7 +90,7 @@ page would be gone, and a restart policy can bring both back)."""
 def exit_when_upstream_dies(child: subprocess.Popen) {  # jac:ignore[W1036]
     def watch {
         code = child.wait();
-        if not STOPPING {
+        if not STOPPING.is_set() {
             sys.stderr.write(f"Jac's server for the page died with code {code}: the front door exits.\n");
             sys.stderr.flush();
             os._exit(1);
@@ -101,5 +101,5 @@ def exit_when_upstream_dies(child: subprocess.Popen) {  # jac:ignore[W1036]
 
 """Tell the watcher that the child's end is expected."""
 def expect_upstream_to_stop {
-    STOPPING.append(True);
+    STOPPING.set();
 }

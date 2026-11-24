@@ -49,7 +49,7 @@ async def read_fields(request: Request) -> dict[str, any] | None {  # jac:ignore
 
 """Whether `fields` fit `target`'s parameters: no unknown field, none missing,
 and no `reports` (a walker's output is not the caller's to set)."""
-def fits(target: any, fields: dict[str, any]) -> bool {  # jac:ignore[W1037]
+def fields_fit(target: any, fields: dict[str, any]) -> bool {  # jac:ignore[W1037]
     if "reports" in fields {
         return False;
     }
@@ -61,30 +61,38 @@ def fits(target: any, fields: dict[str, any]) -> bool {  # jac:ignore[W1037]
     return True;
 }
 
-"""`POST /walker/<name>`: run the walker as `caller`, answer in Jac's envelope."""
-async def walker_call(caller: Caller, request: Request) -> Response {  # jac:ignore[W1036]
-    cls = WALKERS.get(str(request.path_params["name"]));
-    if cls is None {
-        return refusal(404, "NOT_FOUND", "Not Found");
+"""What a call names and carries: the entry of `table` the path's name picks and
+the request's fields, or the refusal to answer with (404 for a name not in the
+table, 422 for fields that do not fit it). `noun` ("walker", "function") is for the
+422 message."""
+async def resolve_call(request: Request, table: dict[str, any], noun: str) -> tuple[any, dict[str, any], Response | None] {  # jac:ignore[W1036,W1037]
+    target = table.get(str(request.path_params["name"]));
+    if target is None {
+        return (None, {}, refusal(404, "NOT_FOUND", "Not Found"));
     }
     fields = await read_fields(request);
-    if fields is None or not fits(cls, fields) {
-        return refusal(422, "INVALID_REQUEST", "The call's fields do not fit this walker.");
+    if fields is None or not fields_fit(target, fields) {
+        return (None, {}, refusal(422, "INVALID_REQUEST", f"The call's fields do not fit this {noun}."));
     }
-    w = cls(**fields);
-    done = await anyio.to_thread.run_sync(lambda -> any { return perform(caller.user_id, w); });
-    return JSONResponse(envelope(done, done.reports));
+    return (target, fields, None);
+}
+
+"""`POST /walker/<name>`: run the walker as `caller`, answer in Jac's envelope."""
+async def walker_call(caller: Caller, request: Request) -> Response {  # jac:ignore[W1036]
+    (cls, fields, refused) = await resolve_call(request, WALKERS, "walker");
+    if refused is not None {
+        return refused;
+    }
+    call = cls(**fields);
+    finished = await anyio.to_thread.run_sync(lambda -> any { return perform(caller.user_id, call); });
+    return JSONResponse(envelope(finished, finished.reports));
 }
 
 """`POST /function/<name>`: call the function as `caller`, answer in Jac's envelope."""
 async def function_call(caller: Caller, request: Request) -> Response {  # jac:ignore[W1036]
-    fn = FUNCTIONS.get(str(request.path_params["name"]));
-    if fn is None {
-        return refusal(404, "NOT_FOUND", "Not Found");
-    }
-    args = await read_fields(request);
-    if args is None or not fits(fn, args) {
-        return refusal(422, "INVALID_REQUEST", "The call's arguments do not fit this function.");
+    (fn, args, refused) = await resolve_call(request, FUNCTIONS, "function");
+    if refused is not None {
+        return refused;
     }
     result = await anyio.to_thread.run_sync(
         lambda -> any { return call_function(caller.user_id, lambda -> any { return fn(**args); }, name=fn.__name__); }

@@ -111,17 +111,17 @@ def from_own_page(request: Request, config: GatekeeperConfig) -> bool {  # jac:i
     return request.headers.get("origin") in config.origins;
 }
 
-"""Why a browser data call is refused before it runs, or None to let it run.
-The caller comes first (no caller is a 401), then the request's `Origin`."""
-def check_data_call(request: Request, config: GatekeeperConfig) -> tuple[Caller | None, Response | None] {  # jac:ignore[W1036]
+"""The caller of a browser data call, or the refusal to answer it with. The
+caller comes first (no caller is a 401), then the request's `Origin`."""
+def check_data_call(request: Request, config: GatekeeperConfig) -> Caller | Response {  # jac:ignore[W1036]
     caller = current_caller();
     if caller is None {
-        return (None, refusal(401, "UNAUTHORIZED", "Unauthorized"));
+        return refusal(401, "UNAUTHORIZED", "Unauthorized");
     }
     if not from_own_page(request, config) {
-        return (None, refusal(403, "FORBIDDEN", "Forbidden"));
+        return refusal(403, "FORBIDDEN", "Forbidden");
     }
-    return (caller, None);
+    return caller;
 }
 
 """Whether `path` is the page or one of its static files: the only paths
@@ -161,11 +161,11 @@ def redirect(where: str, status: int = 302) -> RedirectResponse {
 """Run `work` as `caller` on their own root, off the event loop; a call the runner
 could not finish is answered as a failed call."""
 async def as_caller(caller: str, work: Callable[[], any], name: str) -> tuple[any, Response | None] {  # jac:ignore[W1036,W1037]
-    done = await anyio.to_thread.run_sync(lambda -> any { return call_function(caller, work, name=name); });
-    if isinstance(done, WalkerError) {
-        return (None, failed_call(done));
+    result = await anyio.to_thread.run_sync(lambda -> any { return call_function(caller, work, name=name); });
+    if isinstance(result, WalkerError) {
+        return (None, failed_call(result));
     }
-    return (done, None);
+    return (result, None);
 }
 
 """`GET /auth/login`: send the browser to AuthKit, remembering where it came from."""
@@ -437,25 +437,25 @@ def guarded(inner: any, config: GatekeeperConfig) -> any {  # jac:ignore[W1037]
             return;
         }
         try {
-            who = await credentials(scope, config);
+            found = await credentials(scope, config);
         } except SessionCheckUnavailable {
             await PlainTextResponse("Sign-in is unavailable. Try again.", status_code=503, headers=NO_STORE)(scope, receive, send);
             return;
         }
-        if who.caller is None {
+        if found.caller is None {
             if await refused_as_too_many(limits.addresses, request_address(scope), scope, receive, send) {
                 return;
             }
-            await refuse_anonymous(Request(scope), config, who.ended)(scope, receive, send);
+            await refuse_anonymous(Request(scope), config, found.ended)(scope, receive, send);
             return;
         }
-        if await refused_as_too_many(limits.users, who.caller, scope, receive, send) {
+        if await refused_as_too_many(limits.users, found.caller, scope, receive, send) {
             return;
         }
-        token = VERIFIED_SUB.set(who.caller);
+        token = VERIFIED_SUB.set(found.caller);
         try {
-            if who.renewed is not None {
-                send = send_with_cookie(send, cookie_header(SESSION_COOKIE, who.renewed, SESSION_MAX_AGE_S));
+            if found.renewed is not None {
+                send = send_with_cookie(send, cookie_header(SESSION_COOKIE, found.renewed, SESSION_MAX_AGE_S));
             }
             await inner(scope, receive, send);
         } finally {
