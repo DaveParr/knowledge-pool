@@ -99,3 +99,11 @@ def test_renaming_to_a_blank_name_is_refused_with_a_message_to_show(client, alic
     deck_id = alices_deck(client, alice)
     [blank] = reports(client.post("/walker/EditDeck", json={"deck_id": deck_id, "name": "  "}, headers=alice))
     assert blank["code"] == "blank-name" and blank["message"] == "A deck needs a name."
+
+
+def test_a_deck_view_says_whether_the_caller_owns_it_for_the_owner_and_for_another_user(client, alice, bob):
+    deck_id = alices_deck(client, alice)
+    [mine] = reports(client.post("/walker/GetDeck", json={"deck_id": deck_id}, headers=alice))
+    [theirs] = reports(client.post("/walker/GetDeck", json={"deck_id": deck_id}, headers=bob))
+    assert mine["mine"] is True
+    assert theirs["mine"] is False

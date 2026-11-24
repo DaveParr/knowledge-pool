@@ -124,7 +124,9 @@ edge Holds: Deck --> Card {
 """A deck, its cards (sorted by zone then name), whether it is legal in its
 format, and its main-deck mana analysis (mana profile and curve). Every walker
 that reports a deck reports this whole view, so one request per edit gives a
-client the full picture."""
+client the full picture. `mine` is whether the caller owns the deck: a walker
+does not know (it runs on the owner's root when the caller reads another user's
+deck), so the runner sets it on the way out (`stamp_ownership`)."""
 obj DeckView {
     has id: str,
         name: str,
@@ -138,7 +140,8 @@ obj DeckView {
         violations: list[Violation] = [],
         history: list[ChangeNote] = [],
         rejected: list[str] = [],
-        game_changers: GameChangers | None = None;
+        game_changers: GameChangers | None = None,
+        mine: bool = False;
 }
 
 """Every (edge, card) pair a deck holds. A card in both zones has two edges."""

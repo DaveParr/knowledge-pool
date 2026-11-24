@@ -133,10 +133,11 @@ def historyLine(note: ChangeNote) -> str {
     return note.at[:10] + "  " + what;
 }
 
-"""A deck. `readOnly` is another user's deck: every control that changes it is
-left out, and Copy is offered instead; `onCopied` gets the new deck's id."""
+"""A deck. When the deck view says the caller does not own it (`mine`), every
+control that changes it is left out, and Copy is offered instead; `onCopied` gets
+the new deck's id."""
 def:pub DeckDetail(
-    deckId: str, importNotes: list[str], readOnly: bool, onCopied: Callable[[str], None], onBack: Callable[[], None]
+    deckId: str, importNotes: list[str], onCopied: Callable[[str], None], onBack: Callable[[], None]
 ) -> JsxElement {
     has deck: DeckView | None = None,
         error: str = "",
@@ -197,6 +198,7 @@ def:pub DeckDetail(
     if deck is None {
         return <section>{alert if error else <p className="empty">Loading deck...</p>}</section>;
     }
+    readOnly = not deck.mine;
 
     return
         <section>

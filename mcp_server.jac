@@ -57,7 +57,7 @@ import from urllib.parse { urlparse }
 import from log_setup { use_json_logs }
 import from browser_session { WorkOSSessions }
 import from hosted_auth { AuthKitVerifier, HostedSettings, HostedSettingsMissing, hosted_settings, jwks_key_finder }
-import from graph_runner { APP_DIR, HOSTED, app_mode, check_bind, request_caller, owns_deck, call_function, start, refresh_cards }
+import from graph_runner { APP_DIR, HOSTED, app_mode, check_bind, request_caller, call_function, start, refresh_cards }
 import from jaclang.runtime.constructs { WalkerArchetype }
 
 glob LOGGED_CLIENT_UI: list[bool] = [],
@@ -262,11 +262,7 @@ support MCP Apps render a search panel where the user can add hits to the deck
 themselves; others get a Markdown table. Use search_cards when no deck is involved."""
 def card_search(deck_id: str, query: str, ctx: Context, limit: int = 20) -> CallToolResult {  # jac:ignore[W1036]: the SDK finds the context by this bare annotation
     view = outcome(perform(request_caller(), GetDeck(deck_id=deck_id)));
-    mine = owns_deck(request_caller(), deck_id);
-    if isinstance(mine, WalkerError) {
-        raise ToolFailure(error=mine);
-    }
-    result = search_with_holdings(view, query, limit, mine);
+    result = search_with_holdings(view, query, limit);
     if result["error"] {
         raise card_search_failure(result["error"] as str);
     }
@@ -297,9 +293,9 @@ def search_brief(result: JsonObject) -> str {
 
 """Search hits for one deck, each with the copies that deck holds per zone
 (`in_deck`, e.g. {"main": 2}), plus a short summary of the deck. `mine` is
-whether the caller owns the deck: the view offers its Add buttons only then. A
-catalogue failure comes back as `error` with no hits."""
-def search_with_holdings(view: JsonObject, query: str, limit: int, mine: bool = True) -> JsonObject {
+whether the caller owns the deck (the deck view's `mine`): the view offers its Add
+buttons only then. A catalogue failure comes back as `error` with no hits."""
+def search_with_holdings(view: JsonObject, query: str, limit: int) -> JsonObject {
     held: dict[str, dict[str, int]] = {};
     for c in view["cards"] as list[JsonObject] {
         oid = c["oracle_id"] as str;
@@ -317,7 +313,7 @@ def search_with_holdings(view: JsonObject, query: str, limit: int, mine: bool = 
             "format": view["format"],
             "main_total": view["main_total"],
             "sideboard_total": view["sideboard_total"],
-            "mine": mine
+            "mine": view["mine"]
         },
         "query": query,
         "limit": limit,
