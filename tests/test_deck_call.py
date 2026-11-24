@@ -65,3 +65,9 @@ def test_fields_that_do_not_fit_are_422(jac):
 def test_a_call_sent_without_an_origin_still_runs(jac):
     """The origin check is the gatekeeper's: this endpoint never looks at it."""
     assert _as("user_alice").post("/walker/ListDecks", json={}, headers={}).status_code == 200
+
+
+def test_a_function_call_that_does_not_fit_says_arguments_and_a_walker_says_fields(jac):
+    door = _as("user_alice")
+    assert "arguments" in door.post("/function/list_formats", json={"x": 1}).json()["error"]["message"]
+    assert "fields" in door.post("/walker/GetDeck", json={"nope": 1}).json()["error"]["message"]
