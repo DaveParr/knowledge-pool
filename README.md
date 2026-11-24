@@ -120,6 +120,7 @@ The hosted app runs on Railway at `https://knowledge-pool.engi.ai`. `scripts/dep
 - `global.css` app-wide style tokens, shared with the MCP Apps views in `ui/`
 - `legality.jac` `Format` nodes and the deck-construction rules
 - `mcp_server.jac` the MCP server and, over HTTP, the process that starts the front door
+- `mcp_tools.jac` the MCP tools as plain functions, callable in a test with no server built; `mcp_builders.jac` the pure text they build (Markdown tables, briefs)
 - `rate_limits.jac` the front door's token-bucket rate limits
 - `front_door.jac` the front door: the page's deck calls through the runner in Jac's own envelope, the page and its static files forwarded from Jac's server (a child on `127.0.0.1`), everything else 404, a health path
 - `graph_runner.jac` the runner: runs every deck call as a caller on that caller's own root (the local user in local mode, `KP_MODE`), and the app's own work as the guest, for the MCP server and the seed script
