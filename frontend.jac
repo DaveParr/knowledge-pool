@@ -16,7 +16,6 @@ def:pub app -> JsxElement {
         error: str = "",
         otherDecks: list[DeckSummary] = [],
         openDeckId: str = "",
-        openReadOnly: bool = False,
         importOpen: bool = False,
         importFormat: str = "moxfield",
         importText: str = "",
@@ -36,15 +35,14 @@ def:pub app -> JsxElement {
         return formatName(format_name, formats);
     }
 
-    """Open a deck of the caller's own (`readOnly` False) or another user's."""
-    def openDeck(deckId: str, readOnly: bool) {
-        openReadOnly = readOnly;
+    """Open a deck; the deck view says whether it is the caller's own."""
+    def openDeck(deckId: str) {
         openDeckId = deckId;
     }
 
     """A copy was made: open it, as the caller's own deck."""
     def copied(deckId: str) {
-        openDeck(deckId, False);
+        openDeck(deckId);
     }
 
     def closeDeck {
@@ -61,7 +59,6 @@ def:pub app -> JsxElement {
                     key={openDeckId}
                     deckId={openDeckId}
                     importNotes={importNotes}
-                    readOnly={openReadOnly}
                     onCopied={copied}
                     onBack={closeDeck}
                 />
@@ -138,7 +135,7 @@ def:pub app -> JsxElement {
                     <li key={jid(deck)} className="fe-deck">
                         <a
                             href="#"
-                            onClick={lambda (e: MouseEvent) { e.preventDefault(); openDeck(jid(deck), False); }}
+                            onClick={lambda (e: MouseEvent) { e.preventDefault(); openDeck(jid(deck)); }}
                         >
                             {deck.name}
                         </a>
@@ -156,7 +153,7 @@ def:pub app -> JsxElement {
                     <li key={deck.id} className="fe-deck">
                         <a
                             href="#"
-                            onClick={lambda (e: MouseEvent) { e.preventDefault(); openDeck(deck.id, True); }}
+                            onClick={lambda (e: MouseEvent) { e.preventDefault(); openDeck(deck.id); }}
                         >
                             {deck.name}
                         </a>

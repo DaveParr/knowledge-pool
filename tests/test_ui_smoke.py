@@ -196,6 +196,31 @@ def test_the_page_has_a_separate_read_only_section_for_other_users_decks(app):
     assert app.js("document.querySelectorAll('ul.fe-others li').length").strip() == "0"
 
 
+def test_the_page_offers_no_change_controls_on_a_deck_the_view_says_is_not_the_callers(app):
+    app.browse("open", app.web)
+    app.fill("input[aria-label='Deck name']", "Not Mine Deck")
+    app.click("button", "Create deck")
+    app.wait_text("Not Mine Deck", within="ul.fe-decks")
+    # Local mode has one user, so the deck view for another user's deck is stood in for:
+    # the same reply with `mine` false, as the server gives for a deck the caller does not own.
+    app.js(
+        """(() => {
+          const real = window.fetch;
+          window.fetch = async (...args) => {
+            const reply = await real(...args);
+            if (!String(args[0]).includes('/walker/GetDeck')) return reply;
+            const body = await reply.json();
+            body.data.reports[0].mine = false;
+            return new Response(JSON.stringify(body), {status: reply.status, headers: reply.headers});
+          };
+        })()"""
+    )
+    app.click("link", "Not Mine Deck")
+    app.wait_text("Copy to my decks")
+    assert app.js("document.querySelectorAll('button.dd-rename-btn').length").strip() == "0"
+    assert app.js("document.querySelectorAll('ul.dd-cards input, select').length").strip() == "0"
+
+
 def test_card_search_view_offers_add_only_on_a_deck_the_caller_owns(app):
     def hits(mine: bool) -> dict:
         deck = {"id": "d1", "name": "Burn", "format": "modern", "main_total": 3, "sideboard_total": 0, "mine": mine}
