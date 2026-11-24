@@ -6,7 +6,7 @@ import logging
 
 import pytest
 
-import front_door
+import gatekeeper
 import rate_limits
 from tests.front_door_client import FrontDoorClient
 from tests.hosted_tokens import TestIssuer
@@ -195,6 +195,6 @@ def test_the_refusal_log_forgets_keys_after_a_minute(clock, monkeypatch):
 
 
 def test_the_sign_in_paths_count_against_the_address(client):
-    codes = [client.get(front_door.LOGIN_PATH, headers=from_address("203.0.113.9")).status_code
+    codes = [client.get(gatekeeper.LOGIN_PATH, headers=from_address("203.0.113.9")).status_code
              for _ in range(ADDRESS_LIMIT + 1)]
     assert codes[-1] == 429 and 429 not in codes[:-1]

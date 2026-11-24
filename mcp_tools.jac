@@ -24,7 +24,8 @@ import from legality { GetFormatRules }
 import from walker_errors { WalkerError }
 import from json_object { JsonObject }
 import from mcp_builders { deck_brief, deck_markdown, mana_brief, mana_markdown, search_brief, search_markdown, export_brief, export_text, LOSSY_DROPS }
-import from graph_runner { HOSTED, app_mode, request_caller, call_function }
+import from graph_runner { HOSTED, app_mode, call_function }
+import from gatekeeper { request_caller }
 import from jaclang.runtime.constructs { WalkerArchetype }
 
 glob LOGGED_CLIENT_UI: list[bool] = [];

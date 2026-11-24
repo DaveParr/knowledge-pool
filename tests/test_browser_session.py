@@ -8,7 +8,7 @@ from urllib.parse import parse_qs, quote, urlparse
 import pytest
 
 import browser_session
-import front_door
+import gatekeeper
 from tests.front_door_client import PUBLIC_ORIGIN, FrontDoorClient
 from tests.hosted_sessions import LOGIN_URL, LOGOUT_URL, StandInSessions, sealed
 from tests.hosted_tokens import TestIssuer
@@ -39,9 +39,9 @@ def _as(value: str) -> dict:
 
 def _sign_in(door, code: str, return_to: str = "/") -> "httpx2.Response":
     """The browser's whole sign-in: the start, AuthKit's return with `code`."""
-    start = door.get(f"{front_door.LOGIN_PATH}?return_to={quote(return_to, safe='')}")
+    start = door.get(f"{gatekeeper.LOGIN_PATH}?return_to={quote(return_to, safe='')}")
     state = parse_qs(urlparse(start.headers["location"]).query)["state"][0]
-    return door.get(f"{front_door.CALLBACK_PATH}?code={code}&state={state}")
+    return door.get(f"{gatekeeper.CALLBACK_PATH}?code={code}&state={state}")
 
 
 def _set_cookies(reply) -> dict[str, str]:
@@ -56,7 +56,7 @@ def me_reply(name, can_sign_out=True):
 def test_a_page_load_with_no_session_redirects_to_sign_in_and_serves_nothing(door):
     reply = door.get("/?deck=1")
     assert reply.status_code == 302
-    assert reply.headers["location"] == f"{front_door.LOGIN_PATH}?return_to=%2F%3Fdeck%3D1"
+    assert reply.headers["location"] == f"{gatekeeper.LOGIN_PATH}?return_to=%2F%3Fdeck%3D1"
     assert door.upstream_requests == []
 
 
@@ -97,11 +97,11 @@ def test_a_session_does_not_open_the_connector(door):
 
 
 def test_the_sign_in_start_sends_the_browser_to_authkit_with_a_state_and_the_return_address(door):
-    reply = door.get(front_door.LOGIN_PATH + "?return_to=/decks")
+    reply = door.get(gatekeeper.LOGIN_PATH + "?return_to=/decks")
     where = urlparse(reply.headers["location"])
     assert reply.status_code == 302 and f"{where.scheme}://{where.netloc}{where.path}" == LOGIN_URL
     query = parse_qs(where.query)
-    assert query["redirect_uri"] == [PUBLIC_ORIGIN + front_door.CALLBACK_PATH] and query["state"][0]
+    assert query["redirect_uri"] == [PUBLIC_ORIGIN + gatekeeper.CALLBACK_PATH] and query["state"][0]
 
 
 def test_signing_in_sets_a_host_only_http_only_secure_lax_cookie_and_returns_to_the_same_address(door):
@@ -141,11 +141,11 @@ def test_a_person_workos_refuses_gets_403_and_no_session(door):
 
 
 def test_a_callback_whose_state_is_not_the_one_started_is_refused(door):
-    door.get(front_door.LOGIN_PATH + "")
+    door.get(gatekeeper.LOGIN_PATH + "")
     for query in ("code=code-alice&state=forged", "code=code-alice", "state=x"):
-        reply = door.get(f"{front_door.CALLBACK_PATH}?{query}")
+        reply = door.get(f"{gatekeeper.CALLBACK_PATH}?{query}")
         assert reply.status_code == 400 and "__Host-kp_session" not in _set_cookies(reply), query
-    assert door.get(front_door.CALLBACK_PATH + "?code=code-alice&state=x", headers={"cookie": ""}).status_code == 400
+    assert door.get(gatekeeper.CALLBACK_PATH + "?code=code-alice&state=x", headers={"cookie": ""}).status_code == 400
 
 
 @pytest.mark.parametrize("target", ["https://evil.example/", "//evil.example/", "/\\evil.example", "/\t/evil.example", "/ /evil.example", "/\n/evil.example", "evil"])
@@ -163,7 +163,7 @@ def test_an_expired_access_token_is_renewed_and_the_cookie_rewritten(door):
 
 def test_signing_out_ends_the_session_and_clears_the_cookie(door, sessions):
     _sign_in(door, "code-alice")
-    reply = door.post(front_door.LOGOUT_PATH)
+    reply = door.post(gatekeeper.LOGOUT_PATH)
     assert reply.status_code == 303
     assert reply.headers["location"] == f"{LOGOUT_URL}?return_to={quote(PUBLIC_ORIGIN + '/', safe='')}"
     assert _set_cookies(reply)["__Host-kp_session"].startswith("__Host-kp_session=; Max-Age=0")
@@ -177,7 +177,7 @@ def test_a_session_that_ended_mid_page_gets_401_then_the_reload_ends_at_sign_in(
     sessions.ended.add(ALICE)
     assert door.post("/walker/ListDecks", json={}, headers=old).status_code == 401
     reload = door.get("/", headers=old)
-    assert reload.status_code == 302 and reload.headers["location"].startswith(front_door.LOGIN_PATH + "?")
+    assert reload.status_code == 302 and reload.headers["location"].startswith(gatekeeper.LOGIN_PATH + "?")
     assert _set_cookies(reload)["__Host-kp_session"].startswith("__Host-kp_session=; Max-Age=0")
 
 
@@ -195,24 +195,24 @@ def test_a_connector_token_still_opens_the_connector_and_runs_as_its_user(door):
 
 
 def test_the_sign_in_paths_and_health_answer_without_a_session(door):
-    assert door.get(front_door.LOGIN_PATH).status_code == 302
-    assert door.post(front_door.LOGOUT_PATH).status_code == 303
+    assert door.get(gatekeeper.LOGIN_PATH).status_code == 302
+    assert door.post(gatekeeper.LOGOUT_PATH).status_code == 303
     assert door.get("/healthz").text == "ok"
 
 
 def test_local_mode_has_no_sign_in_and_no_session_check_needed(tmp_path, sessions):
     with FrontDoorClient(tmp_path, sessions=sessions) as local:
-        assert local.get(front_door.LOGIN_PATH).status_code == 404
-        assert local.get(front_door.CALLBACK_PATH + "?code=code-alice&state=x").status_code == 404
-        assert local.post(front_door.LOGOUT_PATH).status_code == 404
+        assert local.get(gatekeeper.LOGIN_PATH).status_code == 404
+        assert local.get(gatekeeper.CALLBACK_PATH + "?code=code-alice&state=x").status_code == 404
+        assert local.post(gatekeeper.LOGOUT_PATH).status_code == 404
         assert local.get("/me").json() == me_reply("Unknown user", can_sign_out=False)
 
 
 def test_signing_out_by_a_link_from_another_site_is_refused_and_ends_nothing(door):
     _sign_in(door, "code-alice")
     for origin in ("http://evil.example", None):
-        assert door.post(front_door.LOGOUT_PATH, origin=origin).status_code == 403, origin
-    assert door.get(front_door.LOGOUT_PATH).status_code == 404
+        assert door.post(gatekeeper.LOGOUT_PATH, origin=origin).status_code == 403, origin
+    assert door.get(gatekeeper.LOGOUT_PATH).status_code == 404
     assert door.get("/me").status_code == 200
 
 
@@ -241,5 +241,5 @@ def test_the_cookies_are_host_prefixed_so_the_browser_itself_insists_on_the_exac
 
 def test_redirects_and_the_session_check_are_never_cached(door):
     assert door.get("/").headers["cache-control"] == "no-store"
-    assert door.get(front_door.LOGIN_PATH).headers["cache-control"] == "no-store"
+    assert door.get(gatekeeper.LOGIN_PATH).headers["cache-control"] == "no-store"
     assert door.get("/me", headers=_as(ALICE)).headers["cache-control"] == "no-store"

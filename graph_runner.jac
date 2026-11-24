@@ -37,11 +37,11 @@ walker error `internal-error`, and the log names the walker and the caller.
 The app runs in one of two modes, set by `KP_MODE`: `local` (the default),
 on a developer's machine, where every call runs as the fixed local user and
 nothing binds anything but 127.0.0.1; or `hosted`, where the caller is the
-`sub` of the bearer token the front door verified.
+`sub` of the bearer token the gatekeeper (`gatekeeper.jac`) verified. The runner
+never works out who is asking: every entry takes the caller as an argument.
 """
 
 import copy;
-import contextvars;
 import io;
 import logging;
 import os;
@@ -69,8 +69,6 @@ glob APP_DIR: str = os.path.dirname(os.path.abspath(__file__)),
      HOSTED: str = "hosted",
      MODES: list[str] = [LOCAL, HOSTED],
      STARTED_FOR_GUEST: list[str] = [],
-     # The `sub` of the token the front door verified for the request being served (hosted mode).
-     VERIFIED_SUB: contextvars.ContextVar[str | None] = contextvars.ContextVar("verified_sub"),
      USER_PAGE: int = 100,
      RERUNS: int = 3,
      RERUN_WAIT_S: tuple[float, float] = (0.01, 0.05),
@@ -124,17 +122,6 @@ def check_bind(host: str) {
     if app_mode() == LOCAL and host != LOOPBACK {
         raise ValueError(f"Local mode listens on {LOOPBACK} only, not {host}.");
     }
-}
-
-"""Who is asking, for a request that reaches this process: the local user
-in local mode. In hosted mode, the `sub` of the token the front door verified
-for this request, read here and nowhere else. No verified token means no
-caller, and every call is refused: never a fallback to the guest."""
-def request_caller -> str | None {
-    if app_mode() == LOCAL {
-        return LOCAL_USER;
-    }
-    return VERIFIED_SUB.get(None) or None;
 }
 
 def user_manager -> UserManager {

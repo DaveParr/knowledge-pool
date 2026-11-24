@@ -1,6 +1,6 @@
 """A client for the front door (`front_door.jac`): its ASGI app on a test client,
 as the local user, with a stub for Jac's server (the page's child) and one for
-the MCP SDK's app. The caller is whoever `graph_runner.request_caller` names;
+the MCP SDK's app. The caller is whoever `gatekeeper.current_caller` names;
 this runs in the test's own process, on the database `JAC_DB_URL` names."""
 
 import httpx2
@@ -12,6 +12,7 @@ from starlette.routing import Route
 from starlette.testclient import TestClient
 
 import front_door
+import gatekeeper
 import hosted_auth
 from tests.hosted_tokens import AUDIENCE, ISSUER
 
@@ -45,10 +46,10 @@ class FrontDoorClient:
         if hosted is not None:
             auth = hosted_auth.AuthKitVerifier(issuer=ISSUER, audience=AUDIENCE, key_for=hosted.key_for)
         self.origin = origin
-        config = front_door.FrontDoorConfig(
-            upstream=UPSTREAM, origins=[origin], client=http, auth=auth, sessions=sessions, public_origin=origin,
-            limits=limits
+        gate = gatekeeper.GatekeeperConfig(
+            origins=[origin], auth=auth, sessions=sessions, public_origin=origin, limits=limits
         )
+        config = front_door.FrontDoorConfig(upstream=UPSTREAM, gate=gate, client=http)
         self._client = TestClient(
             front_door.front_door_app(mcp_app or _mcp_stub(), config), base_url=origin, follow_redirects=False
         )

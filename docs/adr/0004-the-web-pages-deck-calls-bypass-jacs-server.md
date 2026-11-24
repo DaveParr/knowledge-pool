@@ -12,7 +12,7 @@ The walkers and functions the page calls are marked `:protect`, not left plain. 
 
 ## Consequences
 
-- Every walker or function the page calls must be `:protect`, and must be a page-callable entry of the deck operations table (`deck_operations.jac`), from which the front door's table is derived (functions are listed in the front door's `FUNCTIONS`). Never `:pub`.
+- Every walker or function the page calls must be `:protect`, and must be a page-callable entry of the deck operations table (`deck_operations.jac`), from which the front door's table is derived (functions are listed in the deck-call endpoint's `FUNCTIONS`, `deck_call.jac`). Never `:pub`.
 - The front door depends on two things inside Jac that are not a published interface: the reply envelope (`ok`, `type`, `data.result`, `data.reports`, `error`) and `jaclang.data.serializer.Serializer`. A Jac upgrade can change either, so the build needs a test that loads the page through the front door and reads a deck.
 - The front door never forwards an `Authorization` header or any path under `/walker/`, `/function/`, `/user/` or `/sso/` to Jac's server. Doing so would open the token-protected endpoints to whoever holds a Jac token.
 - The front door runs walkers itself, so it carries what Jac's server would have done for it: refusing unknown fields, and rolling back and re-running on a write conflict.
