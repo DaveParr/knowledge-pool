@@ -15,15 +15,16 @@ from urllib.request import HTTPRedirectHandler, Request, build_opener
 
 import pytest
 
-import front_door
+import gatekeeper
+import upstream_child
 from tests.hosted_settings import HOSTED_SETTINGS
 
 ROOT = Path(__file__).resolve().parent.parent
-LOOPBACK = front_door.LOOPBACK
-LOGIN_PATH = front_door.LOGIN_PATH
+LOOPBACK = upstream_child.LOOPBACK
+LOGIN_PATH = gatekeeper.LOGIN_PATH
 
 
-_free_port = front_door.free_port
+_free_port = upstream_child.free_port
 
 
 class _NoRedirect(HTTPRedirectHandler):

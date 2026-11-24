@@ -4,7 +4,7 @@ Railway labels a plain line `error` when it arrives on stderr and `info` on
 stdout, and reads a `level` field from a JSON line on either. The hosted front
 door writes one JSON object a line to stdout, with the level in `level`: a
 routine request is `info`, a failure `error`. Jac's child server shares the
-front door's stdout (`front_door.start_upstream`), so its plain access lines
+front door's stdout (`upstream_child.start_upstream`), so its plain access lines
 are `info` too, and its own JSON lines already carry their level.
 
 Only the HTTP transport uses this: on stdio, stdout belongs to MCP.
