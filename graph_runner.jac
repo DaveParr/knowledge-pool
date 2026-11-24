@@ -9,7 +9,7 @@ and the formats). Nothing a request reaches calls it.
 No entry raises `CallFailed` to its caller. A call the runner could not finish
 comes back as the walker error `try-again` or `internal-error`: a walker entry
 returns a copy of the walker whose one report it is, and an entry that returns
-a value (`call_function`, `list_other_decks`, `owns_deck`) returns it in place of
+a value (`call_function`, `list_other_decks`) returns it in place of
 the value. `in_context`, `attempt` and `start` are the primitives under the
 entries and do raise it.
 
@@ -59,7 +59,7 @@ import from jaclang.server.identity.user_manager { UserManager }
 import from cards { open_catalog, RefreshCards, REFRESH_BATCH, catalogue_version, refreshed_version, record_refresh, duplicate_oracle_ids }
 import from legality { open_formats }
 import from walker_errors { WalkerError }
-import from decks { DeckSummary, CopySource, CopyDeck, deck_owner, deck_summaries }
+import from decks { DeckSummary, DeckView, CopySource, CopyDeck, deck_owner, deck_summaries }
 
 glob APP_DIR: str = os.path.dirname(os.path.abspath(__file__)),
      LOCK: threading.RLock = threading.RLock(),
@@ -244,7 +244,19 @@ def run_walker(caller: str | None, w: WalkerArchetype) -> WalkerArchetype {
     if isinstance(done, WalkerError) {
         return failed_walker(w, done);
     }
-    return done as WalkerArchetype;
+    return stamp_ownership(done as WalkerArchetype, True);
+}
+
+"""Set `mine` on every deck view `w` reported: whether the caller owns the deck.
+The runner is where both the deck's owner and the caller are known, so it is
+the one place that says; no caller compares root ids itself."""
+def stamp_ownership(w: WalkerArchetype, mine: bool) -> WalkerArchetype {
+    for item in w.reports {
+        if isinstance(item, DeckView) {
+            item.mine = mine;
+        }
+    }
+    return w;
 }
 
 """A copy of `w` whose one report is the walker error `error`."""
@@ -271,9 +283,12 @@ def run_read(caller: str | None, deck_id: str, w: WalkerArchetype) -> WalkerArch
         return run_walker(caller, w);
     }
     try {
-        return in_context(
+        done = in_context(
             owner as str, lambda () -> object { return spawn_on_root(w); }, name=type(w).__name__, caller=str(caller)
         ) as WalkerArchetype;
+        # The deck's anchor spells its root with dashes, the user record without.
+        mine = (owner as str).replace("-", "") == user_root_id(caller).replace("-", "");
+        return stamp_ownership(done, mine);
     } except CallFailed as failed {
         return failed_walker(w, failed.error);
     }
@@ -313,18 +328,6 @@ def user_root_ids -> list[str] {
         }
         offset += USER_PAGE;
     }
-}
-
-"""Whether the deck `deck_id` is `caller`'s own: the views use this to hide the
-controls that change a deck the caller does not own. False for an id that names no
-deck. A call the runner could not finish returns its walker error."""
-def owns_deck(caller: str | None, deck_id: str) -> bool | WalkerError {
-    owner = call_function(caller, lambda () -> object { return deck_owner(deck_id); }, name="deck_owner");
-    if isinstance(owner, WalkerError) {
-        return owner;
-    }
-    # The deck's anchor spells its root with dashes, the user record without.
-    return owner is not None and (owner as str).replace("-", "") == user_root_id(caller).replace("-", "");
 }
 
 """Every deck of every other user (not `caller`'s own), by owner then deck
