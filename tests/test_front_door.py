@@ -8,7 +8,7 @@ from pathlib import Path
 
 import pytest
 
-import front_door
+import deck_call
 import graph_runner
 from tests.front_door_client import ORIGIN, FrontDoorClient
 
@@ -138,13 +138,13 @@ def test_a_call_that_still_conflicts_answers_503_try_again(client, monkeypatch):
     def conflicts(caller, f, name=""):
         return graph_runner.try_again()
 
-    monkeypatch.setattr(front_door, "call_function", conflicts)
+    monkeypatch.setattr(deck_call, "call_function", conflicts)
     reply = client.post("/function/list_formats", json={})
     assert reply.status_code == 503 and reply.json()["error"]["code"] == "TRY-AGAIN"
 
 
 def test_a_function_call_the_runner_cannot_finish_answers_500_for_an_internal_error(client, monkeypatch):
-    monkeypatch.setattr(front_door, "call_function", lambda caller, f, name="": graph_runner.internal_error())
+    monkeypatch.setattr(deck_call, "call_function", lambda caller, f, name="": graph_runner.internal_error())
     reply = client.post("/function/search_cards", json={"query": "bolt"})
     assert reply.status_code == 500 and reply.json()["error"]["code"] == "INTERNAL-ERROR"
 
@@ -157,7 +157,7 @@ def test_every_failed_call_gives_the_page_one_message_to_show(client, monkeypatc
     missing = client.post("/walker/GetDeck", json={"deck_id": "nope"}).json()["data"]["reports"]
     assert [r["code"] for r in missing] == ["no-such-deck"]
     for error in (graph_runner.try_again(), graph_runner.internal_error()):
-        monkeypatch.setattr(front_door, "call_function", lambda caller, f, name="", error=error: error)
+        monkeypatch.setattr(deck_call, "call_function", lambda caller, f, name="", error=error: error)
         monkeypatch.setattr(graph_runner, "in_context", lambda *a, error=error, **k: (_ for _ in ()).throw(
             graph_runner.CallFailed(error=error)))
         walker = client.post("/walker/ListDecks", json={}).json()["data"]["reports"]
@@ -175,21 +175,21 @@ def _protected_names() -> set[str]:
 
 
 def test_the_front_door_table_is_exactly_what_the_app_marks_protect():
-    assert _protected_names() == set(front_door.WALKERS) | set(front_door.FUNCTIONS)
+    assert _protected_names() == set(deck_call.WALKERS) | set(deck_call.FUNCTIONS)
 
 
 def test_the_front_door_walkers_are_the_deck_operations_the_page_may_call():
     import deck_operations
 
-    assert front_door.WALKERS == deck_operations.page_walkers()
-    assert {"ListOtherDecks", "CopyOtherDeck", "EditDeck"} <= set(front_door.WALKERS)
+    assert deck_call.WALKERS == deck_operations.page_walkers()
+    assert {"ListOtherDecks", "CopyOtherDeck", "EditDeck"} <= set(deck_call.WALKERS)
 
 
 def test_the_app_imports_every_page_callable_walker():
     """main.jac is the app's entry; a page walker it does not import gets no endpoint."""
     source = (ROOT / "main.jac").read_text()
     imported = set(re.findall(r"\b[A-Z]\w+\b", source))
-    assert set(front_door.WALKERS) <= imported
+    assert set(deck_call.WALKERS) <= imported
 
 
 def test_no_walker_or_server_function_is_pub():

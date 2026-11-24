@@ -6,7 +6,7 @@ is asking: in local mode, the local user, so `deck_list` lists the local
 user's decks. Deck and format tools each spawn a walker; card search,
 lookup and name resolution go through the card catalogue module (`cards`).
 No tool calls a model. In hosted mode the caller is the `sub` of the
-WorkOS AuthKit token the front door verified (`hosted_auth.jac`), and the
+WorkOS AuthKit token the gatekeeper (`gatekeeper.jac`) verified (`hosted_auth.jac`), and the
 server refuses to start without its settings.
 
 Over HTTP this process is also the front door (`front_door.jac`): the one
@@ -52,12 +52,14 @@ import from legality { GetFormatRules }
 import from walker_errors { WalkerError }
 import from json_object { JsonObject }
 import from ui_pages { view_page }
-import from front_door { FrontDoorConfig, front_door_app, start_upstream, stop_upstream, stop_child_on_sigterm, exit_when_upstream_dies, expect_upstream_to_stop }
+import from front_door { FrontDoorConfig, front_door_app }
+import from gatekeeper { GatekeeperConfig, request_caller }
+import from upstream_child { start_upstream, stop_upstream, stop_child_on_sigterm, exit_when_upstream_dies, expect_upstream_to_stop }
 import from urllib.parse { urlparse }
 import from log_setup { use_json_logs }
 import from browser_session { WorkOSSessions }
 import from hosted_auth { AuthKitVerifier, HostedSettings, HostedSettingsMissing, hosted_settings, jwks_key_finder }
-import from graph_runner { APP_DIR, HOSTED, app_mode, check_bind, request_caller, call_function, start, refresh_cards }
+import from graph_runner { APP_DIR, HOSTED, app_mode, check_bind, call_function, start, refresh_cards }
 import from jaclang.runtime.constructs { WalkerArchetype }
 
 glob LOGGED_CLIENT_UI: list[bool] = [],
@@ -698,7 +700,8 @@ async def serve_http(host: str, port: int, upstream: str, hosted: HostedSettings
     security = TransportSecuritySettings(allowed_hosts=hosts, allowed_origins=origins);
     mcp_app = server.streamable_http_app(host=host, transport_security=security);
     own_origins = [f"http://127.0.0.1:{port}", f"http://localhost:{port}"] + origins;
-    config = FrontDoorConfig(upstream=upstream, origins=own_origins, client=httpx2.AsyncClient(), auth=auth, sessions=sessions, public_origin=public_origin);
+    gate = GatekeeperConfig(origins=own_origins, auth=auth, sessions=sessions, public_origin=public_origin);
+    config = FrontDoorConfig(upstream=upstream, gate=gate, client=httpx2.AsyncClient());
     listener = uvicorn.Server(uvicorn.Config(front_door_app(mcp_app, config), host=host, port=port, log_level="info", log_config=(None if hosted is not None else uvicorn.config.LOGGING_CONFIG)));
     await listener.serve();
 }

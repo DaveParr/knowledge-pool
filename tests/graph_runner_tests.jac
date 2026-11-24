@@ -23,7 +23,7 @@ import from profile { save_display_name, UNKNOWN_USER }
 import from deck_io { DeckExport, ExportResult }
 import from walker_errors { WalkerError }
 import from deck_operations { perform, page_walkers, OPERATIONS, OWN, OWNER, FLOW }
-import from graph_runner { refresh_cards, guest_root_id, user_root_id, run_walker, run_read, list_other_decks, copy_deck, call_function, run_as_guest, in_context, start, request_caller, check_bind, LOCAL_USER, RERUNS, LOG }
+import from graph_runner { refresh_cards, guest_root_id, user_root_id, run_walker, run_read, list_other_decks, copy_deck, call_function, run_as_guest, in_context, start, check_bind, LOCAL_USER, RERUNS, LOG }
 import from cards { Card, RefreshCards, new_card, card_nodes_for, catalogue_version }
 import from json_object { JsonObject }
 import from legality { Format, FormatRules, GetFormatRules }
@@ -291,19 +291,6 @@ def _rejects(check: Callable[[], object]) -> bool {
         return True;
     }
     return False;
-}
-
-test "local mode is the default, and every request runs as the local user" {
-    assert _in_mode("", lambda () -> object { return request_caller(); }) == LOCAL_USER;
-    assert _in_mode("local", lambda () -> object { return request_caller(); }) == LOCAL_USER;
-}
-
-test "hosted mode has no caller without a sign-in" {
-    assert _in_mode("hosted", lambda () -> object { return request_caller(); }) is None;
-}
-
-test "an unknown mode is refused" {
-    assert _rejects(lambda () -> object { return _in_mode("public", lambda () -> object { return request_caller(); }); });
 }
 
 test "local mode refuses to listen on anything but 127.0.0.1" {
