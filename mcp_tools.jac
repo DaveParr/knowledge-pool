@@ -24,7 +24,7 @@ import from legality { GetFormatRules }
 import from walker_errors { WalkerError }
 import from json_object { JsonObject }
 import from mcp_builders { deck_brief, deck_markdown, mana_brief, mana_markdown, search_brief, search_markdown, export_brief, export_text, LOSSY_DROPS }
-import from graph_runner { HOSTED, app_mode, request_caller, owns_deck, call_function }
+import from graph_runner { HOSTED, app_mode, request_caller, call_function }
 import from jaclang.runtime.constructs { WalkerArchetype }
 
 glob LOGGED_CLIENT_UI: list[bool] = [];
@@ -116,11 +116,7 @@ support MCP Apps render a search panel where the user can add hits to the deck
 themselves; others get a Markdown table. Use search_cards when no deck is involved."""
 def card_search(deck_id: str, query: str, ctx: Context, limit: int = 20) -> CallToolResult {  # jac:ignore[W1036]: the SDK finds the context by this bare annotation
     view = outcome(perform(request_caller(), GetDeck(deck_id=deck_id)));
-    mine = owns_deck(request_caller(), deck_id);
-    if isinstance(mine, WalkerError) {
-        raise ToolFailure(error=mine);
-    }
-    result = search_with_holdings(view, query, limit, mine);
+    result = search_with_holdings(view, query, limit);
     if result["error"] {
         raise card_search_failure(result["error"] as str);
     }
@@ -131,7 +127,7 @@ def card_search(deck_id: str, query: str, ctx: Context, limit: int = 20) -> Call
 (`in_deck`, e.g. {"main": 2}), plus a short summary of the deck. `mine` is
 whether the caller owns the deck: the view offers its Add buttons only then. A
 catalogue failure comes back as `error` with no hits."""
-def search_with_holdings(view: JsonObject, query: str, limit: int, mine: bool = True) -> JsonObject {
+def search_with_holdings(view: JsonObject, query: str, limit: int) -> JsonObject {
     held: dict[str, dict[str, int]] = {};
     for c in view["cards"] as list[JsonObject] {
         oid = c["oracle_id"] as str;
@@ -149,7 +145,7 @@ def search_with_holdings(view: JsonObject, query: str, limit: int, mine: bool = 
             "format": view["format"],
             "main_total": view["main_total"],
             "sideboard_total": view["sideboard_total"],
-            "mine": mine
+            "mine": view["mine"]
         },
         "query": query,
         "limit": limit,

@@ -30,6 +30,7 @@ def bolt_deck -> dict[str, any] {
         "format": "modern",
         "main_total": 3,
         "sideboard_total": 1,
+        "mine": True,
         "cards": [
             {"oracle_id": BOLT, "zone": "main", "count": 3},
             {"oracle_id": BOLT, "zone": "sideboard", "count": 1}
@@ -72,5 +73,6 @@ test "a missing catalogue comes back as error, not an exception" {
 
 test "the deck says whether it is the caller's own, so the view can hide Add on another user's" {
     assert search_with_holdings(bolt_deck(), "lightning", 10)["deck"]["mine"];
-    assert not search_with_holdings(bolt_deck(), "lightning", 10, False)["deck"]["mine"];
+    other = {**bolt_deck(), "mine": False};
+    assert not search_with_holdings(other, "lightning", 10)["deck"]["mine"];
 }

@@ -153,12 +153,12 @@ def test_a_failure_never_raises_out_of_a_tool(tools):
 
 # What a tool gives when it works.
 
-def test_search_cards_lists_hits(tools):
+def test_search_cards_returns_lightning_bolt_for_its_name(tools):
     hits = data(call(tools, "search_cards", query="lightning bolt", limit=5))
     assert "Lightning Bolt" in [h["name"] for h in hits]
 
 
-def test_get_card_by_name(tools):
+def test_get_card_by_name_returns_the_card_with_its_keywords(tools):
     assert data(call(tools, "get_card", oracle_id_or_name="Delver of Secrets"))["keywords"] == ["Flying", "Transform"]
 
 
@@ -169,7 +169,7 @@ def test_resolve_names_sorts_exact_fuzzy_and_unknown(tools):
     assert got["unknown"] == ["Flargle the Unreal"]
 
 
-def test_get_format_rules(tools):
+def test_get_format_rules_for_modern_gives_sixty_cards_four_copies_fifteen_sideboard(tools):
     rules = data(call(tools, "get_format_rules", format="modern"))
     assert (rules["min_main"], rules["copy_limit"], rules["sideboard_max"]) == (60, 4, 15)
 
@@ -217,7 +217,7 @@ def test_deck_copy_makes_the_callers_own_copy(tools, burn_id):
     assert copied["name"] == "Burn (copy)" and copied["id"] != burn_id
 
 
-def test_deck_import_resolves_a_text_list(tools, deck_id):
+def test_deck_import_of_a_text_list_fills_the_deck_and_lists_what_did_not_resolve(tools, deck_id):
     done = data(call(tools, "deck_import", deck_id=deck_id, format="text", text="4 Lightning Bolt\n1 Flargle"))
     assert done["deck"]["main_total"] == 4 and len(done["unresolved"]) == 1
 
@@ -338,3 +338,28 @@ def test_a_refused_rename_leaves_the_cards_unchanged(tools, burn_id):
     refused = call(tools, "deck_edit", deck_id=burn_id, name="  ", changes=[change(tools, "Lightning Bolt", 1, mode="add")])
     assert failure(refused) == "blank-name"
     assert main_counts(data(call(tools, "deck_get", deck_id=burn_id)))["Lightning Bolt"] == 4
+
+
+@pytest.fixture
+def others_deck_id(tools):
+    """A deck of another user, made through the runner as that user."""
+    from decks import CreateDeck
+    from deck_operations import perform
+
+    done = perform("someone-else", CreateDeck(name="Theirs", format="modern", changes=[]))
+    return tools.plain(done.reports[0])["id"]
+
+
+def test_deck_browse_lists_another_users_deck_with_its_owner_and_not_my_own(tools, deck_id, others_deck_id):
+    browsed = data(call(tools, "deck_browse"))
+    assert [(d["id"], d["name"], d["format"]) for d in browsed] == [(others_deck_id, "Theirs", "modern")]
+    assert "owner" in browsed[0]
+
+
+def test_deck_copy_of_another_users_deck_is_my_own_copy_and_not_theirs_to_change_back(tools, others_deck_id):
+    copied = data(call(tools, "deck_copy", deck_id=others_deck_id))
+    assert copied["name"] == "Theirs (copy)" and copied["id"] != others_deck_id
+
+
+def test_deck_edit_of_another_users_deck_is_a_tool_error_with_not_your_deck(tools, others_deck_id):
+    assert failure(call(tools, "deck_edit", deck_id=others_deck_id, name="Mine now")) == "not-your-deck"

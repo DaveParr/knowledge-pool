@@ -23,7 +23,7 @@ import from profile { save_display_name, UNKNOWN_USER }
 import from deck_io { DeckExport, ExportResult }
 import from walker_errors { WalkerError }
 import from deck_operations { perform, page_walkers, OPERATIONS, OWN, OWNER, FLOW }
-import from graph_runner { refresh_cards, guest_root_id, user_root_id, run_walker, run_read, list_other_decks, copy_deck, owns_deck, call_function, run_as_guest, in_context, start, request_caller, check_bind, LOCAL_USER, RERUNS, LOG }
+import from graph_runner { refresh_cards, guest_root_id, user_root_id, run_walker, run_read, list_other_decks, copy_deck, call_function, run_as_guest, in_context, start, request_caller, check_bind, LOCAL_USER, RERUNS, LOG }
 import from cards { Card, RefreshCards, new_card, card_nodes_for, catalogue_version }
 import from json_object { JsonObject }
 import from legality { Format, FormatRules, GetFormatRules }
@@ -399,14 +399,6 @@ test "a function call still conflicting after its re-runs returns the try-again 
 test "listing other users' decks that still conflicts returns the try-again walker error" {
     (done, _) = _with_failing_commits(
         RERUNS + 1, _write_conflict, lambda () -> object { return list_other_decks(ALICE); }
-    );
-    assert isinstance(done, WalkerError);
-    assert done.code == "try-again";
-}
-
-test "asking who owns a deck, when the call still conflicts, returns the try-again walker error" {
-    (done, _) = _with_failing_commits(
-        RERUNS + 1, _write_conflict, lambda () -> object { return owns_deck(ALICE, str(uuid4())); }
     );
     assert isinstance(done, WalkerError);
     assert done.code == "try-again";
@@ -790,12 +782,12 @@ test "a listed deck's id reads and copies" {
     assert _copy_view(BOB, listed.id).name == "Alice's listed-then-read deck (copy)";
 }
 
-test "a user owns the decks they made, and no one else's, and no id that names no deck" {
-    mine = _new_deck(ALICE, "Alice owns this");
-    assert owns_deck(ALICE, mine);
-    assert not owns_deck(BOB, mine);
-    assert not owns_deck(ALICE, "not-a-deck");
-    assert not owns_deck(ALICE, str(uuid4()));
+test "the deck view says whether the caller owns the deck: true for the owner, false for another user" {
+    id = _new_deck(ALICE, "Alice owns this");
+    assert (_op_first(ALICE, GetDeck(deck_id=id)) as DeckView).mine;
+    assert not (_op_first(BOB, GetDeck(deck_id=id)) as DeckView).mine;
+    assert (_op_first(ALICE, EditDeck(deck_id=id, name="Alice still owns this")) as DeckView).mine;
+    assert (_copy_view(BOB, id)).mine;
 }
 
 test "the owner renames a deck: the name is trimmed, shows in the list and the history gets one line" {
