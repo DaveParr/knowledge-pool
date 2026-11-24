@@ -72,9 +72,11 @@ async def other(request: Request, config: FrontDoorConfig) -> Response {  # jac:
     return PlainTextResponse("Not Found", status_code=404);
 }
 
+"""The health path: a bare "ok" for any host."""
 async def health(_request: Request) -> Response {  # jac:ignore[W1036]
     return PlainTextResponse("ok");
 }
+
 """A route for a deck call: the gatekeeper's check first, then `handler` as the caller it found."""
 def deck_call_route(handler: any, config: FrontDoorConfig) -> any {  # jac:ignore[W1036,W1037]
     async def route(request: Request) -> Response {  # jac:ignore[W1036]
@@ -102,7 +104,6 @@ def web_app(config: FrontDoorConfig) -> Starlette {
         ]
     );
 }
-
 
 """The one ASGI app: the MCP SDK's app (`mcp_app`) answers the connector's
 paths and its own start-up and shut-down; the front door's routes answer

@@ -106,6 +106,11 @@ def request_caller -> str | None {
     return caller.user_id if caller is not None else None;
 }
 
+"""Whether the request's `Origin` is one of the app's own page."""
+def from_own_page(request: Request, config: GatekeeperConfig) -> bool {  # jac:ignore[W1036]
+    return request.headers.get("origin") in config.origins;
+}
+
 """Why a browser data call is refused before it runs, or None to let it run.
 The caller comes first (no caller is a 401), then the request's `Origin`."""
 def check_data_call(request: Request, config: GatekeeperConfig) -> tuple[Caller | None, Response | None] {  # jac:ignore[W1036]
@@ -113,7 +118,7 @@ def check_data_call(request: Request, config: GatekeeperConfig) -> tuple[Caller 
     if caller is None {
         return (None, refusal(401, "UNAUTHORIZED", "Unauthorized"));
     }
-    if request.headers.get("origin") not in config.origins {
+    if not from_own_page(request, config) {
         return (None, refusal(403, "FORBIDDEN", "Forbidden"));
     }
     return (caller, None);
@@ -205,7 +210,7 @@ async def callback(request: Request, config: GatekeeperConfig) -> Response {  # 
 site's root. A POST from the app's own page only, so another site cannot sign a
 user out with a link."""
 async def logout(request: Request, config: GatekeeperConfig) -> Response {  # jac:ignore[W1036]
-    if request.headers.get("origin") not in config.origins {
+    if not from_own_page(request, config) {
         return refusal(403, "FORBIDDEN", "Forbidden");
     }
     sealed = request.cookies.get(SESSION_COOKIE, "");
@@ -271,15 +276,20 @@ def is_mcp_path(path: str) -> bool {
     return any(path == p.rstrip("/") or path.startswith(p if p.endswith("/") else p + "/") for p in MCP_PREFIXES);
 }
 
-"""The bearer token a request carries, or None."""
-def bearer_token(scope: dict[str, any]) -> str | None {  # jac:ignore[W1037]
+"""The value of the request header `wanted` (lower-case bytes), or None."""
+def header_value(scope: dict[str, any], wanted: bytes) -> str | None {  # jac:ignore[W1037]
     for (name, value) in scope["headers"] {
-        if name == b"authorization" {
-            (kind, _, token) = value.decode("latin-1").partition(" ");
-            return token.strip() or None if kind.lower() == "bearer" else None;
+        if name == wanted {
+            return value.decode("latin-1");
         }
     }
     return None;
+}
+
+"""The bearer token a request carries, or None."""
+def bearer_token(scope: dict[str, any]) -> str | None {  # jac:ignore[W1037]
+    (kind, _, token) = (header_value(scope, b"authorization") or "").partition(" ");
+    return token.strip() or None if kind.lower() == "bearer" else None;
 }
 
 """Whether `path` is the discovery metadata (for the connector's resource URL
@@ -366,12 +376,7 @@ def refuse_anonymous(request: Request, config: GatekeeperConfig, ended: bool) ->
 
 """The address a request came from: `X-Real-IP`, or "unknown" when it has none."""
 def request_address(scope: dict[str, any]) -> str {  # jac:ignore[W1037]
-    for (name, value) in scope["headers"] {
-        if name == b"x-real-ip" {
-            return value.decode("latin-1").strip() or UNKNOWN_ADDRESS;
-        }
-    }
-    return UNKNOWN_ADDRESS;
+    return (header_value(scope, b"x-real-ip") or "").strip() or UNKNOWN_ADDRESS;
 }
 
 """The reply to a request over its limit: 429, `Retry-After` in seconds, a
@@ -447,14 +452,14 @@ def guarded(inner: any, config: GatekeeperConfig) -> any {  # jac:ignore[W1037]
         if await refused_as_too_many(limits.users, who.caller, scope, receive, send) {
             return;
         }
-        reset = VERIFIED_SUB.set(who.caller);
+        token = VERIFIED_SUB.set(who.caller);
         try {
             if who.renewed is not None {
                 send = send_with_cookie(send, cookie_header(SESSION_COOKIE, who.renewed, SESSION_MAX_AGE_S));
             }
             await inner(scope, receive, send);
         } finally {
-            VERIFIED_SUB.reset(reset);
+            VERIFIED_SUB.reset(token);
         }
     }
     return app;
