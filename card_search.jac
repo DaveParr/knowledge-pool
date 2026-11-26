@@ -6,7 +6,7 @@ reports the change back (here to the deck page, there to Claude).
 """
 
 import "./card_search.css";
-import from .mana_cost { ManaCost }
+import from .mana_cost { ManaCost, RulesText }
 import from .walker_failure { failureMessage, REFUSED_LINE }
 
 import from decks { DeckView, EditDeck }
@@ -73,7 +73,7 @@ def:pub AddCards(deckId: str, format: str, cards: list[CardLine], onChanged: Cal
                                 }
                             }}
                         </div>
-                        <div className="cs-text">{hit.text}</div>
+                        <div className="cs-text"><RulesText text={hit.text}/></div>
                         <div className="cs-actions">
                             <button
                                 aria-label={"Add " + hit.name + " to main deck"}

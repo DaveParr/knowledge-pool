@@ -40,14 +40,15 @@
   --key-pips: light-dark(#5d5a55, #c8c5bd);
   --key-sources: light-dark(#e8e5dd, #4a4844);
 
-  /* Mana symbol fills: light in both themes, with dark text, like printed symbols. */
-  --mana-w: #f8f3d6;
-  --mana-u: #b4d7f0;
-  --mana-b: #c8c1bd;
-  --mana-r: #f0a68c;
-  --mana-g: #9fd0ae;
-  --mana-c: #d8d4cc;
-  --mana-ink: #1f1e1d;
+  /* Mana colours: the Mana font's cost-symbol fills (mana_symbols.css draws the symbols
+     themselves). Light in both themes, with dark text, like printed symbols. */
+  --mana-w: #f0f2c0;
+  --mana-u: #b5cde3;
+  --mana-b: #aca29a;
+  --mana-r: #db8664;
+  --mana-g: #93b483;
+  --mana-c: #beb9b2;
+  --mana-ink: #111111;
 
   /* Ink weights and hard shadows. */
   --rule: 2px;

@@ -1,10 +1,9 @@
-/* Mana symbol pips. Colours live in global.css (--mana-*). */
+/* Mana symbols in costs and rules text. The glyphs and their colours come from
+   mana_symbols.css (the Mana font); this sizes them and adds Pool block's ink rim. */
 
-.mc-cost { display: inline-flex; flex-wrap: wrap; gap: 2px; align-items: center; vertical-align: middle; }
-.mc-sym {
-  display: inline-flex; align-items: center; justify-content: center;
-  min-width: 19px; height: 19px; padding: 0 3px; box-sizing: border-box;
-  border-radius: 999px; border: var(--rule) solid var(--fg);
-  color: var(--mana-ink); font: 700 9.5px/1 var(--font-mono); font-variant-numeric: tabular-nums;
-}
+.mc-cost { display: inline-flex; flex-wrap: wrap; gap: 3px; align-items: center; vertical-align: middle; }
+.mc-sym { display: inline-flex; font-size: 14px; line-height: 1; }
 .mc-sep { color: var(--muted); font-weight: 700; font-size: 11px; margin: 0 2px; }
+
+.mc-cost .ms-cost, .mc-inline .ms-cost { box-shadow: 0 0 0 1.5px var(--fg); }
+.mc-inline { display: inline-flex; font-size: 0.95em; margin: 0 0.1em; vertical-align: -0.15em; }

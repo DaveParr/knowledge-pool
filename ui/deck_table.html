@@ -74,14 +74,6 @@
     :root { --cols: 10px 2em minmax(0, 1fr) 6em 3em; }
     .type, .colhead span:nth-child(5) { display: none; }
   }
-  /* Mana symbol pills (same as mana_cost.css in the web app). */
-  :root { --mana-w: #f8f3d6; --mana-u: #b4d7f0; --mana-b: #c8c1bd; --mana-r: #f0a68c; --mana-g: #9fd0ae; --mana-c: #d8d4cc; }
-  .mc-cost { display: inline-flex; flex-wrap: wrap; gap: 2px; align-items: center; vertical-align: middle; }
-  .mc-sym { display: inline-flex; align-items: center; justify-content: center; min-width: 18px; height: 18px;
-    padding: 0 4px; box-sizing: border-box; border-radius: 999px; border: 1px solid rgba(0, 0, 0, .18);
-    color: #1f1e1d; font: 600 11px/1 var(--font-sans, system-ui, sans-serif); font-variant-numeric: tabular-nums; }
-  .mc-sep { color: var(--muted); font-size: 11px; margin: 0 2px; }
-
   /* Pool block (design system: https://claude.ai/artifact/CdjUrrHAgydY9QAXQSBLUG).
      The host's colours, Pool block's shape: ink rules and frames, hard offset
      shadows, heavy headings, the pool gradient on the title and main action. */
@@ -111,7 +103,6 @@
     border: 2.5px solid var(--fg) !important; border-radius: 6px; box-shadow: var(--shadow-control);
   }
   .status, .toast, .note { border: 2px solid var(--fg); font-weight: 600; }
-  .mc-sym { border: 2px solid var(--fg); }
 
   ul.cards { border: 3px solid var(--fg); border-radius: 8px; box-shadow: var(--shadow-panel); padding: 2px 10px; margin-right: 4px; }
   li.card { border-bottom: 2px solid var(--fg); }
@@ -124,6 +115,7 @@
 </style>
 <!-- @include refusal.html -->
 <!-- @include host_container.html -->
+<!-- @include mana_symbols.html -->
 </head>
 <body>
 <main id="app"><p class="empty">Loading deck…</p></main>
@@ -144,17 +136,6 @@
   const esc = (s) => String(s ?? "").replace(/[&<>"']/g, (c) =>
     ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[c]);
 
-  // "{1}{R} // {U}" -> symbol pills; hybrids like {W/U} are split diagonally.
-  const manaColour = (p) => "WUBRG".includes(p) && p.length === 1 ? `var(--mana-${p.toLowerCase()})` : "var(--mana-c)";
-  function manaPills(cost) {
-    if (!cost) return "";
-    const faces = String(cost).split("//").map((face) => (face.match(/\{[^}]+\}/g) || []).map((m) => {
-      const sym = m.slice(1, -1), parts = sym.split("/").filter((p) => p !== "P");
-      const bg = parts.length > 1 ? `linear-gradient(135deg, ${manaColour(parts[0])} 50%, ${manaColour(parts[1])} 50%)` : manaColour(parts[0] || sym);
-      return `<span class="mc-sym" style="background:${bg}">${esc(sym)}</span>`;
-    }).join(""));
-    return `<span class="mc-cost" role="img" aria-label="Mana cost ${esc(cost)}">${faces.join('<span class="mc-sep">//</span>')}</span>`;
-  }
 
   function applyHost(ctx) {
     if (!ctx) return;
@@ -182,9 +163,9 @@
     const faces = (c.faces || []).length
       ? c.faces.map((f, i) => `<div class="face">
           <h3>${esc(f.name)} <span class="ft">${manaPills(f.mana_cost)}${f.mana_cost ? " · " : ""}${esc(f.type_line)}</span></h3>
-          ${f.text ? `<p class="rules">${esc(f.text)}</p>` : ""}${stats(f, i > 0)}</div>`).join("")
+          ${f.text ? `<p class="rules">${rulesHtml(f.text)}</p>` : ""}${stats(f, i > 0)}</div>`).join("")
       : (c.text || c.loyalty || c.defense
-        ? `<div class="face">${c.text ? `<p class="rules">${esc(c.text)}</p>` : ""}${stats(c, false)}</div>` : "");
+        ? `<div class="face">${c.text ? `<p class="rules">${rulesHtml(c.text)}</p>` : ""}${stats(c, false)}</div>` : "");
     const keywords = c.keywords || [], roles = c.roles || [], tags = c.oracle_tags || [];
     const notes = [
       ...roles.map((r) => `<span class="pill">${esc(r)}</span>`),

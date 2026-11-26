@@ -1,20 +1,28 @@
 """The MCP Apps views' pages: each file in `ui/`, with the parts the views
-share (`SHARED`) put in where it has an `@include` comment."""
+share (`SHARED`) put in where it has an `@include` comment. `ui/mana_symbols.html`
+carries the repo's `mana_symbols.css` (Magic's symbols from the Mana font, the
+same stylesheet the web app imports) at its `MANA_CSS_MARKER`."""
 
 import os;
 
-glob UI_DIR: str = os.path.join(os.path.dirname(os.path.abspath(__file__)), "ui"),
-     SHARED: list[str] = ["refusal.html", "host_container.html"];
+glob ROOT_DIR: str = os.path.dirname(os.path.abspath(__file__)),
+     UI_DIR: str = os.path.join(ROOT_DIR, "ui"),
+     SHARED: list[str] = ["refusal.html", "host_container.html", "mana_symbols.html"],
+     MANA_CSS_MARKER: str = "/* @mana_symbols.css */";
+
+def read_text(path: str) -> str {
+    with open(path, encoding="utf-8") as f {
+        return f.read();
+    }
+}
 
 """The page of the view in `ui/<name>`, ready to hand to a host."""
 def view_page(name: str) -> str {
-    with open(os.path.join(UI_DIR, name), encoding="utf-8") as f {
-        page = f.read();
-    }
+    page = read_text(os.path.join(UI_DIR, name));
+    mana_css = read_text(os.path.join(ROOT_DIR, "mana_symbols.css"));
     for part in SHARED {
-        with open(os.path.join(UI_DIR, part), encoding="utf-8") as f {
-            page = page.replace(f"<!-- @include {part} -->", f.read());
-        }
+        shared = read_text(os.path.join(UI_DIR, part)).replace(MANA_CSS_MARKER, mana_css);
+        page = page.replace(f"<!-- @include {part} -->", shared);
     }
     return page;
 }
