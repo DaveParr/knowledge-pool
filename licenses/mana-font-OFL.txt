@@ -3,11 +3,38 @@ Gioia (https://github.com/andrewgioia/mana, https://mana.andrewgioia.com), is li
 under the SIL Open Font License, Version 1.1, copied below. mana_symbols.css carries a
 subset of it, cut down to 44 glyphs by scripts/mana_symbols.py and inlined as a data: URI;
 the font's own metadata names "SIL OFL 1.1" as its licence and Andrew Gioia as designer.
-The package states no other copyright line and no Reserved Font Name.
+The package states no copyright line and no Reserved Font Name.
 
-The Mana CSS rules kept in mana_symbols.css are MIT licensed by the same author
-(http://opensource.org/licenses/mit-license.html). The symbols' designs are copyright
-Wizards of the Coast, used here as fan content.
+The Mana CSS rules kept in mana_symbols.css are MIT licensed by the same author (the
+package's `license` field; its README points to opensource.org/licenses/mit-license.html).
+The notice below is that licence's text, with the author from package.json as the holder.
+The symbols' designs are copyright Wizards of the Coast, used here as fan content.
+
+-----------------------------------------------------------
+MIT License (Mana CSS rules)
+-----------------------------------------------------------
+
+Copyright (c) Andrew Gioia
+
+Permission is hereby granted, free of charge, to any person obtaining a copy of this
+software and associated documentation files (the "Software"), to deal in the Software
+without restriction, including without limitation the rights to use, copy, modify, merge,
+publish, distribute, sublicense, and/or sell copies of the Software, and to permit persons
+to whom the Software is furnished to do so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included in all copies or
+substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED,
+INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR
+PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE
+FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR
+OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER
+DEALINGS IN THE SOFTWARE.
+
+-----------------------------------------------------------
+SIL Open Font License 1.1 (Mana font)
+-----------------------------------------------------------
 
 -----------------------------------------------------------
 SIL OPEN FONT LICENSE Version 1.1 - 26 February 2007

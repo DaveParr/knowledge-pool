@@ -155,4 +155,7 @@ def test_the_font_licence_is_in_the_repo_and_named_in_the_stylesheet():
     text = licence.read_text()
     assert "SIL OPEN FONT LICENSE Version 1.1" in text
     assert "Andrew Gioia" in text
+    # The CSS rules kept in mana_symbols.css are MIT: its notice travels too.
+    assert "MIT License" in text and "WITHOUT WARRANTY OF ANY KIND" in text
+    assert "Copyright (c) Andrew Gioia" in text
     assert "licenses/mana-font-OFL.txt" in CSS.split("*/")[0]
