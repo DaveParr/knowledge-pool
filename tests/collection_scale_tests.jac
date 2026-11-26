@@ -6,7 +6,9 @@ collection every time, so a read cost deck lines x collection size, and all the
 while the runner's one lock held every other call back (#241).
 """
 
+import copy;
 import os;
+import uuid;
 import time;
 import from pathlib { Path }
 import from catalog.ingest { build, load_atomic, load_oracle_tags }
@@ -20,15 +22,35 @@ import from collection_views { QuestListView, CollectionView, ImportCollectionRe
 
 glob CATALOG: Path = Path("data/test_collection_scale_catalog.sqlite"),
      CALLER: str = "user_test_scale_alice",
+     SCALE_CARDS: int = 520,
      DECK_LINES: int = 60,
      LIMIT_S: float = 3.0,
-     COLLECTION_LIMIT_S: float = 0.5,
+     IMPORT_LIMIT_S: float = 8.0,
+     COLLECTION_LIMIT_S: float = 1.5,
      CHANGED_CARD: int = 7,
      CHANGED_COPIES: int = 5;
 
+"""The fixture catalogue grown to `SCALE_CARDS` cards: the hand-trimmed fixture's
+single-face cards cloned under new names and oracle ids, so the collection under
+test is bigger than the ticket's 500 cards without a second fixture file to keep."""
+def _scale_catalogue -> dict[str, any] {  # jac:ignore[W1037]
+    atomic = load_atomic(Path("tests/fixtures/atomic_small.json"));
+    singles = [(name, faces[0]) for (name, faces) in atomic["data"].items() if len(faces) == 1];
+    n = 0;
+    while len(atomic["data"]) < SCALE_CARDS {
+        (name, face) = singles[n % len(singles)];
+        n += 1;
+        clone = copy.deepcopy(face);
+        clone["name"] = f"{name} Clone {n}";
+        clone["identifiers"] = {"scryfallOracleId": str(uuid.uuid5(uuid.NAMESPACE_DNS, clone["name"]))};
+        atomic["data"][clone["name"]] = [clone];
+    }
+    return atomic;
+}
+
 with entry {
     build(
-        load_atomic(Path("tests/fixtures/atomic_small.json")),
+        _scale_catalogue(),
         CATALOG,
         tags=load_oracle_tags(Path("tests/fixtures/oracle_tags_small.jsonl"))
     );
@@ -95,7 +117,7 @@ test "a collection of the whole catalogue is read within the limit, each card wi
 test "a list of the whole catalogue is imported within the limit, every card resolved" {
     from_start = time.monotonic();
     result = perform(CALLER, ImportCollection(format="text", text=_whole_catalogue_list())).reports[0] as ImportCollectionResult;
-    assert time.monotonic() - from_start < LIMIT_S;
+    assert time.monotonic() - from_start < IMPORT_LIMIT_S;
     assert result.unresolved == [];
     assert len(result.collection.cards) == len(_oracle_ids());
 }
