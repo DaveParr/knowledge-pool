@@ -10,56 +10,55 @@ The judgement calls reviewers check every time. Mechanical checks belong in `jac
 
 ## Jac at scale
 
-Each graph read is a store round trip, so the cost of a walker is the number of reads it makes. These come from the #241 research (a 60-line deck against a 200-card collection took ~20 s); the sources are the version-pinned `jac guide jac-node-edge-patterns` and `jac guide jac-sv-persistence`, and jaseci-labs/jac issues [#9914](https://github.com/jaseci-labs/jac/issues/9914) and [#9887](https://github.com/jaseci-labs/jac/issues/9887).
+Each graph read is a store round trip, so a walker's cost is its number of reads. From the #241 research; sources are the pinned `jac guide jac-node-edge-patterns` and `jac-sv-persistence`, and jaseci-labs/jac [#9914](https://github.com/jaseci-labs/jac/issues/9914) and [#9887](https://github.com/jaseci-labs/jac/issues/9887).
 
-- **Read a node's edges once per call.** A traversal is eager and re-reads the neighbourhood wherever it appears, so inside a loop over lines or cards it runs once per iteration. No traversal, `holdings()` or `owned()` in such a loop: build a dict first. `owned_search` (`collection.jac`) is the model; `copies` → `owned()` → `holdings()` per deck line was #241.
+- **Read a node's edges once per call.** Why: a traversal is eager and re-reads the neighbourhood wherever it appears, so in a loop it runs per iteration. No traversal, `holdings()` or `owned()` in a loop over lines or cards; build a dict first, as `owned_search` (`collection.jac`) does. Source: `jac-node-edge-patterns`, "Reference semantics".
 
   ```jac
-  # wrong: holdings() per line, O(lines × collection)
+  # wrong: copies() reaches owned() and holdings() on every line (#241)
   for line in lines { n = copies(coll, line.oracle_id); }
-  # right: one read, then lookups
+  # right: one read, then dict lookups
   counts = {c.oracle_id: e.count for (e, c) in holdings(coll)};
   for line in lines { n = counts.get(line.oracle_id, 0); }
   ```
 
-- **Ask the store, not the process.** Put predicates, ordering and bounds inside the graph reference (`[coll ->:Owns:-> [?:Card, oracle_id == oid]]`, `[:20]`), and use `jobj` to find by id; filtering a full read in Jac pays for every row. For many lookups in one call the previous rule beats this one, since N predicate queries are still N round trips. Source: `jac-sv-persistence`, "Ask the store, not the process".
+- **Ask the store, not the process.** Why: a predicate inside the reference runs as one query, and `jobj` finds by id in O(1), where a Jac loop pays for every row. For many lookups in one call, the rule above wins: N queries are still N round trips. Source: `jac-sv-persistence`, "Ask the store, not the process".
 
   ```jac
-  # wrong: fetch every card, filter in Jac
-  for c in [coll ->:Owns:->] { if c.oracle_id == oid { return c; } }
-  # right, for one card: the store filters
-  hit = [coll ->:Owns:-> [?:Card, oracle_id == oid]];
+  # wrong: read every card, filter in Jac
+  hits = [c for c in [coll ->:Owns:->] if c.oracle_id == oid];
+  # right, for one card: the store filters, and the result is used where it is written
+  if [coll ->:Owns:-> [?:Card, oracle_id == oid]] { ... }
+  # by id: deck = jobj(deck_id);
   ```
 
-- **A lookup helper that scans is for one lookup.** Name it so (`find_…`), say O(n) in its docstring, and give callers that need many a map builder. `owned()` scans yet is named like a getter, so `stamp_collection` and `quest_list` called it per line.
+- **A lookup helper that scans is for one lookup.** Why: callers copy its use into loops. Name scanners `find_…`, state O(n) in the docstring, and give callers that need many a map builder.
 
   ```jac
-  # wrong: a scanner named like a getter, called per line
+  # wrong: a scan named like a getter
   """The Owns edge and card for `oid`."""
   def owned(coll: Collection, oid: str) -> tuple[Owns, Card] | None { ... }
-  # right: say it scans, and offer the map for loops
-  """O(n): scans every holding. For many lookups use `count_map`."""
+  # right: name and docstring say it scans; a map builder serves loops
+  """O(n): scans every holding. For many lookups, build `count_map`."""
   def find_owned(coll: Collection, oid: str) -> tuple[Owns, Card] | None { ... }
-  def count_map(coll: Collection) -> dict[str, int] { ... }
   ```
 
-- **Size tests to the failure.** Any walker that loops over user data has a test at about 10× the expected size with a time bound. The fixtures are small (25-card collections), so nothing exercised the O(lines × collection) path; #241 asks for 500+ cards.
+- **Size tests to the failure.** Why: small fixtures hide O(lines × collection). Any walker that loops over user data has a test at about 10× the expected size, with a generous time bound.
 
   ```python
-  # wrong: passes at 25 cards, says nothing about 500
+  # wrong: only the 25-card fixture
   def test_stamp_collection_counts_lines(): ...
-  # right: big input, bounded time
-  def test_stamp_collection_stays_fast_at_500_cards():
-      ...; assert elapsed < 2.0
+  # right: 10x input, bounded
+  def test_stamp_collection_stays_fast_at_ten_times_size(): ...  # assert elapsed < bound
   ```
 
-- **Bound every wait in the request path, and log slow calls.** A lock or queue a call waits on gets a timeout on the wait and a log of the name and duration of calls over a threshold. A request timeout cannot stop a sync handler (it keeps its thread and a cancelled call can still commit), so bound the wait for the lock, not the call (#9914, #9887). The slow call itself is fixed by the rules above. Whether `LOCK` in `graph_runner.jac` is needed at all is an open question on #241.
+- **Bound every wait in the request path, and log slow calls.** Why: a request timeout cannot stop a sync handler, so one slow call holds a lock and its thread while others queue. Bound the wait for the lock or queue, and log the name and duration of calls over a threshold. Source: #9914, #9887. Whether `LOCK` in `graph_runner.jac` should exist at all is #241's question, not a rule here.
 
   ```jac
-  # wrong: every request queues behind a slow one, unmeasured
+  # wrong: unbounded wait, unmeasured
   with LOCK { attempt(); }
-  # right: bounded wait, slow calls named in the log
-  if not LOCK.acquire(timeout=WAIT) { return try_again(); }
+  # right: bounded wait, slow calls named
+  if not LOCK.acquire(timeout=5.0) { return busy(); }
   try { t0 = time.monotonic(); attempt(); log_if_slow(name, time.monotonic() - t0); }
   finally { LOCK.release(); }
   ```
