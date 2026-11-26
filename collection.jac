@@ -47,16 +47,24 @@ def my_collection -> Collection {
     return Collection();
 }
 
-"""Every (edge, card) pair the collection holds."""
+"""Every (edge, card) pair the collection holds, from one read of its edges and
+one of its cards, which come in the same order: never one edge lookup per card,
+which made every read of a collection quadratic."""
 def holdings(coll: Collection) -> list[tuple[Owns, Card]] {
-    return [([edge coll ->:Owns:-> c][0], c) for c in [coll ->:Owns:->]];
+    return list(zip([edge coll ->:Owns:->], [coll ->:Owns:->]));
+}
+
+"""The copies the collection holds of each card, by oracle id (empty for no
+collection), from one read of it: look cards up here, never one `copies` at a time."""
+def collection_counts(coll: Collection | None) -> dict[str, int] {
+    return {c.oracle_id: e.count for (e, c) in holdings(coll)} if coll is not None else {};
 }
 
 """The `Owns` edge and card for `oid`, or None when the collection has none."""
 def owned(coll: Collection, oid: str) -> tuple[Owns, Card] | None {
-    for (e, c) in holdings(coll) {
+    for c in [coll ->:Owns:->] {
         if c.oracle_id == oid {
-            return (e, c);
+            return ([edge coll ->:Owns:-> c][0], c);
         }
     }
     return None;
@@ -85,8 +93,10 @@ def copies(coll: Collection, oid: str) -> int {
 """The one writer. Sets the count of `oid` to the absolute `count` (0 removes
 the card) and logs a ChangeNote with `reason`. A change that leaves the count
 as it was is applied but not logged. Returns "" when applied, else why it was
-refused (and nothing is written)."""
-def set_count(coll: Collection, oid: str, count: int, reason: str) -> str {
+refused (and nothing is written). A caller that changes many cards at once
+passes `known`, the collection's holdings by oracle id from one read of it, so
+no change reads the collection again; it must not change a card twice."""
+def set_count(coll: Collection, oid: str, count: int, reason: str, known: dict[str, tuple[Owns, Card]] | None = None) -> str {
     if not reason.strip() {
         return "every change needs a reason.";
     }
@@ -94,7 +104,7 @@ def set_count(coll: Collection, oid: str, count: int, reason: str) -> str {
     if problem {
         return problem;
     }
-    found = owned(coll, oid);
+    found = known.get(oid) if known is not None else owned(coll, oid);
     before = found[0].count if found is not None else 0;
     name = "";
     if found is None {
@@ -252,8 +262,10 @@ walker:protect ImportCollection {
         }
         coll = my_collection();
         unresolved = [*rl.unresolved];
+        known = {c.oracle_id: (e, c) for (e, c) in holdings(coll)};
         for (oid, total) in totals.items() {
-            why = set_count(coll, oid, copies(coll, oid) + total, REASON_IMPORTED);
+            held = known[oid][0].count if oid in known else 0;
+            why = set_count(coll, oid, held + total, REASON_IMPORTED, known);
             if why {
                 unresolved.append(f"{card_name(oid)} ({why})");
             }
@@ -284,7 +296,7 @@ obj OwnedSearch {
 """Search the catalogue for `query`, each hit with the copies `coll` holds (None:
 no collection, so 0). With `owned_only`, only cards `coll` holds come back."""
 def owned_search(coll: Collection | None, query: str, limit: int, owned_only: bool) -> OwnedSearch {
-    counts = {c.oracle_id: e.count for (e, c) in holdings(coll)} if coll is not None else {};
+    counts = collection_counts(coll);
     found = search_among(query, limit, [*counts.keys()] if owned_only else None);
     return OwnedSearch(
         hits=[
@@ -328,10 +340,11 @@ on the root the walker ran on, so a deck read by another user is always
 measured against its owner's collection."""
 def stamp_collection(reports: list[any]) -> None {
     coll = find_collection();
+    counts = collection_counts(coll);
     for item in reports {
         if isinstance(item, DeckView) {
             for line in item.cards {
-                line.collection_count = copies(coll, line.oracle_id) if coll is not None else 0;
+                line.collection_count = counts.get(line.oracle_id, 0);
             }
             item.missing = missing_cards(item.cards);
             item.sleeveable = len(item.missing) == 0;

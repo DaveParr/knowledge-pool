@@ -10,9 +10,9 @@ Codes: no-such-deck (no deck has that id), not-your-deck (a change to
 another user's deck; the message points to copying), blank-name, unknown-format (a play format such as
 standard), unknown-list-format (a deck list format such as moxfield),
 no-export / no-import (the list format cannot go that way), refused-change (a change to a collection that the writer refused; the message says why, and how many copies are held for a removal of too many), not-your-collection (a change that names another user's collection), no-such-user (a handle that names no user). The MCP tools add no-such-card (get_card) and card-search-failed (the catalogue
-could not search). The runner adds two
+could not search). The runner adds three
 of its own (`graph_runner.jac`): try-again (the call kept meeting another
-writer and was rolled back) and internal-error (Jac refused a write the app
+writer and was rolled back), busy (the runner's lock was not free in time; nothing ran) and internal-error (Jac refused a write the app
 had allowed: an app fault, rolled back and logged). The web page adds `refused` (`session_bar.jac`) for a call
 the front door refused, such as a 429, with the line to show."""
 obj WalkerError {
