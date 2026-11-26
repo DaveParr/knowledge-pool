@@ -32,15 +32,14 @@ def find_collection -> Collection | None {
     return found[0] if found else None;
 }
 
-"""The caller's collection, made on first use."""
+"""The caller's collection, or a new one not yet on their root (`ChangeCollection`
+puts it there once a change has been applied)."""
 def my_collection -> Collection {
     found = find_collection();
     if found is not None {
         return found;
     }
-    made = Collection();
-    root ++> made;
-    return made;
+    return Collection();
 }
 
 """Every (edge, card) pair the collection holds."""
@@ -144,7 +143,12 @@ def change_count(coll: Collection, oid: str, count: int, mode: str, reason: str)
     if mode == MODE_REMOVE and count > have {
         return f"you have {have} of {card_name(oid)}, so cannot remove {count}.";
     }
-    target = count if mode == MODE_SET else (have + count if mode == MODE_ADD else have - count);
+    target = count;
+    if mode == MODE_ADD {
+        target = have + count;
+    } elif mode == MODE_REMOVE {
+        target = have - count;
+    }
     return set_count(coll, oid, target, reason);
 }
 
@@ -187,6 +191,9 @@ walker:protect ChangeCollection {
         if why {
             report WalkerError(code=REFUSED_CHANGE, message=f"Change refused: {why}");
             disengage;
+        }
+        if find_collection() is None {
+            root ++> coll;
         }
         report collection_view(coll);
     }

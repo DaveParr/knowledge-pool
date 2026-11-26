@@ -11,7 +11,8 @@ import from catalog.ingest { build, load_atomic, load_oracle_tags }
 import catalog.store as store;
 import from walker_errors { WalkerError }
 import from jaclang { JacRuntime as Jac }
-import from graph_runner { STARTED_FOR_GUEST }
+import from graph_runner { STARTED_FOR_GUEST, call_function }
+import from collection { Collection }
 import from deck_operations { perform, page_walkers, OPERATIONS, OWN }
 import from decks { CreateDeck, EditDeck, GetDeck, DeckView }
 import from collection { ChangeCollection, GetCollection, CollectionView, MODE_ADD, MODE_REMOVE, MODE_SET }
@@ -141,6 +142,14 @@ test "the history keeps every change, however many" {
         _change(BOB, "Mountain", 1, reason=f"change {i}");
     }
     assert len([n for n in _collection(BOB).history if n.name == "Mountain"]) == 130;
+}
+
+test "a refused change writes nothing, not even an empty collection" {
+    carol = "user_test_collection_carol";
+    refused = _change(carol, "Shock", 1, MODE_REMOVE);
+    assert refused is not None and refused.code == "refused-change";
+    kept = call_function(carol, lambda () -> object { return len([root-->[?:Collection]]); });
+    assert kept == 0;
 }
 
 # Keep last: `perform` registers the shared root for this process, and `jac test`
