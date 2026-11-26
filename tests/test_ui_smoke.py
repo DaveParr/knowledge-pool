@@ -303,6 +303,33 @@ def test_the_my_collection_view_adds_removes_and_logs_a_card(app):
     assert "Changed in the app" in history
 
 
+def test_the_my_collection_view_adds_removes_and_sets_a_count_of_copies(app):
+    app.browse("open", app.web)
+    app.click("link", "My collection")
+    app.fill("input[aria-label='Search cards to add to your collection']", "Shock")
+    app.click("button", "Search")
+    app.click("button", "Add Shock to my collection")
+    app.wait_text("× 1", within="ul[aria-label='My collection']")
+
+    app.fill("input[aria-label='Copies of Shock']", "4")
+    app.click("button", "Add copies of Shock")
+    app.wait_text("× 5", within="ul[aria-label='My collection']")
+
+    app.fill("input[aria-label='Copies of Shock']", "2")
+    app.click("button", "Remove copies of Shock")
+    app.wait_text("× 3", within="ul[aria-label='My collection']")
+
+    app.fill("input[aria-label='Count of Shock']", "7")
+    app.click("button", "Set count of Shock")
+    app.wait_text("× 7", within="ul[aria-label='My collection']")
+
+    # Removing more than held is refused with the count held, and changes nothing.
+    app.fill("input[aria-label='Copies of Shock']", "9")
+    app.click("button", "Remove copies of Shock")
+    assert "7" in app.wait_text("Change refused", within="p[role='alert']")
+    assert "× 7" in app.wait_text("× 7", within="ul[aria-label='My collection']")
+
+
 async def deck_show_result(url: str) -> dict:
     """deck_show's structuredContent for the "Smoke Burn" deck (created if missing)."""
 

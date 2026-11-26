@@ -7,10 +7,88 @@ import from .mana_cost { ManaCost }
 import from .walker_failure { failureMessage, REFUSED_LINE }
 
 import from collection { GetCollection, ChangeCollection }
-import from collection_views { CollectionView, MODE_ADD, MODE_REMOVE, MODE_SET }
+import from collection_views { CollectionLine, CollectionView, MODE_ADD, MODE_REMOVE, MODE_SET }
 import from edit_reason { WEB_COLLECTION_REASON }
 import from walker_errors { WalkerError }
 import from cards { CardHit, CardSearch, search_cards }
+
+"""One card of the collection: its count, quick +1 and −1, add or remove N
+copies, set the count, or remove them all."""
+def CollectionRow(line: CollectionLine, onChange: Callable[[str, int, str], None]) -> JsxElement {
+    has copies: str = "1",
+        target: str = str(line.count);
+
+    """The whole number in `text`, or -1 when it is not one."""
+    def wholeNumber(text: str) -> int {
+        if not text.strip() or not text.strip().isdigit() {
+            return -1;
+        }
+        return int(text.strip());
+    }
+
+    def apply(text: str, mode: str) {
+        n = wholeNumber(text);
+        if n >= 0 {
+            onChange(line.oracle_id, n, mode);
+        }
+    }
+
+    return
+        <li className="fe-deck">
+            <span>{line.name}</span>
+            <span className="pill">{"× " + str(line.count)}</span>
+            <button
+                aria-label={"Add one " + line.name}
+                onClick={lambda (_e: MouseEvent) { onChange(line.oracle_id, 1, MODE_ADD); }}
+            >
+                +
+            </button>
+            <button
+                aria-label={"Remove one " + line.name}
+                onClick={lambda (_e: MouseEvent) { onChange(line.oracle_id, 1, MODE_REMOVE); }}
+            >
+                −
+            </button>
+            <input
+                type="number"
+                min="1"
+                aria-label={"Copies of " + line.name}
+                value={copies}
+                onChange={lambda (e: ChangeEvent) { copies = e.target.value; }}
+            />
+            <button
+                aria-label={"Add copies of " + line.name}
+                onClick={lambda (_e: MouseEvent) { apply(copies, MODE_ADD); }}
+            >
+                Add
+            </button>
+            <button
+                aria-label={"Remove copies of " + line.name}
+                onClick={lambda (_e: MouseEvent) { apply(copies, MODE_REMOVE); }}
+            >
+                Remove
+            </button>
+            <input
+                type="number"
+                min="0"
+                aria-label={"Count of " + line.name}
+                value={target}
+                onChange={lambda (e: ChangeEvent) { target = e.target.value; }}
+            />
+            <button
+                aria-label={"Set count of " + line.name}
+                onClick={lambda (_e: MouseEvent) { apply(target, MODE_SET); }}
+            >
+                Set count
+            </button>
+            <button
+                aria-label={"Remove all of " + line.name}
+                onClick={lambda (_e: MouseEvent) { onChange(line.oracle_id, 0, MODE_SET); }}
+            >
+                Remove all
+            </button>
+        </li>;
+}
 
 def:pub CollectionPage(onBack: Callable[[], None]) -> JsxElement {
     has view: CollectionView | None = None,
@@ -101,28 +179,7 @@ def:pub CollectionPage(onBack: Callable[[], None]) -> JsxElement {
             {<p className="empty">Nothing in your collection yet.</p> if view is not None and len(view.cards) == 0 else None}
             <ul className="fe-decks" aria-label="My collection">
                 {for line in (view.cards if view is not None else []) {
-                    <li key={line.oracle_id} className="fe-deck">
-                        <span>{line.name}</span>
-                        <span className="pill">{"× " + str(line.count)}</span>
-                        <button
-                            aria-label={"Add one " + line.name}
-                            onClick={lambda (_e: MouseEvent) { change(line.oracle_id, 1, MODE_ADD); }}
-                        >
-                            +
-                        </button>
-                        <button
-                            aria-label={"Remove one " + line.name}
-                            onClick={lambda (_e: MouseEvent) { change(line.oracle_id, 1, MODE_REMOVE); }}
-                        >
-                            −
-                        </button>
-                        <button
-                            aria-label={"Remove all of " + line.name}
-                            onClick={lambda (_e: MouseEvent) { change(line.oracle_id, 0, MODE_SET); }}
-                        >
-                            Remove all
-                        </button>
-                    </li>
+                    <CollectionRow key={line.oracle_id + ":" + str(line.count)} line={line} onChange={change}/>
                 }}
             </ul>
             <h2>History</h2>
