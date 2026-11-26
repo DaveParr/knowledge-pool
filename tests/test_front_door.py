@@ -171,6 +171,12 @@ def test_a_call_that_still_conflicts_answers_503_try_again(client, monkeypatch):
     assert reply.status_code == 503 and reply.json()["error"]["code"] == "TRY-AGAIN"
 
 
+def test_a_call_that_cannot_get_the_runners_lock_answers_503_busy(client, monkeypatch):
+    monkeypatch.setattr(deck_call, "call_function", lambda caller, f, name="": graph_runner.busy())
+    reply = client.post("/function/list_formats", json={})
+    assert reply.status_code == 503 and reply.json()["error"]["code"] == "BUSY"
+
+
 def test_a_function_call_the_runner_cannot_finish_answers_500_for_an_internal_error(client, monkeypatch):
     monkeypatch.setattr(deck_call, "call_function", lambda caller, f, name="": graph_runner.internal_error())
     reply = client.post("/function/search_cards", json={"query": "bolt"})

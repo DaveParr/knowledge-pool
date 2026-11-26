@@ -7,7 +7,7 @@ caller's entries; deck work reaches them through `perform` in
 and the formats). Nothing a request reaches calls it.
 
 No entry raises `CallFailed` to its caller. A call the runner could not finish
-comes back as the walker error `try-again` or `internal-error`: a walker entry
+comes back as the walker error `try-again`, `busy` or `internal-error`: a walker entry
 returns a copy of the walker whose one report it is, and an entry that returns
 a value (`call_function`, `list_other_decks`) returns it in place of
 the value. `in_context`, `attempt` and `start` are the primitives under the
@@ -18,8 +18,11 @@ card catalogue and the formats are looked up there, never under the
 caller's root. Before the first call, the guest creates the `Catalog` and
 `Format` nodes and opens them to every user for reading.
 
-One lock runs walkers one at a time across all users. A call that fails is
-rolled back, so the next call starts clean.
+One lock runs walkers one at a time across all users, so a call that never
+finishes would stop every other. A call waits for the lock at most `LOCK_WAIT_S`:
+after that the caller gets the walker error `busy` (HTTP 503). A call that holds
+it longer than `SLOW_CALL_S` is logged with its name, caller and duration. A
+call that fails is rolled back, so the next call starts clean.
 
 Another process on the same database (the web app beside the MCP server) can
 change what a call read before the call commits. On a write conflict or a
@@ -74,6 +77,8 @@ glob APP_DIR: str = os.path.dirname(os.path.abspath(__file__)),
      STARTED_FOR_GUEST: list[str] = [],
      USER_PAGE: int = 100,
      PERSON_ROLE: str = "user",
+     LOCK_WAIT_S: float = 10.0,
+     SLOW_CALL_S: float = 5.0,
      RERUNS: int = 3,
      RERUN_WAIT_S: tuple[float, float] = (0.01, 0.05),
      LOG: logging.Logger = logging.getLogger("knowledge_pool.runner");
@@ -97,6 +102,25 @@ def try_again -> WalkerError {
 
 def internal_error -> WalkerError {
     return WalkerError(code="internal-error", message="Something went wrong on our side. Nothing was changed.");
+}
+
+def busy -> WalkerError {
+    return WalkerError(code="busy", message="The server is busy with another call. Please try again in a moment.");
+}
+
+"""Hold the runner's lock for a `with`, waiting at most `LOCK_WAIT_S` for it: a call
+that cannot get it raises `CallFailed` (`busy`) instead of queueing for ever behind
+one that never finishes."""
+obj locked {
+    def __enter__ -> None {
+        if not LOCK.acquire(timeout=LOCK_WAIT_S) {
+            raise CallFailed(error=busy());
+        }
+    }
+
+    def __exit__(kind: object, value: object, trace: object) -> None {
+        LOCK.release();
+    }
 }
 
 """Whether `e` means another writer got there first, so a re-run may succeed:
@@ -165,27 +189,42 @@ inside it; calls still run one at a time.
 On any error the call's writes are rolled back. A write conflict re-runs
 `work`, up to `RERUNS` times; one still conflicting after that, and any
 write Jac refuses, raise `CallFailed`. `name` (the walker or function) and
-`caller` are for the log. Other errors are raised as they are."""
+`caller` are for the log. Other errors are raised as they are. A call that
+holds the lock longer than `SLOW_CALL_S` is logged with its name, caller and
+duration, so a call that wedges the runner shows in the log."""
 def in_context(root_id: str, work: Callable[[], object], name: str = "", caller: str = "") -> object {
-    with LOCK {
-        reruns = 0;
-        while True {
-            try {
-                return attempt(root_id, work);
-            } except PermissionError as refused {
-                LOG.error("Jac refused a write in %s for caller %s: %s", name, caller, refused);
-                raise CallFailed(error=internal_error()) from refused;
-            } except Exception as e {
-                if not is_write_conflict(e) {
-                    raise;
-                }
-                if reruns >= RERUNS {
-                    LOG.warning("%s for caller %s still conflicted after %d re-runs", name, caller, reruns);
-                    raise CallFailed(error=try_again()) from e;
-                }
-                reruns += 1;
-                time.sleep(random.uniform(*RERUN_WAIT_S));
+    with locked() {
+        began = time.monotonic();
+        try {
+            return rerun_on_conflict(root_id, work, name, caller);
+        } finally {
+            held = time.monotonic() - began;
+            if held > SLOW_CALL_S {
+                LOG.warning("%s for caller %s held the runner's lock for %.1fs", name, caller, held);
             }
+        }
+    }
+}
+
+"""`in_context`'s tries: `attempt` until it commits, re-running on a write conflict."""
+def rerun_on_conflict(root_id: str, work: Callable[[], object], name: str, caller: str) -> object {
+    reruns = 0;
+    while True {
+        try {
+            return attempt(root_id, work);
+        } except PermissionError as refused {
+            LOG.error("Jac refused a write in %s for caller %s: %s", name, caller, refused);
+            raise CallFailed(error=internal_error()) from refused;
+        } except Exception as e {
+            if not is_write_conflict(e) {
+                raise;
+            }
+            if reruns >= RERUNS {
+                LOG.warning("%s for caller %s still conflicted after %d re-runs", name, caller, reruns);
+                raise CallFailed(error=try_again()) from e;
+            }
+            reruns += 1;
+            time.sleep(random.uniform(*RERUN_WAIT_S));
         }
     }
 }
@@ -222,7 +261,7 @@ the Catalog and Format nodes, open to every user for reading. Runs before
 the first call, and again only if the guest's root changes (`jac test`
 starts each test on an empty graph) or the registration was cleared."""
 def start {
-    with LOCK {
+    with locked() {
         guest = guest_root_id();
         # The shared root is also registered again when something cleared it (Jac's test
         # client does on close) while the guest stayed the same.

@@ -4,7 +4,7 @@ have, worked out on read and never stored (CONTEXT.md, Quest list)."""
 import from decks { Deck, card_lines }
 import from card_lines { played_needs }
 import from deckformats { ExportEntry, ExportDeck, get_format }
-import from collection { find_collection, my_collection, change_count, copies }
+import from collection { find_collection, my_collection, change_count, collection_counts }
 import from collection_views { QuestDeck, UserAction, QuestLine, QuestListView, MODE_ADD, REFUSED_CHANGE }
 import from walker_errors { WalkerError }
 
@@ -15,7 +15,7 @@ glob REASON_GOT: str = "got from the quest list";
 any one of the user's decks needs across `PLAYED_ZONES`, minus their
 collection's count, for the cards where that is above zero."""
 def quest_list_view -> QuestListView {
-    coll = find_collection();
+    counts = collection_counts(find_collection());
     names: dict[str, str] = {};
     needs: dict[str, list[QuestDeck]] = {};
     for deck in [root-->[?:Deck]] {
@@ -27,8 +27,7 @@ def quest_list_view -> QuestListView {
     }
     lines: list[QuestLine] = [];
     for (oid, decks) in needs.items() {
-        have = copies(coll, oid) if coll is not None else 0;
-        short = max([d.count for d in decks]) - have;
+        short = max([d.count for d in decks]) - counts.get(oid, 0);
         if short > 0 {
             lines.append(QuestLine(oracle_id=oid, name=names[oid], count=short, decks=decks));
         }

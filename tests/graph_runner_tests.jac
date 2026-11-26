@@ -9,7 +9,10 @@ users, or lets a user change a shared card, a test here fails.
 import logging;
 import os;
 import from logging.handlers { BufferingHandler }
+import threading;
+import time;
 import from unittest.mock { patch }
+import graph_runner as gr;
 import from uuid { UUID, uuid4 }
 import from jaclang { JacRuntime as Jac }
 import from jaclang.runtime.constructs { Anchor, WalkerArchetype }
@@ -993,4 +996,46 @@ test "two adds in a row give two copies" {
     assert _error_code(ALICE, _add(id, shock)) == "";
     assert _error_code(ALICE, _add(id, shock)) == "";
     assert [(l.name, l.count) for l in _deck(ALICE, id).cards] == [("Shock", 2)];
+}
+
+test "a call that cannot get the runner's lock in time answers busy instead of waiting for ever" {
+    held = threading.Event();
+    release = threading.Event();
+    def hold {
+        with gr.LOCK {
+            held.set();
+            release.wait(10);
+        }
+    }
+    holder = threading.Thread(target=hold);
+    holder.start();
+    held.wait(5);
+    try {
+        with patch.object(gr, "LOCK_WAIT_S", 0.2) {
+            answer = call_function(ALICE, lambda () -> object { return "done"; });
+        }
+    } finally {
+        release.set();
+        holder.join();
+    }
+    assert isinstance(answer, WalkerError);
+    assert answer.code == "busy";
+    assert call_function(ALICE, lambda () -> object { return "done"; }) == "done";
+}
+
+test "a call that holds the runner's lock longer than the slow-call limit is logged with its name, caller and duration" {
+    seen = BufferingHandler(100);
+    LOG.addHandler(seen);
+    try {
+        with patch.object(gr, "SLOW_CALL_S", 0.05) {
+            call_function(ALICE, lambda () -> object { time.sleep(0.2); return None; }, name="sleepy_walker");
+            call_function(ALICE, lambda () -> object { return None; }, name="quick_walker");
+        }
+    } finally {
+        LOG.removeHandler(seen);
+    }
+    logged = [r.getMessage() for r in seen.buffer];
+    slow = [line for line in logged if "sleepy_walker" in line];
+    assert len(slow) == 1 and ALICE in slow[0] and "0.2" in slow[0], logged;
+    assert not any("quick_walker" in line for line in logged), logged;
 }
