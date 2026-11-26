@@ -1,0 +1,14 @@
+<!-- Shared by the four views: fit the view to the room the host gives it. `view_page` (ui_pages.jac) puts this in each view. -->
+<script>
+// The host's room for this view (MCP Apps containerDimensions): a fixed height means fill
+// it, a maxHeight means grow to it. Either way, scroll inside when the view is taller, so
+// nothing past the host's limit is cut off (#234). `dims` is absent when the host said
+// nothing about it (leave the view as it is); an empty one means the host dropped its limit.
+function applyContainer(dims) {
+  if (!dims) return;
+  const s = document.documentElement.style;
+  s.height = dims.height ? "100vh" : "";
+  s.maxHeight = !dims.height && dims.maxHeight ? dims.maxHeight + "px" : "";
+  s.overflowY = dims.height || dims.maxHeight ? "auto" : "";
+}
+</script>

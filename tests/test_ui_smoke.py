@@ -534,3 +534,25 @@ def test_the_my_collection_view_imports_a_pasted_list_and_reports_unknown_names(
     assert "Not A Real Card" in app.wait_text("Not A Real Card", within="ul[aria-label='Not imported']")
     history = app.wait_text("Chaos Warp: 0 → 3", within="ul[aria-label='Collection history']")
     assert "imported" in history
+
+
+@pytest.mark.parametrize("name", VIEWS)
+def test_a_view_drops_the_hosts_height_limit_when_the_host_stops_sending_one(app, tmp_path, name):
+    open_view(app, tmp_path, name)
+    host_says(app, "ui/notifications/host-context-changed", {"containerDimensions": {"maxHeight": 300}})
+    assert app.js("document.documentElement.style.maxHeight") == "300px"
+
+    host_says(app, "ui/notifications/host-context-changed", {"containerDimensions": {}})
+    app.js("0")  # host messages and this script run in order on the page, so the message has been handled
+    assert app.js("document.documentElement.style.maxHeight") == ""
+    assert app.js("document.documentElement.style.overflowY") == ""
+
+
+@pytest.mark.parametrize("name", VIEWS)
+def test_a_view_fills_a_fixed_height_the_host_gives_it_and_scrolls_inside(app, tmp_path, name):
+    open_view(app, tmp_path, name)
+    host_says(app, "ui/notifications/host-context-changed", {"containerDimensions": {"height": 400, "maxHeight": 300}})
+    app.js("0")  # host messages and this script run in order on the page, so the message has been handled
+    style = json.loads(app.js("JSON.stringify(Object.fromEntries(['height', 'maxHeight', 'overflowY'].map("
+                              "(k) => [k, document.documentElement.style[k]])))"))
+    assert style == {"height": "100vh", "maxHeight": "", "overflowY": "auto"}
