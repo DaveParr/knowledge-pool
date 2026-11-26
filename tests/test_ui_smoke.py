@@ -354,6 +354,43 @@ def test_the_other_users_collections_view_is_read_only_and_apart_from_my_collect
     app.wait_text("My collection")
 
 
+def test_the_my_quest_list_view_lists_what_decks_need_exports_it_and_got_reduces_the_line(app):
+    app.browse("open", app.web)
+    app.fill("input[aria-label='Deck name']", "Quest Deck")
+    app.click("button", "Create deck")
+    app.click("link", "Quest Deck")
+    app.fill("input[placeholder='Card name, type or rules text']", "Counterspell")
+    app.click("button", "Search")
+    app.click("button", "Add Counterspell to main deck")
+    app.wait_text("Counterspell", within="ul.dd-cards")
+    app.click("button", "← Decks")
+    app.click("link", "My quest list")
+    app.wait_text("My quest list", within="h1")
+    line = app.wait_text("Counterspell", within="ul[aria-label='My quest list']")
+    assert "× 1" in line and "Quest Deck" in line, line
+    app.click("button", "Export as text")
+    assert app.wait_text("1 Counterspell", within="div.ql-export")
+    app.click("button", "Got Counterspell")
+    app.wait_text("Nothing left to get.")
+    # What was got is now in the collection, and the quest list is not part of the Decks page.
+    app.click("link", "← Decks")
+    app.click("link", "My collection")
+    app.wait_text("× 1", within="ul[aria-label='My collection']")
+    history = app.wait_text("Counterspell: 0 → 1", within="ul[aria-label='Collection history']")
+    assert "quest list" in history.lower(), history
+
+
+def test_the_other_users_quest_lists_view_is_read_only_and_apart_from_my_quest_list(app):
+    app.browse("open", app.web)
+    app.click("link", "Other users' quest lists")
+    assert "Other users' quest lists" in app.wait_text("Other users' quest lists", within="h1")
+    # Local mode has one user, so there is no one else to list.
+    app.wait_text("No other users yet.")
+    assert app.js("document.querySelectorAll('main.narrow button, main.narrow input').length").strip() == "0"
+    app.click("link", "← Decks")
+    app.wait_text("My quest list")
+
+
 async def deck_show_result(url: str) -> dict:
     """deck_show's structuredContent for the "Smoke Burn" deck (created if missing)."""
 

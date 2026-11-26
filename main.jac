@@ -20,6 +20,8 @@ import from decks {
 }
 import from collection { GetCollection, ChangeCollection, ImportCollection, ListUsers, GetOtherCollection }
 import from collection_views { CollectionView }
+import from quest_list { GetQuestList, GotQuest, GetOtherQuestList }
+import from collection_views { QuestListView }
 import from legality { Violation }
 import from card_lines { CardLine }
 import from cards {
