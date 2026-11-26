@@ -1,16 +1,21 @@
 /* Decks list. */
 
 .fe-create { margin: 12px 0 20px; }
-.fe-row { display: flex; gap: 6px; flex-wrap: wrap; align-items: center; }
+.fe-row { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; }
 .fe-row input[type=text] { flex: 1; min-width: 12em; }
-.fe-import { margin-top: 8px; }
-.fe-options { gap: 16px; margin-bottom: 8px; color: var(--muted); font-size: 13px; }
-.fe-decks { list-style: none; margin: 0; padding: 0; }
+.fe-import { margin-top: 10px; }
+.fe-options { gap: 16px; margin-bottom: 10px; color: var(--muted); font-weight: 600; }
+.fe-decks {
+  list-style: none; margin: 0; padding: 4px 12px; background: var(--surface);
+  border: var(--frame) solid var(--fg); border-radius: var(--radius-lg); box-shadow: var(--shadow-panel);
+}
+.fe-decks:empty { display: none; }
 .fe-deck {
   display: flex; flex-wrap: wrap; align-items: center; gap: 8px;
-  padding: 8px 0; border-bottom: 1px solid var(--line);
+  padding: 8px 0; border-bottom: var(--rule) solid var(--fg);
 }
-.fe-deck a { font-weight: 600; text-decoration: none; margin-right: auto; }
+.fe-deck:last-child { border-bottom: 0; }
+.fe-deck a { font-weight: 700; text-decoration: none; margin-right: auto; }
 .fe-deck a:hover { text-decoration: underline; }
-.fe-note { margin: 4px 0 0; color: var(--muted); font-size: 13px; }
-.fe-owner { color: var(--muted); font-size: 13px; }
+.fe-note { margin: 4px 0 8px; color: var(--muted); }
+.fe-owner { color: var(--muted); font-size: 11px; }

@@ -1,17 +1,19 @@
-/* Matches ui/mockups/export.html. */
+/* Matches ui/mockups/export.html, in Pool block. */
 
 .ex-export { display: contents; }
 .ex-toggle { font-size: 12px; padding: 2px 8px; }
 .ex-panel {
-  flex-basis: 100%; order: 10; margin: 8px 0 4px; padding: 10px 12px;
-  border: 1px solid var(--line); border-radius: 8px;
+  flex-basis: 100%; order: 10; margin: 10px 4px 8px 0; padding: 12px;
+  background: var(--surface); border: var(--frame) solid var(--fg); border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-panel);
 }
-.ex-formats { display: flex; flex-wrap: wrap; gap: 4px; margin-bottom: 8px; }
+.ex-formats { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 10px; }
 .ex-format { display: flex; flex-direction: column; align-items: flex-start; }
-.ex-format[aria-pressed=true] { border-color: var(--accent); box-shadow: inset 0 0 0 1px var(--accent); }
-.ex-sub { font-size: 11px; color: var(--muted); }
-.ex-note { font-size: 13px; padding: 6px 10px; margin-bottom: 8px; }
+.ex-format[aria-pressed=true] { background: var(--pool); color: var(--on-pool); }
+.ex-sub { font-size: 10.5px; font-weight: 700; text-transform: uppercase; letter-spacing: .06em; color: var(--muted); }
+.ex-format[aria-pressed=true] .ex-sub { color: var(--on-pool); }
+.ex-note { font-size: 12px; padding: 6px 10px; margin-bottom: 10px; border-width: var(--rule); box-shadow: none; border-radius: var(--radius-md); }
 .ex-panel textarea { height: 200px; resize: vertical; }
-.ex-bar { display: flex; gap: 6px; align-items: center; margin-top: 6px; flex-wrap: wrap; }
-.ex-done { font-size: 13px; color: var(--ok-fg); }
-.ex-size { color: var(--muted); font-size: 12px; margin-left: auto; }
+.ex-bar { display: flex; gap: 10px; align-items: center; margin-top: 10px; flex-wrap: wrap; }
+.ex-done { font-weight: 700; color: var(--ok-fg); }
+.ex-size { color: var(--muted); font-size: 11px; margin-left: auto; }

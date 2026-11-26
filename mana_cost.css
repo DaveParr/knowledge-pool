@@ -1,10 +1,10 @@
-/* Mana symbol pills. Colours live in global.css (--mana-*). */
+/* Mana symbol pips. Colours live in global.css (--mana-*). */
 
 .mc-cost { display: inline-flex; flex-wrap: wrap; gap: 2px; align-items: center; vertical-align: middle; }
 .mc-sym {
   display: inline-flex; align-items: center; justify-content: center;
-  min-width: 18px; height: 18px; padding: 0 4px; box-sizing: border-box;
-  border-radius: 999px; border: 1px solid rgba(0, 0, 0, .18);
-  color: #1f1e1d; font: 600 11px/1 var(--font-sans); font-variant-numeric: tabular-nums;
+  min-width: 19px; height: 19px; padding: 0 3px; box-sizing: border-box;
+  border-radius: 999px; border: var(--rule) solid var(--fg);
+  color: var(--mana-ink); font: 700 9.5px/1 var(--font-mono); font-variant-numeric: tabular-nums;
 }
-.mc-sep { color: var(--muted); font-size: 11px; margin: 0 2px; }
+.mc-sep { color: var(--muted); font-weight: 700; font-size: 11px; margin: 0 2px; }

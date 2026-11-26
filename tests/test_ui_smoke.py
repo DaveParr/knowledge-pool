@@ -80,15 +80,18 @@ class App:
         return self.browse("eval", expression)
 
     def wait_text(self, text: str, within: str = "body") -> str:
-        """Wait (inside the page) until `within` shows `text`; return that element's text."""
-        selector, needle = json.dumps(within), json.dumps(text)
+        """Wait (inside the page) until `within` shows `text`; return that element's text.
+
+        The match ignores case: innerText applies CSS text-transform, and headings, counts
+        and tags are set in UPPERCASE by the stylesheet, not in the words the page says."""
+        selector, needle = json.dumps(within), json.dumps(text.lower())
         return self.js(
             f"""new Promise((resolve, reject) => {{
               const deadline = Date.now() + {WAIT_MS};
               const look = () => {{
                 const el = document.querySelector({selector});
                 const shown = el ? el.innerText : "";
-                if (shown.includes({needle})) resolve(shown);
+                if (shown.toLowerCase().includes({needle})) resolve(shown);
                 else if (Date.now() > deadline) reject(new Error("never saw " + {needle} + " in " + {selector} + "; saw: " + shown));
                 else requestAnimationFrame(look);
               }};
@@ -293,9 +296,10 @@ def test_a_decks_format_pill_ignores_what_is_typed_in_the_name_box(app):
     shown = app.wait_text("Standard", within="ul.fe-decks .pill")
 
     app.fill("input[aria-label='Deck name']", "qa deck")
-    pills = app.js("JSON.stringify([...document.querySelectorAll('ul.fe-decks .pill')].map(p => p.innerText))")
+    # textContent, not innerText: the pill is set in UPPERCASE, which innerText would report.
+    pills = app.js("JSON.stringify([...document.querySelectorAll('ul.fe-decks .pill')].map(p => p.textContent))")
     assert "qa deck" not in pills, pills
-    assert shown == "Standard"
+    assert shown.lower() == "standard"
 
 
 def test_the_my_collection_view_adds_removes_and_logs_a_card(app):
@@ -346,7 +350,7 @@ def test_the_other_users_collections_view_is_read_only_and_apart_from_my_collect
     app.browse("open", app.web)
     app.click("link", "Other users' collections")
     heading = app.wait_text("Other users' collections", within="h1")
-    assert "Other users' collections" in heading
+    assert "other users' collections" in heading.lower()
     # Local mode has one user, so there is no one else to list.
     app.wait_text("No other users yet.")
     assert app.js("document.querySelectorAll('main.narrow button, main.narrow input').length").strip() == "0"
@@ -395,7 +399,7 @@ def test_the_my_quest_list_view_lists_what_decks_need_exports_it_and_got_reduces
 def test_the_other_users_quest_lists_view_is_read_only_and_apart_from_my_quest_list(app):
     app.browse("open", app.web)
     app.click("link", "Other users' quest lists")
-    assert "Other users' quest lists" in app.wait_text("Other users' quest lists", within="h1")
+    assert "other users' quest lists" in app.wait_text("Other users' quest lists", within="h1").lower()
     # Local mode has one user, so there is no one else to list.
     app.wait_text("No other users yet.")
     assert app.js("document.querySelectorAll('main.narrow button, main.narrow input').length").strip() == "0"
