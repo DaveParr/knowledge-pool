@@ -70,8 +70,13 @@ obj CardSearch {
 """Search card names, type lines and rules text. Every word must match.
 A missing or out-of-date catalogue comes back as `error`, not an exception."""
 def:protect search_cards(query: str, limit: int = 25) -> CardSearch {
+    return search_among(query, limit, None);
+}
+
+"""`search_cards` limited, when `only` is not None, to the cards with those oracle ids."""
+def search_among(query: str, limit: int, only: list[str] | None) -> CardSearch {
     try {
-        found = store.search(query, limit);
+        found = store.search(query, limit, only);
     } except (sqlite3.Error, FileNotFoundError) as e {
         return CardSearch(error=f"Card search failed: {e}");
     }

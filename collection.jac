@@ -9,8 +9,8 @@ reason and logs a `ChangeNote` with no zone. Editing a deck never touches it.
 """
 
 import from datetime { datetime, timezone }
-import from cards { Card, card_node }
-import from decks { ChangeNote }
+import from cards { Card, card_node, search_among }
+import from decks { ChangeNote, Deck, DeckAction }
 import from walker_errors { WalkerError }
 import from deck_io { resolve_list }
 import from collection_views { CollectionLine, CollectionView, ImportCollectionResult, MODE_ADD, MODE_REMOVE, MODE_SET, MODES, REFUSED_CHANGE }
@@ -235,5 +235,62 @@ walker:protect ImportCollection {
             root ++> coll;
         }
         report ImportCollectionResult(collection=collection_view(find_collection()), unresolved=unresolved);
+    }
+}
+
+"""One search hit with the copies of it a collection holds."""
+obj OwnedHit {
+    has oracle_id: str,
+        name: str,
+        mana_cost: str,
+        type_line: str,
+        text: str,
+        owned: int = 0;
+}
+
+"""Search results with each hit's collection count, or why the search failed."""
+obj OwnedSearch {
+    has hits: list[OwnedHit] = [],
+        error: str = "";
+}
+
+"""Search the catalogue for `query`, each hit with the copies `coll` holds (None:
+no collection, so 0). With `owned_only`, only cards `coll` holds come back."""
+def owned_search(coll: Collection | None, query: str, limit: int, owned_only: bool) -> OwnedSearch {
+    counts = {c.oracle_id: e.count for (e, c) in holdings(coll)} if coll is not None else {};
+    found = search_among(query, limit, [*counts.keys()] if owned_only else None);
+    return OwnedSearch(
+        hits=[
+            OwnedHit(oracle_id=h.oracle_id, name=h.name, mana_cost=h.mana_cost, type_line=h.type_line, text=h.text, owned=counts.get(h.oracle_id, 0))
+            for h in found.hits
+        ],
+        error=found.error
+    );
+}
+
+"""Search a deck's cards for the deck page and `card_search`. Runs as the deck's
+owner (read-only), so `owned` is the deck owner's collection count, whoever
+asks; with `owned_only` the hits are limited to cards in that collection."""
+walker SearchDeckCards(DeckAction) {
+    has query: str,
+        limit: int = 20,
+        owned_only: bool = False,
+        reports: list[OwnedSearch | WalkerError] = [];
+
+    can search with Deck entry {
+        report owned_search(find_collection(), self.query, self.limit, self.owned_only);
+    }
+}
+
+"""Search the catalogue with no deck, each hit with the caller's own collection
+count; with `owned_only` only cards the caller holds. Runs on the caller's root."""
+walker SearchMyCards {
+    has query: str,
+        limit: int = 20,
+        owned_only: bool = False,
+        reports: list[OwnedSearch | WalkerError] = [];
+
+    can search with Root entry {
+        report owned_search(find_collection(), self.query, self.limit, self.owned_only);
     }
 }
