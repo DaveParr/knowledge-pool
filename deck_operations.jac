@@ -33,7 +33,7 @@ import from graph_runner { run_walker, run_read, copy_deck, list_other_decks, li
 import from decks { DeckAction, CreateDeck, ListDecks, ListOtherDecks, CopyOtherDeck, CopySource, GetDeck, EditDeck }
 import from deck_io { DeckExport, DeckImport, CreateDeckFromList }
 import from legality { GetFormatRules }
-import from collection { GetCollection, ChangeCollection, ListUsers, GetOtherCollection, ImportCollection }
+import from collection { GetCollection, ChangeCollection, ListUsers, GetOtherCollection, ImportCollection, SearchDeckCards, SearchMyCards }
 import from collection_views { UserAction }
 
 glob OWN: str = "own",
@@ -84,6 +84,8 @@ glob OPERATION_LIST: list[DeckOperation] = [
     DeckOperation(kind=ListUsers, runs=FLOW, page=True, across=list_users_flow),
     DeckOperation(kind=GetOtherCollection, runs=USER, page=True),
     DeckOperation(kind=ImportCollection, runs=OWN, page=True),
+    DeckOperation(kind=SearchDeckCards, runs=OWNER),
+    DeckOperation(kind=SearchMyCards, runs=OWN),
     DeckOperation(kind=CopySource, runs=OWNER),
     DeckOperation(kind=GetFormatRules, runs=OWN)
 ];

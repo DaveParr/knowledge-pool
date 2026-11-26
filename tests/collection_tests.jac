@@ -15,9 +15,9 @@ import from graph_runner { STARTED_FOR_GUEST, call_function, guest_root_id, user
 import from collection { Collection, ListUsers, GetOtherCollection }
 import from collection_views { UserSummary }
 import from profile { save_display_name, UNKNOWN_USER }
-import from deck_operations { perform, page_walkers, OPERATIONS, OWN, USER }
+import from deck_operations { perform, page_walkers, OPERATIONS, OWN, OWNER, USER }
 import from decks { CreateDeck, EditDeck, GetDeck, DeckView }
-import from collection { REASON_IMPORTED, ChangeCollection, GetCollection, ImportCollection, ImportCollectionResult, CollectionView, MODE_ADD, MODE_REMOVE, MODE_SET }
+import from collection { OwnedSearch, SearchDeckCards, SearchMyCards, REASON_IMPORTED, ChangeCollection, GetCollection, ImportCollection, ImportCollectionResult, CollectionView, MODE_ADD, MODE_REMOVE, MODE_SET }
 
 glob CATALOG: Path = Path("data/test_collection_catalog.sqlite"),
      ALICE: str = "user_test_collection_alice",
@@ -292,6 +292,66 @@ test "each deck import format reads into the collection" {
     mtgdeck = _import(BOB, '{"schema": "mtgdeck/1", "name": "x", "format": "modern", "zones": {"main": [{"name": "Goblin Guide", "count": 1}], "maybeboard": [{"name": "Goblin Guide", "count": 2}]}}', "mtgdeck1");
     assert mtgdeck.unresolved == [];
     assert _count(BOB, "Goblin Guide") == 4;
+}
+
+"""The names of the hits `caller` gets searching deck `deck_id` for `query`, with each one's owned count."""
+def _deck_search(caller: str, deck_id: str, query: str, owned_only: bool) -> dict[str, int] {
+    got = perform(caller, SearchDeckCards(deck_id=deck_id, query=query, owned_only=owned_only)).reports[0] as OwnedSearch;
+    return {h.name: h.owned for h in got.hits};
+}
+
+test "another user searching a deck with owned only sees just the deck owner's cards, with the owner's counts" {
+    _change(ALICE, "Lightning Bolt", 3);
+    _change(BOB, "Ball Lightning", 1);
+    deck_id = jid(perform(ALICE, CreateDeck(name="Search deck")).reports[0]);
+    assert _deck_search(BOB, deck_id, "lightning", True) == {"Lightning Bolt": 3};
+}
+
+test "without owned only a deck search keeps every hit and gives the deck owner's count, 0 for cards they lack" {
+    _change(ALICE, "Lightning Bolt", 3);
+    deck_id = jid(perform(ALICE, CreateDeck(name="Unfiltered deck")).reports[0]);
+    got = _deck_search(BOB, deck_id, "lightning", False);
+    assert got["Lightning Bolt"] == 3;
+    assert got["Ball Lightning"] == 0;
+}
+
+test "a deck search counts the deck owner's copies even when the caller holds the same card" {
+    _change(ALICE, "Lightning Greaves", 2);
+    _change(BOB, "Lightning Greaves", 5);
+    deck_id = jid(perform(ALICE, CreateDeck(name="Counted deck")).reports[0]);
+    assert _deck_search(BOB, deck_id, "greaves", True) == {"Lightning Greaves": 2};
+}
+
+test "owned only searches the whole collection, not just the best-ranked hits" {
+    _change(ALICE, "Ball Lightning", 1);
+    deck_id = jid(perform(ALICE, CreateDeck(name="Limited deck")).reports[0]);
+    got = perform(BOB, SearchDeckCards(deck_id=deck_id, query="lightning", limit=1, owned_only=True)).reports[0] as OwnedSearch;
+    assert [h.name for h in got.hits] == ["Ball Lightning"];
+}
+
+"""The names of the hits `caller` gets searching with no deck, with each one's owned count."""
+def _my_search(caller: str, query: str, owned_only: bool) -> dict[str, int] {
+    got = perform(caller, SearchMyCards(query=query, owned_only=owned_only)).reports[0] as OwnedSearch;
+    return {h.name: h.owned for h in got.hits};
+}
+
+test "a search with no deck and owned only keeps just the caller's own cards, with their counts" {
+    _change(ALICE, "Lightning Bolt", 3);
+    _change(BOB, "Ball Lightning", 1);
+    assert _my_search(BOB, "lightning", True) == {"Ball Lightning": 1};
+    assert _my_search(ALICE, "lightning", True) == {"Lightning Bolt": 3};
+}
+
+test "a search with no deck and without owned only keeps every hit, counting the caller's own copies" {
+    _change(ALICE, "Lightning Bolt", 3);
+    got = _my_search(ALICE, "lightning", False);
+    assert got["Lightning Bolt"] == 3;
+    assert got["Ball Lightning"] == 0;
+}
+
+test "a deck search runs as the deck's owner and a search with no deck on the caller's root" {
+    assert OPERATIONS["SearchDeckCards"].runs == OWNER;
+    assert OPERATIONS["SearchMyCards"].runs == OWN;
 }
 
 """`caller` makes a deck holding `cards`, a list of (card name, zone, count); its id."""

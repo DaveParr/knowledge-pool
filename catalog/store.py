@@ -107,16 +107,19 @@ def fts_query(text: str) -> str:
     return " ".join(f'"{w}"*' for w in words)
 
 
-def search(text: str, limit: int = 25) -> list[dict]:
-    """Cards whose name, type line or rules text match every word. Name hits rank first."""
+def search(text: str, limit: int = 25, only: list[str] | None = None) -> list[dict]:
+    """Cards whose name, type line or rules text match every word. Name hits rank first.
+    With `only`, just the cards with those oracle ids."""
     query = fts_query(text)
     if not query:
         return []
     con = connection()
+    ids = json.dumps(only) if only is not None else None
     rows = con.execute(
         f"SELECT {_COLUMNS} FROM cards_fts f JOIN cards c ON c.rowid = f.rowid "
-        "WHERE cards_fts MATCH ? ORDER BY bm25(cards_fts, 10.0, 2.0, 1.0) LIMIT ?",
-        (query, limit),
+        "WHERE cards_fts MATCH ? AND (? IS NULL OR c.oracle_id IN (SELECT value FROM json_each(?))) "
+        "ORDER BY bm25(cards_fts, 10.0, 2.0, 1.0) LIMIT ?",
+        (query, ids, ids, limit),
     )
     return [_card(r, con) for r in rows]
 
