@@ -1,36 +1,51 @@
-"""The MCP tools called in process (`mcp_server.jac`) through the server, as the
+"""The MCP tools called in process (`mcp_tools.jac`), with no server built, as the
 connector calls them, on the local user. Every failure reaches the caller the
-same way: a tool error (`is_error`) whose structured content is `{error, code}`."""
+same way: a tool error (`is_error`) whose structured content is `{error, code}`.
+Transport, the tool list and MCP Apps wiring are checked in `test_mcp.py`."""
 
-import sys
-
-import anyio
-import pytest
-from jaclang.testing.testing import JacTestClient
-from jaclang.runtime.exceptions import WriteConflict
+import inspect
+from types import SimpleNamespace
+from unittest.mock import MagicMock
 from uuid import uuid4
+
+import pytest
+from jaclang.runtime.exceptions import WriteConflict
+from jaclang.testing.testing import JacTestClient
+from mcp.server.mcpserver import Context
 
 pytestmark = pytest.mark.usefixtures("jac_db_url")
 
 MISSING = "no-such-deck-id"
+APPS = SimpleNamespace(extensions={"io.modelcontextprotocol/ui": {"mimeTypes": ["text/html;profile=mcp-app"]}})
 
 
 @pytest.fixture
-def app(tmp_path):
+def tools(tmp_path):
     # Imported first, so the app's modules and the tools' are the same ones.
-    import mcp_server
+    import mcp_tools
 
     client = JacTestClient.from_file("main.jac", base_path=str(tmp_path))
     # The first request sets Jac up on the test's database in this process.
     assert client.get("/healthz").status_code == 200
     try:
-        yield mcp_server
+        yield mcp_tools
     finally:
         client.close()
 
 
-def call(app, tool, **arguments):
-    return anyio.run(app.server.call_tool, tool, arguments)
+def client_context(capabilities=None):
+    """What a tool is given of its caller: a context whose client does, or does not, render MCP Apps."""
+    ctx = MagicMock(spec=Context)
+    ctx.client_capabilities = capabilities
+    return ctx
+
+
+def call(tools, tool, apps=False, **arguments):
+    """The tool as the server registers it: through `adapted`, so its result is a CallToolResult."""
+    function = getattr(tools, tool)
+    if "ctx" in inspect.signature(function).parameters:
+        arguments["ctx"] = client_context(APPS if apps else None)
+    return tools.adapted(function)(**arguments)
 
 
 def failure(result):
@@ -46,9 +61,38 @@ def data(result):
     return sc["result"] if set(sc) == {"result"} else sc
 
 
+def text(result):
+    assert not result.is_error, result
+    return result.content[0].text
+
+
+def oracle_id(tools, name):
+    return data(call(tools, "resolve_names", names=[name]))["exact"][0]["oracle_id"]
+
+
+def change(tools, name, count, zone="main", **more):
+    return {"oracle_id": oracle_id(tools, name), "count": count, "zone": zone, "reason": "test", **more}
+
+
+def main_counts(deck):
+    return {c["name"]: c["count"] for c in deck["cards"] if c["zone"] == "main"}
+
+
 @pytest.fixture
-def deck_id(app):
-    return data(call(app, "deck_create", name="Burn", format="modern"))["id"]
+def deck_id(tools):
+    return data(call(tools, "deck_create", name="Burn", format="modern"))["id"]
+
+
+@pytest.fixture
+def burn_id(tools):
+    made = call(tools, "deck_create", name="Burn", format="modern", cards=[
+        change(tools, "Lightning Bolt", 4), change(tools, "Goblin Guide", 4), change(tools, "Mountain", 52),
+    ])
+    return data(made)["id"]
+
+
+def test_importing_the_tools_does_not_build_the_server(tools):
+    assert not any(type(v).__name__ == "MCPServer" for v in vars(tools).values())
 
 
 # Every tool that takes a deck id, with the arguments besides it.
@@ -66,38 +110,171 @@ DECK_TOOLS = {
 
 
 @pytest.mark.parametrize("tool", sorted(DECK_TOOLS))
-def test_deck_tool_on_an_unknown_deck_is_a_tool_error_with_its_code(app, tool):
-    assert failure(call(app, tool, deck_id=MISSING, **DECK_TOOLS[tool])) == "no-such-deck"
+def test_deck_tool_on_an_unknown_deck_is_a_tool_error_with_its_code(tools, tool):
+    assert failure(call(tools, tool, deck_id=MISSING, **DECK_TOOLS[tool])) == "no-such-deck"
 
 
-def test_get_format_rules_for_an_unknown_format_is_a_tool_error(app):
-    assert failure(call(app, "get_format_rules", format="nope")) == "unknown-format"
+def test_get_format_rules_for_an_unknown_format_is_a_tool_error(tools):
+    assert failure(call(tools, "get_format_rules", format="nope")) == "unknown-format"
 
 
-def test_get_card_that_matches_nothing_is_a_tool_error(app):
-    assert failure(call(app, "get_card", oracle_id_or_name="Zzyzx Not A Card")) == "no-such-card"
+def test_get_card_that_matches_nothing_is_a_tool_error(tools):
+    assert failure(call(tools, "get_card", oracle_id_or_name="Zzyzx Not A Card")) == "no-such-card"
 
 
-def test_search_cards_failing_is_a_tool_error(app, monkeypatch, tmp_path):
+def test_search_cards_failing_is_a_tool_error(tools, monkeypatch, tmp_path):
     monkeypatch.setenv("KP_CATALOG", str(tmp_path / "missing.sqlite"))
     from catalog import store
 
     store.reset()
-    assert failure(call(app, "search_cards", query="bolt")) == "card-search-failed"
+    assert failure(call(tools, "search_cards", query="bolt")) == "card-search-failed"
 
 
-def test_deck_create_with_a_blank_name_is_a_tool_error(app):
-    assert failure(call(app, "deck_create", name="  ")) == "blank-name"
+def test_deck_create_with_a_blank_name_is_a_tool_error(tools):
+    assert failure(call(tools, "deck_create", name="  ")) == "blank-name"
 
 
-def test_deck_edit_refusing_a_rename_is_a_tool_error(app, deck_id):
-    assert failure(call(app, "deck_edit", deck_id=deck_id, name=" ")) == "blank-name"
+def test_deck_edit_refusing_a_rename_is_a_tool_error(tools, deck_id):
+    assert failure(call(tools, "deck_edit", deck_id=deck_id, name=" ")) == "blank-name"
 
 
-def test_a_successful_tool_is_not_an_error(app, deck_id):
-    assert data(call(app, "deck_get", deck_id=deck_id))["name"] == "Burn"
-    assert [d["name"] for d in data(call(app, "deck_list"))] == ["Burn"]
-    assert data(call(app, "deck_browse")) == []
+def test_deck_import_in_an_unknown_list_format_is_a_tool_error(tools, deck_id):
+    assert failure(call(tools, "deck_import", deck_id=deck_id, format="cockatrice", text="1 Shock")) == "unknown-list-format"
+
+
+def test_deck_export_in_an_unknown_list_format_is_a_tool_error(tools, deck_id):
+    assert failure(call(tools, "deck_export", deck_id=deck_id, format="cockatrice")) == "unknown-list-format"
+
+
+def test_a_failure_never_raises_out_of_a_tool(tools):
+    result = call(tools, "deck_get", deck_id=MISSING)
+    assert result.is_error and result.content[0].text == f"No deck with id {MISSING}."
+
+
+# What a tool gives when it works.
+
+def test_search_cards_returns_lightning_bolt_for_its_name(tools):
+    hits = data(call(tools, "search_cards", query="lightning bolt", limit=5))
+    assert "Lightning Bolt" in [h["name"] for h in hits]
+
+
+def test_get_card_by_name_returns_the_card_with_its_keywords(tools):
+    assert data(call(tools, "get_card", oracle_id_or_name="Delver of Secrets"))["keywords"] == ["Flying", "Transform"]
+
+
+def test_resolve_names_sorts_exact_fuzzy_and_unknown(tools):
+    got = data(call(tools, "resolve_names", names=["Lightning Bolt", "Lightening Bolt", "Flargle the Unreal"]))
+    assert [e["name"] for e in got["exact"]] == ["Lightning Bolt"]
+    assert got["fuzzy"][0]["candidates"][0]["name"] == "Lightning Bolt"
+    assert got["unknown"] == ["Flargle the Unreal"]
+
+
+def test_get_format_rules_for_modern_gives_sixty_cards_four_copies_fifteen_sideboard(tools):
+    rules = data(call(tools, "get_format_rules", format="modern"))
+    assert (rules["min_main"], rules["copy_limit"], rules["sideboard_max"]) == (60, 4, 15)
+
+
+def test_deck_create_with_cards_returns_the_deck_in_one_step(tools, burn_id):
+    deck = data(call(tools, "deck_get", deck_id=burn_id))
+    assert main_counts(deck) == {"Lightning Bolt": 4, "Goblin Guide": 4, "Mountain": 52}
+    assert deck["legal"] is True
+
+
+def test_a_successful_tool_is_not_an_error(tools, deck_id):
+    assert data(call(tools, "deck_get", deck_id=deck_id))["name"] == "Burn"
+    assert [d["name"] for d in data(call(tools, "deck_list"))] == ["Burn"]
+    assert data(call(tools, "deck_browse")) == []
+
+
+def test_deck_list_gives_id_name_and_format_only(tools, deck_id):
+    assert data(call(tools, "deck_list")) == [{"id": deck_id, "name": "Burn", "format": "modern"}]
+
+
+def test_deck_edit_adds_on_top_of_the_count_and_renames_in_one_call(tools, burn_id):
+    deck = data(call(
+        tools, "deck_edit", deck_id=burn_id, name=" Burn v2 ",
+        changes=[change(tools, "Lightning Bolt", 1, mode="add")],
+    ))
+    assert main_counts(deck)["Lightning Bolt"] == 5
+    assert deck["name"] == "Burn v2"
+
+
+def test_deck_edit_lists_rejected_changes_and_applies_the_rest(tools, deck_id):
+    deck = data(call(tools, "deck_edit", deck_id=deck_id, changes=[
+        change(tools, "Mountain", 3), {"oracle_id": "made-up-id", "count": 1, "zone": "main", "reason": "invented"},
+    ]))
+    assert main_counts(deck) == {"Mountain": 3}
+    assert len(deck["rejected"]) == 1
+
+
+def test_deck_validate_says_legal_and_has_no_game_changers_outside_commander(tools, burn_id):
+    verdict = data(call(tools, "deck_validate", deck_id=burn_id))
+    assert verdict["legal"] is True and verdict["violations"] == [] and verdict["game_changers"] is None
+
+
+def test_deck_copy_makes_the_callers_own_copy(tools, burn_id):
+    copied = data(call(tools, "deck_copy", deck_id=burn_id))
+    assert copied["name"] == "Burn (copy)" and copied["id"] != burn_id
+
+
+def test_deck_import_of_a_text_list_fills_the_deck_and_lists_what_did_not_resolve(tools, deck_id):
+    done = data(call(tools, "deck_import", deck_id=deck_id, format="text", text="4 Lightning Bolt\n1 Flargle"))
+    assert done["deck"]["main_total"] == 4 and len(done["unresolved"]) == 1
+
+
+def test_deck_export_round_trips_through_deck_import(tools, burn_id):
+    exported = data(call(tools, "deck_export", deck_id=burn_id, format="mtgdeck1", apps=True))
+    other = data(call(tools, "deck_create", name="Other", format="modern"))["id"]
+    done = data(call(tools, "deck_import", deck_id=other, format="mtgdeck1", text=exported["content"]))
+    assert done["unresolved"] == [] and done["deck"]["main_total"] == 60
+
+
+# View tools: structured content for a client that renders MCP Apps, Markdown for one that does not.
+
+def test_deck_show_gives_a_client_without_apps_markdown_and_no_structured_content(tools, burn_id):
+    shown = call(tools, "deck_show", deck_id=burn_id)
+    assert shown.structured_content is None
+    assert "| 4 | Goblin Guide | {R} | Creature — Goblin Scout | 2/2 |" in text(shown)
+
+
+def test_deck_show_gives_an_apps_client_a_brief_and_the_deck(tools, burn_id):
+    shown = call(tools, "deck_show", deck_id=burn_id, apps=True)
+    assert text(shown).startswith("Shown to the user as an expandable deck list: Burn")
+    assert shown.structured_content["main_total"] == 60
+
+
+def test_deck_analyze_gives_markdown_or_the_analysis_only(tools, burn_id):
+    plain_client = call(tools, "deck_analyze", deck_id=burn_id)
+    assert plain_client.structured_content is None and "| Red | 8 | 52 |" in text(plain_client)
+    apps = call(tools, "deck_analyze", deck_id=burn_id, apps=True)
+    assert set(apps.structured_content) == {"id", "name", "format", "main_total", "mana", "curve"}
+    assert "|" not in text(apps)
+
+
+def test_card_search_shows_what_the_deck_holds_and_whether_it_is_mine(tools, burn_id):
+    found = call(tools, "card_search", deck_id=burn_id, query="lightning bolt", apps=True)
+    bolt = next(h for h in found.structured_content["hits"] if h["name"] == "Lightning Bolt")
+    assert bolt["in_deck"] == {"main": 4}
+    assert found.structured_content["deck"]["mine"] is True
+    assert "| In deck |" in text(call(tools, "card_search", deck_id=burn_id, query="lightning bolt"))
+
+
+def test_card_search_with_no_match_is_not_an_error(tools, burn_id):
+    none = call(tools, "card_search", deck_id=burn_id, query="zzqxv")
+    assert not none.is_error and text(none).startswith("No cards match")
+
+
+def test_deck_export_gives_a_client_without_apps_the_list_in_text(tools, burn_id):
+    exported = call(tools, "deck_export", deck_id=burn_id)
+    assert exported.structured_content is None
+    assert text(exported).startswith("Exported Burn as MTGA/MTGO.") and "4 Lightning Bolt" in text(exported)
+
+
+def test_deck_export_gives_an_apps_client_the_view_data(tools, burn_id):
+    exported = call(tools, "deck_export", deck_id=burn_id, apps=True)
+    sc = exported.structured_content
+    assert (sc["format"], sc["name"], sc["deck_id"]) == ("arena", "Burn", burn_id)
+    assert text(exported).startswith("Shown to the user in the export view")
 
 
 @pytest.fixture
@@ -112,10 +289,77 @@ def conflicting(monkeypatch):
 
 
 @pytest.mark.parametrize("tool", ["deck_list", "deck_browse", "get_card", "search_cards", "resolve_names", "deck_get", "deck_edit", "deck_create"])
-def test_a_call_the_runner_could_not_finish_is_a_tool_error_with_try_again(app, deck_id, conflicting, tool):
+def test_a_call_the_runner_could_not_finish_is_a_tool_error_with_try_again(tools, deck_id, conflicting, tool):
     arguments = {
         "get_card": {"oracle_id_or_name": "Shock"}, "search_cards": {"query": "bolt"},
         "resolve_names": {"names": ["Shock"]}, "deck_get": {"deck_id": deck_id},
         "deck_edit": {"deck_id": deck_id, "name": "Renamed"}, "deck_create": {"name": "Another"},
     }.get(tool, {})
-    assert failure(call(app, tool, **arguments)) == "try-again"
+    assert failure(call(tools, tool, **arguments)) == "try-again"
+
+
+# What the smoke script used to check through the transport.
+
+def test_commander_rules_say_exactly_100_and_singleton(tools):
+    rules = data(call(tools, "get_format_rules", format="commander"))
+    assert (rules["min_main"], rules["copy_limit"], rules["exact_size"]) == (100, 1, True)
+
+
+@pytest.fixture
+def commander_id(tools):
+    made = call(tools, "deck_create", name="Krenko", format="commander", cards=[
+        change(tools, "Krenko, Mob Boss", 1, "commander"), change(tools, "Rhystic Study", 1),
+        change(tools, "Mountain", 97),
+    ])
+    return data(made)["id"]
+
+
+def test_deck_validate_names_a_commander_decks_game_changers(tools, commander_id):
+    verdict = data(call(tools, "deck_validate", deck_id=commander_id))
+    assert verdict["legal"] is False and "deck-size" in [v["rule"] for v in verdict["violations"]]
+    assert verdict["game_changers"]["count"] == 1
+
+
+def test_deck_show_names_the_game_changers_and_has_a_commander_heading(tools, commander_id):
+    shown = text(call(tools, "deck_show", deck_id=commander_id))
+    assert "Game Changers: 1 (Rhystic Study)" in shown and "### Commander" in shown
+
+
+def test_deck_edit_keeps_the_curve_through_a_format_change_and_logs_each_reason(tools, burn_id):
+    deck = data(call(tools, "deck_get", deck_id=burn_id))
+    assert deck["curve"]["buckets"]["1"] == 8 and deck["curve"]["average_mv"] == 1.0
+    switched = data(call(tools, "deck_edit", deck_id=burn_id, format="standard"))
+    assert switched["curve"] == deck["curve"]
+    verdict = data(call(tools, "deck_validate", deck_id=burn_id))
+    assert not verdict["legal"] and {v["rule"] for v in verdict["violations"]} == {"not-legal"}
+
+
+def test_a_refused_rename_leaves_the_cards_unchanged(tools, burn_id):
+    refused = call(tools, "deck_edit", deck_id=burn_id, name="  ", changes=[change(tools, "Lightning Bolt", 1, mode="add")])
+    assert failure(refused) == "blank-name"
+    assert main_counts(data(call(tools, "deck_get", deck_id=burn_id)))["Lightning Bolt"] == 4
+
+
+@pytest.fixture
+def others_deck_id(tools):
+    """A deck of another user, made through the runner as that user."""
+    from decks import CreateDeck
+    from deck_operations import perform
+
+    done = perform("someone-else", CreateDeck(name="Theirs", format="modern", changes=[]))
+    return tools.plain(done.reports[0])["id"]
+
+
+def test_deck_browse_lists_another_users_deck_with_its_owner_and_not_my_own(tools, deck_id, others_deck_id):
+    browsed = data(call(tools, "deck_browse"))
+    assert [(d["id"], d["name"], d["format"]) for d in browsed] == [(others_deck_id, "Theirs", "modern")]
+    assert "owner" in browsed[0]
+
+
+def test_deck_copy_of_another_users_deck_is_my_own_copy_and_not_theirs_to_change_back(tools, others_deck_id):
+    copied = data(call(tools, "deck_copy", deck_id=others_deck_id))
+    assert copied["name"] == "Theirs (copy)" and copied["id"] != others_deck_id
+
+
+def test_deck_edit_of_another_users_deck_is_a_tool_error_with_not_your_deck(tools, others_deck_id):
+    assert failure(call(tools, "deck_edit", deck_id=others_deck_id, name="Mine now")) == "not-your-deck"

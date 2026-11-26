@@ -1,12 +1,13 @@
 """Tests for the deck-aware card search behind the card search MCP app
-(`card_search` in mcp_server.jac): in-deck counts, the Markdown fallback,
+(`card_search` in mcp_tools.jac): in-deck counts, the Markdown fallback,
 and a catalogue failure coming back as `error`."""
 
 import os;
 import from pathlib { Path }
 import from catalog.ingest { build, load_atomic, load_oracle_tags }
 import catalog.store as store;
-import from mcp_server { search_with_holdings, search_markdown }
+import from mcp_tools { search_with_holdings }
+import from mcp_builders { search_markdown }
 
 glob CATALOG: Path = Path("data/test_catalog_search.sqlite"),
      BOLT: str = "4457ed35-7c10-48c8-9776-456485fdf070";
