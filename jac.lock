@@ -8,4 +8,4 @@ resolved = ["PyJWT==2.15.1", "Pygments==2.21.0", "annotated-types==0.8.0", "anyi
 inputs = "sha256:69ede4555070df28a3ca53c4a125019263d2dd3f32c85ce1ce961bfe0a076f0f"
 
 [npm]
-bun_lock = "sha256:063b0bba58dab82780a19df63f590470da312dc85ba4e0a98ef40825d0107f1f"
+bun_lock = "sha256:ad913fec3927021834495a81882536c29f218a0809d9e59be334b97d6bdde3b9"

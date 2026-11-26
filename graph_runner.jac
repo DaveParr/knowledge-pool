@@ -72,6 +72,7 @@ glob APP_DIR: str = os.path.dirname(os.path.abspath(__file__)),
      MODES: list[str] = [LOCAL, HOSTED],
      STARTED_FOR_GUEST: list[str] = [],
      USER_PAGE: int = 100,
+     PERSON_ROLE: str = "user",
      RERUNS: int = 3,
      RERUN_WAIT_S: tuple[float, float] = (0.01, 0.05),
      LOG: logging.Logger = logging.getLogger("knowledge_pool.runner");
@@ -346,7 +347,7 @@ def user_root_ids -> list[str] {
         page = storage.list_all_users(limit=USER_PAGE, offset=offset);
         for user in page {
             rid = str(user.get("root_id") or "");
-            if rid and rid != guest and user.get("role") == "user" and rid not in known {
+            if rid and rid != guest and user.get("role") == PERSON_ROLE and rid not in known {
                 known.add(rid);
                 found.append(rid);
             }

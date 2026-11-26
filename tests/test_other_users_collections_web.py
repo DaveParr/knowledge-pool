@@ -62,3 +62,5 @@ def test_a_user_lists_the_other_users_by_handle_and_name_and_reads_a_collection_
     assert refused["code"] == "not-your-collection"
     [after] = reports(client.post("/walker/GetOtherCollection", json={"handle": handle}, headers=bob))
     assert after["total"] == 3
+    [alices_list] = reports(client.post("/walker/ListUsers", json={}, headers=alice))
+    assert handle not in [u["handle"] for u in alices_list]
