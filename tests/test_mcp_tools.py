@@ -382,3 +382,15 @@ def test_collection_change_removing_more_than_held_is_a_tool_error_that_says_how
     result = call(tools, "collection_change", oracle_id=bolt, count=3, mode="remove", reason="test")
     assert failure(result) == "refused-change"
     assert "2" in result.content[0].text
+
+
+def test_collection_import_adds_a_pasted_list_and_reports_names_that_resolve_to_no_card(tools):
+    result = data(call(tools, "collection_import", format="text", text="4 Lightning Bolt\n\nSideboard\n1 Lightning Bolt\n2 Not A Real Card\n"))
+    assert [(c["name"], c["count"]) for c in result["collection"]["cards"]] == [("Lightning Bolt", 5)]
+    assert any("Not A Real Card" in line for line in result["unresolved"])
+    assert result["collection"]["history"][-1]["reason"] == "imported"
+    assert data(call(tools, "collection_get"))["cards"][0]["count"] == 5
+
+
+def test_collection_import_of_an_unknown_format_is_a_tool_error(tools):
+    assert failure(call(tools, "collection_import", format="nope", text="1 Shock")) == "unknown-list-format"

@@ -446,3 +446,14 @@ def test_a_view_shows_a_retry_that_is_refused_again_as_one_line_too(app, tmp_pat
     app.browse("click", ".refused button")
     assert "The host refused the call." in app.wait_text("The host refused the call.", within=".refused span")
     assert "Try again" in app.js("document.querySelector('.refused button').innerText")
+
+
+def test_the_my_collection_view_imports_a_pasted_list_and_reports_unknown_names(app):
+    app.browse("open", app.web)
+    app.click("link", "My collection")
+    app.fill("textarea[aria-label='List to import into my collection']", "2 Chaos Warp\n\nSideboard\n1 Chaos Warp\n1 Not A Real Card")
+    app.click("button", "Import list")
+    app.wait_text("× 3", within="ul[aria-label='My collection']")
+    assert "Not A Real Card" in app.wait_text("Not A Real Card", within="ul[aria-label='Not imported']")
+    history = app.wait_text("Chaos Warp: 0 → 3", within="ul[aria-label='Collection history']")
+    assert "imported" in history

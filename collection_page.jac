@@ -6,8 +6,8 @@ import "./card_search.css";
 import from .mana_cost { ManaCost }
 import from .walker_failure { failureMessage, REFUSED_LINE }
 
-import from collection { GetCollection, ChangeCollection }
-import from collection_views { CollectionLine, CollectionView, MODE_ADD, MODE_REMOVE, MODE_SET }
+import from collection { GetCollection, ChangeCollection, ImportCollection }
+import from collection_views { CollectionLine, CollectionView, ImportCollectionResult, MODE_ADD, MODE_REMOVE, MODE_SET }
 import from edit_reason { WEB_COLLECTION_REASON }
 import from walker_errors { WalkerError }
 import from cards { CardHit, CardSearch, search_cards }
@@ -95,7 +95,10 @@ def:pub CollectionPage(onBack: Callable[[], None]) -> JsxElement {
         error: str = "",
         query: str = "",
         hits: list[CardHit] = [],
-        searched: bool = False;
+        searched: bool = False,
+        importFormat: str = "text",
+        importText: str = "",
+        notImported: list[str] = [];
 
     can with entry {
         load();
@@ -117,6 +120,22 @@ def:pub CollectionPage(onBack: Callable[[], None]) -> JsxElement {
     async def change(oracleId: str, count: int, mode: str) {
         result = root spawn ChangeCollection(oracle_id=oracleId, count=count, mode=mode, reason=WEB_COLLECTION_REASON);
         show(result.reports);
+    }
+
+    async def runImport(e: FormEvent) {
+        e.preventDefault();
+        if not importText.strip() {
+            return;
+        }
+        result = root spawn ImportCollection(format=importFormat, text=importText);
+        why = failureMessage(result.reports);
+        error = why;
+        if not why {
+            done = result.reports[0] as ImportCollectionResult;
+            view = done.collection;
+            notImported = done.unresolved;
+            importText = "";
+        }
     }
 
     async def runSearch(e: FormEvent) {
@@ -175,6 +194,36 @@ def:pub CollectionPage(onBack: Callable[[], None]) -> JsxElement {
                     </li>
                 }}
             </ul>
+            <form onSubmit={runImport} className="fe-import">
+                <label>
+                    {"List type "}
+                    <select
+                        aria-label="Import format"
+                        value={importFormat}
+                        onChange={lambda (e: ChangeEvent) { importFormat = e.target.value; }}
+                    >
+                        <option value="text">Plain text</option>
+                        <option value="moxfield">Moxfield</option>
+                        <option value="arena">MTGA/MTGO</option>
+                        <option value="mtgdeck1">mtgdeck/1</option>
+                        <option value="mtgjson">MTGJSON deck</option>
+                    </select>
+                </label>
+                <textarea
+                    aria-label="List to import into my collection"
+                    placeholder="Paste a card list to add to your collection"
+                    value={importText}
+                    onChange={lambda (e: ChangeEvent) { importText = e.target.value; }}
+                    rows={6}
+                />
+                <button type="submit" className="primary">Import list</button>
+            </form>
+            {<div>
+                <p>Not imported:</p>
+                <ul aria-label="Not imported">
+                    {[<li key={str(i)}>{line}</li> for (i, line) in enumerate(notImported)]}
+                </ul>
+            </div> if notImported else None}
             <h2>{"Cards" if view is None else "Cards (" + str(view.total) + ")"}</h2>
             {<p className="empty">Nothing in your collection yet.</p> if view is not None and len(view.cards) == 0 else None}
             <ul className="fe-decks" aria-label="My collection">

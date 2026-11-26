@@ -20,7 +20,7 @@ import from deckformats { export_format_choices }
 import from zones { zone_choices, zone_options }
 import from deck_io { DeckExport, DeckImport }
 import from deck_operations { perform }
-import from collection { GetCollection, ChangeCollection }
+import from collection { GetCollection, ChangeCollection, ImportCollection }
 import from collection_views { MODE_ADD }
 import from legality { GetFormatRules }
 import from walker_errors { WalkerError }
@@ -392,4 +392,15 @@ you have, and changes nothing. Get oracle ids from resolve_names. Returns your
 collection. Changing a deck never changes your collection."""
 def collection_change(oracle_id: str, count: int, reason: str, mode: str = MODE_ADD) -> JsonObject {
     return outcome(perform(request_caller(), ChangeCollection(oracle_id=oracle_id, count=count, mode=mode, reason=reason)));
+}
+
+"""Add a pasted card list to your collection. `format` is one of the formats
+deck_import reads: mtgdeck1, mtgjson, text, arena or moxfield. Zone headers
+(Sideboard, Maybeboard and so on) are ignored and repeated cards summed; the
+totals are added to the counts you have, and an import never lowers or removes
+a count. Each card changed is logged with the reason "imported". Names that
+resolve to no card are listed under "unresolved" and the rest are still added.
+Returns your collection and the unresolved names."""
+def collection_import(format: str, text: str) -> JsonObject {
+    return outcome(perform(request_caller(), ImportCollection(format=format, text=text)));
 }
