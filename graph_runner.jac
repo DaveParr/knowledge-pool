@@ -60,7 +60,7 @@ import from cards { open_catalog, RefreshCards, REFRESH_BATCH, catalogue_version
 import from legality { open_formats }
 import from walker_errors { WalkerError }
 import from profile { display_name }
-import from collection_views { UserSummary }
+import from collection_views { UserSummary, NO_SUCH_USER }
 import from decks { DeckSummary, DeckView, CopySource, CopyDeck, deck_owner, deck_summaries }
 
 glob APP_DIR: str = os.path.dirname(os.path.abspath(__file__)),
@@ -311,7 +311,7 @@ def run_read_user(caller: str | None, handle: str, w: WalkerArchetype) -> Walker
         return failed_walker(w, found);
     }
     if not (found as list[str]) {
-        return failed_walker(w, WalkerError(code="no-such-user", message="There is no such user."));
+        return failed_walker(w, WalkerError(code=NO_SUCH_USER, message="There is no such user."));
     }
     try {
         return in_context(
@@ -393,10 +393,10 @@ call the runner could not finish returns its walker error."""
 def list_users(caller: str | None) -> list[UserSummary] | WalkerError {
     try {
         start();
-        mine = user_root_id(caller);
+        mine = user_handle(user_root_id(caller));
         others: list[UserSummary] = [];
         for root_id in user_root_ids() {
-            if user_handle(root_id) == user_handle(mine) {
+            if user_handle(root_id) == mine {
                 continue;
             }
             name = in_context(

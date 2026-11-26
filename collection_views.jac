@@ -12,7 +12,8 @@ glob MODE_ADD: str = "add",
      MODE_SET: str = "set",
      MODES: list[str] = [MODE_ADD, MODE_REMOVE, MODE_SET],
      REFUSED_CHANGE: str = "refused-change",
-     NOT_YOUR_COLLECTION: str = "not-your-collection";
+     NOT_YOUR_COLLECTION: str = "not-your-collection",
+     NO_SUCH_USER: str = "no-such-user";
 
 """One card of a collection with the copies held."""
 obj CollectionLine {

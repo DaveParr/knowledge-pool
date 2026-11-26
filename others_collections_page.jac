@@ -31,7 +31,7 @@ def:pub OthersCollectionsPage(onBack: Callable[[], None]) -> JsxElement {
         loaded = True;
     }
 
-    async def open(handle: str, name: str) {
+    async def openUser(handle: str, name: str) {
         result = root spawn GetOtherCollection(handle=handle);
         why = failureMessage(result.reports);
         error = why;
@@ -43,6 +43,7 @@ def:pub OthersCollectionsPage(onBack: Callable[[], None]) -> JsxElement {
     }
 
     def closeUser {
+        error = "";
         openHandle = "";
         openName = "";
         view = None;
@@ -65,7 +66,7 @@ def:pub OthersCollectionsPage(onBack: Callable[[], None]) -> JsxElement {
             {<ul className="fe-decks" aria-label="Other users">
                 {for u in users {
                     <li key={u.handle} className="fe-deck">
-                        <a href="#" onClick={lambda (e: MouseEvent) { e.preventDefault(); open(u.handle, u.name); }}>{u.name}</a>
+                        <a href="#" onClick={lambda (e: MouseEvent) { e.preventDefault(); openUser(u.handle, u.name); }}>{u.name}</a>
                     </li>
                 }}
             </ul> if not openHandle else None}
