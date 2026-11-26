@@ -1,0 +1,30 @@
+<!-- Shared by the four views: the pool gradient in the deck's colours. `view_page` (ui_pages.jac)
+     puts this in each view. The web app builds the same gradient in pool.jac. -->
+<style>
+  /* Until a result names the deck's colours, the gradient runs through all five. */
+  :root {
+    --on-pool: #1d1c1a;
+    --pool: linear-gradient(110deg, #f0f2c0, #b5cde3, #aca29a, #db8664, #93b483);
+    --pool-down: linear-gradient(180deg, #f0f2c0, #b5cde3, #aca29a, #db8664, #93b483);
+  }
+</style>
+<script>
+// The mana tints (global.css --mana-*) and the paper a single colour runs into.
+const POOL_TINTS = { W: "#f0f2c0", U: "#b5cde3", B: "#aca29a", R: "#db8664", G: "#93b483", C: "#beb9b2" };
+const POOL_PAPER = "#ffffff";
+// The gradient's stops for a deck's colours, in WUBRG order: a mono-coloured deck runs
+// its colour into paper, a colourless one runs colourless into paper.
+function poolStops(colours) {
+  const tints = ["W", "U", "B", "R", "G"].filter((c) => (colours || []).includes(c)).map((c) => POOL_TINTS[c]);
+  if (tints.length === 0) return [POOL_TINTS.C, POOL_PAPER];
+  if (tints.length === 1) return [tints[0], POOL_PAPER];
+  return tints;
+}
+// Set --pool (across) and --pool-down (top to bottom) for the whole view.
+function setPool(colours) {
+  if (!colours) return;  // a result with no colours keeps the all-five default
+  const stops = poolStops(colours).join(", ");
+  document.documentElement.style.setProperty("--pool", `linear-gradient(110deg, ${stops})`);
+  document.documentElement.style.setProperty("--pool-down", `linear-gradient(180deg, ${stops})`);
+}
+</script>

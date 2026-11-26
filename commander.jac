@@ -31,6 +31,12 @@ def identity(lines: list[CardLine]) -> list[str] {
     return [c for c in COLOURS if c in have];
 }
 
+"""A deck's colours: the colour identity of its commander and main deck, in WUBRG
+order (the sideboard and companion don't count). The pool gradient follows it."""
+def deck_colours(lines: list[CardLine]) -> list[str] {
+    return identity([l for l in lines if l.zone in DECK_ZONES]);
+}
+
 """A colour identity as text: "colourless", or the letters ("R", "UR", "WUBG")."""
 def identity_label(colours: list[str]) -> str {
     if not colours {

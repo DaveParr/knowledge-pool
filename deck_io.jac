@@ -7,12 +7,14 @@ import from deckformats { DeckFormat, EXPORT_FORMATS, get_format, ExportEntry, E
 import from cards { find_card }
 import from decks { Deck, DeckAction, DeckView, HoldingEntry, ZONES, new_deck, card_lines, deck_view, replace_holdings }
 import from legality { FORMAT_LABELS }
+import from commander { deck_colours }
 import from walker_errors { WalkerError }
 
 obj ExportResult {
     has format: str,
         content: str,
-        name: str = "";
+        name: str = "",
+        colours: list[str] = [];
 }
 
 obj ImportResult {
@@ -55,6 +57,7 @@ walker:protect DeckExport(DeckAction) {
             report fmt;
             disengage;
         }
+        lines = card_lines(here);
         export_deck = ExportDeck(
             name=here.name,
             format=here.format,
@@ -63,7 +66,7 @@ walker:protect DeckExport(DeckAction) {
                     oracle_id=l.oracle_id, name=l.name, count=l.count, zone=l.zone,
                     roles=l.roles, tags=l.tags, locked=l.locked, reason=l.reason
                 )
-                for l in card_lines(here)
+                for l in lines
             ]
         );
         try {
@@ -72,7 +75,7 @@ walker:protect DeckExport(DeckAction) {
             report WalkerError(code="no-export", message=f"{self.format} lists can be imported but not exported.");
             disengage;
         }
-        report ExportResult(format=self.format, content=content, name=here.name);
+        report ExportResult(format=self.format, content=content, name=here.name, colours=deck_colours(lines));
     }
 }
 

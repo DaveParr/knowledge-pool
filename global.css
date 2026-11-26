@@ -3,8 +3,8 @@
 /* App-wide look: Pool block (design system: https://claude.ai/artifact/CdjUrrHAgydY9QAXQSBLUG).
 
    One ink on warm paper; everything you read or touch sits in an ink box with a
-   hard offset shadow; the pool gradient (blue -> lilac -> red) marks where the eye
-   should land. The token names --bg, --fg, --muted, --line, --soft and --mana-*
+   hard offset shadow; the pool gradient, in the deck's own colours, marks where the
+   eye should land. The token names --bg, --fg, --muted, --line, --soft and --mana-*
    match ui/deck_table.html, so the views Claude shows in chat can share them.
 
    Dark values are provisional (ink and paper inverted) until #229 designs them. */
@@ -21,13 +21,13 @@
   --line: var(--fg);
   --accent: var(--fg);
 
-  /* The pool gradient. Text on it is always dark, in both themes. */
-  --pool-blue: #b4d7f0;
-  --pool-lilac: #d7c9de;
-  --pool-red: #f0a68c;
+  /* The pool gradient follows the deck: a deck page sets --pool and --pool-down from
+     its colours (pool.jac). Off a deck it runs through all five colours. Its stops are
+     the light mana tints, so text on it is always dark, in both themes. */
   --on-pool: #1d1c1a;
-  --pool: linear-gradient(110deg, var(--pool-blue) 0%, var(--pool-lilac) 50%, var(--pool-red) 100%);
-  --pool-down: linear-gradient(180deg, var(--pool-red), var(--pool-lilac) 55%, var(--pool-blue));
+  --pool-paper: #ffffff;
+  --pool: linear-gradient(110deg, var(--mana-w), var(--mana-u), var(--mana-b), var(--mana-r), var(--mana-g));
+  --pool-down: linear-gradient(180deg, var(--mana-w), var(--mana-u), var(--mana-b), var(--mana-r), var(--mana-g));
 
   --ok-bg: light-dark(#c9ecd0, #16301b);
   --ok-fg: light-dark(#14461b, #9fd8a6);

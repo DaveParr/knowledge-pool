@@ -260,8 +260,17 @@ def test_deck_analyze_gives_markdown_or_the_analysis_only(tools, burn_id):
     plain_client = call(tools, "deck_analyze", deck_id=burn_id)
     assert plain_client.structured_content is None and "| Red | 8 | 52 |" in text(plain_client)
     apps = call(tools, "deck_analyze", deck_id=burn_id, apps=True)
-    assert set(apps.structured_content) == {"id", "name", "format", "main_total", "mana", "curve"}
+    assert set(apps.structured_content) == {"id", "name", "format", "main_total", "mana", "curve", "colours"}
     assert "|" not in text(apps)
+
+
+def test_every_view_gets_the_decks_colours_for_its_gradient(tools, burn_id):
+    # The pool gradient follows the deck's colour identity; Burn is mono-red.
+    assert call(tools, "deck_show", deck_id=burn_id, apps=True).structured_content["colours"] == ["R"]
+    assert call(tools, "deck_analyze", deck_id=burn_id, apps=True).structured_content["colours"] == ["R"]
+    found = call(tools, "card_search", deck_id=burn_id, query="bolt", apps=True)
+    assert found.structured_content["deck"]["colours"] == ["R"]
+    assert call(tools, "deck_export", deck_id=burn_id, apps=True).structured_content["colours"] == ["R"]
 
 
 def test_card_search_shows_what_the_deck_holds_and_whether_it_is_mine(tools, burn_id):

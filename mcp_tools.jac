@@ -109,7 +109,8 @@ def deck_analyze(deck_id: str, ctx: Context) -> CallToolResult {  # jac:ignore[W
         "format": view["format"],
         "main_total": view["main_total"],
         "mana": view["mana"],
-        "curve": view["curve"]
+        "curve": view["curve"],
+        "colours": view["colours"]
     };
     return view_result(ctx, analysis, mana_markdown(analysis), mana_brief(analysis));
 }
@@ -161,7 +162,8 @@ def search_with_holdings(view: JsonObject, query: str, limit: int, owned: JsonOb
             "format": view["format"],
             "main_total": view["main_total"],
             "sideboard_total": view["sideboard_total"],
-            "mine": view["mine"]
+            "mine": view["mine"],
+            "colours": view["colours"]
         },
         "query": query,
         "limit": limit,
@@ -183,6 +185,7 @@ def deck_export(deck_id: str, ctx: Context, format: str = "arena") -> CallToolRe
         "name": done["name"],
         "format": done["format"],
         "content": done["content"],
+        "colours": done["colours"],
         "formats": export_format_choices(),
         "lossy_drops": LOSSY_DROPS
     };

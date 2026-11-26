@@ -58,9 +58,6 @@
      shadows, heavy headings, the pool gradient on the title and main action. */
   :root {
     --line: var(--fg);
-    --pool: linear-gradient(110deg, #b4d7f0 0%, #d7c9de 50%, #f0a68c 100%);
-    --pool-down: linear-gradient(180deg, #f0a68c, #d7c9de 55%, #b4d7f0);
-    --on-pool: #1d1c1a;
     --shadow-control: 3px 3px 0 var(--fg);
     --shadow-panel: 4px 4px 0 var(--fg);
   }
@@ -89,6 +86,7 @@
   button .sub { text-transform: uppercase; letter-spacing: .06em; font-size: 10.5px; font-weight: 700; }
 </style>
 <!-- @include refusal.html -->
+<!-- @include pool.html -->
 <!-- @include host_container.html -->
 </head>
 <body>
@@ -118,7 +116,7 @@
     ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[c]);
 
   let hostCaps = {};
-  let state = null;      // last good export: {deck_id, name, format, content, formats, lossy_drops}
+  let state = null;      // last good export: {deck_id, name, format, content, colours, formats, lossy_drops}
   let error = "";        // why the last export failed, if it did
   let busy = false;
   let status = "";
@@ -143,6 +141,7 @@
       app.innerHTML = refusalHtml(error || "No export.", Boolean(tried));
       return;
     }
+    setPool(state.colours);
     const f = currentFormat() || { key: state.format, label: state.format, lossless: false, ext: "txt" };
     const text = state.content || "";
     app.innerHTML = `

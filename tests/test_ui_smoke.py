@@ -466,6 +466,9 @@ def test_deck_table_view_renders_a_real_deck_show_result(app, tmp_path):
     assert "Smoke Burn" in table
     row = app.js("document.querySelector('#app ul[data-zone=\"main\"] summary').innerText")
     assert re.search(rf"{bolt['count']}\s+Lightning Bolt", row), row
+    # The pool gradient follows the deck's colours: Smoke Burn is mono-red, so red into paper.
+    pool = app.js("document.documentElement.style.getPropertyValue('--pool')")
+    assert "#db8664, #ffffff" in pool, pool
 
 
 REFUSAL = "Too many requests, try again in 12 seconds"
