@@ -286,6 +286,23 @@ def test_a_decks_format_pill_ignores_what_is_typed_in_the_name_box(app):
     assert shown == "Standard"
 
 
+def test_the_my_collection_view_adds_removes_and_logs_a_card(app):
+    app.browse("open", app.web)
+    app.click("link", "My collection")
+    app.wait_text("My collection")
+    app.fill("input[aria-label='Search cards to add to your collection']", "Lightning Bolt")
+    app.click("button", "Search")
+    app.click("button", "Add Lightning Bolt to my collection")
+    cards = app.wait_text("× 1", within="ul[aria-label='My collection']")
+    assert "Lightning Bolt" in cards
+    app.click("button", "Add one Lightning Bolt")
+    app.wait_text("× 2", within="ul[aria-label='My collection']")
+    app.click("button", "Remove all of Lightning Bolt")
+    app.wait_text("Nothing in your collection yet.")
+    history = app.wait_text("Lightning Bolt: 2 → 0", within="ul[aria-label='Collection history']")
+    assert "Changed in the app" in history
+
+
 async def deck_show_result(url: str) -> dict:
     """deck_show's structuredContent for the "Smoke Burn" deck (created if missing)."""
 

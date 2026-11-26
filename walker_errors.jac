@@ -9,7 +9,7 @@ reports list."""
 Codes: no-such-deck (no deck has that id), not-your-deck (a change to
 another user's deck; the message points to copying), blank-name, unknown-format (a play format such as
 standard), unknown-list-format (a deck list format such as moxfield),
-no-export / no-import (the list format cannot go that way). The MCP tools add no-such-card (get_card) and card-search-failed (the catalogue
+no-export / no-import (the list format cannot go that way), refused-change (a change to a collection that the writer refused; the message says why, and how many copies are held for a removal of too many). The MCP tools add no-such-card (get_card) and card-search-failed (the catalogue
 could not search). The runner adds two
 of its own (`graph_runner.jac`): try-again (the call kept meeting another
 writer and was rolled back) and internal-error (Jac refused a write the app

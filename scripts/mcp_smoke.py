@@ -29,6 +29,7 @@ TOOLS = {
     "search_cards", "get_card", "resolve_names", "get_format_rules",
     "deck_list", "deck_browse", "deck_copy", "deck_create", "deck_get", "deck_edit",
     "deck_validate", "deck_import", "deck_show", "deck_analyze", "card_search", "deck_export",
+    "collection_get", "collection_change",
 }
 # The tools bound to an MCP Apps view, and the view each opens.
 VIEWS = {
@@ -74,6 +75,13 @@ async def main() -> None:
         made = await session.call_tool("deck_create", {"name": "MCP Burn", "format": "modern", "cards": cards})
         check("a tool call over the transport makes a deck", not made.is_error and data(made)["name"] == "MCP Burn", made.content)
         deck_id = data(made)["id"]
+
+        added = await session.call_tool(
+            "collection_change", {"oracle_id": cards[0]["oracle_id"], "count": 2, "reason": "smoke"}
+        )
+        check("a tool call over the transport adds to the collection", not added.is_error and data(added)["total"] >= 2, added.content)
+        kept = data(await session.call_tool("collection_get", {}))
+        check("collection_get reads the collection back", cards[0]["oracle_id"] in [c["oracle_id"] for c in kept["cards"]], kept)
 
         failed = await session.call_tool("deck_get", {"deck_id": "nope"})
         check(

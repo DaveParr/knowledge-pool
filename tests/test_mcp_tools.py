@@ -363,3 +363,22 @@ def test_deck_copy_of_another_users_deck_is_my_own_copy_and_not_theirs_to_change
 
 def test_deck_edit_of_another_users_deck_is_a_tool_error_with_not_your_deck(tools, others_deck_id):
     assert failure(call(tools, "deck_edit", deck_id=others_deck_id, name="Mine now")) == "not-your-deck"
+
+
+def test_collection_change_adds_removes_and_sets_counts_and_collection_get_reads_them(tools):
+    bolt = oracle_id(tools, "Lightning Bolt")
+    added = data(call(tools, "collection_change", oracle_id=bolt, count=4, mode="add", reason="bought at FNM"))
+    assert [(c["name"], c["count"]) for c in added["cards"]] == [("Lightning Bolt", 4)]
+    data(call(tools, "collection_change", oracle_id=bolt, count=1, mode="remove", reason="traded"))
+    assert data(call(tools, "collection_get"))["cards"][0]["count"] == 3
+    done = data(call(tools, "collection_change", oracle_id=bolt, count=0, mode="set", reason="sold the lot"))
+    assert done["cards"] == []
+    assert [n["reason"] for n in done["history"]] == ["bought at FNM", "traded", "sold the lot"]
+
+
+def test_collection_change_removing_more_than_held_is_a_tool_error_that_says_how_many_are_held(tools):
+    bolt = oracle_id(tools, "Lightning Bolt")
+    data(call(tools, "collection_change", oracle_id=bolt, count=2, reason="test"))
+    result = call(tools, "collection_change", oracle_id=bolt, count=3, mode="remove", reason="test")
+    assert failure(result) == "refused-change"
+    assert "2" in result.content[0].text
