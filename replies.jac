@@ -7,6 +7,9 @@ import from starlette.responses { Response, JSONResponse }
 import from jaclang.data.serializer { Serializer }
 import from walker_errors { WalkerError }
 
+# The runner errors that are worth asking again, answered 503.
+glob UNAVAILABLE_CODES: list[str] = ["try-again", "busy"];
+
 """Jac's own error envelope, with the HTTP status Jac's server would use."""
 def refusal(status: int, code: str, message: str) -> Response {
     return JSONResponse(
@@ -31,6 +34,6 @@ def envelope(result: any, reports: any) -> dict[str, any] {  # jac:ignore[W1037]
 a walker error becomes a failure reply here. (A walker's own failure is a report
 in an ordinary reply; the page reads this one as a refusal, `refusedAsReport`.)"""
 def failed_call(error: WalkerError) -> Response {
-    status = 503 if error.code in ["try-again", "busy"] else 500;
+    status = 503 if error.code in UNAVAILABLE_CODES else 500;
     return refusal(status, error.code.upper(), error.message);
 }

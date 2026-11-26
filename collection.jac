@@ -93,8 +93,10 @@ def copies(coll: Collection, oid: str) -> int {
 """The one writer. Sets the count of `oid` to the absolute `count` (0 removes
 the card) and logs a ChangeNote with `reason`. A change that leaves the count
 as it was is applied but not logged. Returns "" when applied, else why it was
-refused (and nothing is written)."""
-def set_count(coll: Collection, oid: str, count: int, reason: str) -> str {
+refused (and nothing is written). A caller that changes many cards at once
+passes `known`, the collection's holdings by oracle id from one read of it, so
+no change reads the collection again; it must not change a card twice."""
+def set_count(coll: Collection, oid: str, count: int, reason: str, known: dict[str, tuple[Owns, Card]] | None = None) -> str {
     if not reason.strip() {
         return "every change needs a reason.";
     }
@@ -102,7 +104,7 @@ def set_count(coll: Collection, oid: str, count: int, reason: str) -> str {
     if problem {
         return problem;
     }
-    found = owned(coll, oid);
+    found = known.get(oid) if known is not None else owned(coll, oid);
     before = found[0].count if found is not None else 0;
     name = "";
     if found is None {
@@ -260,8 +262,10 @@ walker:protect ImportCollection {
         }
         coll = my_collection();
         unresolved = [*rl.unresolved];
+        known = {c.oracle_id: (e, c) for (e, c) in holdings(coll)};
         for (oid, total) in totals.items() {
-            why = set_count(coll, oid, copies(coll, oid) + total, REASON_IMPORTED);
+            held = known[oid][0].count if oid in known else 0;
+            why = set_count(coll, oid, held + total, REASON_IMPORTED, known);
             if why {
                 unresolved.append(f"{card_name(oid)} ({why})");
             }
@@ -292,7 +296,7 @@ obj OwnedSearch {
 """Search the catalogue for `query`, each hit with the copies `coll` holds (None:
 no collection, so 0). With `owned_only`, only cards `coll` holds come back."""
 def owned_search(coll: Collection | None, query: str, limit: int, owned_only: bool) -> OwnedSearch {
-    counts = {c.oracle_id: e.count for (e, c) in holdings(coll)} if coll is not None else {};
+    counts = collection_counts(coll);
     found = search_among(query, limit, [*counts.keys()] if owned_only else None);
     return OwnedSearch(
         hits=[

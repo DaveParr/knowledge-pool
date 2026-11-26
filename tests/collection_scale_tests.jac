@@ -16,13 +16,15 @@ import from deck_operations { perform }
 import from decks { Deck, DeckView, CreateDeck, EditDeck, GetDeck }
 import from collection { ImportCollection, ChangeCollection, GetCollection }
 import from quest_list { GetQuestList }
-import from collection_views { QuestListView, CollectionView }
+import from collection_views { QuestListView, CollectionView, ImportCollectionResult }
 
 glob CATALOG: Path = Path("data/test_collection_scale_catalog.sqlite"),
      CALLER: str = "user_test_scale_alice",
      DECK_LINES: int = 60,
      LIMIT_S: float = 3.0,
-     COLLECTION_LIMIT_S: float = 0.5;
+     COLLECTION_LIMIT_S: float = 0.5,
+     CHANGED_CARD: int = 7,
+     CHANGED_COPIES: int = 5;
 
 with entry {
     build(
@@ -39,6 +41,16 @@ def _oracle_ids -> list[str] {
     return [str(r["oracle_id"]) for r in store.connection().execute("select oracle_id from cards")];
 }
 
+"""Every card name of the test catalogue."""
+def _names -> list[str] {
+    return [str(r["name"]) for r in store.connection().execute("select name from cards")];
+}
+
+"""A pasted list of one copy of every card of the test catalogue."""
+def _whole_catalogue_list -> str {
+    return "\n".join([f"1 {n}" for n in _names()]);
+}
+
 """`CALLER` with a deck of `DECK_LINES` cards, none short in the collection,
 and every card of the catalogue in the collection: the deck's id."""
 def _caller_with_big_collection -> str {
@@ -49,12 +61,11 @@ def _caller_with_big_collection -> str {
         deck_id=did,
         changes=[{"oracle_id": o, "count": 1, "zone": "main", "reason": "test"} for o in oids[:DECK_LINES]]
     ));
-    names = [str(r["name"]) for r in store.connection().execute("select name from cards")];
-    perform(CALLER, ImportCollection(format="text", text="\n".join([f"1 {n}" for n in names])));
+    perform(CALLER, ImportCollection(format="text", text=_whole_catalogue_list()));
     return did;
 }
 
-test "reading a deck against a collection of the whole catalogue is fast" {
+test "a deck is read within the limit against a collection of the whole catalogue, and is sleeveable" {
     did = _caller_with_big_collection();
     from_start = time.monotonic();
     view = perform(CALLER, GetDeck(deck_id=did)).reports[0] as DeckView;
@@ -62,7 +73,7 @@ test "reading a deck against a collection of the whole catalogue is fast" {
     assert view.sleeveable;
 }
 
-test "reading the quest list against a collection of the whole catalogue is fast" {
+test "the quest list is read within the limit against a collection of the whole catalogue, and is empty" {
     _caller_with_big_collection();
     from_start = time.monotonic();
     view = perform(CALLER, GetQuestList()).reports[0] as QuestListView;
@@ -70,13 +81,21 @@ test "reading the quest list against a collection of the whole catalogue is fast
     assert len(view.lines) == 0;
 }
 
-test "reading a collection of the whole catalogue is fast" {
+test "a collection of the whole catalogue is read within the limit, each card with its own count" {
     _caller_with_big_collection();
-    perform(CALLER, ChangeCollection(oracle_id=_oracle_ids()[7], count=4, reason="test"));
+    perform(CALLER, ChangeCollection(oracle_id=_oracle_ids()[CHANGED_CARD], count=CHANGED_COPIES - 1, reason="test"));
     from_start = time.monotonic();
     view = perform(CALLER, GetCollection()).reports[0] as CollectionView;
     assert time.monotonic() - from_start < COLLECTION_LIMIT_S;
     assert len(view.cards) == len(_oracle_ids());
-    assert sorted([l.count for l in view.cards]) == [1] * (len(view.cards) - 1) + [5];
-    assert [l.count for l in view.cards if l.oracle_id == _oracle_ids()[7]] == [5];
+    assert sorted([l.count for l in view.cards]) == [1] * (len(view.cards) - 1) + [CHANGED_COPIES];
+    assert [l.count for l in view.cards if l.oracle_id == _oracle_ids()[CHANGED_CARD]] == [CHANGED_COPIES];
+}
+
+test "a list of the whole catalogue is imported within the limit, every card resolved" {
+    from_start = time.monotonic();
+    result = perform(CALLER, ImportCollection(format="text", text=_whole_catalogue_list())).reports[0] as ImportCollectionResult;
+    assert time.monotonic() - from_start < LIMIT_S;
+    assert result.unresolved == [];
+    assert len(result.collection.cards) == len(_oracle_ids());
 }

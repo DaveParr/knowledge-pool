@@ -111,9 +111,13 @@ def busy -> WalkerError {
 """Hold the runner's lock for a `with`, waiting at most `LOCK_WAIT_S` for it: a call
 that cannot get it raises `CallFailed` (`busy`) instead of queueing for ever behind
 one that never finishes."""
-obj locked {
+obj runner_lock {
+    has name: str = "",
+        caller: str = "";
+
     def __enter__ -> None {
         if not LOCK.acquire(timeout=LOCK_WAIT_S) {
+            LOG.warning("%s for caller %s gave up waiting %.0fs for the runner's lock", self.name, self.caller, LOCK_WAIT_S);
             raise CallFailed(error=busy());
         }
     }
@@ -193,7 +197,7 @@ write Jac refuses, raise `CallFailed`. `name` (the walker or function) and
 holds the lock longer than `SLOW_CALL_S` is logged with its name, caller and
 duration, so a call that wedges the runner shows in the log."""
 def in_context(root_id: str, work: Callable[[], object], name: str = "", caller: str = "") -> object {
-    with locked() {
+    with runner_lock(name=name, caller=caller) {
         began = time.monotonic();
         try {
             return rerun_on_conflict(root_id, work, name, caller);
@@ -261,7 +265,7 @@ the Catalog and Format nodes, open to every user for reading. Runs before
 the first call, and again only if the guest's root changes (`jac test`
 starts each test on an empty graph) or the registration was cleared."""
 def start {
-    with locked() {
+    with runner_lock(name="start", caller=Con.GUEST.value) {
         guest = guest_root_id();
         # The shared root is also registered again when something cleared it (Jac's test
         # client does on close) while the guest stayed the same.

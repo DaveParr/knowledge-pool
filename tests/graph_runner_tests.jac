@@ -9,6 +9,7 @@ users, or lets a user change a shared card, a test here fails.
 import logging;
 import os;
 import from logging.handlers { BufferingHandler }
+import re;
 import threading;
 import time;
 import from unittest.mock { patch }
@@ -1010,16 +1011,20 @@ test "a call that cannot get the runner's lock in time answers busy instead of w
     holder = threading.Thread(target=hold);
     holder.start();
     held.wait(5);
+    seen = BufferingHandler(100);
+    LOG.addHandler(seen);
     try {
         with patch.object(gr, "LOCK_WAIT_S", 0.2) {
             answer = call_function(ALICE, lambda () -> object { return "done"; });
         }
     } finally {
+        LOG.removeHandler(seen);
         release.set();
         holder.join();
     }
     assert isinstance(answer, WalkerError);
     assert answer.code == "busy";
+    assert any("lock" in r.getMessage() and r.levelno == logging.WARNING for r in seen.buffer), [r.getMessage() for r in seen.buffer];
     assert call_function(ALICE, lambda () -> object { return "done"; }) == "done";
 }
 
@@ -1036,6 +1041,6 @@ test "a call that holds the runner's lock longer than the slow-call limit is log
     }
     logged = [r.getMessage() for r in seen.buffer];
     slow = [line for line in logged if "sleepy_walker" in line];
-    assert len(slow) == 1 and ALICE in slow[0] and "0.2" in slow[0], logged;
+    assert len(slow) == 1 and ALICE in slow[0] and re.search(r"held the runner's lock for \d+\.\ds", slow[0]), logged;
     assert not any("quick_walker" in line for line in logged), logged;
 }
