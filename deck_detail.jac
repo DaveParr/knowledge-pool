@@ -9,7 +9,7 @@ import "./deck_detail.css";
 import from .export_panel { ExportPanel }
 import from .mana_panel { ManaPanel }
 import from .card_search { AddCards }
-import from .mana_cost { ManaCost }
+import from .mana_cost { ManaCost, RulesText }
 import from .walker_failure { failureMessage, REFUSED_LINE }
 
 import from decks {
@@ -100,7 +100,7 @@ def:pub CardDetails(line: CardLine) -> JsxElement {
                                 {(" · " if face.mana_cost else "") + face.type_line}
                             </span>
                         </h3>
-                        {<p className="dd-rules">{face.text}</p> if face.text else None}
+                        {<p className="dd-rules"><RulesText text={face.text}/></p> if face.text else None}
                         <FaceStats
                             power={face.power}
                             toughness={face.toughness}
@@ -112,7 +112,7 @@ def:pub CardDetails(line: CardLine) -> JsxElement {
                 }
             } elif line.text or line.loyalty or line.defense {
                 <div key="rules" className="dd-face">
-                    {<p className="dd-rules">{line.text}</p> if line.text else None}
+                    {<p className="dd-rules"><RulesText text={line.text}/></p> if line.text else None}
                     <FaceStats power="" toughness="" loyalty={line.loyalty} defense={line.defense} withPT={False}/>
                 </div>
             }}

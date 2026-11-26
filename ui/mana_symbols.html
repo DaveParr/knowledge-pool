@@ -1,0 +1,35 @@
+<!-- Shared by the views that show costs: Magic's symbols from the Mana font, as the web
+     app draws them (mana_cost.jac). `view_page` (ui_pages.jac) puts this in each view and
+     fills the marker below with the repo's mana_symbols.css (built by scripts/mana_symbols.py). -->
+<style>
+/* @mana_symbols.css */
+  .mc-cost { display: inline-flex; flex-wrap: wrap; gap: 3px; align-items: center; vertical-align: middle; }
+  .mc-sym { display: inline-flex; font-size: 14px; line-height: 1; }
+  .mc-sep { color: var(--muted); font-weight: 700; font-size: 11px; margin: 0 2px; }
+  .mc-cost .ms-cost, .mc-inline .ms-cost { box-shadow: 0 0 0 1.5px var(--fg); }
+  .mc-inline { display: inline-flex; font-size: 0.95em; margin: 0 0.1em; vertical-align: -0.15em; }
+</style>
+<script>
+// Symbols whose Mana class isn't their letters. Colourless Phyrexian {C/P} has no glyph of
+// its own: the Phyrexian glyph on the colourless ground is how it is printed.
+const MANA_SPECIAL = { T: "tap", Q: "untap", "½": "1-2", "∞": "infinity", CHAOS: "chaos", A: "acorn", TK: "ticket", "C/P": "p", HW: "w", HR: "r" };
+const manaEsc = (s) => String(s ?? "").replace(/[&<>"']/g, (c) =>
+  ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[c]);
+// One symbol: "W/U" -> the hybrid white-blue symbol; half symbols show the left half.
+function manaSymbol(sym) {
+  const cls = "ms-" + (MANA_SPECIAL[sym] || sym.toLowerCase().split("/").join(""));
+  const glyph = `<i class="ms ms-cost ${manaEsc(cls)}" role="img" aria-label="{${manaEsc(sym)}}"></i>`;
+  return sym.length === 2 && sym[0] === "H" ? `<span class="ms-half">${glyph}</span>` : glyph;
+}
+// "{1}{R} // {U}" -> a row of symbols, the raw cost kept for screen readers.
+function manaPills(cost) {
+  if (!cost) return "";
+  const faces = String(cost).split("//").map((face) => (face.match(/\{[^}]+\}/g) || [])
+    .map((m) => `<span class="mc-sym" aria-hidden="true">${manaSymbol(m.slice(1, -1))}</span>`).join(""));
+  return `<span class="mc-cost" role="img" aria-label="Mana cost ${manaEsc(cost)}">${faces.join('<span class="mc-sep">//</span>')}</span>`;
+}
+// Rules text, escaped, with its {...} symbols drawn inline: "{T}: Add {G}."
+function rulesHtml(text) {
+  return manaEsc(text).replace(/\{([^}]+)\}/g, (_, sym) => `<span class="mc-inline">${manaSymbol(sym)}</span>`);
+}
+</script>

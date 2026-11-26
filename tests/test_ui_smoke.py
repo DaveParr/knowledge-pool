@@ -236,15 +236,14 @@ def test_the_deck_page_shows_owned_copies_and_whether_the_deck_is_sleeveable(app
     assert "(0 owned)" in app.wait_text("(0 owned)", within="ul.dd-cards")
 
 
-def test_card_search_view_offers_add_only_on_a_deck_the_caller_owns(app):
+def test_card_search_view_offers_add_only_on_a_deck_the_caller_owns(app, tmp_path):
     def hits(mine: bool) -> dict:
         deck = {"id": "d1", "name": "Burn", "format": "modern", "main_total": 3, "sideboard_total": 0, "mine": mine}
         hit = {"oracle_id": "o1", "name": "Lightning Bolt", "mana_cost": "{R}", "type_line": "Instant",
                "text": "Deal 3.", "in_deck": {}}
         return {"deck": deck, "query": "bolt", "limit": 20, "hits": [hit], "error": ""}
 
-    app.browse("open", (ROOT / "ui" / "card_search.html").as_uri())
-    app.browse("wait", "#results")
+    open_view(app, tmp_path, "card_search.html")
     for mine, expected_buttons in ((True, 2), (False, 0)):
         message = {"jsonrpc": "2.0", "method": "ui/notifications/tool-result",
                    "params": {"structuredContent": hits(mine)}}

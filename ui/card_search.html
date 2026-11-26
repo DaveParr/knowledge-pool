@@ -45,12 +45,6 @@
   .empty { color: var(--muted); padding: 10px 0; margin: 0; }
   @media (max-width: 420px) { .hit .actions { flex-direction: row; grid-row: auto; grid-column: 1 / -1; } li.hit { grid-template-columns: 1fr; } }
   /* Mana symbol pills (same as mana_cost.css in the web app and ui/deck_table.html). */
-  :root { --mana-w: #f8f3d6; --mana-u: #b4d7f0; --mana-b: #c8c1bd; --mana-r: #f0a68c; --mana-g: #9fd0ae; --mana-c: #d8d4cc; }
-  .mc-cost { display: inline-flex; flex-wrap: wrap; gap: 2px; align-items: center; vertical-align: middle; }
-  .mc-sym { display: inline-flex; align-items: center; justify-content: center; min-width: 18px; height: 18px;
-    padding: 0 4px; box-sizing: border-box; border-radius: 999px; border: 1px solid rgba(0, 0, 0, .18);
-    color: #1f1e1d; font: 600 11px/1 var(--font-sans, system-ui, sans-serif); font-variant-numeric: tabular-nums; }
-  .mc-sep { color: var(--muted); font-size: 11px; margin: 0 2px; }
 
   /* Pool block (design system: https://claude.ai/artifact/CdjUrrHAgydY9QAXQSBLUG).
      The host's colours, Pool block's shape: ink rules and frames, hard offset
@@ -81,7 +75,6 @@
     border: 2.5px solid var(--fg) !important; border-radius: 6px; box-shadow: var(--shadow-control);
   }
   .status, .toast, .note { border: 2px solid var(--fg); font-weight: 600; }
-  .mc-sym { border: 2px solid var(--fg); }
 
   ul.hits { border: 3px solid var(--fg); border-radius: 8px; box-shadow: var(--shadow-panel); padding: 0 12px; margin-right: 4px; }
   ul.hits:empty { display: none; }
@@ -92,6 +85,7 @@
 </style>
 <!-- @include refusal.html -->
 <!-- @include host_container.html -->
+<!-- @include mana_symbols.html -->
 </head>
 <body>
 <main id="app">
@@ -126,17 +120,6 @@
   const esc = (s) => String(s ?? "").replace(/[&<>"']/g, (c) =>
     ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[c]);
 
-  // "{1}{R} // {U}" -> symbol pills; hybrids like {W/U} are split diagonally.
-  const manaColour = (p) => "WUBRG".includes(p) && p.length === 1 ? `var(--mana-${p.toLowerCase()})` : "var(--mana-c)";
-  function manaPills(cost) {
-    if (!cost) return "";
-    const faces = String(cost).split("//").map((face) => (face.match(/\{[^}]+\}/g) || []).map((m) => {
-      const sym = m.slice(1, -1), parts = sym.split("/").filter((p) => p !== "P");
-      const bg = parts.length > 1 ? `linear-gradient(135deg, ${manaColour(parts[0])} 50%, ${manaColour(parts[1])} 50%)` : manaColour(parts[0] || sym);
-      return `<span class="mc-sym" style="background:${bg}">${esc(sym)}</span>`;
-    }).join(""));
-    return `<span class="mc-cost" role="img" aria-label="Mana cost ${esc(cost)}">${faces.join('<span class="mc-sep">//</span>')}</span>`;
-  }
 
   const state = {
     args: null,       // what the tool was called with (tool-input)
@@ -204,7 +187,7 @@
           .map(([z, k]) => `<span class="in-deck">${k} in ${esc(z)}</span>`).join(" ");
         return `<li class="hit">
           <div class="title"><span class="name">${esc(h.name)}</span><span class="cost">${manaPills(h.mana_cost)}</span><span class="type">${esc(h.type_line)}</span>${held}</div>
-          <div class="text">${esc(h.text)}</div>
+          <div class="text">${rulesHtml(h.text)}</div>
           ${mine ? `<div class="actions">
             <button data-i="${i}" data-zone="main" aria-label="Add ${esc(h.name)} to main deck"${off ? " disabled" : ""}>+ Main</button>
             <button data-i="${i}" data-zone="sideboard" aria-label="Add ${esc(h.name)} to sideboard"${off ? " disabled" : ""}>+ Side</button>
