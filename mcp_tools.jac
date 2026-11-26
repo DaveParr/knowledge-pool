@@ -20,6 +20,8 @@ import from deckformats { export_format_choices }
 import from zones { zone_choices, zone_options }
 import from deck_io { DeckExport, DeckImport }
 import from deck_operations { perform }
+import from collection { GetCollection, ChangeCollection }
+import from collection_views { MODE_ADD }
 import from legality { GetFormatRules }
 import from walker_errors { WalkerError }
 import from json_object { JsonObject }
@@ -374,4 +376,20 @@ mtgjson (an MTGJSON deck file, such as a precon), text, arena or moxfield. Lines
 under "unresolved" and never added."""
 def deck_import(deck_id: str, format: str, text: str) -> JsonObject {
     return outcome(perform(request_caller(), DeckImport(deck_id=deck_id, format=format, text=text)));
+}
+
+"""Your collection: the cards you have, card by card with counts, and the history of
+its changes with their reasons. Counts are per oracle card, not per printing."""
+def collection_get -> JsonObject {
+    return outcome(perform(request_caller(), GetCollection()));
+}
+
+"""Change how many copies of a card your collection has. `mode` is "add" (`count`
+more copies, the default), "remove" (`count` fewer) or "set" (exactly `count`;
+0 takes the card out). Every change needs a reason (for example "bought at FNM").
+Removing more copies than you have is refused with `refused-change`, saying how many
+you have, and changes nothing. Get oracle ids from resolve_names. Returns your
+collection. Changing a deck never changes your collection."""
+def collection_change(oracle_id: str, count: int, reason: str, mode: str = MODE_ADD) -> JsonObject {
+    return outcome(perform(request_caller(), ChangeCollection(oracle_id=oracle_id, count=count, mode=mode, reason=reason)));
 }

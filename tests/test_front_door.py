@@ -169,7 +169,7 @@ def test_every_failed_call_gives_the_page_one_message_to_show(client, monkeypatc
 def _protected_names() -> set[str]:
     """Every walker and function the app marks `:protect`, from the sources."""
     found: set[str] = set()
-    for source in ("decks.jac", "deck_io.jac", "cards.jac", "legality.jac"):
+    for source in ("decks.jac", "deck_io.jac", "cards.jac", "legality.jac", "collection.jac"):
         found |= set(re.findall(r"^(?:walker|def):protect (\w+)", (ROOT / source).read_text(), re.M))
     return found
 
@@ -195,5 +195,5 @@ def test_the_app_imports_every_page_callable_walker():
 def test_no_walker_or_server_function_is_pub():
     """Jac's server would answer a `:pub` one for anyone who reaches it. (The page's own
     components and client helpers are `def:pub` too, in the client modules.)"""
-    for name in ("decks.jac", "deck_io.jac", "cards.jac", "legality.jac"):
+    for name in ("decks.jac", "deck_io.jac", "cards.jac", "legality.jac", "collection.jac"):
         assert not re.search(r"^(walker|def):pub ", (ROOT / name).read_text(), re.M), name
