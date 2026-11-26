@@ -236,6 +236,26 @@ def test_the_deck_page_shows_owned_copies_and_whether_the_deck_is_sleeveable(app
     assert "(0 owned)" in app.wait_text("(0 owned)", within="ul.dd-cards")
 
 
+def test_the_deck_page_draws_a_cost_and_rules_text_with_the_mana_font_symbols(app):
+    app.browse("open", app.web)
+    app.fill("input[aria-label='Deck name']", "Symbol Deck")
+    app.click("button", "Create deck")
+    app.click("link", "Symbol Deck")
+    app.fill("input[placeholder='Card name, type or rules text']", "Llanowar Elves")
+    app.click("button", "Search")
+    app.click("button", "Add Llanowar Elves to main deck")
+    app.wait_text("Llanowar Elves", within="ul.dd-cards")
+    # The cost {G}, in the row and in the search hit, is the font's green symbol.
+    assert app.js("document.querySelector('ul.dd-cards .mc-cost i.ms.ms-cost.ms-g') !== null") == "true"
+    # Rules text "{T}: Add {G}." draws the tap and green symbols inline, the words kept.
+    app.js("document.querySelector('ul.dd-cards summary').click()")
+    app.wait_text("Add", within="ul.dd-cards .dd-rules")
+    assert app.js("document.querySelector('ul.dd-cards .dd-rules .mc-inline i.ms-tap') !== null") == "true"
+    assert app.js("document.querySelector('ul.dd-cards .dd-rules .mc-inline i.ms-g') !== null") == "true"
+    # The font is loaded from the page's own stylesheet, not fetched.
+    assert app.js("document.fonts.check('14px Mana')") == "true"
+
+
 def test_card_search_view_offers_add_only_on_a_deck_the_caller_owns(app, tmp_path):
     def hits(mine: bool) -> dict:
         deck = {"id": "d1", "name": "Burn", "format": "modern", "main_total": 3, "sideboard_total": 0, "mine": mine}
