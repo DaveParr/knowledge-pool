@@ -62,3 +62,9 @@ count = "1"
 kind = "web-app"
 entry-point = "main"
 
+
+# The page's head: the favicon and the apple-touch icon, from `public/icons/`
+# (served at the site root; the front door forwards only `/icons/<set>/<file>`).
+[client.app_meta_data]
+icon = "/icons/web-and-mobile/favicon.ico"
+apple_touch_icon = "/icons/web-and-mobile/apple-touch-icon-180x180.png"

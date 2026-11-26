@@ -11,7 +11,8 @@ MCP SDK's app, or to Jac's server.
 Jac's own server runs beside it as a child on 127.0.0.1 and only hands out the web
 page and its static files; the front door forwards those two kinds of path and no
 others. The static files are under `/static/`, or, for the bundle `jac build --as
-client` writes (the hosted image), a script or stylesheet at the root. Every other
+client` writes (the hosted image), a script or stylesheet at the root, plus the icons
+under `/icons/<set>/` (the page head's favicon and apple-touch icon). Every other
 path answers 404, so Jac's docs, graph, admin, listing, `/user/*` and `/sso/*`
 endpoints are never reachable from outside. It never forwards an `Authorization`
 header or a path under `/walker/`, `/function/`, `/user/` or `/sso/` (ADR 0004).
