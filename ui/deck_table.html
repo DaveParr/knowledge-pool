@@ -81,6 +81,46 @@
     padding: 0 4px; box-sizing: border-box; border-radius: 999px; border: 1px solid rgba(0, 0, 0, .18);
     color: #1f1e1d; font: 600 11px/1 var(--font-sans, system-ui, sans-serif); font-variant-numeric: tabular-nums; }
   .mc-sep { color: var(--muted); font-size: 11px; margin: 0 2px; }
+
+  /* Pool block (design system: https://claude.ai/artifact/CdjUrrHAgydY9QAXQSBLUG).
+     The host's colours, Pool block's shape: ink rules and frames, hard offset
+     shadows, heavy headings, the pool gradient on the title and main action. */
+  :root {
+    --line: var(--fg);
+    --pool: linear-gradient(110deg, #b4d7f0 0%, #d7c9de 50%, #f0a68c 100%);
+    --pool-down: linear-gradient(180deg, #f0a68c, #d7c9de 55%, #b4d7f0);
+    --on-pool: #1d1c1a;
+    --shadow-control: 3px 3px 0 var(--fg);
+    --shadow-panel: 4px 4px 0 var(--fg);
+  }
+  main { padding: 14px 18px 18px; }
+  h1 {
+    display: inline-block; margin: 0 6px 10px 0; padding: 8px 14px; background: var(--pool); color: var(--on-pool);
+    border: 3px solid var(--fg); border-radius: 10px; box-shadow: var(--shadow-panel);
+    font-size: 17px; font-weight: 900; letter-spacing: -.01em;
+  }
+  h2 { color: var(--fg); font-weight: 900; letter-spacing: .06em; }
+  .meta { font-weight: 600; }
+  button {
+    font-weight: 700; color: var(--fg); background: var(--bg);
+    border: 2.5px solid var(--fg); border-radius: 6px; box-shadow: var(--shadow-control);
+  }
+  button.primary { background: var(--pool); color: var(--on-pool); border-color: var(--fg); }
+  button:disabled { box-shadow: none; }
+  input, textarea {
+    border: 2.5px solid var(--fg) !important; border-radius: 6px; box-shadow: var(--shadow-control);
+  }
+  .status, .toast, .note { border: 2px solid var(--fg); font-weight: 600; }
+  .mc-sym { border: 2px solid var(--fg); }
+
+  ul.cards { border: 3px solid var(--fg); border-radius: 8px; box-shadow: var(--shadow-panel); padding: 2px 10px; margin-right: 4px; }
+  li.card { border-bottom: 2px solid var(--fg); }
+  li.card:last-child { border-bottom: 0; }
+  .colhead { border-bottom: 2px solid var(--fg); text-transform: uppercase; letter-spacing: .06em; font-size: 10.5px; font-weight: 700; }
+  .name, .n, .pt { font-weight: 800; }
+  .face { border-left: 2px solid var(--fg); }
+  .stats, .pill.kw { border: 2px solid var(--fg); border-radius: 4px; }
+  .pill { border-radius: 4px; text-transform: uppercase; letter-spacing: .04em; font-weight: 700; }
 </style>
 <!-- @include refusal.html -->
 </head>

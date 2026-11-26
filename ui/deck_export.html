@@ -52,6 +52,41 @@
   .size { color: var(--muted); font-size: 12px; margin-left: auto; }
   .status { font-size: 13px; color: var(--ok-fg); }
   .empty { color: var(--muted); }
+
+  /* Pool block (design system: https://claude.ai/artifact/CdjUrrHAgydY9QAXQSBLUG).
+     The host's colours, Pool block's shape: ink rules and frames, hard offset
+     shadows, heavy headings, the pool gradient on the title and main action. */
+  :root {
+    --line: var(--fg);
+    --pool: linear-gradient(110deg, #b4d7f0 0%, #d7c9de 50%, #f0a68c 100%);
+    --pool-down: linear-gradient(180deg, #f0a68c, #d7c9de 55%, #b4d7f0);
+    --on-pool: #1d1c1a;
+    --shadow-control: 3px 3px 0 var(--fg);
+    --shadow-panel: 4px 4px 0 var(--fg);
+  }
+  main { padding: 14px 18px 18px; }
+  h1 {
+    display: inline-block; margin: 0 6px 10px 0; padding: 8px 14px; background: var(--pool); color: var(--on-pool);
+    border: 3px solid var(--fg); border-radius: 10px; box-shadow: var(--shadow-panel);
+    font-size: 17px; font-weight: 900; letter-spacing: -.01em;
+  }
+  h2 { color: var(--fg); font-weight: 900; letter-spacing: .06em; }
+  .meta { font-weight: 600; }
+  button {
+    font-weight: 700; color: var(--fg); background: var(--bg);
+    border: 2.5px solid var(--fg); border-radius: 6px; box-shadow: var(--shadow-control);
+  }
+  button.primary { background: var(--pool); color: var(--on-pool); border-color: var(--fg); }
+  button:disabled { box-shadow: none; }
+  input, textarea {
+    border: 2.5px solid var(--fg) !important; border-radius: 6px; box-shadow: var(--shadow-control);
+  }
+  .status, .toast, .note { border: 2px solid var(--fg); font-weight: 600; }
+  .mc-sym { border: 2px solid var(--fg); }
+
+  .formats button[aria-pressed=true] { background: var(--pool); color: var(--on-pool); box-shadow: var(--shadow-control); }
+  .formats button[aria-pressed=true] .sub { color: var(--on-pool); }
+  button .sub { text-transform: uppercase; letter-spacing: .06em; font-size: 10.5px; font-weight: 700; }
 </style>
 <!-- @include refusal.html -->
 </head>
