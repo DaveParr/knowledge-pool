@@ -58,6 +58,7 @@ import from jaclang.server.session { transient_db_error }
 import from jaclang.server.identity.user_manager { UserManager }
 import from cards { open_catalog, RefreshCards, REFRESH_BATCH, catalogue_version, refreshed_version, record_refresh, duplicate_oracle_ids }
 import from legality { open_formats }
+import from collection { stamp_collection }
 import from walker_errors { WalkerError }
 import from decks { DeckSummary, DeckView, CopySource, CopyDeck, deck_owner, deck_summaries }
 
@@ -385,7 +386,9 @@ Under `jac run` every `report` is also echoed to stdout; that stays out of the
 process's output, which carries a deck's contents and, for stdio MCP, the protocol."""
 def spawn_on_root(w: WalkerArchetype) -> WalkerArchetype {
     with redirect_stdout(io.StringIO()) {
-        return Jac.spawn(Jac.get_context().get_root(), copy.deepcopy(w)) as WalkerArchetype;
+        done = Jac.spawn(Jac.get_context().get_root(), copy.deepcopy(w)) as WalkerArchetype;
+        stamp_collection(done.reports);
+        return done;
     }
 }
 

@@ -7,6 +7,8 @@ deck's lines, so each can be tested without a graph. The one definition of a
 land (`CardLine.is_land`) and of the main deck (`main_deck`) live here.
 """
 
+import from zones { PLAYED_ZONES }
+
 """One face of a multi-face card (double-faced, split, adventure, prepare...),
 with its own cost, type line, rules text and stats. A stat the face lacks is
 "". Stats are text: MTGJSON gives "*" and "1+*" as well as numbers."""
@@ -24,12 +26,14 @@ obj CardFace {
 """One card in one zone of a deck, as every analyser and client sees it.
 `power`, `toughness`, `loyalty` and `defense` are the front face's ("" when it
 has none); `faces` lists every face of a multi-face card, and is empty for a
-one-face card."""
+one-face card. `collection_count` is how many copies of the card the deck
+owner's collection holds (filled in by the runner, see `stamp_collection`)."""
 obj CardLine {
     has oracle_id: str,
         name: str,
         zone: str,
         count: int,
+        collection_count: int = 0,
         mana_cost: str = "",
         mana_value: float = 0.0,
         type_line: str = "",
@@ -61,7 +65,35 @@ obj CardLine {
     }
 }
 
+"""The cards a deck needs more copies of than its owner's collection holds: per
+oracle card, the copies across the played zones (`PLAYED_ZONES`) minus the
+line's `collection_count`, never below zero. The deck is measured on its own
+against the whole collection."""
+def missing_cards(lines: list[CardLine]) -> list[MissingCard] {
+    needed: dict[str, int] = {};
+    names: dict[str, str] = {};
+    held: dict[str, int] = {};
+    for l in lines {
+        if l.zone in PLAYED_ZONES {
+            needed[l.oracle_id] = needed.get(l.oracle_id, 0) + l.count;
+            names[l.oracle_id] = l.name;
+            held[l.oracle_id] = l.collection_count;
+        }
+    }
+    short = [MissingCard(oracle_id=o, name=names[o], count=n - held[o]) for (o, n) in needed.items() if n > held[o]];
+    short.sort(key=lambda (m: MissingCard) { return m.name; });
+    return short;
+}
+
 """The lines in the main deck: the cards the game starts with."""
 def main_deck(lines: list[CardLine]) -> list[CardLine] {
     return [l for l in lines if l.zone == "main"];
+}
+
+"""A card the deck owner's collection is short of: how many more copies the
+deck needs (`count`, always 1 or more)."""
+obj MissingCard {
+    has oracle_id: str,
+        name: str,
+        count: int;
 }

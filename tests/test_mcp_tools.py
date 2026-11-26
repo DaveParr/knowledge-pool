@@ -234,7 +234,20 @@ def test_deck_export_round_trips_through_deck_import(tools, burn_id):
 def test_deck_show_gives_a_client_without_apps_markdown_and_no_structured_content(tools, burn_id):
     shown = call(tools, "deck_show", deck_id=burn_id)
     assert shown.structured_content is None
-    assert "| 4 | Goblin Guide | {R} | Creature — Goblin Scout | 2/2 |" in text(shown)
+    assert "| 4 (0 owned) | Goblin Guide | {R} | Creature — Goblin Scout | 2/2 |" in text(shown)
+
+
+def test_deck_get_and_deck_show_carry_the_collection_counts_missing_cards_and_sleeveable(tools, burn_id):
+    bolt = oracle_id(tools, "Lightning Bolt")
+    data(call(tools, "collection_change", oracle_id=bolt, count=3, reason="test"))
+    deck = data(call(tools, "deck_get", deck_id=burn_id))
+    assert {c["name"]: c["collection_count"] for c in deck["cards"]}["Lightning Bolt"] == 3
+    missing = {m["name"]: m["count"] for m in deck["missing"]}
+    assert missing["Lightning Bolt"] == 1 and missing["Goblin Guide"] == 4
+    assert deck["sleeveable"] is False
+    shown = text(call(tools, "deck_show", deck_id=burn_id))
+    assert "| 4 (3 owned) | Lightning Bolt |" in shown
+    assert "Not sleeveable: missing" in shown
 
 
 def test_deck_show_gives_an_apps_client_a_brief_and_the_deck(tools, burn_id):

@@ -50,6 +50,19 @@ def gameChangersLine(gc: GameChangers) -> str {
     return line;
 }
 
+"""What the deck owner's collection says about the deck: "Sleeveable", or
+"Not sleeveable: missing 3 Goblin Guide, 1 Shock"."""
+def sleeveableLine(deck: DeckView) -> str {
+    if deck.sleeveable {
+        return "Sleeveable";
+    }
+    line = "Not sleeveable: missing ";
+    for (i, m) in enumerate(deck.missing) {
+        line = line + (", " if i > 0 else "") + str(m.count) + " " + m.name;
+    }
+    return line;
+}
+
 """Power/toughness as "2/2", or "" for a card or face without them."""
 def powerToughness(power: str, toughness: str) -> str {
     return power + "/" + toughness if power or toughness else "";
@@ -247,6 +260,7 @@ def:pub DeckDetail(
                 {<ul>
                     {[<li key={str(i)}>{v.message}</li> for (i, v) in enumerate(deck.violations)]}
                 </ul> if deck.violations else None}
+                <p className="dd-sleeveable">{sleeveableLine(deck)}</p>
                 {<div className="dd-gc">
                     <p>{gameChangersLine(deck.game_changers)}</p>
                     <p>{"Bracket hint: " + deck.game_changers.bracket_hint + " (from Game Changers only, not a full bracket rating)"}</p>
@@ -291,7 +305,7 @@ def:pub DeckDetail(
                                         onToggle={lambda (e: Event) { setOpen(rowKey(line), e.target.hasAttribute("open")); }}
                                     >
                                         <summary className="dd-line">
-                                            <span className="dd-name">{line.name}</span>
+                                            <span className="dd-name">{line.name}<small className="dd-owned">{" (" + str(line.collection_count) + " owned)"}</small></span>
                                             <span className="dd-cost"><ManaCost cost={line.mana_cost}/></span>
                                             <span className="dd-type" title={line.type_line}>{line.type_line}</span>
                                             <span className="dd-pt">{powerToughness(line.power, line.toughness)}</span>

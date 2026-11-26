@@ -213,6 +213,80 @@ test "each deck import format reads into the collection" {
     assert _count(BOB, "Goblin Guide") == 4;
 }
 
+"""`caller` makes a deck holding `cards`, a list of (card name, zone, count); its id."""
+def _deck(caller: str, name: str, cards: list[tuple[str, str, int]], format: str = "modern") -> str {
+    made = perform(caller, CreateDeck(name=name, format=format)).reports[0];
+    deck_id = jid(made);
+    changes = [{"oracle_id": _oid(n), "count": c, "zone": z, "reason": "test"} for (n, z, c) in cards];
+    perform(caller, EditDeck(deck_id=deck_id, changes=changes));
+    return deck_id;
+}
+
+"""`caller` reads the deck `deck_id`."""
+def _read(caller: str, deck_id: str) -> DeckView {
+    return perform(caller, GetDeck(deck_id=deck_id)).reports[0] as DeckView;
+}
+
+test "every card line carries the owner's collection count, in every zone including the maybeboard" {
+    _change(ALICE, "Lightning Bolt", 3);
+    _change(ALICE, "Shock", 1);
+    deck_id = _deck(
+        ALICE, "Counted", [("Lightning Bolt", "main", 4), ("Shock", "maybeboard", 2), ("Counterspell", "sideboard", 1)]
+    );
+    counts = {l.name: l.collection_count for l in _read(ALICE, deck_id).cards};
+    assert counts == {"Lightning Bolt": 3, "Shock": 1, "Counterspell": 0};
+}
+
+test "a deck's missing cards are the copies needed across its played zones minus the collection, never below zero" {
+    _change(ALICE, "Counterspell", 3);
+    _change(ALICE, "Sol Ring", 5);
+    deck_id = _deck(
+        ALICE,
+        "Short",
+        [
+            ("Goblin Guide", "main", 3),
+            ("Counterspell", "main", 2),
+            ("Counterspell", "sideboard", 2),
+            ("Sol Ring", "main", 1),
+            ("Mountain", "maybeboard", 9)
+        ]
+    );
+    missing = {m.name: m.count for m in _read(ALICE, deck_id).missing};
+    assert missing == {"Goblin Guide": 3, "Counterspell": 1};
+}
+
+test "a deck is sleeveable exactly when it has no missing cards" {
+    _change(BOB, "Shock", 2);
+    full = _deck(BOB, "Sleeved", [("Shock", "main", 2), ("Mountain", "maybeboard", 5)]);
+    short = _deck(BOB, "Unsleeved", [("Shock", "main", 3)]);
+    assert _read(BOB, full).sleeveable;
+    assert _read(BOB, full).missing == [];
+    assert not _read(BOB, short).sleeveable;
+}
+
+test "each deck is compared with the whole collection on its own: two decks of 4 with 4 owned are both missing none" {
+    erin = "user_test_collection_erin";
+    _change(erin, "Lightning Bolt", 4);
+    first = _deck(erin, "Burn one", [("Lightning Bolt", "main", 4)]);
+    second = _deck(erin, "Burn two", [("Lightning Bolt", "main", 4)]);
+    assert _read(erin, first).missing == [] and _read(erin, first).sleeveable;
+    assert _read(erin, second).missing == [] and _read(erin, second).sleeveable;
+}
+
+test "another user reading a deck sees the owner's counts, missing cards and sleeveable, not their own" {
+    frank = "user_test_collection_frank";
+    gina = "user_test_collection_gina";
+    _change(frank, "Shock", 1);
+    _change(gina, "Shock", 10);
+    _change(gina, "Goblin Guide", 10);
+    deck_id = _deck(frank, "Frank's", [("Shock", "main", 3), ("Goblin Guide", "main", 2)]);
+    seen = _read(gina, deck_id);
+    assert not seen.mine;
+    assert {l.name: l.collection_count for l in seen.cards} == {"Shock": 1, "Goblin Guide": 0};
+    assert {m.name: m.count for m in seen.missing} == {"Shock": 2, "Goblin Guide": 2};
+    assert not seen.sleeveable;
+}
+
 # Keep last: `perform` registers the shared root for this process, and `jac test`
 # gives each test an empty graph, so the next file's tests (which spawn on a bare
 # root) would look for a shared root that no longer exists.

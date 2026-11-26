@@ -15,6 +15,10 @@ glob ZONES: list[str] = ["commander", "companion", "main", "sideboard", "maybebo
          "maybeboard": "Maybeboard"
      };
 
+"""The zones whose cards a deck needs to be played: every zone but the maybeboard.
+Missing cards and sleeveable count these, from this one list."""
+glob PLAYED_ZONES: list[str] = [z for z in ZONES if z != "maybeboard"];
+
 """The zones in display order as {key, title} pairs, for views that are sent data, not code."""
 def zone_choices -> list[dict[str, str]] {
     return [{"key": z, "title": ZONE_TITLES[z]} for z in ZONES];

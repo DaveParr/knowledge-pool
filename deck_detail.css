@@ -68,3 +68,4 @@ span.dd-count { display: inline-block; width: 3.2em; padding: 2px 4px; text-alig
 .dd-rename { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
 .dd-rename input { font-size: 1.25rem; min-width: 16rem; }
 .dd-rename-btn { margin-left: 12px; font-size: 0.875rem; vertical-align: middle; }
+.dd-owned { margin-left: .4em; opacity: .7; font-weight: normal; }

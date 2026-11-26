@@ -164,7 +164,7 @@
         <span><button type="button" data-all="open" data-zone="${zone}">Expand all</button><button type="button" data-all="close" data-zone="${zone}">Collapse all</button></span></div>
       <div class="colhead" aria-hidden="true"><span></span><span>#</span><span>Card</span><span>Cost</span><span>Type</span><span>P/T</span></div>
       <ul class="cards" data-zone="${zone}">${rows.map((r) => `<li class="card"><details>
-        <summary><span class="n">${r.count}</span><span class="name">${esc(r.name)}</span><span class="cost">${manaPills(r.mana_cost)}</span><span class="type" title="${esc(r.type_line)}">${esc(r.type_line)}</span><span class="pt">${esc(pt(r))}</span></summary>
+        <summary><span class="n">${r.count}</span><span class="name">${esc(r.name)}${r.collection_count !== undefined ? ` <small class="quiet">(${r.collection_count} owned)</small>` : ""}</span><span class="cost">${manaPills(r.mana_cost)}</span><span class="type" title="${esc(r.type_line)}">${esc(r.type_line)}</span><span class="pt">${esc(pt(r))}</span></summary>
         ${details(r)}</details></li>`).join("")}</ul>`;
   }
 
@@ -183,6 +183,7 @@
     const cards = deck.cards || [];
     const violations = deck.violations || [];
     const gc = deck.game_changers;
+    const sleeve = deck.sleeveable === undefined ? "" : deck.sleeveable ? "Sleeveable" : "Not sleeveable: missing " + (deck.missing || []).map((m) => m.count + " " + m.name).join(", ");
     const gcLine = gc ? "Game Changers: " + gc.count + (gc.count > 0 ? " — " + gc.cards.join(", ") : "") : "";
     app.innerHTML = `
       <h1>${esc(deck.name)}</h1>
@@ -190,6 +191,7 @@
       <div class="status ${deck.legal ? "ok" : "bad"}" role="status">
         <strong>${deck.legal ? "Legal" : "Not legal"}</strong>
         ${violations.length ? `<ul>${violations.map((v) => `<li>${esc(v.message)}</li>`).join("")}</ul>` : ""}
+        ${sleeve ? `<p>${esc(sleeve)}</p>` : ""}
         ${gc ? `<div class="gc"><p>${esc(gcLine)}</p><p>${esc("Bracket hint: " + gc.bracket_hint + " (from Game Changers only, not a full bracket rating)")}</p></div>` : ""}
       </div>
       ${(deck.zones || []).map((z) => zoneList(z.title, z.key, cards.filter((c) => c.zone === z.key))).join("")}

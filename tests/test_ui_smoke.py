@@ -221,6 +221,18 @@ def test_the_page_offers_no_change_controls_on_a_deck_the_view_says_is_not_the_c
     assert app.js("document.querySelectorAll('ul.dd-cards input, select').length").strip() == "0"
 
 
+def test_the_deck_page_shows_owned_copies_and_whether_the_deck_is_sleeveable(app):
+    app.browse("open", app.web)
+    app.fill("input[aria-label='Deck name']", "Sleeve Deck")
+    app.click("button", "Create deck")
+    app.click("link", "Sleeve Deck")
+    app.fill("input[placeholder='Card name, type or rules text']", "Shock")
+    app.click("button", "Search")
+    app.click("button", "Add Shock to main deck")
+    app.wait_text("Not sleeveable: missing 1 Shock")
+    assert "(0 owned)" in app.wait_text("(0 owned)", within="ul.dd-cards")
+
+
 def test_card_search_view_offers_add_only_on_a_deck_the_caller_owns(app):
     def hits(mine: bool) -> dict:
         deck = {"id": "d1", "name": "Burn", "format": "modern", "main_total": 3, "sideboard_total": 0, "mine": mine}
