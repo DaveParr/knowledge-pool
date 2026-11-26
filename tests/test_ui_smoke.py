@@ -185,6 +185,24 @@ def test_build_a_deck_through_the_web_app(app):
     assert "deals 3 damage" in app.wait_text("deals 3 damage", within="ul.dd-cards")
 
 
+def test_the_owner_deletes_a_deck_after_an_in_page_confirmation_and_lands_on_the_deck_list_without_it(app):
+    app.browse("open", app.web)
+    app.fill("input[aria-label='Deck name']", "Doomed Deck")
+    app.click("button", "Create deck")
+    app.wait_text("Doomed Deck", within="ul.fe-decks")
+    app.click("link", "Doomed Deck")
+    app.wait_text("Not legal")
+    app.click("button", "Delete deck")
+    # The confirmation is on the page, not a browser dialog, and nothing is deleted yet.
+    app.wait_text("Delete this deck?")
+    app.click("button", "Cancel")
+    assert app.js("document.querySelector('.dd-delete-confirm') === null").strip() == "true"
+    app.click("button", "Delete deck")
+    app.click("button", "Yes, delete")
+    app.wait_text("Decks", within="h1")
+    assert "Doomed Deck" not in app.js("document.body.innerText")
+
+
 def test_the_page_says_other_users_can_see_and_copy_your_decks(app):
     app.browse("open", app.web)
     assert "Other users can see and copy the decks you make" in app.wait_text("Other users can see")
@@ -221,6 +239,7 @@ def test_the_page_offers_no_change_controls_on_a_deck_the_view_says_is_not_the_c
     app.click("link", "Not Mine Deck")
     app.wait_text("Copy to my decks")
     assert app.js("document.querySelectorAll('button.dd-rename-btn').length").strip() == "0"
+    assert "Delete deck" not in app.js("document.body.innerText")
     assert app.js("document.querySelectorAll('ul.dd-cards input, select').length").strip() == "0"
 
 

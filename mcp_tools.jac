@@ -15,7 +15,7 @@ import from mcp.server.mcpserver { Context }
 import from mcp.server.apps { client_supports_apps }
 import from mcp_types { CallToolResult, TextContent }
 import from cards { CardSearch, search_cards as catalog_search, find_card, resolve_names as catalog_resolve_names }
-import from decks { Deck, CreateDeck, ListDecks, ListOtherDecks, CopyOtherDeck, GetDeck, EditDeck }
+import from decks { Deck, CreateDeck, ListDecks, ListOtherDecks, CopyOtherDeck, GetDeck, EditDeck, DeleteDeck }
 import from deckformats { export_format_choices }
 import from zones { zone_choices, zone_options }
 import from deck_io { DeckExport, DeckImport }
@@ -378,6 +378,15 @@ def deck_edit(deck_id: str, changes: list[JsonObject] | None = None, format: str
     return outcome(
         perform(request_caller(), EditDeck(deck_id=deck_id, name=name, format=format or None, changes=changes or []))
     );
+}
+
+"""Permanently delete one of your own decks, with its cards and history; it cannot be undone.
+Ask the user to confirm first, naming the deck, and call this only after they say yes. Cards in
+the catalogue and your collection are not touched, nor are copies made from the deck. Another
+user's deck answers not-your-deck: only the owner deletes a deck. Returns the id and name of
+the deck that was deleted."""
+def deck_delete(deck_id: str) -> JsonObject {
+    return outcome(perform(request_caller(), DeleteDeck(deck_id=deck_id)));
 }
 
 """Check a deck against its format. Returns legal (true or false), each violation and, for a

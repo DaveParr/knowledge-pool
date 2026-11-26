@@ -13,7 +13,7 @@ import from .mana_cost { ManaCost }
 import from .walker_failure { failureMessage, REFUSED_LINE }
 
 import from decks {
-    ChangeNote, DeckView, FormatInfo, GetDeck, CopyOtherDeck, EditDeck, list_formats
+    ChangeNote, DeckView, FormatInfo, GetDeck, CopyOtherDeck, EditDeck, DeleteDeck, list_formats
 }
 import from zones { ZONES, ZONE_TITLES }
 import from edit_reason { WEB_EDIT_REASON }
@@ -157,6 +157,7 @@ def:pub DeckDetail(
         formats: list[FormatInfo] = [],
         opened: dict[str, bool] = {},
         renaming: bool = False,
+        confirmingDelete: bool = False,
         draft: str = "";
 
     can with entry {
@@ -169,6 +170,7 @@ def:pub DeckDetail(
     async def setFormat(value: str) -> None;
     async def copyDeck -> None;
     async def renameDeck -> None;
+    async def deleteDeck -> None;
 
     def startRename(_e: MouseEvent) {
         draft = deck.name if deck else "";
@@ -177,6 +179,14 @@ def:pub DeckDetail(
 
     def cancelRename(_e: MouseEvent) {
         renaming = False;
+    }
+
+    def askDelete(_e: MouseEvent) {
+        confirmingDelete = True;
+    }
+
+    def cancelDelete(_e: MouseEvent) {
+        confirmingDelete = False;
     }
     """Show a deck walker's view, or the reason it failed (the deck shown stays as it was)."""
     def show(reports: list[DeckView | WalkerError]) -> None;
@@ -232,9 +242,16 @@ def:pub DeckDetail(
                 </h1>}
                 <span>
                     {<button className="primary dd-copy" onClick={lambda (_e: MouseEvent) { copyDeck(); }}>Copy to my decks</button> if readOnly else None}
+                    {<button className="quiet dd-delete" onClick={askDelete}>Delete deck</button> if not readOnly and not confirmingDelete else None}
                     <ExportPanel deckId={deckId} deckName={deck.name}/>
                 </span>
             </div>
+            {<div role="alertdialog" aria-label="Delete this deck?" className="status bad dd-delete-confirm">
+                <strong>Delete this deck?</strong>
+                <p>{"This removes " + deck.name + " and its history for good. The cards stay in the catalogue and in your collection."}</p>
+                <button className="primary" onClick={lambda (_e: MouseEvent) { deleteDeck(); }}>Yes, delete</button>
+                <button className="quiet" onClick={cancelDelete}>Cancel</button>
+            </div> if confirmingDelete and not readOnly else None}
             {<p role="status" className="status dd-readonly">
                 {"This deck belongs to another user, so you can't change it. Copy it to make your own to change."}
             </p> if readOnly else None}

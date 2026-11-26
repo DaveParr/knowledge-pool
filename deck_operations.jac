@@ -30,7 +30,7 @@ page-callable one must also be imported in `main.jac`, which a test checks.
 
 import from jaclang.runtime.constructs { WalkerArchetype }
 import from graph_runner { run_walker, run_read, copy_deck, list_other_decks, list_users, run_read_user }
-import from decks { DeckAction, CreateDeck, ListDecks, ListOtherDecks, CopyOtherDeck, CopySource, GetDeck, EditDeck }
+import from decks { DeckAction, CreateDeck, ListDecks, ListOtherDecks, CopyOtherDeck, CopySource, GetDeck, EditDeck, DeleteDeck }
 import from deck_io { DeckExport, DeckImport, CreateDeckFromList }
 import from legality { GetFormatRules }
 import from collection { GetCollection, ChangeCollection, ListUsers, GetOtherCollection, ImportCollection, SearchDeckCards, SearchMyCards }
@@ -77,6 +77,7 @@ glob OPERATION_LIST: list[DeckOperation] = [
     DeckOperation(kind=CopyOtherDeck, runs=FLOW, page=True, across=copy_flow),
     DeckOperation(kind=GetDeck, runs=OWNER, page=True),
     DeckOperation(kind=EditDeck, runs=OWN, page=True),
+    DeckOperation(kind=DeleteDeck, runs=OWN, page=True),
     DeckOperation(kind=DeckExport, runs=OWNER, page=True),
     DeckOperation(kind=DeckImport, runs=OWN, page=True),
     DeckOperation(kind=CreateDeckFromList, runs=OWN, page=True),

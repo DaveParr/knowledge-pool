@@ -115,3 +115,12 @@ def test_tool_descriptions_list_every_zone_and_export_format():
         assert "{zones}" not in tools[name]
     assert all(f.key in tools["deck_export"] for f in EXPORT_FORMATS)
     assert "{formats}" not in tools["deck_export"]
+
+
+def test_deck_delete_is_a_registered_tool_that_tells_the_agent_to_confirm_first_and_the_instructions_name_it():
+    import anyio
+    import mcp_server
+
+    tools = {t.name: t.description for t in anyio.run(mcp_server.server.list_tools)}
+    assert "confirm" in tools.get("deck_delete", "").lower()
+    assert "deck_delete" in mcp_server.server.instructions

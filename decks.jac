@@ -508,6 +508,27 @@ walker:protect EditDeck(DeckAction) {
     }
 }
 
+"""The deck a `DeleteDeck` removed: its id and name."""
+obj DeckDeleted {
+    has id: str,
+        name: str;
+}
+
+"""Delete the caller's own deck, and report which one (a DeckDeleted). The deck
+node goes with its `Holds` edges and its history; the shared `Card` nodes, the
+caller's collection and their other decks stay. Another user's deck is refused
+with `not-your-deck` and an id that names no deck with `no-such-deck`, like every
+change to one deck (DeckAction)."""
+walker:protect DeleteDeck(DeckAction) {
+    has reports: list[DeckDeleted | WalkerError] = [];
+
+    can remove with Deck entry {
+        gone = DeckDeleted(id=jid(here), name=here.name);
+        del here;
+        report gone;
+    }
+}
+
 """The formats a deck can be checked against."""
 obj FormatInfo {
     has name: str,
