@@ -49,3 +49,27 @@ obj ImportCollectionResult {
     has collection: CollectionView = CollectionView(),
         unresolved: list[str] = [];
 }
+
+"""One deck's need of a card on the quest list: the deck and how many copies it
+needs across its played zones."""
+obj QuestDeck {
+    has deck_id: str,
+        name: str,
+        count: int;
+}
+
+"""One line of a quest list: a card, how many copies are still needed (`count`,
+always 1 or more) and each deck that needs the card."""
+obj QuestLine {
+    has oracle_id: str,
+        name: str,
+        count: int,
+        decks: list[QuestDeck] = [];
+}
+
+"""A user's quest list, by card name; `text` is its plain-text line list when
+an export was asked for, else empty."""
+obj QuestListView {
+    has lines: list[QuestLine] = [],
+        text: str = "";
+}

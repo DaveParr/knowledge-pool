@@ -19,7 +19,8 @@ import from decks {
     list_formats
 }
 import from collection { GetCollection, ChangeCollection, ImportCollection, ListUsers, GetOtherCollection }
-import from collection_views { CollectionView }
+import from collection_views { CollectionView, QuestListView }
+import from quest_list { GetQuestList, GotQuest, GetOtherQuestList }
 import from legality { Violation }
 import from card_lines { CardLine }
 import from cards {

@@ -22,6 +22,7 @@ import from deck_io { DeckExport, DeckImport }
 import from deck_operations { perform }
 import from collection { GetCollection, ChangeCollection, ImportCollection, ListUsers, GetOtherCollection, SearchDeckCards, SearchMyCards }
 import from collection_views { MODE_ADD }
+import from quest_list { GetQuestList, GetOtherQuestList }
 import from legality { GetFormatRules }
 import from walker_errors { WalkerError }
 import from json_object { JsonObject }
@@ -438,4 +439,19 @@ resolve to no card are listed under "unresolved" and the rest are still added.
 Returns your collection and the unresolved names."""
 def collection_import(format: str, text: str) -> JsonObject {
     return outcome(perform(request_caller(), ImportCollection(format=format, text=text)));
+}
+
+"""A quest list: every card the decks of a user need that their collection does not
+have, worked out when you ask. Yours, or another user's when you give their `handle`
+(see user_list), read-only. Each line is a card, how many copies are still needed, and
+each deck that needs it with how many that deck needs: per card, the largest count any
+one deck needs across the zones that are played (everything but the maybeboard) minus
+the collection's count. With `export` true, "text" is the list as plain text lines such
+as "3 Lightning Bolt", to paste to a trading partner or a shop. To record copies you
+got, use collection_change; the quest list then shrinks by itself."""
+def quest_list(handle: str = "", export: bool = False) -> JsonObject {
+    if handle {
+        return outcome(perform(request_caller(), GetOtherQuestList(handle=handle, export=export)));
+    }
+    return outcome(perform(request_caller(), GetQuestList(export=export)));
 }

@@ -39,7 +39,7 @@ import from mcp.server.mcpserver { MCPServer }
 import from mcp.server.apps { Apps, ResourcePermissions }
 import from mcp.server.stdio { stdio_server }
 import from mcp.server.streamable_http { TransportSecuritySettings }
-import from mcp_tools { adapted, deck_show, deck_analyze, card_search, deck_export, search_cards, get_card, resolve_names, get_format_rules, deck_list, deck_browse, deck_copy, deck_create, deck_get, deck_edit, deck_validate, deck_import, collection_get, collection_change, collection_import, user_list, collection_browse }
+import from mcp_tools { adapted, deck_show, deck_analyze, card_search, deck_export, search_cards, get_card, resolve_names, get_format_rules, deck_list, deck_browse, deck_copy, deck_create, deck_get, deck_edit, deck_validate, deck_import, collection_get, collection_change, collection_import, user_list, collection_browse, quest_list }
 import from ui_pages { view_page }
 import from front_door { FrontDoorConfig, front_door_app }
 import from gatekeeper { GatekeeperConfig }
@@ -95,7 +95,10 @@ glob server: MCPServer[object] = MCPServer(
         + "Every user's decks are visible to every user: deck_list shows only the user's own, deck_browse "
         + "shows other users', and deck_copy makes one the user's own to change. "
         + "Collections are visible too: collection_get is the user's own, user_list lists the other users by "
-        + "handle and display name, and collection_browse reads one of their collections by handle, read-only."
+        + "handle and display name, and collection_browse reads one of their collections by handle, read-only. "
+        + "The quest list is every card the user's decks need that their collection does not have, with the decks "
+        + "that need each: quest_list reads it (the user's own, or another user's by handle) and, with export, "
+        + "gives it as plain text lines to paste to a trading partner."
     ),
     extensions=[make_apps()]
 );
@@ -106,7 +109,7 @@ def register_tools {
     for tool in [
         search_cards, get_card, resolve_names, get_format_rules, deck_list, deck_browse, deck_copy,
         deck_create, deck_get, deck_edit, deck_validate, deck_import, collection_get, collection_change, collection_import,
-        user_list, collection_browse
+        user_list, collection_browse, quest_list
     ] {
         server.tool()(adapted(tool));
     }

@@ -8,6 +8,8 @@ import from .walker_failure { failureMessage, REFUSED_LINE }
 import from .session_bar { SessionBar }
 import from .collection_page { CollectionPage }
 import from .others_collections_page { OthersCollectionsPage }
+import from .quest_list_page { QuestListPage }
+import from .others_quest_lists_page { OthersQuestListsPage }
 
 import from decks { Deck, DeckSummary, FormatInfo, CreateDeck, ListDecks, ListOtherDecks, list_formats }
 import from deck_io { CreateDeckFromList, NewDeckResult }
@@ -20,6 +22,8 @@ def:pub app -> JsxElement {
         openDeckId: str = "",
         showCollection: bool = False,
         showOthers: bool = False,
+        showQuest: bool = False,
+        showOthersQuest: bool = False,
         importOpen: bool = False,
         importFormat: str = "moxfield",
         importText: str = "",
@@ -71,6 +75,22 @@ def:pub app -> JsxElement {
             </main>;
     }
 
+    if showQuest {
+        return
+            <main className="page">
+                <SessionBar/>
+                <QuestListPage onBack={lambda { showQuest = False; }}/>
+            </main>;
+    }
+
+    if showOthersQuest {
+        return
+            <main className="page">
+                <SessionBar/>
+                <OthersQuestListsPage onBack={lambda { showOthersQuest = False; }}/>
+            </main>;
+    }
+
     if openDeckId {
         return
             <main className="page">
@@ -93,6 +113,10 @@ def:pub app -> JsxElement {
                 <a href="#" onClick={lambda (e: MouseEvent) { e.preventDefault(); showCollection = True; }}>My collection</a>
                 {" · "}
                 <a href="#" onClick={lambda (e: MouseEvent) { e.preventDefault(); showOthers = True; }}>Other users' collections</a>
+                {" · "}
+                <a href="#" onClick={lambda (e: MouseEvent) { e.preventDefault(); showQuest = True; }}>My quest list</a>
+                {" · "}
+                <a href="#" onClick={lambda (e: MouseEvent) { e.preventDefault(); showOthersQuest = True; }}>Other users' quest lists</a>
             </p>
             <form onSubmit={createDeck} className="fe-create">
                 <div className="fe-row">

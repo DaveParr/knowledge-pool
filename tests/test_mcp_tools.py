@@ -474,3 +474,34 @@ def test_collection_import_adds_a_pasted_list_and_reports_names_that_resolve_to_
 
 def test_collection_import_of_an_unknown_format_is_a_tool_error(tools):
     assert failure(call(tools, "collection_import", format="nope", text="1 Shock")) == "unknown-list-format"
+
+
+def test_quest_list_reads_the_cards_the_decks_need_beyond_the_collection(tools, burn_id):
+    data(call(tools, "collection_change", oracle_id=oracle_id(tools, "Lightning Bolt"), count=1, reason="test"))
+    quest = data(call(tools, "quest_list"))
+    lines = {line["name"]: line["count"] for line in quest["lines"]}
+    assert lines["Lightning Bolt"] == 3 and lines["Goblin Guide"] == 4
+    bolt = [line for line in quest["lines"] if line["name"] == "Lightning Bolt"][0]
+    assert [(d["name"], d["count"]) for d in bolt["decks"]] == [("Burn", 4)]
+
+
+def test_quest_list_with_export_carries_the_line_list_text(tools, burn_id):
+    data(call(tools, "collection_change", oracle_id=oracle_id(tools, "Lightning Bolt"), count=1, reason="test"))
+    assert "3 Lightning Bolt" in data(call(tools, "quest_list", export=True))["text"].splitlines()
+    assert data(call(tools, "quest_list"))["text"] == ""
+
+
+def test_quest_list_of_another_user_is_read_by_handle_from_their_decks(tools, others_collection):
+    from decks import CreateDeck, EditDeck
+    from deck_operations import perform
+
+    made = perform("someone-else", CreateDeck(name="Theirs", format="modern")).reports[0]
+    perform("someone-else", EditDeck(deck_id=str(made.__jac__.id), changes=[
+        {"oracle_id": oracle_id(tools, "Lightning Bolt"), "count": 4, "zone": "main", "reason": "test"}]))
+    seen = data(call(tools, "quest_list", handle=sam_handle(tools), export=True))
+    assert seen["text"].splitlines() == ["2 Lightning Bolt"]
+    assert data(call(tools, "quest_list"))["lines"] == []
+
+
+def test_quest_list_of_an_unknown_handle_is_a_tool_error_with_no_such_user(tools):
+    assert failure(call(tools, "quest_list", handle="nope")) == "no-such-user"
