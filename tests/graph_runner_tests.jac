@@ -22,7 +22,7 @@ import from decks { Deck, DeckView, CreateDeck, ListDecks, ListOtherDecks, CopyO
 import from profile { save_display_name, UNKNOWN_USER }
 import from deck_io { DeckExport, ExportResult }
 import from walker_errors { WalkerError }
-import from deck_operations { perform, page_walkers, OPERATIONS, OWN, OWNER, FLOW }
+import from deck_operations { perform, page_walkers, OPERATIONS, OWN, OWNER, FLOW, USER }
 import from graph_runner { refresh_cards, guest_root_id, user_root_id, run_walker, run_read, list_other_decks, copy_deck, call_function, run_as_guest, in_context, start, check_bind, LOCAL_USER, RERUNS, LOG }
 import from cards { Card, RefreshCards, new_card, card_nodes_for, catalogue_version }
 import from json_object { JsonObject }
@@ -889,7 +889,7 @@ test "an operation outside the table is refused, and a format's rules are an ord
 test "the table says how every operation runs, and flows name their function" {
     for (name, op) in OPERATIONS.items() {
         assert op.kind.__name__ == name;
-        assert op.runs in [OWN, OWNER, FLOW];
+        assert op.runs in [OWN, OWNER, FLOW, USER];
         assert (op.across is not None) == (op.runs == FLOW);
     }
     assert set(page_walkers().keys()) == {n for (n, op) in OPERATIONS.items() if op.page};

@@ -20,7 +20,7 @@ import from deckformats { export_format_choices }
 import from zones { zone_choices, zone_options }
 import from deck_io { DeckExport, DeckImport }
 import from deck_operations { perform }
-import from collection { GetCollection, ChangeCollection }
+import from collection { GetCollection, ChangeCollection, ListUsers, GetOtherCollection }
 import from collection_views { MODE_ADD }
 import from legality { GetFormatRules }
 import from walker_errors { WalkerError }
@@ -389,7 +389,21 @@ more copies, the default), "remove" (`count` fewer) or "set" (exactly `count`;
 0 takes the card out). Every change needs a reason (for example "bought at FNM").
 Removing more copies than you have is refused with `refused-change`, saying how many
 you have, and changes nothing. Get oracle ids from resolve_names. Returns your
-collection. Changing a deck never changes your collection."""
+collection. Changing a deck never changes your collection. Only the owner changes a
+collection: another user's is read with collection_browse and cannot be changed."""
 def collection_change(oracle_id: str, count: int, reason: str, mode: str = MODE_ADD) -> JsonObject {
     return outcome(perform(request_caller(), ChangeCollection(oracle_id=oracle_id, count=count, mode=mode, reason=reason)));
+}
+
+"""List the other users (handle and display name), never yourself. Pass a handle to
+collection_browse to read that user's collection. A handle is not an email address."""
+def user_list -> list[JsonObject] {
+    others = outcome_list(perform(request_caller(), ListUsers()));
+    return [{"handle": u["handle"], "name": u["name"]} for u in others];
+}
+
+"""Another user's collection, by their handle (see user_list): the cards they have,
+with counts, and the history of their changes. Read-only: only its owner changes it."""
+def collection_browse(handle: str) -> JsonObject {
+    return outcome(perform(request_caller(), GetOtherCollection(handle=handle)));
 }

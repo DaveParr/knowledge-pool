@@ -29,7 +29,7 @@ TOOLS = {
     "search_cards", "get_card", "resolve_names", "get_format_rules",
     "deck_list", "deck_browse", "deck_copy", "deck_create", "deck_get", "deck_edit",
     "deck_validate", "deck_import", "deck_show", "deck_analyze", "card_search", "deck_export",
-    "collection_get", "collection_change",
+    "collection_get", "collection_change", "user_list", "collection_browse",
 }
 # The tools bound to an MCP Apps view, and the view each opens.
 VIEWS = {
@@ -82,6 +82,14 @@ async def main() -> None:
         check("a tool call over the transport adds to the collection", not added.is_error and data(added)["total"] >= 2, added.content)
         kept = data(await session.call_tool("collection_get", {}))
         check("collection_get reads the collection back", cards[0]["oracle_id"] in [c["oracle_id"] for c in kept["cards"]], kept)
+
+        others = data(await session.call_tool("user_list", {}))
+        check("user_list lists users by handle and name only", all(set(u) == {"handle", "name"} for u in others), others)
+        unknown = await session.call_tool("collection_browse", {"handle": "no-such-handle"})
+        check(
+            "collection_browse of an unknown handle is a tool error with its code",
+            unknown.is_error and unknown.structured_content["code"] == "no-such-user", unknown.content,
+        )
 
         failed = await session.call_tool("deck_get", {"deck_id": "nope"})
         check(
