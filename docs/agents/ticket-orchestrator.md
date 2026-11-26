@@ -21,13 +21,22 @@ Load the `orchestration` skill first and use its commands (written `<orca>` belo
 
 ## The board
 
+`docs/agents/issue-tracker.md` says what each Status means and how a ticket moves between
+them. For you: a ticket that needs a human before its PR opens is parked (**Blocked**); once
+its PR is open, it stays **In review** whatever it waits for.
+
 Your scripts set a ticket's Status on the Knowledge Pool board (project #7) for the moves
-GitHub cannot see: **In progress** when claimed, **Blocked** when parked (the board needs that Status option), and **In review**
+GitHub cannot see: **In progress** when claimed, **Blocked** when parked, and **In review**
 again when you hold a PR for the human. They add the ticket's card if it has none. The
 board's own workflows do the rest: "Pull request linked to issue" moves the ticket to
 **In review** when its PR opens, a ticket closes when its linked PR merges into main, and
 "Item closed" moves it to **Done**, whoever merged. PRs get no card of their own; they show
 in the ticket card's "Linked pull requests" field.
+
+The scripts also keep the card's dates for the Roadmap view: **Start date** is the day
+(UTC) a ticket is first claimed, and **Target date** the day its PR merged, or the day it
+closed if no PR closed it. Parking changes neither. `scripts/board-date.sh <n> "<field>"`
+prints one.
 
 ## Startup (and after any restart)
 
@@ -51,7 +60,8 @@ Do this at startup, after closing a ticket down, and whenever woken with "ticket
 1. Count tickets in flight (live workers). If at the cap, stop.
 2. `scripts/ready-tickets.sh` lists startable tickets, lowest first. If none, stop.
 3. For the lowest one:
-   - `scripts/start-ticket.sh <n>` claims it (assignee, In progress), creates worktree
+   - `scripts/start-ticket.sh <n>` claims it (assignee, In progress, Start date unless it
+     has one), creates worktree
      `ticket-<n>` on a branch linked to the issue, and writes `.ticket`. If it fails,
      report the error to the user and do not retry that ticket.
    - `<orca> orchestration worker-start --worktree issue:<n> --agent claude --model claude-sonnet-5-5 --task-title "#<n> <title>" --spec-file -`
@@ -66,14 +76,16 @@ Answer with `<orca> orchestration reply` when the ticket, its parent spec, the A
 CONTEXT.md settle it. Otherwise ask the user. If the user can't settle it now (the spec
 needs a decision first), tell the worker to stop, then park the ticket: write exactly what
 is needed to a file and run `scripts/park-ticket.sh <n> <file>` (comments it, swaps
-`ready-for-agent` for `needs-info`, unassigns @me, moves it to Blocked). Then pick up work. When the human
-has answered, they relabel it `ready-for-agent` and move it to Ready (`scripts/board.sh <n>
-Ready`); `ready-tickets.sh` then offers it again.
+`ready-for-agent` for `needs-info`, unassigns @me, moves it to Blocked). If the ticket's PR
+is already open, do not park it: it stays In review. Label the PR `review-by-human`, tell
+the user what is needed, release the worker. Then pick up work. When the human has
+answered a parked ticket, they relabel it `ready-for-agent` and move it to Ready
+(`scripts/board.sh <n> Ready`); `ready-tickets.sh` then offers it again.
 
 ## When a worker reports `worker_done`
 
-**Failed:** park the ticket as above (if it isn't already), release the worker, pick up
-work.
+**Failed:** park the ticket as above (if it isn't already; with its PR open, hold it In
+review instead), release the worker, pick up work.
 
 **Succeeded:** close it down.
 
@@ -99,20 +111,30 @@ work.
    - `hold` (a draft, a base other than main, or `review-by-human` on the PR, ticket or
      parent spec): leave it for the human. `scripts/board.sh <n> "In review"`, release the
      worker, pick up work.
+   - `approve`: the ticket's Risk on the board is High, and nothing else stops the merge.
+     Do not merge until the user says it can go in. Do steps 3 and 4, leave it In review
+     (`scripts/board.sh <n> "In review"`), tell the user now: the ticket, the PR link, that
+     it is High risk and otherwise ready. Release the worker, pick up work. When they say it
+     can go in, `scripts/merge-ticket.sh <pr> --approved`, then step 7.
    - `merge`: go on to step 3.
-   - `merged` / `closed`: someone got there first; release the worker and pick up work.
+   - `merged` / `closed`: someone got there first. If `merged`, run
+     `scripts/target-date.sh <n> <pr>`. Release the worker and pick up work.
 3. **Check the review.** Read the last `## Code review, round <k>` comment
    (`gh pr view <pr> --json comments`). `pr-status.sh` has checked it names the head
    commit; you check every finding has a fix or a one-line reason in the worker's reply.
    If one has neither, `send` the worker back to section 4 and wait. If the PR lists work
    from the ticket left undone, treat it as `hold`: merging closes the ticket.
-4. **Decide.** The `review-by-human` label is the only judgement call: do not hold a PR
-   back because it is user-visible, large or risky. If it should not merge unattended, the
-   human labels it.
+4. **Decide.** Two things alone keep a reviewed, green PR from merging unattended, and
+   `pr-status.sh` reports both: a `review-by-human` label (`hold`) and a High Risk on the
+   ticket's card (`approve`). Do not hold a PR back for anything else, such as being
+   user-visible or large: if it should not merge unattended, the human labels it or sets
+   its Risk.
 5. **Merge.** `scripts/merge-ticket.sh <pr>`. It re-runs `pr-status.sh` and refuses
-   anything but `merge`, then merges (merge commit, branch kept), labels `auto-merged`,
-   comments why, and makes sure the ticket is closed. Never close or edit a parent spec or
-   any other issue.
+   anything but `merge` (or `approve`, given `--approved`), then merges (merge commit,
+   branch kept), labels `auto-merged` (not when approved), comments why, makes sure the ticket is closed, and sets its Target date. If it fails
+   after merging (`pr-status.sh <pr>` says `merged`), run
+   `scripts/target-date.sh <n> <pr>`. Never close or edit a parent spec or any other
+   issue.
 6. **Release** the worker (`<orca> orchestration worker-release`). Leave the worktree
    itself in place; do not delete it or its branch.
 7. Pick up work: the merge may have unblocked the next ticket.
@@ -120,6 +142,8 @@ work.
 ## Human-merged PRs
 
 When the user tells you they merged a PR you left for them, GitHub has already closed the
-ticket and the board has moved it to Done (`scripts/pr-status.sh <pr>` says `merged`).
-Release its worker if it is still held, and pick up work. If they closed it unmerged, the
-ticket stays open: ask them whether to park it.
+ticket and the board has moved it to Done (`scripts/pr-status.sh <pr>` says `merged`). Run
+`scripts/target-date.sh <n> <pr>` to set its Target date to the merge date, release its
+worker if it is still held, and pick up work. If they closed the PR unmerged, the ticket
+stays open with no PR: ask them what it needs, and park it (Blocked) with that. If they
+close a ticket without a PR, run `scripts/target-date.sh <n>`: it sets the close date.

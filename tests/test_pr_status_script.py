@@ -13,12 +13,11 @@ from pathlib import Path
 
 import pytest
 
+from tests.ticket_fakes import HEAD, OLD, body, pr, review
+
 ROOT = Path(__file__).resolve().parent.parent
 PR_STATUS = ROOT / "scripts" / "pr-status.sh"
 MERGE_TICKET = ROOT / "scripts" / "merge-ticket.sh"
-
-HEAD = "def5678" + "0" * 33
-OLD = "abc1234" + "0" * 33
 
 FAKE_GH = """#!/usr/bin/env bash
 echo "gh $*" >> "$FAKE_LOG"
@@ -29,44 +28,6 @@ case "$1 $2" in
   *) echo "fake gh: unexpected: $*" >&2; exit 1 ;;
 esac
 """
-
-
-def body(describes=HEAD[:7], drop=()):
-    parts = {
-        "ticket": "Ticket: #42",
-        "summary": "## Summary\n\nA change.",
-        "evidence": f"## Evidence\n\n- **Before:** x\n  **After:** y\n\nDescribes: `{describes}`"
-        if describes
-        else "## Evidence\n\n- **Before:** x\n  **After:** y",
-        "danger": "## Merge Danger\n\n**Door:** two-way\n\n**Blast Radius:** orchestrator",
-    }
-    return "\n\n".join(v for k, v in parts.items() if k not in drop)
-
-
-def review(sha):
-    return {"body": f"## Code review, round 1\n\nReviewed head `{sha[:7]}`.\n\n## Standards\n\nNone."}
-
-
-def pr(**over):
-    base = {
-        "number": 7,
-        "url": "https://github.com/DaveParr/knowledge-pool/pull/7",
-        "state": "OPEN",
-        "isDraft": False,
-        "baseRefName": "main",
-        "headRefOid": HEAD,
-        "mergeable": "MERGEABLE",
-        "labels": [],
-        "body": body(),
-        "closingIssuesReferences": [{"number": 42}],
-        "comments": [review(HEAD)],
-        "statusCheckRollup": [
-            {"__typename": "CheckRun", "name": "test", "status": "COMPLETED", "conclusion": "SUCCESS",
-             "detailsUrl": "https://example.invalid/run"}
-        ],
-    }
-    base.update(over)
-    return base
 
 
 @pytest.fixture
@@ -145,12 +106,59 @@ def test_the_body_check_never_overrides_merged_or_the_round_limit(env):
     assert status(env, body=bad, comments=rounds)["next"] == "round-limit"
 
 
+def merge(env, *args):
+    return subprocess.run([str(MERGE_TICKET), "7", *args], env=env, capture_output=True, text=True)
+
+
 def test_merge_ticket_refuses_a_pr_whose_body_is_stale(env):
     Path(env["FAKE_PR"]).write_text(json.dumps(pr(body=body(describes=OLD[:7]))))
-    out = subprocess.run([str(MERGE_TICKET), "7"], env=env, capture_output=True, text=True)
+    out = merge(env)
     assert out.returncode == 1
     assert "next is 'pr-body'" in out.stderr
     assert "pr merge" not in Path(env["FAKE_LOG"]).read_text()
+
+
+def ticket(env, risk):
+    Path(env["FAKE_TICKET"]).write_text(json.dumps({"ticket": [], "parent": None, "parentLabels": [], "risk": risk}))
+
+
+@pytest.mark.parametrize("risk, next_", [("High", "approve"), ("Medium", "merge"), ("Low", "merge"), (None, "merge")])
+def test_only_a_high_risk_ticket_waits_for_a_human_to_approve_the_merge(env, risk, next_):
+    ticket(env, risk)
+    s = status(env)
+    assert (s["risk"], s["next"]) == (risk, next_)
+
+
+def test_a_review_by_human_label_holds_before_high_risk_asks_for_approval(env):
+    ticket(env, "High")
+    assert status(env, labels=[{"name": "review-by-human"}])["next"] == "hold"
+
+
+def test_merge_ticket_refuses_a_high_risk_pr_without_approval(env):
+    ticket(env, "High")
+    Path(env["FAKE_PR"]).write_text(json.dumps(pr()))
+    out = merge(env)
+    assert out.returncode == 1
+    assert "next is 'approve'" in out.stderr
+    assert "pr merge" not in Path(env["FAKE_LOG"]).read_text()
+
+
+def test_merge_ticket_approval_overrides_nothing_but_high_risk(env):
+    ticket(env, "High")
+    failing = [{"__typename": "CheckRun", "name": "test", "status": "COMPLETED", "conclusion": "FAILURE",
+                "detailsUrl": "x"}]
+    Path(env["FAKE_PR"]).write_text(json.dumps(pr(statusCheckRollup=failing)))
+    out = merge(env, "--approved")
+    assert out.returncode == 1
+    assert "next is 'ci-failed'" in out.stderr
+    assert "pr merge" not in Path(env["FAKE_LOG"]).read_text()
+
+
+@pytest.mark.parametrize("args", [("--yes",), ("--approved", "x")])
+def test_merge_ticket_rejects_unknown_arguments(env, args):
+    out = merge(env, *args)
+    assert out.returncode == 2
+    assert out.stderr.startswith("usage: scripts/merge-ticket.sh")
 
 
 START_TICKET = ROOT / "scripts" / "start-ticket.sh"

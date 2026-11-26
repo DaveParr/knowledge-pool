@@ -5,8 +5,10 @@
 #
 # Swaps `ready-for-agent` for `needs-info` and unassigns @me (first, so a missing label
 # fails before anything changes), comments <comment-file> (what is needed, exactly) on the
-# ticket, and moves its card to Blocked (Backlog is for tickets still being prepared).
+# ticket, and moves its card to Blocked: work started and needs a human. Park only before
+# the ticket's PR opens; once it is open, a ticket that needs a human stays In review.
 # The board's Status needs a "Blocked" option; this fails before changing anything if not.
+# The card's Start date and Target date are left as they are.
 # To unpark, a human answers, relabels it `ready-for-agent` and moves the card to Ready.
 set -euo pipefail
 source "$(dirname "$0")/lib/gh.sh"

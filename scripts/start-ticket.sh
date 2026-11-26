@@ -4,7 +4,9 @@
 #   scripts/start-ticket.sh <issue-number>
 #
 # Steps, in order (after checking the mattpocock-skills plugin is installed):
-#   1. Claim: assign @me and move the card to "In progress" (adding the card if missing).
+#   1. Claim: assign @me, move the card to "In progress" (adding the card if missing), and
+#      set its "Start date" to today (UTC) unless it has one: a restarted ticket keeps its
+#      first start.
 #   2. Create an Orca worktree `ticket-<n>` on branch `DaveParr/<n>-<slug>`, based on
 #      main, with the issue linked in Orca's metadata. Orca adds a numeric
 #      suffix if the branch name is taken, so the real name is read back from Orca.
@@ -43,6 +45,7 @@ want_branch="DaveParr/$n-${slug:-ticket}"
 # 1. Claim
 gh issue edit "$n" --add-assignee @me >/dev/null
 board_move "$n" "In progress" >/dev/null
+[ -n "$(board_date_get "$n" "Start date")" ] || board_date "$n" "Start date" "$(date -u +%F)"
 
 # 2. Worktree
 git fetch -q origin "$BASE"
