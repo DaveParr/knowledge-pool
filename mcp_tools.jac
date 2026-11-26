@@ -424,7 +424,7 @@ def collection_import(format: str, text: str) -> JsonObject {
 have, worked out when you ask. Yours, or another user's when you give their `handle`
 (see user_list), read-only. Each line is a card, how many copies are still needed, and
 each deck that needs it with how many that deck needs: per card, the largest count any
-one deck needs (commander, companion, main and sideboard; never the maybeboard) minus
+one deck needs across the zones that are played (everything but the maybeboard) minus
 the collection's count. With `export` true, "text" is the list as plain text lines such
 as "3 Lightning Bolt", to paste to a trading partner or a shop. To record copies you
 got, use collection_change; the quest list then shrinks by itself."""

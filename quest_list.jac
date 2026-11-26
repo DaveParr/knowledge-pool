@@ -2,11 +2,11 @@
 have, worked out on read and never stored (CONTEXT.md, Quest list)."""
 
 import from decks { Deck, card_lines }
+import from card_lines { played_needs }
 import from deckformats { ExportEntry, ExportDeck, get_format }
 import from collection { find_collection, my_collection, change_count, copies }
 import from collection_views { QuestDeck, UserAction, QuestLine, QuestListView, MODE_ADD, REFUSED_CHANGE }
 import from walker_errors { WalkerError }
-import from zones { PLAYED_ZONES }
 
 """The reason a "got" from the quest list is logged with."""
 glob REASON_GOT: str = "got from the quest list";
@@ -19,13 +19,8 @@ def quest_list_view -> QuestListView {
     names: dict[str, str] = {};
     needs: dict[str, list[QuestDeck]] = {};
     for deck in [root-->[?:Deck]] {
-        per_card: dict[str, int] = {};
-        for l in card_lines(deck) {
-            if l.zone in PLAYED_ZONES {
-                per_card[l.oracle_id] = per_card.get(l.oracle_id, 0) + l.count;
-                names[l.oracle_id] = l.name;
-            }
-        }
+        (per_card, deck_names) = played_needs(card_lines(deck));
+        names.update(deck_names);
         for (oid, count) in per_card.items() {
             needs.setdefault(oid, []).append(QuestDeck(deck_id=jid(deck), name=deck.name, count=count));
         }

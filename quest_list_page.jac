@@ -44,6 +44,8 @@ def:pub QuestListPage(onBack: Callable[[], None]) -> JsxElement {
         load();
     }
 
+    lines = view.lines if view is not None else [];
+
     return
         <main className="page narrow">
             <p>
@@ -52,17 +54,17 @@ def:pub QuestListPage(onBack: Callable[[], None]) -> JsxElement {
             <h1>My quest list</h1>
             <p className="fe-note">Every card your decks need that your collection does not have. It works itself out from your decks and collection.</p>
             {<p role="alert" className="error">{error}</p> if error else None}
-            {<p className="empty">Nothing left to get.</p> if view is not None and len(view.lines) == 0 and not error else None}
+            {<p className="empty">Nothing left to get.</p> if view is not None and not lines and not error else None}
             {<QuestLines
-                lines={view.lines if view is not None else []}
+                lines={lines}
                 label="My quest list"
                 onGot={got}
-            /> if view is not None and len(view.lines) > 0 else None}
+            /> if lines else None}
             {<p>
                 <button onClick={lambda (_e: MouseEvent) { exportOpen = not exportOpen; }}>Export as text</button>
-            </p> if view is not None and len(view.lines) > 0 else None}
+            </p> if lines else None}
             {<div className="ql-export">
                 <pre aria-label="Quest list text">{exportText}</pre>
-            </div> if exportOpen and view is not None and len(view.lines) > 0 else None}
+            </div> if exportOpen and lines else None}
         </main>;
 }

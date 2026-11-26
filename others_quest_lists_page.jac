@@ -50,6 +50,8 @@ def:pub OthersQuestListsPage(onBack: Callable[[], None]) -> JsxElement {
         view = None;
     }
 
+    lines = view.lines if view is not None else [];
+
     return
         <main className="page narrow">
             <p>
@@ -72,8 +74,8 @@ def:pub OthersQuestListsPage(onBack: Callable[[], None]) -> JsxElement {
                 }}
             </ul> if not openHandle else None}
             {<div>
-                {<p className="empty">They need nothing more.</p> if len(view.lines if view is not None else []) == 0 else None}
-                <QuestLines lines={view.lines if view is not None else []} label="Their quest list" onGot={None}/>
+                {<p className="empty">They need nothing more.</p> if not lines else None}
+                <QuestLines lines={lines} label="Their quest list" onGot={None}/>
                 {<pre className="ql-text" aria-label="Their quest list text">{view.text}</pre> if view is not None and view.text else None}
             </div> if view is not None else None}
         </main>;

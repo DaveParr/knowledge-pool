@@ -13,14 +13,11 @@ import from jaclang { JacRuntime as Jac }
 import from graph_runner { STARTED_FOR_GUEST }
 import from deck_operations { perform }
 import from decks { CreateDeck, EditDeck }
-import from collection { ChangeCollection, GetCollection }
-import from collection_views { CollectionView }
+import from collection { ChangeCollection, GetCollection, ListUsers }
+import from collection_views { CollectionView, UserSummary, QuestListView }
 import from quest_list { GetQuestList, GotQuest, GetOtherQuestList }
-import from collection { ListUsers }
-import from collection_views { UserSummary }
 import from graph_runner { call_function }
 import from profile { save_display_name }
-import from collection_views { QuestListView }
 
 glob CATALOG: Path = Path("data/test_quest_list_catalog.sqlite"),
      ALICE: str = "user_test_quest_alice",

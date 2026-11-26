@@ -65,21 +65,28 @@ obj CardLine {
     }
 }
 
+"""The copies of each card `lines` need across the played zones (`PLAYED_ZONES`),
+by oracle id, and the card's name: the one count both a deck's missing cards and
+the quest list work from."""
+def played_needs(lines: list[CardLine]) -> tuple[dict[str, int], dict[str, str]] {
+    needed: dict[str, int] = {};
+    names: dict[str, str] = {};
+    for l in lines {
+        if l.zone in PLAYED_ZONES {
+            needed[l.oracle_id] = needed.get(l.oracle_id, 0) + l.count;
+            names[l.oracle_id] = l.name;
+        }
+    }
+    return (needed, names);
+}
+
 """The cards a deck needs more copies of than its owner's collection holds: per
 oracle card, the copies across the played zones (`PLAYED_ZONES`) minus the
 line's `collection_count`, never below zero. The deck is measured on its own
 against the whole collection."""
 def missing_cards(lines: list[CardLine]) -> list[MissingCard] {
-    needed: dict[str, int] = {};
-    names: dict[str, str] = {};
-    held: dict[str, int] = {};
-    for l in lines {
-        if l.zone in PLAYED_ZONES {
-            needed[l.oracle_id] = needed.get(l.oracle_id, 0) + l.count;
-            names[l.oracle_id] = l.name;
-            held[l.oracle_id] = l.collection_count;
-        }
-    }
+    (needed, names) = played_needs(lines);
+    held = {l.oracle_id: l.collection_count for l in lines};
     short = [MissingCard(oracle_id=o, name=names[o], count=n - held[o]) for (o, n) in needed.items() if n > held[o]];
     short.sort(key=lambda (m: MissingCard) { return m.name; });
     return short;
