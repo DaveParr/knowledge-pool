@@ -371,7 +371,19 @@ def test_the_my_quest_list_view_lists_what_decks_need_exports_it_and_got_reduces
     app.click("button", "Export as text")
     assert app.wait_text("1 Counterspell", within="div.ql-export")
     app.click("button", "Got Counterspell")
-    app.wait_text("Nothing left to get.")
+    # The shared app holds other tests' decks, so only this card's line is checked: it is gone.
+    app.js(
+        """new Promise((resolve, reject) => {
+          const deadline = Date.now() + 30000;
+          const look = () => {
+            const list = document.querySelector("ul[aria-label='My quest list']");
+            if (list && !list.innerText.includes("Counterspell")) resolve(true);
+            else if (Date.now() > deadline) reject(new Error("Counterspell still on the quest list"));
+            else requestAnimationFrame(look);
+          };
+          look();
+        })"""
+    )
     # What was got is now in the collection, and the quest list is not part of the Decks page.
     app.click("link", "← Decks")
     app.click("link", "My collection")
