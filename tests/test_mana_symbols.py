@@ -49,6 +49,19 @@ def css_rules(css: str) -> list[tuple[list[str], str]]:
     return found
 
 
+def rule_body(selector: str) -> str:
+    """The body of the one rule whose selector list is exactly `selector`."""
+    bodies = [body for selectors, body in css_rules(CSS) if selectors == [selector]]
+    assert len(bodies) == 1, f"{selector}: {len(bodies)} rules"
+    return bodies[0]
+
+
+def fill_of(body: str) -> str:
+    """The background colour a rule body sets, or ""."""
+    found = re.search(r"background-color:\s*(#[0-9a-f]{6})", body)
+    return found.group(1) if found else ""
+
+
 def drawn_by_font(cls: str) -> bool:
     """True if the stylesheet gives `.<cls>` a glyph: a ::before rule with `content`."""
     return any(
@@ -85,8 +98,7 @@ def test_a_symbol_the_catalogue_uses_is_drawn_as_one_glyph_the_font_has(symbol):
 
 def test_colourless_phyrexian_draws_the_phyrexian_glyph_on_the_colourless_ground():
     assert view_classes("C/P") == ["ms-p"]
-    ground = [b for selectors, b in css_rules(CSS) if selectors == [".ms-cost"]]
-    assert len(ground) == 1 and "background-color: #beb9b2" in ground[0]
+    assert fill_of(rule_body(".ms-cost")) == "#beb9b2"
     assert not any(".ms-cost.ms-p" in selectors and "background" in b for selectors, b in css_rules(CSS))
 
 
@@ -108,9 +120,8 @@ def test_a_card_without_a_cost_draws_no_symbols():
 
 def test_rules_text_draws_its_symbols_inline_and_keeps_the_words():
     html = run_view_script("rulesHtml('{T}: Add {G}.')")
-    assert html.startswith('<span class="mc-inline"><i class="ms ms-cost ms-tap"')
-    assert 'ms-cost ms-g"' in html and html.endswith(": Add " + html.split(": Add ")[1])
-    assert "}" not in re.sub(r"<[^>]*>", "", html)
+    glyph = '<span class="mc-inline"><i class="ms ms-cost ms-{}" role="img" aria-label="{{{}}}"></i></span>'
+    assert html == glyph.format("tap", "T") + ": Add " + glyph.format("g", "G") + "."
 
 
 def test_rules_text_is_escaped_before_its_symbols_are_drawn():
@@ -133,13 +144,12 @@ def test_the_mana_tokens_take_the_fonts_symbol_fills():
     assert tokens == {
         "w": "#f0f2c0", "u": "#b5cde3", "b": "#aca29a", "r": "#db8664", "g": "#93b483", "c": "#beb9b2",
     }
-    fills = {"c": re.search(r"background-color:\s*(#[0-9a-f]{6})", dict((tuple(s), b) for s, b in css_rules(CSS))[(".ms-cost",)]).group(1)}
+    fills = {"c": fill_of(rule_body(".ms-cost"))}
     for selectors, body in css_rules(CSS):
-        fill = re.search(r"background-color:\s*(#[0-9a-f]{6})", body)
         for selector in selectors:
             single = re.fullmatch(r"\.ms-cost\.ms-([wubrgc])", selector)
-            if single and fill:
-                fills[single.group(1)] = fill.group(1)
+            if single and fill_of(body):
+                fills[single.group(1)] = fill_of(body)
     assert fills == tokens
 
 
