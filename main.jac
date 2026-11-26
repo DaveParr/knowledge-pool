@@ -18,7 +18,7 @@ import from decks {
     CopyOtherDeck,
     list_formats
 }
-import from collection { GetCollection, ChangeCollection, ImportCollection }
+import from collection { GetCollection, ChangeCollection, ImportCollection, ListUsers, GetOtherCollection }
 import from collection_views { CollectionView }
 import from legality { Violation }
 import from card_lines { CardLine }

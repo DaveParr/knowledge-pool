@@ -67,6 +67,34 @@ def test_built_bundles_root_files_come_from_jacs_server(client):
     assert [r.url.path for r in client.upstream_requests] == ["/client.BEp6_VCi.js", "/styles.css"]
 
 
+ICON_PATHS = [
+    "/icons/web-and-mobile/favicon.ico", "/icons/web-and-mobile/apple-touch-icon-180x180.png",
+    "/icons/web-and-mobile/android-chrome-192x192.png", "/icons/light/knowledge-pool-light-32x32.png",
+]
+
+
+@pytest.mark.parametrize("path", ICON_PATHS)
+def test_icons_come_from_jacs_server(client, path):
+    assert client.get(path).status_code == 200
+    assert [r.url.path for r in client.upstream_requests] == [path]
+
+
+@pytest.mark.parametrize(
+    "path", ["/icons/../docs", "/icons/other/x.png", "/icons/light/x.html", "/icons/light/%2e%2e/x.png", "/icons/"]
+)
+def test_only_icon_files_are_forwarded_under_icons(client, path):
+    assert client.get(path).status_code == 404
+    assert client.upstream_requests == []
+
+
+def test_the_page_head_links_icons_that_exist():
+    toml = (ROOT / "jac.toml").read_text()
+    links = re.findall(r'(?:icon|apple_touch_icon) = "(/icons/[^"]+)"', toml)
+    assert len(links) == 2
+    for link in links:
+        assert (ROOT / "public" / link.lstrip("/")).is_file()
+
+
 def test_page_answers_502_when_jacs_server_is_gone(client):
     client.upstream_down()
     assert client.get("/").status_code == 502

@@ -320,8 +320,9 @@ def conflicting(monkeypatch):
     monkeypatch.setattr(Session, "commit", conflict)
 
 
-@pytest.mark.parametrize("tool", ["deck_list", "deck_browse", "get_card", "search_cards", "resolve_names", "deck_get", "deck_edit", "deck_create"])
-def test_a_call_the_runner_could_not_finish_is_a_tool_error_with_try_again(tools, deck_id, conflicting, tool):
+@pytest.mark.parametrize("tool", ["deck_list", "deck_browse", "get_card", "search_cards", "resolve_names", "deck_get", "deck_edit", "deck_create", "user_list"])
+# `others_deck_id` makes a second user: listing users has nothing to read (and so cannot conflict) without one.
+def test_a_call_the_runner_could_not_finish_is_a_tool_error_with_try_again(tools, deck_id, others_deck_id, conflicting, tool):
     arguments = {
         "get_card": {"oracle_id_or_name": "Shock"}, "search_cards": {"query": "bolt"},
         "resolve_names": {"names": ["Shock"]}, "deck_get": {"deck_id": deck_id},
@@ -415,6 +416,40 @@ def test_collection_change_removing_more_than_held_is_a_tool_error_that_says_how
     assert failure(result) == "refused-change"
     assert "2" in result.content[0].text
 
+
+@pytest.fixture
+def others_collection(tools):
+    """Another user's collection of two Lightning Bolts, with a display name set, made through the runner as that user."""
+    from collection import ChangeCollection
+    from deck_operations import perform
+    from graph_runner import call_function
+    from profile import save_display_name
+
+    call_function("someone-else", lambda: save_display_name("Sam Other") or None)
+    perform("someone-else", ChangeCollection(oracle_id=oracle_id(tools, "Lightning Bolt"), count=2, reason="for trade"))
+
+
+def sam_handle(tools):
+    return [u["handle"] for u in data(call(tools, "user_list")) if u["name"] == "Sam Other"][0]
+
+
+def test_user_list_names_other_users_by_handle_and_display_name_and_never_by_email(tools, others_collection):
+    listed = data(call(tools, "user_list"))
+    sam = [u for u in listed if u["name"] == "Sam Other"]
+    assert len(sam) == 1
+    assert all(set(u) == {"handle", "name"} for u in listed)
+    assert all("@" not in u["handle"] and "someone-else" not in u["handle"] for u in listed)
+
+
+def test_collection_browse_reads_another_users_collection_by_handle(tools, others_collection):
+    handle = sam_handle(tools)
+    seen = data(call(tools, "collection_browse", handle=handle))
+    assert [(c["name"], c["count"]) for c in seen["cards"]] == [("Lightning Bolt", 2)]
+    assert seen["history"][-1]["reason"] == "for trade"
+
+
+def test_collection_browse_of_an_unknown_handle_is_a_tool_error_with_no_such_user(tools):
+    assert failure(call(tools, "collection_browse", handle="nope")) == "no-such-user"
 
 def test_collection_import_adds_a_pasted_list_and_reports_names_that_resolve_to_no_card(tools):
     result = data(call(tools, "collection_import", format="text", text="4 Lightning Bolt\n\nSideboard\n1 Lightning Bolt\n2 Not A Real Card\n"))

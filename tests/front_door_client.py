@@ -65,6 +65,8 @@ class FrontDoorClient:
             return httpx2.Response(200, text="<html><title>app</title></html>", headers={"content-type": "text/html"})
         if request.url.path in ("/static/client.js", "/client.BEp6_VCi.js", "/styles.css"):
             return httpx2.Response(200, text="export {}", headers={"content-type": "text/javascript"})
+        if request.url.path.startswith("/icons/"):
+            return httpx2.Response(200, content=b"icon", headers={"content-type": "image/png"})
         return httpx2.Response(404, json={"detail": "Not Found"})
 
     def upstream_down(self) -> None:

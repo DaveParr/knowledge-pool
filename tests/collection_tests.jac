@@ -11,9 +11,11 @@ import from catalog.ingest { build, load_atomic, load_oracle_tags }
 import catalog.store as store;
 import from walker_errors { WalkerError }
 import from jaclang { JacRuntime as Jac }
-import from graph_runner { STARTED_FOR_GUEST, call_function }
-import from collection { Collection }
-import from deck_operations { perform, page_walkers, OPERATIONS, OWN, OWNER }
+import from graph_runner { STARTED_FOR_GUEST, call_function, guest_root_id, user_handle }
+import from collection { Collection, ListUsers, GetOtherCollection }
+import from collection_views { UserSummary }
+import from profile { save_display_name, UNKNOWN_USER }
+import from deck_operations { perform, page_walkers, OPERATIONS, OWN, OWNER, USER }
 import from decks { CreateDeck, EditDeck, GetDeck, DeckView }
 import from collection { OwnedSearch, SearchDeckCards, SearchMyCards, REASON_IMPORTED, ChangeCollection, GetCollection, ImportCollection, ImportCollectionResult, CollectionView, MODE_ADD, MODE_REMOVE, MODE_SET }
 
@@ -150,6 +152,85 @@ test "a refused change writes nothing, not even an empty collection" {
     assert refused is not None and refused.code == "refused-change";
     kept = call_function(carol, lambda () -> object { return len([root-->[?:Collection]]); });
     assert kept == 0;
+}
+
+"""`caller` stores `name` as their display name."""
+def _name_as(caller: str, name: str) {
+    call_function(caller, lambda () -> object { save_display_name(name); return None; });
+}
+
+test "listing users returns each other user's handle and display name, not the caller, and no email" {
+    _change(ALICE, "Sol Ring", 1);
+    _change(BOB, "Sol Ring", 1);
+    _name_as(BOB, "Bob Builder");
+    listed = perform(ALICE, ListUsers()).reports[0] as list[UserSummary];
+    names = [u.name for u in listed];
+    assert "Bob Builder" in names;
+    eve = "user_test_collection_eve";
+    _change(eve, "Sol Ring", 1);
+    unnamed = perform(ALICE, ListUsers()).reports[0] as list[UserSummary];
+    assert UNKNOWN_USER in [u.name for u in unnamed];
+    handles = [u.handle for u in listed];
+    assert len(handles) == len(set(handles));
+    assert all(["@" not in u.handle and ALICE not in u.handle and BOB not in u.handle for u in listed]);
+    mine = perform(BOB, ListUsers()).reports[0] as list[UserSummary];
+    assert "Bob Builder" not in [u.name for u in mine];
+}
+
+"""The handle of the user `name` as `caller` sees it in the listing."""
+def _handle_of(caller: str, name: str) -> str {
+    listed = perform(caller, ListUsers()).reports[0] as list[UserSummary];
+    return [u.handle for u in listed if u.name == name][0];
+}
+
+test "a user reads another user's collection by handle, card by card with its history" {
+    _change(BOB, "Counterspell", 2, reason="for trade");
+    _name_as(BOB, "Bob Reader");
+    seen = perform(ALICE, GetOtherCollection(handle=_handle_of(ALICE, "Bob Reader"))).reports[0] as CollectionView;
+    assert _oid("Counterspell") in [l.oracle_id for l in seen.cards];
+    assert sum([l.count for l in seen.cards if l.oracle_id == _oid("Counterspell")]) == 2;
+    assert seen.history[-1].reason == "for trade";
+}
+
+test "a handle that names no user, or the guest's root, answers no-such-user and reads nothing" {
+    from_graph = call_function(ALICE, lambda () -> object { return guest_root_id(); }) as str;
+    for handle in ["no-such-handle", "", user_handle(from_graph)] {
+        first = perform(ALICE, GetOtherCollection(handle=handle)).reports[0];
+        assert isinstance(first, WalkerError) and first.code == "no-such-user";
+    }
+}
+
+test "changing another user's collection is refused, whichever mode, and changes nothing" {
+    _name_as(BOB, "Bob Changed");
+    handle = _handle_of(ALICE, "Bob Changed");
+    before = _count(BOB, "Sol Ring");
+    mine = _count(ALICE, "Sol Ring");
+    for mode in [MODE_ADD, MODE_REMOVE, MODE_SET] {
+        done = perform(ALICE, ChangeCollection(oracle_id=_oid("Sol Ring"), count=1, mode=mode, reason="sneaky", handle=handle));
+        first = done.reports[0];
+        assert isinstance(first, WalkerError) and first.code == "not-your-collection";
+    }
+    assert _count(BOB, "Sol Ring") == before;
+    assert _count(ALICE, "Sol Ring") == mine;
+    assert len([n for n in _collection(BOB).history if n.reason == "sneaky"]) == 0;
+}
+
+test "reading another user's collection grants nothing: the reader's root gains nothing and the owner's collection is as it was" {
+    dave = "user_test_collection_dave";
+    _change(BOB, "Forest", 5, reason="before the read");
+    _name_as(BOB, "Bob Grantless");
+    handle = _handle_of(dave, "Bob Grantless");
+    before = _collection(BOB);
+    reader_edges = call_function(dave, lambda () -> object { return len([root-->]); }) as int;
+    seen = perform(dave, GetOtherCollection(handle=handle)).reports[0] as CollectionView;
+    assert _oid("Forest") in [l.oracle_id for l in seen.cards];
+    assert call_function(dave, lambda () -> object { return len([root-->]); }) == reader_edges;
+    assert call_function(dave, lambda () -> object { return len([root-->[?:Collection]]); }) == 0;
+    assert _collection(dave).cards == [] and _collection(dave).history == [];
+    after = _collection(BOB);
+    assert [(l.oracle_id, l.count) for l in after.cards] == [(l.oracle_id, l.count) for l in before.cards];
+    assert len(after.history) == len(before.history);
+    assert OPERATIONS["GetOtherCollection"].runs == USER;
 }
 
 """`caller` imports `text` (default format `text`) into their collection; the result they read."""

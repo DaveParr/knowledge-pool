@@ -59,6 +59,8 @@ import from jaclang.server.identity.user_manager { UserManager }
 import from cards { open_catalog, RefreshCards, REFRESH_BATCH, catalogue_version, refreshed_version, record_refresh, duplicate_oracle_ids }
 import from legality { open_formats }
 import from walker_errors { WalkerError }
+import from profile { display_name }
+import from collection_views { UserSummary, NO_SUCH_USER }
 import from decks { DeckSummary, DeckView, CopySource, CopyDeck, deck_owner, deck_summaries }
 
 glob APP_DIR: str = os.path.dirname(os.path.abspath(__file__)),
@@ -70,6 +72,7 @@ glob APP_DIR: str = os.path.dirname(os.path.abspath(__file__)),
      MODES: list[str] = [LOCAL, HOSTED],
      STARTED_FOR_GUEST: list[str] = [],
      USER_PAGE: int = 100,
+     PERSON_ROLE: str = "user",
      RERUNS: int = 3,
      RERUN_WAIT_S: tuple[float, float] = (0.01, 0.05),
      LOG: logging.Logger = logging.getLogger("knowledge_pool.runner");
@@ -294,6 +297,31 @@ def run_read(caller: str | None, deck_id: str, w: WalkerArchetype) -> WalkerArch
     }
 }
 
+"""Spawn the read-only walker `w` on the root of the user named by `handle`
+(see `list_users`), for `caller`: any signed-in user may read any user's
+collection. Like `run_read` it gives the caller no grant, edge or access of any
+kind, and the walker must change nothing; only `perform` calls it, for the
+`USER` entries of its table. Like `run_walker`, a call the runner could not
+finish returns a copy of `w` whose one report is the walker error."""
+def run_read_user(caller: str | None, handle: str, w: WalkerArchetype) -> WalkerArchetype {
+    found = call_function(
+        caller, lambda () -> object { return [r for r in user_root_ids() if user_handle(r) == handle]; }, name="user_root"
+    );
+    if isinstance(found, WalkerError) {
+        return failed_walker(w, found);
+    }
+    if not (found as list[str]) {
+        return failed_walker(w, WalkerError(code=NO_SUCH_USER, message="There is no such user."));
+    }
+    try {
+        return in_context(
+            (found as list[str])[0], lambda () -> object { return spawn_on_root(w); }, name=type(w).__name__, caller=str(caller)
+        ) as WalkerArchetype;
+    } except CallFailed as failed {
+        return failed_walker(w, failed.error);
+    }
+}
+
 """Copy the deck `deck_id`, whoever owns it, into `caller`'s own decks, as a
 snapshot: a read as the owner, then a create as the caller. Returns the
 finished create walker, whose one report is the new deck's view, or the walker
@@ -307,7 +335,8 @@ def copy_deck(caller: str | None, deck_id: str) -> WalkerArchetype {
     return run_walker(caller, CopyDeck(snapshot=snapshot));
 }
 
-"""The root id of every user who has one, the guest's apart, in no set order."""
+"""The root id of every user who has one, in no set order. The guest's is left out,
+and so are Jac's own accounts (its `admin`): only the `user` role is a person."""
 def user_root_ids -> list[str] {
     storage = user_manager()._identity_storage;
     guest = guest_root_id();
@@ -318,7 +347,7 @@ def user_root_ids -> list[str] {
         page = storage.list_all_users(limit=USER_PAGE, offset=offset);
         for user in page {
             rid = str(user.get("root_id") or "");
-            if rid and rid != guest and rid not in known {
+            if rid and rid != guest and user.get("role") == PERSON_ROLE and rid not in known {
                 known.add(rid);
                 found.append(rid);
             }
@@ -347,6 +376,36 @@ def list_other_decks(caller: str | None) -> list[DeckSummary] | WalkerError {
             ) as list[DeckSummary];
         }
         return sorted(others, key=lambda (d: DeckSummary) { return (d.owner, d.name); });
+    } except CallFailed as failed {
+        return failed.error;
+    }
+}
+
+"""The opaque handle of the user whose root is `root_id`: the root id without
+its dashes, which is no email address and gives a caller nothing to act on."""
+def user_handle(root_id: str) -> str {
+    return root_id.replace("-", "");
+}
+
+"""Every other user (not `caller`), by display name then handle, each with the
+display name stored on their own root ("Unknown user" when none is stored). A
+call the runner could not finish returns its walker error."""
+def list_users(caller: str | None) -> list[UserSummary] | WalkerError {
+    try {
+        start();
+        mine = user_handle(user_root_id(caller));
+        others: list[UserSummary] = [];
+        for root_id in user_root_ids() {
+            handle = user_handle(root_id);
+            if handle == mine {
+                continue;
+            }
+            name = in_context(
+                root_id, lambda () -> object { return display_name(); }, name="list_users", caller=str(caller)
+            ) as str;
+            others.append(UserSummary(handle=handle, name=name));
+        }
+        return sorted(others, key=lambda (u: UserSummary) { return (u.name, u.handle); });
     } except CallFailed as failed {
         return failed.error;
     }
