@@ -234,6 +234,13 @@ test "without owned only a deck search keeps every hit and gives the deck owner'
     assert got["Ball Lightning"] == 0;
 }
 
+test "a deck search counts the deck owner's copies even when the caller holds the same card" {
+    _change(ALICE, "Lightning Greaves", 2);
+    _change(BOB, "Lightning Greaves", 5);
+    deck_id = jid(perform(ALICE, CreateDeck(name="Counted deck")).reports[0]);
+    assert _deck_search(BOB, deck_id, "greaves", True) == {"Lightning Greaves": 2};
+}
+
 test "owned only searches the whole collection, not just the best-ranked hits" {
     _change(ALICE, "Ball Lightning", 1);
     deck_id = jid(perform(ALICE, CreateDeck(name="Limited deck")).reports[0]);
