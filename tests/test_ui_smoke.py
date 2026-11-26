@@ -534,3 +534,14 @@ def test_the_my_collection_view_imports_a_pasted_list_and_reports_unknown_names(
     assert "Not A Real Card" in app.wait_text("Not A Real Card", within="ul[aria-label='Not imported']")
     history = app.wait_text("Chaos Warp: 0 → 3", within="ul[aria-label='Collection history']")
     assert "imported" in history
+
+
+@pytest.mark.parametrize("name", VIEWS)
+def test_a_view_drops_the_hosts_height_limit_when_the_host_stops_sending_one(app, tmp_path, name):
+    open_view(app, tmp_path, name)
+    host_says(app, "ui/notifications/host-context-changed", {"containerDimensions": {"maxHeight": 300}})
+    assert app.js("document.documentElement.style.maxHeight") == "300px"
+
+    host_says(app, "ui/notifications/host-context-changed", {"containerDimensions": {}})
+    app.js("0")
+    assert app.js("document.documentElement.style.maxHeight + '|' + document.documentElement.style.overflowY") == "|"
