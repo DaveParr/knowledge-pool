@@ -15,7 +15,7 @@ import from graph_runner { STARTED_FOR_GUEST, call_function }
 import from collection { Collection }
 import from deck_operations { perform, page_walkers, OPERATIONS, OWN }
 import from decks { CreateDeck, EditDeck, GetDeck, DeckView }
-import from collection { ChangeCollection, GetCollection, ImportCollection, ImportCollectionResult, CollectionView, MODE_ADD, MODE_REMOVE, MODE_SET }
+import from collection { REASON_IMPORTED, ChangeCollection, GetCollection, ImportCollection, ImportCollectionResult, CollectionView, MODE_ADD, MODE_REMOVE, MODE_SET }
 
 glob CATALOG: Path = Path("data/test_collection_catalog.sqlite"),
      ALICE: str = "user_test_collection_alice",
@@ -162,7 +162,7 @@ test "importing a pasted list adds its totals, summing repeats across zones, and
     assert done.unresolved == [];
     assert _count(ALICE, "Lightning Bolt") == 5;
     assert _count(ALICE, "Shock") == 2;
-    notes = [n for n in _collection(ALICE).history if n.reason == "imported"];
+    notes = [n for n in _collection(ALICE).history if n.reason == REASON_IMPORTED];
     assert sorted([(n.name, n.before, n.after) for n in notes]) == [("Lightning Bolt", 0, 5), ("Shock", 0, 2)];
 }
 
@@ -172,12 +172,12 @@ test "an import adds to the counts already held and never lowers one" {
     assert _count(BOB, "Counterspell") == 4;
     _import(BOB, "1 Shock\n");
     assert _count(BOB, "Counterspell") == 4;
-    assert [n for n in _collection(BOB).history if n.name == "Counterspell"][-1].reason == "imported";
+    assert [n for n in _collection(BOB).history if n.name == "Counterspell"][-1].reason == REASON_IMPORTED;
 }
 
 test "names that resolve to no card are reported and the rest of the list is still added" {
     done = _import(ALICE, "1 Goblin Guide\n3 Not A Real Card\n");
-    assert done.unresolved == ["3 Not A Real Card"] or "Not A Real Card" in " ".join(done.unresolved);
+    assert len(done.unresolved) == 1 and "Not A Real Card" in done.unresolved[0];
     assert _count(ALICE, "Goblin Guide") == 1;
 }
 
@@ -205,9 +205,12 @@ test "each deck import format reads into the collection" {
     arena = _import(BOB, "Deck\n2 Shock (M21) 100\n", "arena");
     assert arena.unresolved == [];
     assert _count(BOB, "Shock") == 2;
+    moxfield = _import(BOB, "1 Goblin Guide (M21) 5\n", "moxfield");
+    assert moxfield.unresolved == [];
+    assert _count(BOB, "Goblin Guide") == 1;
     mtgdeck = _import(BOB, '{"schema": "mtgdeck/1", "name": "x", "format": "modern", "zones": {"main": [{"name": "Goblin Guide", "count": 1}], "maybeboard": [{"name": "Goblin Guide", "count": 2}]}}', "mtgdeck1");
     assert mtgdeck.unresolved == [];
-    assert _count(BOB, "Goblin Guide") == 3;
+    assert _count(BOB, "Goblin Guide") == 4;
 }
 
 # Keep last: `perform` registers the shared root for this process, and `jac test`

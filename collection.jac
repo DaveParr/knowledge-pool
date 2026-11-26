@@ -224,12 +224,16 @@ walker:protect ImportCollection {
             totals[ent.oracle_id] = totals.get(ent.oracle_id, 0) + ent.count;
         }
         coll = my_collection();
+        unresolved = [*rl.unresolved];
         for (oid, total) in totals.items() {
-            set_count(coll, oid, copies(coll, oid) + total, REASON_IMPORTED);
+            why = set_count(coll, oid, copies(coll, oid) + total, REASON_IMPORTED);
+            if why {
+                unresolved.append(f"{card_name(oid)} ({why})");
+            }
         }
         if totals and find_collection() is None {
             root ++> coll;
         }
-        report ImportCollectionResult(collection=collection_view(find_collection()), unresolved=rl.unresolved);
+        report ImportCollectionResult(collection=collection_view(find_collection()), unresolved=unresolved);
     }
 }
