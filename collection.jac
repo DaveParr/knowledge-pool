@@ -13,7 +13,7 @@ import from cards { Card, card_node }
 import from decks { ChangeNote }
 import from walker_errors { WalkerError }
 import from deck_io { resolve_list }
-import from collection_views { CollectionLine, CollectionView, ImportCollectionResult, MODE_ADD, MODE_REMOVE, MODE_SET, MODES, REFUSED_CHANGE }
+import from collection_views { UserAction, UserSummary, CollectionLine, CollectionView, ImportCollectionResult, MODE_ADD, MODE_REMOVE, MODE_SET, MODES, REFUSED_CHANGE, NOT_YOUR_COLLECTION }
 
 """The reason every card changed by a pasted list is logged with."""
 glob REASON_IMPORTED: str = "imported";
@@ -179,7 +179,9 @@ walker:protect GetCollection {
 
 """Change the count of one card in the caller's collection: `mode` is "add"
 (`count` more copies), "remove" (`count` fewer) or "set" (exactly `count`; 0
-removes the card), with the `reason`. A refused change (no reason, unknown card,
+removes the card), with the `reason`. A `handle` names another user's
+collection, which no one but its owner changes: it reports `not-your-collection`
+and writes nothing. A refused change (no reason, unknown card,
 removing more than held) reports `refused-change` and writes nothing; otherwise
 it reports the collection."""
 walker:protect ChangeCollection {
@@ -187,9 +189,17 @@ walker:protect ChangeCollection {
         count: int,
         mode: str = MODE_ADD,
         reason: str = "",
+        handle: str = "",
         reports: list[CollectionView | WalkerError] = [];
 
     can change with Root entry {
+        if self.handle {
+            report WalkerError(
+                code=NOT_YOUR_COLLECTION,
+                message="Only a collection's owner can change it: leave out the handle to change your own."
+            );
+            disengage;
+        }
         coll = my_collection();
         why = change_count(coll, self.oracle_id, self.count, self.mode, self.reason);
         if why {
@@ -200,6 +210,22 @@ walker:protect ChangeCollection {
             root ++> coll;
         }
         report collection_view(coll);
+    }
+}
+
+"""List the other users (never the caller), each by handle and display name.
+The deck operations table runs it as a flow (`list_users`): the users are
+other roots, which no walker can visit."""
+walker:protect ListUsers {
+    has reports: list[list[UserSummary] | WalkerError] = [];
+}
+
+"""Report another user's collection, by their handle, read-only."""
+walker:protect GetOtherCollection(UserAction) {
+    has reports: list[CollectionView | WalkerError] = [];
+
+    can show with Root entry {
+        report collection_view(find_collection());
     }
 }
 

@@ -14,8 +14,11 @@ it runs:
   walker must change nothing; this table is the one list of the ones `perform`
   runs so (`copy_deck` also reads `CopySource` this way, listed for
   completeness).
+- `USER`: on the root of the user the walker names by `handle` (`UserAction`), for
+  a read-only walker (`run_read_user`): any user may read any user's collection,
+  under the same rules as `OWNER`. It gives the caller no grant, edge or access.
 - `FLOW`: a runner flow across users' roots that no single walker can make,
-  named by the entry's `across` (listing other users' decks, copying a deck).
+  named by the entry's `across` (listing other users' decks or other users, copying a deck).
 
 An entry also says whether the web page may call the walker (`page`): the front
 door's table of page-callable walkers is `page_walkers()`, derived from here.
@@ -26,20 +29,28 @@ page-callable one must also be imported in `main.jac`, which a test checks.
 """
 
 import from jaclang.runtime.constructs { WalkerArchetype }
-import from graph_runner { run_walker, run_read, copy_deck, list_other_decks }
+import from graph_runner { run_walker, run_read, copy_deck, list_other_decks, list_users, run_read_user }
 import from decks { DeckAction, CreateDeck, ListDecks, ListOtherDecks, CopyOtherDeck, CopySource, GetDeck, EditDeck }
 import from deck_io { DeckExport, DeckImport, CreateDeckFromList }
 import from legality { GetFormatRules }
-import from collection { GetCollection, ChangeCollection, ImportCollection }
+import from collection { GetCollection, ChangeCollection, ListUsers, GetOtherCollection, ImportCollection }
+import from collection_views { UserAction }
 
 glob OWN: str = "own",
      OWNER: str = "owner",
-     FLOW: str = "flow";
+     FLOW: str = "flow",
+     USER: str = "user";
 
 """How a flow runs `w` for `caller`: the finished walker, its one report the
 result or a walker error."""
 def list_others_flow(caller: str | None, w: WalkerArchetype) -> WalkerArchetype {
     w.reports = [list_other_decks(caller)];
+    return w;
+}
+
+"""List the other users: the same flow, over users rather than decks."""
+def list_users_flow(caller: str | None, w: WalkerArchetype) -> WalkerArchetype {
+    w.reports = [list_users(caller)];
     return w;
 }
 
@@ -49,7 +60,7 @@ def copy_flow(caller: str | None, w: WalkerArchetype) -> WalkerArchetype {
 }
 
 """One deck operation: the walker class `kind` that does it, how it `runs`
-(`OWN`, `OWNER` or `FLOW`), the `across` function that runs it when it is a
+(`OWN`, `OWNER`, `USER` or `FLOW`), the `across` function that runs it when it is a
 `FLOW`, and whether the web `page` may call it."""
 obj DeckOperation {
     has kind: type,
@@ -70,6 +81,8 @@ glob OPERATION_LIST: list[DeckOperation] = [
     DeckOperation(kind=CreateDeckFromList, runs=OWN, page=True),
     DeckOperation(kind=GetCollection, runs=OWN, page=True),
     DeckOperation(kind=ChangeCollection, runs=OWN, page=True),
+    DeckOperation(kind=ListUsers, runs=FLOW, page=True, across=list_users_flow),
+    DeckOperation(kind=GetOtherCollection, runs=USER, page=True),
     DeckOperation(kind=ImportCollection, runs=OWN, page=True),
     DeckOperation(kind=CopySource, runs=OWNER),
     DeckOperation(kind=GetFormatRules, runs=OWN)
@@ -95,6 +108,9 @@ def perform(caller: str | None, w: WalkerArchetype) -> WalkerArchetype {
     }
     if op.runs == FLOW {
         return op.across(caller, w) as WalkerArchetype;
+    }
+    if op.runs == USER {
+        return run_read_user(caller, (w as UserAction).handle, w);
     }
     if op.runs == OWNER {
         return run_read(caller, (w as DeckAction).deck_id, w);
