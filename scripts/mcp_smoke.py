@@ -111,7 +111,7 @@ async def main() -> None:
             (failed.content, failed.structured_content),
         )
         shown = await session.call_tool("deck_show", {"deck_id": deck_id})
-        check("a client without MCP Apps gets Markdown and no structured content", shown.structured_content is None and "| 4 | Goblin Guide |" in shown.content[0].text, shown.content)
+        check("a client without MCP Apps gets Markdown and no structured content", shown.structured_content is None and "| 4 (4 owned) | Goblin Guide |" in shown.content[0].text, shown.content)
 
     # A client that renders MCP Apps already shows the view, so the model gets a
     # short brief and the view gets the data. A second MCP server process on the

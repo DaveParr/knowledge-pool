@@ -13,7 +13,7 @@ import from jaclang { JacRuntime as Jac }
 import from jaclang.runtime.constructs { NodeAnchor }
 import from profile { display_name }
 import from cards { Card, card_node }
-import from card_lines { CardLine, main_deck }
+import from card_lines { CardLine, MissingCard, main_deck }
 import from legality { Violation, FORMAT_LABELS, format_node, check_lines, unknown_format }
 import from commander { GameChangers, game_changers }
 import from mana { ManaProfile, ManaCurve, mana_profile, mana_curve }
@@ -141,7 +141,9 @@ obj DeckView {
         history: list[ChangeNote] = [],
         rejected: list[str] = [],
         game_changers: GameChangers | None = None,
-        mine: bool = False;
+        mine: bool = False,
+        missing: list[MissingCard] = [],
+        sleeveable: bool = False;
 }
 
 """Every (edge, card) pair a deck holds. A card in both zones has two edges."""

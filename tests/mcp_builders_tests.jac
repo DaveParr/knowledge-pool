@@ -129,3 +129,18 @@ test "the export brief tells the model not to paste the export" {
     assert export_brief().startswith("Shown to the user in the export view");
     assert "do not paste it into the chat" in export_brief();
 }
+
+test "the deck table and brief say how many copies are owned, what is missing and whether the deck is sleeveable" {
+    view = {
+        **deck_view(),
+        "missing": [{"oracle_id": "g", "name": "Goblin Guide", "count": 3}],
+        "sleeveable": False,
+        "cards": [{**card("Goblin Guide", "main", 4, "2", "2"), "collection_count": 1}]
+    };
+    md = deck_markdown(view);
+    assert "| 4 (1 owned) | Goblin Guide |" in md;
+    assert "Not sleeveable: missing 3 Goblin Guide." in md;
+    assert "Not sleeveable: missing 3 Goblin Guide. " in deck_brief(view);
+    sleeved = {**view, "missing": [], "sleeveable": True};
+    assert "Sleeveable." in deck_markdown(sleeved);
+}

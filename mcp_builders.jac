@@ -18,6 +18,7 @@ def deck_brief(view: JsonObject) -> str {
         + f"{view['main_total']} main, {view['sideboard_total']} sideboard. "
         + ("Legal. " if view["legal"] else "Not legal: " + "; ".join(v["message"] for v in view["violations"]) + ". ")
         + game_changers_note(view)
+        + sleeveable_note(view)
         + "The user can see every card, so do not list the cards again; "
         + "call deck_get if you need them to answer a question."
     );
@@ -47,18 +48,43 @@ def deck_markdown(view: JsonObject) -> str {
     if note {
         lines.append(note);
     }
+    sleeve = sleeveable_note(view).strip();
+    if sleeve {
+        lines.append(sleeve);
+    }
     for zone in ZONES {
         title = ZONE_TITLES[zone];
         rows = [c for c in view["cards"] if c["zone"] == zone];
         if rows {
             lines += ["", f"### {title}", "", "| # | Card | Cost | Type | P/T |", "|--:|---|---|---|--:|"];
             lines += [
-                f"| {c['count']} | {c['name']} | {c['mana_cost']} | {c['type_line']} | {power_toughness(c)} |"
+                f"| {count_cell(c)} | {c['name']} | {c['mana_cost']} | {c['type_line']} | {power_toughness(c)} |"
                 for c in rows
             ];
         }
     }
     return "\n".join(lines);
+}
+
+"""Whether the deck owner's collection covers the deck: "Sleeveable. " or
+"Not sleeveable: missing 3 Goblin Guide, 1 Shock. " ("" for a view that carries neither)."""
+def sleeveable_note(view: JsonObject) -> str {
+    if "sleeveable" not in view {
+        return "";
+    }
+    if view["sleeveable"] {
+        return "Sleeveable. ";
+    }
+    short = ", ".join(f"{m['count']} {m['name']}" for m in view["missing"]);
+    return f"Not sleeveable: missing {short}. ";
+}
+
+"""A card line's count, with the copies the owner's collection holds when the line says: "4 (1 owned)"."""
+def count_cell(card: JsonObject) -> str {
+    if "collection_count" not in card {
+        return str(card["count"]);
+    }
+    return f"{card['count']} ({card['collection_count']} owned)";
 }
 
 """A card line's front-face power/toughness ("2/2"), or "" when it has none."""

@@ -107,3 +107,19 @@ def test_a_deck_view_says_whether_the_caller_owns_it_for_the_owner_and_for_anoth
     [theirs] = reports(client.post("/walker/GetDeck", json={"deck_id": deck_id}, headers=bob))
     assert mine["mine"] is True
     assert theirs["mine"] is False
+
+
+def test_another_user_reading_a_deck_sees_the_owners_counts_missing_cards_and_sleeveable(client, alice, bob):
+    bolt = client.post("/function/search_cards", json={"query": "Lightning Bolt"}, headers=alice).json()["data"]["result"]["hits"][0]["oracle_id"]
+    reports(client.post("/walker/ChangeCollection", json={"oracle_id": bolt, "count": 1, "reason": "web test"}, headers=alice))
+    reports(client.post("/walker/ChangeCollection", json={"oracle_id": bolt, "count": 10, "reason": "web test"}, headers=bob))
+    deck_id = alices_deck(client, alice)
+    reports(client.post(
+        "/walker/EditDeck",
+        json={"deck_id": deck_id, "changes": [{"oracle_id": bolt, "count": 2, "zone": "main", "reason": "web test"}]},
+        headers=alice,
+    ))
+    [view] = reports(client.post("/walker/GetDeck", json={"deck_id": deck_id}, headers=bob))
+    assert [(l["name"], l["collection_count"]) for l in view["cards"]] == [("Lightning Bolt", 1)]
+    assert [(m["name"], m["count"]) for m in view["missing"]] == [("Lightning Bolt", 1)]
+    assert view["sleeveable"] is False

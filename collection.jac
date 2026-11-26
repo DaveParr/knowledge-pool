@@ -10,7 +10,8 @@ reason and logs a `ChangeNote` with no zone. Editing a deck never touches it.
 
 import from datetime { datetime, timezone }
 import from cards { Card, card_node, search_among }
-import from decks { ChangeNote, Deck, DeckAction }
+import from decks { ChangeNote, Deck, DeckAction, DeckView }
+import from card_lines { missing_cards }
 import from walker_errors { WalkerError }
 import from deck_io { resolve_list }
 import from collection_views { UserAction, UserSummary, CollectionLine, CollectionView, ImportCollectionResult, MODE_ADD, MODE_REMOVE, MODE_SET, MODES, REFUSED_CHANGE, NOT_YOUR_COLLECTION }
@@ -318,5 +319,22 @@ walker SearchMyCards {
 
     can search with Root entry {
         report owned_search(find_collection(), self.query, self.limit, self.owned_only);
+    }
+}
+
+"""Fill in what the collection of the root this runs on says about each deck
+view in `reports`: every card line's `collection_count`. The runner calls it
+on the root the walker ran on, so a deck read by another user is always
+measured against its owner's collection."""
+def stamp_collection(reports: list[any]) -> None {
+    coll = find_collection();
+    for item in reports {
+        if isinstance(item, DeckView) {
+            for line in item.cards {
+                line.collection_count = copies(coll, line.oracle_id) if coll is not None else 0;
+            }
+            item.missing = missing_cards(item.cards);
+            item.sleeveable = len(item.missing) == 0;
+        }
     }
 }
