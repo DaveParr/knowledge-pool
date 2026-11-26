@@ -68,3 +68,14 @@ impl DeckDetail.renameDeck -> None {
         renaming = False;
     }
 }
+
+impl DeckDetail.deleteDeck -> None {
+    result = root spawn DeleteDeck(deck_id=deckId);
+    why = failureMessage(result.reports);
+    if why {
+        error = why;
+        confirmingDelete = False;
+        return;
+    }
+    onBack();
+}

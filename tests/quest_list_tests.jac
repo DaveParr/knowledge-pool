@@ -12,7 +12,7 @@ import from walker_errors { WalkerError }
 import from jaclang { JacRuntime as Jac }
 import from graph_runner { STARTED_FOR_GUEST }
 import from deck_operations { perform }
-import from decks { CreateDeck, EditDeck }
+import from decks { CreateDeck, EditDeck, DeleteDeck, CopyOtherDeck, ListDecks, Deck }
 import from collection { ChangeCollection, GetCollection, ListUsers }
 import from collection_views { CollectionView, UserSummary, QuestListView }
 import from quest_list { GetQuestList, GotQuest, GetOtherQuestList }
@@ -102,6 +102,18 @@ test "the quest list follows a deck edit and a collection change on the next rea
     assert _quest(ALICE) == {"Lightning Bolt": 2, "Shock": 1};
     _own(ALICE, "Lightning Bolt", 2);
     assert _quest(ALICE) == {"Shock": 1};
+}
+
+test "deleting a deck drops it from the quest list and leaves the other decks' lines, and a copy of it stays" {
+    burn = _deck(ALICE, "Burn", [("Lightning Bolt", "main", 4), ("Shock", "main", 2)]);
+    _deck(ALICE, "Pile", [("Lightning Bolt", "main", 1)]);
+    copied = perform(BOB, CopyOtherDeck(deck_id=burn));
+    assert _quest(ALICE) == {"Lightning Bolt": 4, "Shock": 2};
+    assert not isinstance(perform(ALICE, DeleteDeck(deck_id=burn)).reports[0], WalkerError);
+    assert _quest(ALICE) == {"Lightning Bolt": 1};
+    assert _quest(BOB) == {"Lightning Bolt": 4, "Shock": 2};
+    bobs = perform(BOB, ListDecks()).reports[0] as list[Deck];
+    assert [d.name for d in bobs] == ["Burn (copy)"];
 }
 
 test "getting a card that is not in the catalogue is refused with refused-change and writes nothing" {

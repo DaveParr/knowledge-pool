@@ -14,6 +14,7 @@ import from decks {
     ListDecks,
     GetDeck,
     EditDeck,
+    DeleteDeck,
     ListOtherDecks,
     CopyOtherDeck,
     list_formats

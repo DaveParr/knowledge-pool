@@ -89,3 +89,5 @@ span.dd-count { display: inline-block; width: 3.2em; padding: 2px 4px; text-alig
 .dd-rename-btn { margin-left: 12px; font-size: 0.875rem; vertical-align: middle; }
 .dd-head .dd-rename-btn { color: var(--on-pool); }
 .dd-owned { margin-left: .4em; opacity: .7; font-weight: normal; }
+.dd-delete { margin-right: 8px; }
+.dd-delete-confirm { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }

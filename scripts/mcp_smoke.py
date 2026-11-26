@@ -27,7 +27,7 @@ MCP_SERVER = StdioServerParameters(
 
 TOOLS = {
     "search_cards", "get_card", "resolve_names", "get_format_rules",
-    "deck_list", "deck_browse", "deck_copy", "deck_create", "deck_get", "deck_edit",
+    "deck_list", "deck_browse", "deck_copy", "deck_delete", "deck_create", "deck_get", "deck_edit",
     "deck_validate", "deck_import", "deck_show", "deck_analyze", "card_search", "deck_export",
     "collection_get", "collection_change", "collection_import", "user_list", "collection_browse", "quest_list",
 }

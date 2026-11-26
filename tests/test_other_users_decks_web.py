@@ -68,6 +68,19 @@ def test_copying_makes_my_own_deck_and_leaves_the_original(client, alice, bob):
     assert [d["name"] for d in reports(client.post("/walker/ListDecks", json={}, headers=alice))[0]] == ["Alice's Burn"]
 
 
+def test_deleting_my_deck_removes_it_from_my_list_and_another_user_cannot(client, alice, bob):
+    deck_id = alices_deck(client, alice)
+    [refused] = reports(client.post("/walker/DeleteDeck", json={"deck_id": deck_id}, headers=bob))
+    assert refused["code"] == "not-your-deck"
+    assert [d["name"] for d in reports(client.post("/walker/ListDecks", json={}, headers=alice))[0]] == ["Alice's Burn"]
+    [deleted] = reports(client.post("/walker/DeleteDeck", json={"deck_id": deck_id}, headers=alice))
+    assert (deleted["id"], deleted["name"]) == (deck_id, "Alice's Burn")
+    assert reports(client.post("/walker/ListDecks", json={}, headers=alice))[0] == []
+    [gone] = reports(client.post("/walker/GetDeck", json={"deck_id": deck_id}, headers=alice))
+    assert gone["code"] == "no-such-deck"
+    assert reports(client.post("/walker/ListOtherDecks", json={}, headers=bob))[0] == []
+
+
 def test_copying_an_id_that_names_no_deck_is_no_such_deck(client, bob):
     [error] = reports(client.post("/walker/CopyOtherDeck", json={"deck_id": "nope"}, headers=bob))
     assert error["code"] == "no-such-deck"

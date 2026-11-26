@@ -102,6 +102,7 @@ DECK_TOOLS = {
     "deck_analyze": {},
     "deck_validate": {},
     "deck_copy": {},
+    "deck_delete": {},
     "deck_edit": {"changes": []},
     "deck_import": {"format": "text", "text": "1 Shock"},
     "deck_export": {},
@@ -215,6 +216,12 @@ def test_deck_validate_says_legal_and_has_no_game_changers_outside_commander(too
 def test_deck_copy_makes_the_callers_own_copy(tools, burn_id):
     copied = data(call(tools, "deck_copy", deck_id=burn_id))
     assert copied["name"] == "Burn (copy)" and copied["id"] != burn_id
+
+
+def test_deck_delete_removes_the_callers_own_deck_and_says_which(tools, burn_id):
+    assert data(call(tools, "deck_delete", deck_id=burn_id)) == {"id": burn_id, "name": "Burn"}
+    assert burn_id not in [d["id"] for d in data(call(tools, "deck_list"))]
+    assert failure(call(tools, "deck_get", deck_id=burn_id)) == "no-such-deck"
 
 
 def test_deck_import_of_a_text_list_fills_the_deck_and_lists_what_did_not_resolve(tools, deck_id):
@@ -418,6 +425,11 @@ def test_deck_copy_of_another_users_deck_is_my_own_copy_and_not_theirs_to_change
 
 def test_deck_edit_of_another_users_deck_is_a_tool_error_with_not_your_deck(tools, others_deck_id):
     assert failure(call(tools, "deck_edit", deck_id=others_deck_id, name="Mine now")) == "not-your-deck"
+
+
+def test_deck_delete_of_another_users_deck_is_a_tool_error_with_not_your_deck_and_the_deck_stays(tools, others_deck_id):
+    assert failure(call(tools, "deck_delete", deck_id=others_deck_id)) == "not-your-deck"
+    assert data(call(tools, "deck_get", deck_id=others_deck_id))["name"] == "Theirs"
 
 
 def test_collection_change_adds_removes_and_sets_counts_and_collection_get_reads_them(tools):

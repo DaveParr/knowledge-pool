@@ -22,7 +22,7 @@ import from jaclang.server.session { Session }
 import from pathlib { Path }
 import from catalog.ingest { build, load_atomic, load_oracle_tags }
 import catalog.store as store;
-import from decks { Deck, DeckView, CreateDeck, ListDecks, ListOtherDecks, CopyOtherDeck, GetDeck, EditDeck, DeckSummary, holdings }
+import from decks { Deck, DeckView, CreateDeck, ListDecks, ListOtherDecks, CopyOtherDeck, GetDeck, EditDeck, DeleteDeck, DeckSummary, holdings }
 import from profile { save_display_name, UNKNOWN_USER }
 import from deck_io { DeckExport, ExportResult }
 import from walker_errors { WalkerError }
@@ -75,6 +75,35 @@ test "each user lists only the decks they made" {
     assert "Bob's list deck" not in _deck_names(ALICE);
     assert "Bob's list deck" in _deck_names(BOB);
     assert "Alice's list deck" not in _deck_names(BOB);
+}
+
+test "an owner deletes their own deck, and it is gone from their list" {
+    mine = _new_deck(ALICE, "Alice's doomed deck");
+    assert "Alice's doomed deck" in _deck_names(ALICE);
+    assert _error_code(ALICE, DeleteDeck(deck_id=mine)) == "";
+    assert "Alice's doomed deck" not in _deck_names(ALICE);
+}
+
+test "another user cannot delete a deck: not-your-deck, and the deck stays; an id that names no deck is no-such-deck" {
+    alices = _new_deck(ALICE, "Alice's kept deck");
+    assert _error_code(BOB, DeleteDeck(deck_id=alices)) == "not-your-deck";
+    assert _error_code(BOB, DeleteDeck(deck_id=str(uuid4()))) == "no-such-deck";
+    assert _error_code(ALICE, DeleteDeck(deck_id="not an id")) == "no-such-deck";
+    assert "Alice's kept deck" in _deck_names(ALICE);
+    assert _error_code(ALICE, GetDeck(deck_id=alices)) == "";
+}
+
+test "deleting a deck leaves the shared card nodes, and the owner's other decks keep theirs" {
+    doomed = _deck_with(ALICE, "Alice's holding doomed deck", "Shock");
+    other = _deck_with(ALICE, "Alice's holding other deck", "Shock");
+    shock = _oracle_id("Shock");
+    shared = _card_ids(ALICE, doomed);
+    assert _error_code(ALICE, DeleteDeck(deck_id=doomed)) == "";
+    assert _deck_names(ALICE).count("Alice's holding doomed deck") == 0;
+    view = run_walker(ALICE, GetDeck(deck_id=other)).reports[0] as DeckView;
+    assert [c.oracle_id for c in view.cards] == [shock];
+    assert _card_ids(ALICE, other) == shared;
+    assert _error_code(ALICE, GetDeck(deck_id=doomed)) == "no-such-deck";
 }
 
 """The walker error `caller` gets for walker `w`, or "" when it worked."""
