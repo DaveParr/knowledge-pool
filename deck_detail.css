@@ -1,10 +1,16 @@
 /* Card lists follow ui/deck_table.html: one compact line per card, and each
    card expands to its in-game details. The web row adds a count input and a
-   remove button on either side of the expandable line. */
+   remove button on either side of the expandable line. Pool block: each zone's
+   list is an ink panel, lines split by 2px ink rules. */
 
-.dd-back { margin: 0 0 8px -10px; }
-.dd-head { display: flex; flex-wrap: wrap; justify-content: space-between; align-items: center; gap: 8px; }
-.dd-head h1 { margin: 0; }
+.dd-back { margin: 0 0 8px -12px; }
+.dd-head {
+  display: flex; flex-wrap: wrap; justify-content: space-between; align-items: center; gap: 12px;
+  padding: 20px; margin: 0 6px 12px 0; background: var(--pool); color: var(--on-pool);
+  border: var(--frame) solid var(--fg); border-radius: var(--radius-xl); box-shadow: var(--shadow-header);
+}
+.dd-head h1 { margin: 0; color: var(--on-pool); }
+.dd-head .meta { color: var(--on-pool); }
 
 .dd-zonehead { display: flex; justify-content: space-between; align-items: baseline; gap: 8px; }
 .dd-all { font-size: 12px; padding: 2px 8px; }
@@ -12,49 +18,61 @@
 /* Outer row: count | expandable line | remove. Inner line: marker | name | cost | type | P/T. */
 .dd-row { display: grid; grid-template-columns: 4.2em minmax(0, 1fr) 2.5em; gap: 6px; align-items: start; }
 .dd-line { display: grid; grid-template-columns: 10px minmax(0, 1fr) 7em minmax(0, 32%) 3.5em; gap: 8px; align-items: baseline; }
-.dd-colhead { color: var(--muted); font-size: 12px; font-weight: 600; border-bottom: 1px solid var(--line); padding: 0 0 2px; }
+.dd-colhead {
+  color: var(--muted); font-size: 10.5px; font-weight: 700; text-transform: uppercase; letter-spacing: .06em;
+  border-bottom: var(--rule) solid var(--fg); padding: 0 12px 4px;
+}
 .dd-colhead .dd-line { padding: 0 4px; }
 
-.dd-cards { list-style: none; margin: 0; padding: 0; }
-.dd-cards > li { border-bottom: 1px solid var(--line); padding: 3px 0; }
-.dd-count { width: 3.2em; padding: 2px 4px; font-variant-numeric: tabular-nums; }
+.dd-cards {
+  list-style: none; margin: 0 4px 0 0; padding: 4px 12px; background: var(--surface);
+  border: var(--frame) solid var(--fg); border-radius: var(--radius-lg); box-shadow: var(--shadow-panel);
+}
+.dd-cards > li { border-bottom: var(--rule) solid var(--fg); padding: 4px 0; }
+.dd-cards > li:last-child { border-bottom: 0; }
+.dd-count {
+  width: 3.2em; padding: 2px 4px; font: 900 13px/1.4 var(--font-display); font-variant-numeric: tabular-nums;
+  border-width: var(--rule); box-shadow: none;
+}
 .dd-remove { padding: 0 6px; }
 
-.dd-cards summary.dd-line { list-style: none; cursor: pointer; padding: 3px 4px; }
+.dd-cards summary.dd-line { list-style: none; cursor: pointer; padding: 4px; }
 .dd-cards summary.dd-line::-webkit-details-marker { display: none; }
 .dd-cards summary.dd-line::before {
-  content: "▸"; content: "▸" / ""; font-size: 10px; color: var(--muted); transition: transform .12s ease;
+  content: "▸"; content: "▸" / ""; font-size: 10px; color: var(--fg); transition: transform .12s ease;
 }
 .dd-cards details[open] > summary.dd-line::before { transform: rotate(90deg); }
-.dd-cards details[open] > summary.dd-line { background: var(--soft); border-radius: 6px 6px 0 0; }
-.dd-name { font-weight: 600; overflow-wrap: anywhere; }
+.dd-cards details[open] > summary.dd-line { background: var(--soft); border-radius: var(--radius-md) var(--radius-md) 0 0; }
+.dd-name { font-weight: 700; overflow-wrap: anywhere; }
 .dd-cost { white-space: nowrap; }
-.dd-type { color: var(--muted); font-size: 13px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.dd-pt { text-align: right; font-variant-numeric: tabular-nums; font-weight: 600; }
+.dd-type { color: var(--muted); font-size: 11px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.dd-pt { text-align: right; font: 900 13px/1.4 var(--font-display); font-variant-numeric: tabular-nums; }
 
 .dd-body {
-  background: var(--soft); border-radius: 0 0 6px 6px; padding: 4px 12px 12px 22px;
-  display: grid; gap: 10px; font-size: 13px;
+  background: var(--soft); border-radius: 0 0 var(--radius-md) var(--radius-md); padding: 4px 12px 12px 22px;
+  display: grid; gap: 10px;
 }
-.dd-face { border-left: 2px solid var(--line); padding-left: 10px; }
+.dd-face { border-left: var(--rule) solid var(--fg); padding-left: 10px; }
 .dd-face h3 { font-size: 13px; margin: 0; display: flex; gap: 8px; align-items: baseline; flex-wrap: wrap; }
-.dd-ft { color: var(--muted); font-size: 12px; font-weight: 400; display: inline-flex; gap: 6px; align-items: center; }
+.dd-ft { color: var(--muted); font-size: 11px; font-weight: 400; display: inline-flex; gap: 6px; align-items: center; }
 .dd-rules { white-space: pre-line; margin: 4px 0 0; }
 .dd-stats {
-  display: inline-block; margin: 4px 6px 0 0; padding: 1px 8px; border: 1px solid var(--line);
-  border-radius: 6px; font-variant-numeric: tabular-nums; font-weight: 600; font-size: 12px;
+  display: inline-block; margin: 4px 6px 0 0; padding: 1px 8px; border: var(--rule) solid var(--fg);
+  border-radius: var(--radius-sm); background: var(--surface); font: 900 12px/1.4 var(--font-display);
+  font-variant-numeric: tabular-nums;
 }
 .dd-body dl { display: grid; grid-template-columns: 8em minmax(0, 1fr); gap: 4px 10px; margin: 0; }
-.dd-body dt { color: var(--muted); }
+.dd-body dt { color: var(--muted); font-weight: 600; }
 .dd-body dd { margin: 0; }
-.dd-body dt.dd-quiet { font-size: 12px; }
+.dd-body dt.dd-quiet { font-size: 11px; }
 .dd-pills { display: flex; flex-wrap: wrap; gap: 4px; align-items: baseline; }
-.dd-kw { background: var(--bg); border: 1px solid var(--line); color: var(--fg); }
+.dd-kw { background: var(--surface); }
 .dd-tags { color: var(--muted); font-size: 11px; }
 
 @media (max-width: 560px) {
   .dd-line { grid-template-columns: 10px minmax(0, 1fr) 6em 3em; }
   .dd-type { display: none; }
+  .dd-head h1 { font-size: 22px; }
 }
 
 .dd-gc { margin-top: 0.5rem; }
@@ -63,9 +81,11 @@
 .dd-readonly { margin: 8px 0; }
 .dd-copy { margin-right: 8px; }
 span.dd-count { display: inline-block; width: 3.2em; padding: 2px 4px; text-align: right; font-variant-numeric: tabular-nums; }
-.dd-history { list-style: none; margin: 0; padding: 0; font-size: 13px; color: var(--muted); }
-.dd-history li { padding: 2px 0; white-space: pre-wrap; }
+.dd-history { list-style: none; margin: 0; padding: 0; font-size: 12.5px; color: var(--muted); }
+.dd-history li { padding: 4px 0; white-space: pre-wrap; border-bottom: var(--rule) solid var(--fg); }
+.dd-history li:last-child { border-bottom: 0; }
 .dd-rename { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
-.dd-rename input { font-size: 1.25rem; min-width: 16rem; }
+.dd-rename input { font: 900 1.25rem/1.2 var(--font-display); text-transform: uppercase; min-width: 16rem; }
 .dd-rename-btn { margin-left: 12px; font-size: 0.875rem; vertical-align: middle; }
+.dd-head .dd-rename-btn { color: var(--on-pool); }
 .dd-owned { margin-left: .4em; opacity: .7; font-weight: normal; }

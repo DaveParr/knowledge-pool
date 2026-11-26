@@ -2,11 +2,13 @@
 
 .sb {
   display: flex; flex-wrap: wrap; align-items: center; gap: 8px 16px;
-  padding: 8px 16px; border-bottom: 1px solid var(--line); background: var(--soft);
-  font-size: 13px;
+  padding: 10px 18px; border-bottom: var(--frame) solid var(--fg); background: var(--surface);
 }
-.sb-who { font-weight: 600; margin-right: auto; }
-.sb-connector { display: flex; align-items: center; gap: 6px; color: var(--muted); }
-.sb-connector input[type=text] { width: 22em; max-width: 60vw; font-family: var(--font-mono); }
+.sb-who { font: 900 15px/1.2 var(--font-display); text-transform: uppercase; letter-spacing: -.01em; margin-right: auto; }
+.sb-connector { display: flex; align-items: center; gap: 6px; color: var(--muted); font-weight: 600; }
+.sb-connector input[type=text] { width: 22em; max-width: 60vw; font-family: var(--font-mono); font-size: 12px; }
 .sb-signout { margin: 0; }
-.sb-signout .link { background: none; border: 0; padding: 0; color: var(--accent); cursor: pointer; text-decoration: underline; }
+.sb-signout .link {
+  background: none; border: 0; box-shadow: none; padding: 0; color: var(--fg); cursor: pointer;
+  text-decoration: underline; text-decoration-thickness: 2px; text-underline-offset: 2px;
+}
