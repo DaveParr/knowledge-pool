@@ -12,7 +12,11 @@ import from datetime { datetime, timezone }
 import from cards { Card, card_node }
 import from decks { ChangeNote }
 import from walker_errors { WalkerError }
-import from collection_views { UserAction, UserSummary, CollectionLine, CollectionView, MODE_ADD, MODE_REMOVE, MODE_SET, MODES, REFUSED_CHANGE, NOT_YOUR_COLLECTION }
+import from deck_io { resolve_list }
+import from collection_views { UserAction, UserSummary, CollectionLine, CollectionView, ImportCollectionResult, MODE_ADD, MODE_REMOVE, MODE_SET, MODES, REFUSED_CHANGE, NOT_YOUR_COLLECTION }
+
+"""The reason every card changed by a pasted list is logged with."""
+glob REASON_IMPORTED: str = "imported";
 
 """A user's collection: the node its `Owns` edges and its history hang from."""
 node Collection {
@@ -222,5 +226,40 @@ walker:protect GetOtherCollection(UserAction) {
 
     can show with Root entry {
         report collection_view(find_collection());
+    }
+}
+
+"""Add a pasted deck list, in any format deck import reads, to the caller's
+collection. Zones are ignored and repeats summed; each total is added to the
+count held (an import never lowers or removes a count) and logged as "imported".
+Lines that resolve to no card are listed in `unresolved` and the rest still go
+in. An unknown or import-less list format reports a WalkerError."""
+walker:protect ImportCollection {
+    has format: str = "mtgdeck1",
+        text: str = "",
+        reports: list[ImportCollectionResult | WalkerError] = [];
+
+    can do_import with Root entry {
+        rl = resolve_list(self.format, self.text);
+        if isinstance(rl, WalkerError) {
+            report rl;
+            disengage;
+        }
+        totals: dict[str, int] = {};
+        for ent in rl.entries {
+            totals[ent.oracle_id] = totals.get(ent.oracle_id, 0) + ent.count;
+        }
+        coll = my_collection();
+        unresolved = [*rl.unresolved];
+        for (oid, total) in totals.items() {
+            why = set_count(coll, oid, copies(coll, oid) + total, REASON_IMPORTED);
+            if why {
+                unresolved.append(f"{card_name(oid)} ({why})");
+            }
+        }
+        if totals and find_collection() is None {
+            root ++> coll;
+        }
+        report ImportCollectionResult(collection=collection_view(find_collection()), unresolved=unresolved);
     }
 }

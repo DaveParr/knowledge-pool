@@ -418,3 +418,13 @@ def test_collection_browse_reads_another_users_collection_by_handle(tools, other
 def test_collection_browse_of_an_unknown_handle_is_a_tool_error_with_no_such_user(tools):
     assert failure(call(tools, "collection_browse", handle="nope")) == "no-such-user"
 
+def test_collection_import_adds_a_pasted_list_and_reports_names_that_resolve_to_no_card(tools):
+    result = data(call(tools, "collection_import", format="text", text="4 Lightning Bolt\n\nSideboard\n1 Lightning Bolt\n2 Not A Real Card\n"))
+    assert [(c["name"], c["count"]) for c in result["collection"]["cards"]] == [("Lightning Bolt", 5)]
+    assert any("Not A Real Card" in line for line in result["unresolved"])
+    assert result["collection"]["history"][-1]["reason"] == "imported"
+    assert data(call(tools, "collection_get"))["cards"][0]["count"] == 5
+
+
+def test_collection_import_of_an_unknown_format_is_a_tool_error(tools):
+    assert failure(call(tools, "collection_import", format="nope", text="1 Shock")) == "unknown-list-format"

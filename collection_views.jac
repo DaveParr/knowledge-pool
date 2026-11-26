@@ -42,3 +42,10 @@ obj UserSummary {
 walker UserAction {
     has handle: str;
 }
+
+"""What importing a pasted list into a collection reports: the collection as it
+now stands, and the lines or names that resolved to no card (and were not added)."""
+obj ImportCollectionResult {
+    has collection: CollectionView = CollectionView(),
+        unresolved: list[str] = [];
+}

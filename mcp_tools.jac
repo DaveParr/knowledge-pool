@@ -20,7 +20,7 @@ import from deckformats { export_format_choices }
 import from zones { zone_choices, zone_options }
 import from deck_io { DeckExport, DeckImport }
 import from deck_operations { perform }
-import from collection { GetCollection, ChangeCollection, ListUsers, GetOtherCollection }
+import from collection { GetCollection, ChangeCollection, ImportCollection, ListUsers, GetOtherCollection }
 import from collection_views { MODE_ADD }
 import from legality { GetFormatRules }
 import from walker_errors { WalkerError }
@@ -406,4 +406,15 @@ def user_list -> list[JsonObject] {
 with counts, and the history of their changes. Read-only: only its owner changes it."""
 def collection_browse(handle: str) -> JsonObject {
     return outcome(perform(request_caller(), GetOtherCollection(handle=handle)));
+}
+
+"""Add a pasted card list to your collection. `format` is one of the formats
+deck_import reads: mtgdeck1, mtgjson, text, arena or moxfield. Zone headers
+(Sideboard, Maybeboard and so on) are ignored and repeated cards summed; the
+totals are added to the counts you have, and an import never lowers or removes
+a count. Each card changed is logged with the reason "imported". Names that
+resolve to no card are listed under "unresolved" and the rest are still added.
+Returns your collection and the unresolved names."""
+def collection_import(format: str, text: str) -> JsonObject {
+    return outcome(perform(request_caller(), ImportCollection(format=format, text=text)));
 }

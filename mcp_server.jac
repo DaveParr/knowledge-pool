@@ -39,7 +39,7 @@ import from mcp.server.mcpserver { MCPServer }
 import from mcp.server.apps { Apps, ResourcePermissions }
 import from mcp.server.stdio { stdio_server }
 import from mcp.server.streamable_http { TransportSecuritySettings }
-import from mcp_tools { adapted, deck_show, deck_analyze, card_search, deck_export, search_cards, get_card, resolve_names, get_format_rules, deck_list, deck_browse, deck_copy, deck_create, deck_get, deck_edit, deck_validate, deck_import, collection_get, collection_change, user_list, collection_browse }
+import from mcp_tools { adapted, deck_show, deck_analyze, card_search, deck_export, search_cards, get_card, resolve_names, get_format_rules, deck_list, deck_browse, deck_copy, deck_create, deck_get, deck_edit, deck_validate, deck_import, collection_get, collection_change, collection_import, user_list, collection_browse }
 import from ui_pages { view_page }
 import from front_door { FrontDoorConfig, front_door_app }
 import from gatekeeper { GatekeeperConfig }
@@ -102,8 +102,8 @@ deck_export are bound to their views in `make_apps`."""
 def register_tools {
     for tool in [
         search_cards, get_card, resolve_names, get_format_rules, deck_list, deck_browse, deck_copy,
-        deck_create, deck_get, deck_edit, deck_validate, deck_import, collection_get, collection_change, user_list,
-        collection_browse
+        deck_create, deck_get, deck_edit, deck_validate, deck_import, collection_get, collection_change, collection_import,
+        user_list, collection_browse
     ] {
         server.tool()(adapted(tool));
     }
