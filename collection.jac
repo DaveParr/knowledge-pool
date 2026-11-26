@@ -43,14 +43,33 @@ def my_collection -> Collection {
     return made;
 }
 
+"""Every (edge, card) pair the collection holds."""
+def holdings(coll: Collection) -> list[tuple[Owns, Card]] {
+    return [([edge coll ->:Owns:-> c][0], c) for c in [coll ->:Owns:->]];
+}
+
 """The `Owns` edge and card for `oid`, or None when the collection has none."""
 def owned(coll: Collection, oid: str) -> tuple[Owns, Card] | None {
-    for c in [coll ->:Owns:->] {
+    for (e, c) in holdings(coll) {
         if c.oracle_id == oid {
-            return ([edge coll ->:Owns:-> c][0], c);
+            return (e, c);
         }
     }
     return None;
+}
+
+"""Why `count` is not a count a collection can hold, or "" when it is."""
+def count_problem(count: int) -> str {
+    if not isinstance(count, int) or isinstance(count, bool) or count < 0 {
+        return "count must be a whole number, 0 or more.";
+    }
+    return "";
+}
+
+"""The card's name for a message, or `oid` itself when it is not a known card."""
+def card_name(oid: str) -> str {
+    card = card_node(root.shared, oid);
+    return card.name if card is not None else oid;
 }
 
 """How many copies of `oid` the collection holds (every printing)."""
@@ -67,12 +86,13 @@ def set_count(coll: Collection, oid: str, count: int, reason: str) -> str {
     if not reason.strip() {
         return "every change needs a reason.";
     }
-    if not isinstance(count, int) or isinstance(count, bool) or count < 0 {
-        return "count must be a whole number, 0 or more.";
+    problem = count_problem(count);
+    if problem {
+        return problem;
     }
     found = owned(coll, oid);
     before = found[0].count if found is not None else 0;
-    name = oid;
+    name = "";
     if found is None {
         if count == 0 {
             return "";
@@ -116,12 +136,13 @@ def change_count(coll: Collection, oid: str, count: int, mode: str, reason: str)
     if mode not in MODES {
         return f"mode must be one of: {', '.join(MODES)}.";
     }
-    if not isinstance(count, int) or isinstance(count, bool) or count < 0 {
-        return "count must be a whole number, 0 or more.";
+    problem = count_problem(count);
+    if problem {
+        return problem;
     }
     have = copies(coll, oid);
     if mode == MODE_REMOVE and count > have {
-        return f"you have {have} of {oid}, so cannot remove {count}.";
+        return f"you have {have} of {card_name(oid)}, so cannot remove {count}.";
     }
     target = count if mode == MODE_SET else (have + count if mode == MODE_ADD else have - count);
     return set_count(coll, oid, target, reason);
@@ -133,10 +154,10 @@ def collection_view(coll: Collection | None) -> CollectionView {
         return CollectionView();
     }
     lines = sorted(
-        [CollectionLine(oracle_id=c.oracle_id, name=c.name, count=[edge coll ->:Owns:-> c][0].count) for c in [coll ->:Owns:->]],
+        [CollectionLine(oracle_id=c.oracle_id, name=c.name, count=e.count) for (e, c) in holdings(coll)],
         key=lambda (l: CollectionLine) { return l.name; }
     );
-    return CollectionView(cards=lines, total=sum([l.count for l in lines]), history=coll.history[-100:]);
+    return CollectionView(cards=lines, total=sum([l.count for l in lines]), history=coll.history);
 }
 
 """Report the caller's collection."""

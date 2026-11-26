@@ -129,6 +129,20 @@ test "changing a collection runs only on the caller's own root, and the page may
     assert "ChangeCollection" in page_walkers() and "GetCollection" in page_walkers();
 }
 
+test "a refused removal names the card, not its oracle id" {
+    _change(ALICE, "Sol Ring", 1);
+    refused = _change(ALICE, "Sol Ring", 4, MODE_REMOVE);
+    assert refused is not None;
+    assert "Sol Ring" in refused.message;
+}
+
+test "the history keeps every change, however many" {
+    for i in range(130) {
+        _change(BOB, "Mountain", 1, reason=f"change {i}");
+    }
+    assert len([n for n in _collection(BOB).history if n.name == "Mountain"]) == 130;
+}
+
 # Keep last: `perform` registers the shared root for this process, and `jac test`
 # gives each test an empty graph, so the next file's tests (which spawn on a bare
 # root) would look for a shared root that no longer exists.

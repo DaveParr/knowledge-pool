@@ -21,10 +21,9 @@ obj CollectionLine {
 }
 
 """A collection: its cards by name with counts, the copies in all, and its
-recent history, newest last."""
+history, newest last."""
 obj CollectionView {
     has cards: list[CollectionLine] = [],
         total: int = 0,
         history: list[ChangeNote] = [];
 }
-
