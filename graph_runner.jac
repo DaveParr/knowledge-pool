@@ -396,13 +396,14 @@ def list_users(caller: str | None) -> list[UserSummary] | WalkerError {
         mine = user_handle(user_root_id(caller));
         others: list[UserSummary] = [];
         for root_id in user_root_ids() {
-            if user_handle(root_id) == mine {
+            handle = user_handle(root_id);
+            if handle == mine {
                 continue;
             }
             name = in_context(
                 root_id, lambda () -> object { return display_name(); }, name="list_users", caller=str(caller)
             ) as str;
-            others.append(UserSummary(handle=user_handle(root_id), name=name));
+            others.append(UserSummary(handle=handle, name=name));
         }
         return sorted(others, key=lambda (u: UserSummary) { return (u.name, u.handle); });
     } except CallFailed as failed {

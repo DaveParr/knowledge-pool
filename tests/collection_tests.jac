@@ -166,7 +166,10 @@ test "listing users returns each other user's handle and display name, not the c
     listed = perform(ALICE, ListUsers()).reports[0] as list[UserSummary];
     names = [u.name for u in listed];
     assert "Bob Builder" in names;
-    assert UNKNOWN_USER not in [u.name for u in listed if u.name == "Bob Builder"];
+    eve = "user_test_collection_eve";
+    _change(eve, "Sol Ring", 1);
+    unnamed = perform(ALICE, ListUsers()).reports[0] as list[UserSummary];
+    assert UNKNOWN_USER in [u.name for u in unnamed];
     handles = [u.handle for u in listed];
     assert len(handles) == len(set(handles));
     assert all(["@" not in u.handle and ALICE not in u.handle and BOB not in u.handle for u in listed]);

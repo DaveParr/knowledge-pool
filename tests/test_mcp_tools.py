@@ -289,6 +289,7 @@ def conflicting(monkeypatch):
 
 
 @pytest.mark.parametrize("tool", ["deck_list", "deck_browse", "get_card", "search_cards", "resolve_names", "deck_get", "deck_edit", "deck_create", "user_list"])
+# `others_deck_id` makes a second user: listing users has nothing to read (and so cannot conflict) without one.
 def test_a_call_the_runner_could_not_finish_is_a_tool_error_with_try_again(tools, deck_id, others_deck_id, conflicting, tool):
     arguments = {
         "get_card": {"oracle_id_or_name": "Shock"}, "search_cards": {"query": "bolt"},
