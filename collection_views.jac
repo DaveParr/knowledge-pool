@@ -11,7 +11,9 @@ glob MODE_ADD: str = "add",
      MODE_REMOVE: str = "remove",
      MODE_SET: str = "set",
      MODES: list[str] = [MODE_ADD, MODE_REMOVE, MODE_SET],
-     REFUSED_CHANGE: str = "refused-change";
+     REFUSED_CHANGE: str = "refused-change",
+     NOT_YOUR_COLLECTION: str = "not-your-collection",
+     NO_SUCH_USER: str = "no-such-user";
 
 """One card of a collection with the copies held."""
 obj CollectionLine {
@@ -26,6 +28,19 @@ obj CollectionView {
     has cards: list[CollectionLine] = [],
         total: int = 0,
         history: list[ChangeNote] = [];
+}
+
+"""Another user as the collection views name them: an opaque `handle` that
+stands for the user wherever a user is named, and their display name. Never an
+email address."""
+obj UserSummary {
+    has handle: str,
+        name: str;
+}
+
+"""A walker that acts on the user named by `handle`."""
+walker UserAction {
+    has handle: str;
 }
 
 """What importing a pasted list into a collection reports: the collection as it

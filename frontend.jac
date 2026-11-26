@@ -7,6 +7,7 @@ import from .export_panel { ExportPanel }
 import from .walker_failure { failureMessage, REFUSED_LINE }
 import from .session_bar { SessionBar }
 import from .collection_page { CollectionPage }
+import from .others_collections_page { OthersCollectionsPage }
 
 import from decks { Deck, DeckSummary, FormatInfo, CreateDeck, ListDecks, ListOtherDecks, list_formats }
 import from deck_io { CreateDeckFromList, NewDeckResult }
@@ -18,6 +19,7 @@ def:pub app -> JsxElement {
         otherDecks: list[DeckSummary] = [],
         openDeckId: str = "",
         showCollection: bool = False,
+        showOthers: bool = False,
         importOpen: bool = False,
         importFormat: str = "moxfield",
         importText: str = "",
@@ -61,6 +63,14 @@ def:pub app -> JsxElement {
             </main>;
     }
 
+    if showOthers {
+        return
+            <main className="page">
+                <SessionBar/>
+                <OthersCollectionsPage onBack={lambda { showOthers = False; }}/>
+            </main>;
+    }
+
     if openDeckId {
         return
             <main className="page">
@@ -81,6 +91,8 @@ def:pub app -> JsxElement {
             <h1>Decks</h1>
             <p>
                 <a href="#" onClick={lambda (e: MouseEvent) { e.preventDefault(); showCollection = True; }}>My collection</a>
+                {" · "}
+                <a href="#" onClick={lambda (e: MouseEvent) { e.preventDefault(); showOthers = True; }}>Other users' collections</a>
             </p>
             <form onSubmit={createDeck} className="fe-create">
                 <div className="fe-row">

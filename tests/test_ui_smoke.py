@@ -342,6 +342,18 @@ def test_the_my_collection_view_adds_removes_and_sets_a_count_of_copies(app):
     assert "× 7" in app.wait_text("× 7", within="ul[aria-label='My collection']")
 
 
+def test_the_other_users_collections_view_is_read_only_and_apart_from_my_collection(app):
+    app.browse("open", app.web)
+    app.click("link", "Other users' collections")
+    heading = app.wait_text("Other users' collections", within="h1")
+    assert "Other users' collections" in heading
+    # Local mode has one user, so there is no one else to list.
+    app.wait_text("No other users yet.")
+    assert app.js("document.querySelectorAll('main.narrow button, main.narrow input').length").strip() == "0"
+    app.click("link", "← Decks")
+    app.wait_text("My collection")
+
+
 async def deck_show_result(url: str) -> dict:
     """deck_show's structuredContent for the "Smoke Burn" deck (created if missing)."""
 

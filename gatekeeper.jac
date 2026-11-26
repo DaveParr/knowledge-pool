@@ -45,6 +45,8 @@ import from walker_errors { WalkerError }
 glob HEALTH_PATH: str = "/healthz",
      # The built bundle's script and stylesheet, which its page loads from the root.
      ROOT_ASSET: re.Pattern = re.compile(r"/client\.[A-Za-z0-9_-]+\.js|/styles\.css"),
+     # The page's icons (`public/icons/<set>/<file>`), linked from its head.
+     ICON_ASSET: re.Pattern = re.compile(r"/icons/(web-and-mobile|transparent|light|dark)/[A-Za-z0-9_.-]+\.(png|ico)"),
      # The MCP SDK's app answers these paths (the connector, and later its OAuth discovery).
      MCP_PREFIXES: list[str] = ["/mcp", "/.well-known/"],
      # What a connector may fetch without a token: the metadata that says where to sign in.
@@ -126,9 +128,9 @@ def check_data_call(request: Request, config: GatekeeperConfig) -> Caller | Resp
 
 """Whether `path` is the page or one of its static files: the only paths
 forwarded to Jac's server. Nothing that climbs out of `/static/`; at the root,
-only a built bundle's script or stylesheet (`/client.<hash>.js`, `/styles.css`)."""
+only a built bundle's script or stylesheet (`/client.<hash>.js`, `/styles.css`) and the icons."""
 def is_page_path(path: str) -> bool {
-    if path == "/" or ROOT_ASSET.fullmatch(path) {
+    if path == "/" or ROOT_ASSET.fullmatch(path) or ICON_ASSET.fullmatch(path) {
         return True;
     }
     return path.startswith("/static/") and ".." not in path and "//" not in path and "%" not in path;
