@@ -12,7 +12,7 @@ The judgement calls reviewers check every time. Mechanical checks belong in `jac
 
 Each graph read is a store round trip, so a walker's cost is its number of reads. From the #241 research; sources are the pinned `jac guide jac-node-edge-patterns` and `jac-sv-persistence`, and jaseci-labs/jac [#9914](https://github.com/jaseci-labs/jac/issues/9914) and [#9887](https://github.com/jaseci-labs/jac/issues/9887).
 
-- **Read a node's edges once per call.** Why: a traversal is eager and re-reads the neighbourhood wherever it appears, so in a loop it runs per iteration. No traversal, `holdings()` or `owned()` in a loop over lines or cards; build a dict first, as `owned_search` (`collection.jac`) does. Source: `jac-node-edge-patterns`, "Reference semantics".
+- **Read a node's edges once per call.** a traversal is eager and re-reads the neighbourhood wherever it appears, so in a loop it runs per iteration. No traversal, `holdings()` or `owned()` in a loop over lines or cards; build a dict first, as `owned_search` (`collection.jac`) does. Source: `jac-node-edge-patterns`, "Reference semantics".
 
   ```jac
   # wrong: copies() reaches owned() and holdings() on every line (#241)
@@ -22,7 +22,7 @@ Each graph read is a store round trip, so a walker's cost is its number of reads
   for line in lines { n = counts.get(line.oracle_id, 0); }
   ```
 
-- **Ask the store, not the process.** Why: a predicate inside the reference runs as one query, and `jobj` finds by id in O(1), where a Jac loop pays for every row. For many lookups in one call, the rule above wins: N queries are still N round trips. Source: `jac-sv-persistence`, "Ask the store, not the process".
+- **Ask the store, not the process.** a predicate inside the reference runs as one query, and `jobj` finds by id in O(1), where a Jac loop pays for every row. For many lookups in one call, the rule above wins: N queries are still N round trips. Source: `jac-sv-persistence`, "Ask the store, not the process".
 
   ```jac
   # wrong: read every card, filter in Jac
@@ -32,7 +32,7 @@ Each graph read is a store round trip, so a walker's cost is its number of reads
   # by id: deck = jobj(deck_id);
   ```
 
-- **A lookup helper that scans is for one lookup.** Why: callers copy its use into loops. Name scanners `find_…`, state O(n) in the docstring, and give callers that need many a map builder.
+- **A lookup helper that scans is for one lookup.** callers copy its use into loops. Name scanners `find_…`, state O(n) in the docstring, and give callers that need many a map builder (the #241 `owned()` was named like a getter).
 
   ```jac
   # wrong: a scan named like a getter
@@ -43,7 +43,7 @@ Each graph read is a store round trip, so a walker's cost is its number of reads
   def find_owned(coll: Collection, oid: str) -> tuple[Owns, Card] | None { ... }
   ```
 
-- **Size tests to the failure.** Why: small fixtures hide O(lines × collection). Any walker that loops over user data has a test at about 10× the expected size, with a generous time bound.
+- **Size tests to the failure.** small fixtures hide O(lines × collection). Any walker that loops over user data has a test at about 10× the expected size, with a generous time bound (#241 asks for 500+ collection cards).
 
   ```python
   # wrong: only the 25-card fixture
@@ -52,7 +52,7 @@ Each graph read is a store round trip, so a walker's cost is its number of reads
   def test_stamp_collection_stays_fast_at_ten_times_size(): ...  # assert elapsed < bound
   ```
 
-- **Bound every wait in the request path, and log slow calls.** Why: a request timeout cannot stop a sync handler, so one slow call holds a lock and its thread while others queue. Bound the wait for the lock or queue, and log the name and duration of calls over a threshold. Source: #9914, #9887. Whether `LOCK` in `graph_runner.jac` should exist at all is #241's question, not a rule here.
+- **Bound every wait in the request path, and log slow calls.** a request timeout cannot stop a sync handler, so one slow call holds a lock and its thread while others queue. Bound the wait for the lock or queue, and log the name and duration of calls over a threshold. Source: #9914, #9887. Whether `LOCK` in `graph_runner.jac` should exist at all is #241's question, not a rule here.
 
   ```jac
   # wrong: unbounded wait, unmeasured
