@@ -83,6 +83,15 @@ async def main() -> None:
         kept = data(await session.call_tool("collection_get", {}))
         check("collection_get reads the collection back", cards[0]["oracle_id"] in [c["oracle_id"] for c in kept["cards"]], kept)
 
+        owned_hits = data(await session.call_tool("search_cards", {"query": "lightning bolt", "owned_only": True}))
+        check("search_cards owned_only keeps the cards in my collection, with their counts", [(h["name"], h["owned"]) for h in owned_hits] == [("Lightning Bolt", 2)], owned_hits)
+        owned_in_deck = await session.call_tool("card_search", {"deck_id": deck_id, "query": "lightning", "owned_only": True})
+        check(
+            "card_search owned_only keeps the cards in the deck owner's collection, with their counts",
+            not owned_in_deck.is_error and "| Lightning Bolt | {R} | Instant | 4 main | 2 |" in owned_in_deck.content[0].text and "Ball Lightning" not in owned_in_deck.content[0].text,
+            owned_in_deck.content,
+        )
+
         others = data(await session.call_tool("user_list", {}))
         check("user_list lists users by handle and name only", all(set(u) == {"handle", "name"} for u in others), others)
         unknown = await session.call_tool("collection_browse", {"handle": "no-such-handle"})

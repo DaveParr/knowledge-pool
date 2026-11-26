@@ -165,7 +165,8 @@ def md_cell(value: str) -> str {
 }
 
 """Search hits as a Markdown table with an In deck column, for clients that do not
-render MCP Apps (and for the model). The oracle ids are there so the model can pass
+render MCP Apps (and for the model). Hits that carry `owned` (the deck owner's
+collection count) get an Owned column. The oracle ids are there so the model can pass
 them straight to deck_edit."""
 def search_markdown(result: JsonObject) -> str {
     hits = result["hits"] as list[JsonObject];
@@ -174,17 +175,18 @@ def search_markdown(result: JsonObject) -> str {
         return f"No cards match \"{query}\". Every word must match the start of a word in the name, type or rules text.";
     }
     deck_name = (result["deck"] as JsonObject)["name"] as str;
+    with_owned = "owned" in hits[0];
     lines = [
         f"{len(hits)} {'card matches' if len(hits) == 1 else 'cards match'} \"{query}\" (deck: {deck_name}):",
         "",
-        "| Card | Cost | Type | In deck | Oracle id |",
-        "|---|---|---|---|---|"
+        "| Card | Cost | Type | In deck | " + ("Owned | " if with_owned else "") + "Oracle id |",
+        "|---|---|---|---|---|" + ("---|" if with_owned else "")
     ];
     for h in hits {
         in_deck = h["in_deck"] as dict[str, int];
         held = ", ".join(f"{n} {z}" for (z, n) in in_deck.items() if n) or "-";
         lines.append(
-            f"| {md_cell(h['name'] as str)} | {h['mana_cost']} | {md_cell(h['type_line'] as str)} | {held} | `{h['oracle_id']}` |"
+            f"| {md_cell(h['name'] as str)} | {h['mana_cost']} | {md_cell(h['type_line'] as str)} | {held} | " + (f"{h['owned']} | " if with_owned else "") + f"`{h['oracle_id']}` |"
         );
     }
     lines += ["", "Which should I add, how many, and to main or sideboard?"];

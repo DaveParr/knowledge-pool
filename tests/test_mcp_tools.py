@@ -272,6 +272,38 @@ def test_card_search_shows_what_the_deck_holds_and_whether_it_is_mine(tools, bur
     assert "| In deck |" in text(call(tools, "card_search", deck_id=burn_id, query="lightning bolt"))
 
 
+def test_card_search_hits_carry_the_deck_owners_collection_count(tools, burn_id):
+    call(tools, "collection_change", oracle_id=oracle_id(tools, "Lightning Bolt"), count=2, reason="test")
+    found = call(tools, "card_search", deck_id=burn_id, query="lightning", apps=True)
+    owned = {h["name"]: h["owned"] for h in found.structured_content["hits"]}
+    assert owned["Lightning Bolt"] == 2 and owned["Ball Lightning"] == 0
+
+
+def test_card_search_owned_only_keeps_cards_in_the_deck_owners_collection(tools, burn_id):
+    call(tools, "collection_change", oracle_id=oracle_id(tools, "Lightning Bolt"), count=2, reason="test")
+    found = call(tools, "card_search", deck_id=burn_id, query="lightning", owned_only=True, apps=True)
+    assert [(h["name"], h["owned"], h["in_deck"]) for h in found.structured_content["hits"]] == [("Lightning Bolt", 2, {"main": 4})]
+
+
+def test_card_search_markdown_has_an_owned_column(tools, burn_id):
+    call(tools, "collection_change", oracle_id=oracle_id(tools, "Lightning Bolt"), count=2, reason="test")
+    table = text(call(tools, "card_search", deck_id=burn_id, query="lightning bolt"))
+    assert "| In deck | Owned |" in table and "| 4 main | 2 |" in table
+
+
+def test_search_cards_owned_only_keeps_cards_in_your_collection(tools):
+    call(tools, "collection_change", oracle_id=oracle_id(tools, "Ball Lightning"), count=1, reason="test")
+    names = [h["name"] for h in data(call(tools, "search_cards", query="lightning", owned_only=True))]
+    assert names == ["Ball Lightning"]
+
+
+def test_search_cards_without_owned_only_is_the_plain_catalogue_search(tools):
+    call(tools, "collection_change", oracle_id=oracle_id(tools, "Ball Lightning"), count=1, reason="test")
+    hits = data(call(tools, "search_cards", query="lightning"))
+    assert {"Lightning Bolt", "Ball Lightning"} <= {h["name"] for h in hits}
+    assert all("owned" not in h for h in hits)
+
+
 def test_card_search_with_no_match_is_not_an_error(tools, burn_id):
     none = call(tools, "card_search", deck_id=burn_id, query="zzqxv")
     assert not none.is_error and text(none).startswith("No cards match")

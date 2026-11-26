@@ -20,7 +20,7 @@ import from deckformats { export_format_choices }
 import from zones { zone_choices, zone_options }
 import from deck_io { DeckExport, DeckImport }
 import from deck_operations { perform }
-import from collection { GetCollection, ChangeCollection, ImportCollection, ListUsers, GetOtherCollection }
+import from collection { GetCollection, ChangeCollection, ImportCollection, ListUsers, GetOtherCollection, SearchDeckCards, SearchMyCards }
 import from collection_views { MODE_ADD }
 import from quest_list { GetQuestList, GetOtherQuestList }
 import from legality { GetFormatRules }
@@ -117,10 +117,14 @@ def deck_analyze(deck_id: str, ctx: Context) -> CallToolResult {  # jac:ignore[W
 """Search the catalogue for cards to add to a deck, showing how many copies the deck
 already holds in main and sideboard. Every word must match, as a prefix. Clients that
 support MCP Apps render a search panel where the user can add hits to the deck
-themselves; others get a Markdown table. Use search_cards when no deck is involved."""
-def card_search(deck_id: str, query: str, ctx: Context, limit: int = 20) -> CallToolResult {  # jac:ignore[W1036]: the SDK finds the context by this bare annotation
+themselves; others get a Markdown table. Each hit also carries `owned`, how many copies
+the deck owner's collection holds (the owner's, even when you search another user's
+deck). Set owned_only to keep only cards in that collection. Use search_cards when no
+deck is involved."""
+def card_search(deck_id: str, query: str, ctx: Context, limit: int = 20, owned_only: bool = False) -> CallToolResult {  # jac:ignore[W1036]: the SDK finds the context by this bare annotation
     view = outcome(perform(request_caller(), GetDeck(deck_id=deck_id)));
-    result = search_with_holdings(view, query, limit);
+    found = outcome(perform(request_caller(), SearchDeckCards(deck_id=deck_id, query=query, limit=limit, owned_only=owned_only)));
+    result = search_with_holdings(view, query, limit, found);
     if result["error"] {
         raise card_search_failure(result["error"] as str);
     }
@@ -130,8 +134,10 @@ def card_search(deck_id: str, query: str, ctx: Context, limit: int = 20) -> Call
 """Search hits for one deck, each with the copies that deck holds per zone
 (`in_deck`, e.g. {"main": 2}), plus a short summary of the deck. `mine` is
 whether the caller owns the deck: the view offers its Add buttons only then. A
-catalogue failure comes back as `error` with no hits."""
-def search_with_holdings(view: JsonObject, query: str, limit: int) -> JsonObject {
+catalogue failure comes back as `error` with no hits. `owned` is the deck owner's
+`SearchDeckCards` report: when given, its hits (each with its collection count) are
+used in place of a plain catalogue search."""
+def search_with_holdings(view: JsonObject, query: str, limit: int, owned: JsonObject | None = None) -> JsonObject {
     held: dict[str, dict[str, int]] = {};
     for c in view["cards"] as list[JsonObject] {
         oid = c["oracle_id"] as str;
@@ -140,8 +146,14 @@ def search_with_holdings(view: JsonObject, query: str, limit: int) -> JsonObject
         zones[zone] = zones.get(zone, 0) + (c["count"] as int);
         held[oid] = zones;
     }
-    found = catalog_search(query, limit);
-    hits = [{**(plain(h) as JsonObject), "in_deck": held.get(h.oracle_id, {})} for h in found.hits];
+    if owned is None {
+        found = catalog_search(query, limit);
+        hits = [{**(plain(h) as JsonObject), "in_deck": held.get(h.oracle_id, {})} for h in found.hits];
+        error = found.error;
+    } else {
+        hits = [{**h, "in_deck": held.get(h["oracle_id"] as str, {})} for h in owned["hits"] as list[JsonObject]];
+        error = owned["error"] as str;
+    }
     return {
         "deck": {
             "id": view["id"],
@@ -154,7 +166,7 @@ def search_with_holdings(view: JsonObject, query: str, limit: int) -> JsonObject
         "query": query,
         "limit": limit,
         "hits": hits,
-        "error": found.error
+        "error": error
     };
 }
 
@@ -266,8 +278,17 @@ def card_search_failure(message: str) -> ToolFailure {
     return ToolFailure(error=WalkerError(code="card-search-failed", message=message));
 }
 
-"""Search card names, type lines and rules text. Every word must match, as a prefix."""
-def search_cards(query: str, limit: int = 20) -> list[JsonObject] {
+"""Search card names, type lines and rules text. Every word must match, as a prefix.
+Set owned_only to keep only cards in your own collection; each hit then carries
+`owned`, how many copies you have."""
+def search_cards(query: str, limit: int = 20, owned_only: bool = False) -> list[JsonObject] {
+    if owned_only {
+        owned = outcome(perform(request_caller(), SearchMyCards(query=query, limit=limit, owned_only=True)));
+        if owned["error"] {
+            raise card_search_failure(owned["error"] as str);
+        }
+        return owned["hits"] as list[JsonObject];
+    }
     found = ask(lambda () -> object { return catalog_search(query, limit); }) as CardSearch;
     if found.error {
         raise card_search_failure(found.error);
