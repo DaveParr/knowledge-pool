@@ -543,5 +543,16 @@ def test_a_view_drops_the_hosts_height_limit_when_the_host_stops_sending_one(app
     assert app.js("document.documentElement.style.maxHeight") == "300px"
 
     host_says(app, "ui/notifications/host-context-changed", {"containerDimensions": {}})
-    app.js("0")
-    assert app.js("document.documentElement.style.maxHeight + '|' + document.documentElement.style.overflowY") == "|"
+    app.js("0")  # host messages and this script run in order on the page, so the message has been handled
+    assert app.js("document.documentElement.style.maxHeight") == ""
+    assert app.js("document.documentElement.style.overflowY") == ""
+
+
+@pytest.mark.parametrize("name", VIEWS)
+def test_a_view_fills_a_fixed_height_the_host_gives_it_and_scrolls_inside(app, tmp_path, name):
+    open_view(app, tmp_path, name)
+    host_says(app, "ui/notifications/host-context-changed", {"containerDimensions": {"height": 400, "maxHeight": 300}})
+    app.js("0")  # host messages and this script run in order on the page, so the message has been handled
+    style = json.loads(app.js("JSON.stringify(Object.fromEntries(['height', 'maxHeight', 'overflowY'].map("
+                              "(k) => [k, document.documentElement.style[k]])))"))
+    assert style == {"height": "100vh", "maxHeight": "", "overflowY": "auto"}
