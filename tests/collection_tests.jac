@@ -15,7 +15,7 @@ import from graph_runner { STARTED_FOR_GUEST, call_function }
 import from collection { Collection }
 import from deck_operations { perform, page_walkers, OPERATIONS, OWN }
 import from decks { CreateDeck, EditDeck, GetDeck, DeckView }
-import from collection { ChangeCollection, GetCollection, CollectionView, MODE_ADD, MODE_REMOVE, MODE_SET }
+import from collection { ChangeCollection, GetCollection, ImportCollection, ImportCollectionResult, CollectionView, MODE_ADD, MODE_REMOVE, MODE_SET }
 
 glob CATALOG: Path = Path("data/test_collection_catalog.sqlite"),
      ALICE: str = "user_test_collection_alice",
@@ -150,6 +150,64 @@ test "a refused change writes nothing, not even an empty collection" {
     assert refused is not None and refused.code == "refused-change";
     kept = call_function(carol, lambda () -> object { return len([root-->[?:Collection]]); });
     assert kept == 0;
+}
+
+"""`caller` imports `text` (default format `text`) into their collection; the result they read."""
+def _import(caller: str, text: str, format: str = "text") -> ImportCollectionResult {
+    return perform(caller, ImportCollection(format=format, text=text)).reports[0] as ImportCollectionResult;
+}
+
+test "importing a pasted list adds its totals, summing repeats across zones, and logs each card as imported" {
+    done = _import(ALICE, "4 Lightning Bolt\n2 Shock\n\nSideboard\n1 Lightning Bolt\n");
+    assert done.unresolved == [];
+    assert _count(ALICE, "Lightning Bolt") == 5;
+    assert _count(ALICE, "Shock") == 2;
+    notes = [n for n in _collection(ALICE).history if n.reason == "imported"];
+    assert sorted([(n.name, n.before, n.after) for n in notes]) == [("Lightning Bolt", 0, 5), ("Shock", 0, 2)];
+}
+
+test "an import adds to the counts already held and never lowers one" {
+    _change(BOB, "Counterspell", 3);
+    _import(BOB, "1 Counterspell\n");
+    assert _count(BOB, "Counterspell") == 4;
+    _import(BOB, "1 Shock\n");
+    assert _count(BOB, "Counterspell") == 4;
+    assert [n for n in _collection(BOB).history if n.name == "Counterspell"][-1].reason == "imported";
+}
+
+test "names that resolve to no card are reported and the rest of the list is still added" {
+    done = _import(ALICE, "1 Goblin Guide\n3 Not A Real Card\n");
+    assert done.unresolved == ["3 Not A Real Card"] or "Not A Real Card" in " ".join(done.unresolved);
+    assert _count(ALICE, "Goblin Guide") == 1;
+}
+
+test "a Maybeboard header is ignored like any other zone header" {
+    _import(ALICE, "1 Llanowar Elves\n\nMaybeboard\n1 Llanowar Elves\n");
+    assert _count(ALICE, "Llanowar Elves") == 2;
+}
+
+test "an import where nothing resolves leaves no collection behind" {
+    dan = "user_test_collection_dan";
+    done = _import(dan, "2 Not A Real Card\n");
+    assert done.unresolved != [];
+    assert done.collection.cards == [] and done.collection.history == [];
+    kept = call_function(dan, lambda () -> object { return len([root-->[?:Collection]]); });
+    assert kept == 0;
+}
+
+test "an unknown list format reports a walker error and adds nothing" {
+    done = perform(ALICE, ImportCollection(format="nope", text="1 Shock\n")).reports[0];
+    assert isinstance(done, WalkerError);
+    assert done.code == "unknown-list-format";
+}
+
+test "each deck import format reads into the collection" {
+    arena = _import(BOB, "Deck\n2 Shock (M21) 100\n", "arena");
+    assert arena.unresolved == [];
+    assert _count(BOB, "Shock") == 2;
+    mtgdeck = _import(BOB, '{"schema": "mtgdeck/1", "name": "x", "format": "modern", "zones": {"main": [{"name": "Goblin Guide", "count": 1}], "maybeboard": [{"name": "Goblin Guide", "count": 2}]}}', "mtgdeck1");
+    assert mtgdeck.unresolved == [];
+    assert _count(BOB, "Goblin Guide") == 3;
 }
 
 # Keep last: `perform` registers the shared root for this process, and `jac test`

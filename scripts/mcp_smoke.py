@@ -29,7 +29,7 @@ TOOLS = {
     "search_cards", "get_card", "resolve_names", "get_format_rules",
     "deck_list", "deck_browse", "deck_copy", "deck_create", "deck_get", "deck_edit",
     "deck_validate", "deck_import", "deck_show", "deck_analyze", "card_search", "deck_export",
-    "collection_get", "collection_change",
+    "collection_get", "collection_change", "collection_import",
 }
 # The tools bound to an MCP Apps view, and the view each opens.
 VIEWS = {
@@ -82,6 +82,11 @@ async def main() -> None:
         check("a tool call over the transport adds to the collection", not added.is_error and data(added)["total"] >= 2, added.content)
         kept = data(await session.call_tool("collection_get", {}))
         check("collection_get reads the collection back", cards[0]["oracle_id"] in [c["oracle_id"] for c in kept["cards"]], kept)
+
+        pasted = data(await session.call_tool("collection_import", {"format": "text", "text": "3 Goblin Guide\n\nSideboard\n1 Goblin Guide\n1 Not A Real Card\n"}))
+        guides = [c["count"] for c in pasted["collection"]["cards"] if c["name"] == "Goblin Guide"]
+        check("collection_import adds a pasted list, summing zones", guides == [4], pasted)
+        check("collection_import reports names that resolve to no card", any("Not A Real Card" in u for u in pasted["unresolved"]), pasted)
 
         failed = await session.call_tool("deck_get", {"deck_id": "nope"})
         check(
