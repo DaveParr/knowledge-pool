@@ -51,9 +51,6 @@
      shadows, heavy headings, the pool gradient on the title and main action. */
   :root {
     --line: var(--fg);
-    --pool: linear-gradient(110deg, #b4d7f0 0%, #d7c9de 50%, #f0a68c 100%);
-    --pool-down: linear-gradient(180deg, #f0a68c, #d7c9de 55%, #b4d7f0);
-    --on-pool: #1d1c1a;
     --shadow-control: 3px 3px 0 var(--fg);
     --shadow-panel: 4px 4px 0 var(--fg);
   }
@@ -86,6 +83,7 @@
 <!-- @include refusal.html -->
 <!-- @include host_container.html -->
 <!-- @include mana_symbols.html -->
+<!-- @include pool.html -->
 </head>
 <body>
 <main id="app">
@@ -163,6 +161,7 @@
 
   function renderDeck() {
     const d = state.deck;
+    if (d) setPool(d.colours);
     $("title").textContent = d ? (d.mine === false ? `Cards for ${d.name}` : `Add cards to ${d.name}`) : "Add cards";
     $("deckmeta").textContent = d ? `${d.format} · ${d.main_total} main · ${d.sideboard_total} sideboard` : "";
   }

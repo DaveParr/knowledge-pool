@@ -15,7 +15,7 @@ import from profile { display_name }
 import from cards { Card, card_node }
 import from card_lines { CardLine, MissingCard, main_deck }
 import from legality { Violation, FORMAT_LABELS, format_node, check_lines, unknown_format }
-import from commander { GameChangers, game_changers }
+import from commander { GameChangers, game_changers, deck_colours }
 import from mana { ManaProfile, ManaCurve, mana_profile, mana_curve }
 import from walker_errors { WalkerError }
 import from zones { ZONES, ZONE_TITLES, zone_choices, zone_options }
@@ -143,7 +143,8 @@ obj DeckView {
         game_changers: GameChangers | None = None,
         mine: bool = False,
         missing: list[MissingCard] = [],
-        sleeveable: bool = False;
+        sleeveable: bool = False,
+        colours: list[str] = [];
 }
 
 """Every (edge, card) pair a deck holds. A card in both zones has two edges."""
@@ -229,7 +230,8 @@ def deck_view(deck: Deck) -> DeckView {
         legal=len(violations) == 0,
         violations=violations,
         history=deck.history[-20:],
-        game_changers=game_changers(lines) if deck.format == "commander" else None
+        game_changers=game_changers(lines) if deck.format == "commander" else None,
+        colours=deck_colours(lines)
     );
 }
 

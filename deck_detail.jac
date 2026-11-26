@@ -10,6 +10,7 @@ import from .export_panel { ExportPanel }
 import from .mana_panel { ManaPanel }
 import from .card_search { AddCards }
 import from .mana_cost { ManaCost, RulesText }
+import from .pool { poolStyle }
 import from .walker_failure { failureMessage, REFUSED_LINE }
 
 import from decks {
@@ -214,7 +215,7 @@ def:pub DeckDetail(
     readOnly = not deck.mine;
 
     return
-        <section>
+        <section style={poolStyle(deck.colours)}>
             <button className="quiet dd-back" onClick={back}>← Decks</button>
             <div className="dd-head">
                 {<form className="dd-rename" onSubmit={lambda (e: Event) { e.preventDefault(); renameDeck(); }}>

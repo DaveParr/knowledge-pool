@@ -51,6 +51,8 @@ def test_every_view_is_served_with_the_shared_refusal_helpers(name):
     served = ui_pages.view_page(name)
     assert "@include" not in served
     assert "function refusalOf(" in served and "function refusalHtml(" in served
+    assert "@include pool.html" in (ROOT / "ui" / name).read_text()
+    assert "function setPool(" in served
 
 
 def test_mcp_over_stdio_keeps_the_local_users_decks_across_processes(fixture_catalog, jac_db_url, tmp_path):
