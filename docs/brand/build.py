@@ -3,9 +3,10 @@
 Run: python3 docs/brand/build.py  (needs google-chrome to rasterise; fonts come
 from Google Fonts, so it needs the network). Writes SVGs and PNGs next to itself.
 
-The mark is the spinning top of the first icon redrawn in the design system's
-language: one ink line, a disc filled with the pool gradient (the five mana
-tints, as global.css draws it off a deck), and a hard offset ink shadow.
+The mark is the Knowledge Pool of the first icon, redrawn in the design
+system's language: one ink line, the pool filled with the pool gradient (the
+five mana tints, as global.css draws it off a deck), and a hard offset ink
+shadow. LORE.md tells the pool's story.
 """
 
 import math
@@ -46,7 +47,7 @@ def pool_gradient(gid: str, angle: float = 110) -> str:
 
 
 def mark(t: dict, cx: float, cy: float, scale: float, gid: str, w: float = 9, shadow: float = 10) -> str:
-    """The spinning top, centred on (cx, cy); scale 1 spans about 420px.
+    """The Knowledge Pool, centred on (cx, cy); scale 1 spans about 420px.
 
     Drawn in a local frame whose axis is vertical, then tilted. `w` is the ink
     weight and `shadow` the offset of the solid ink copy behind it (0 for none).
