@@ -6,7 +6,8 @@
 # Checks first, before anything is claimed: the mattpocock-skills plugin and the gh stack
 # extension are installed, the branch is not already on origin, and the base is worked out.
 # The base is the top branch of the stack of the ticket's parent spec (each spec is one
-# stack of PRs, a new ticket goes on top), else main.
+# stack of PRs, a new ticket goes on top), else the spec's branch (`spec/<name>`, when it is
+# on origin: the spec's first ticket), else main.
 #
 # Steps, in order:
 #   1. Claim: assign @me and move the card to "In progress" (adding the card if missing).
@@ -18,7 +19,7 @@
 #      issue's linked branches back and fails if the branch is not among them: GitHub can
 #      link only a branch it creates, so when the name is already on the remote `develop`
 #      links nothing and fails with an unhelpful git refspec error; the script checks
-#      first and says so plainly. (Once a PR from the branch opens into main, GitHub swaps the
+#      first and says so plainly. (Once a PR from the branch opens, GitHub swaps the
 #      branch link for the PR; `scripts/check-ticket-link.sh` accepts either.)
 #   4. Point the local branch at the linked remote branch and write the `.ticket` marker.
 #
@@ -54,8 +55,9 @@ if git ls-remote --exit-code -q origin "refs/heads/$want_branch" >/dev/null; the
     die "Branch '$want_branch' is already on origin; GitHub cannot link an existing branch to #$n. Nothing was claimed: leave #$n for the human to deal with that branch."
 fi
 
-# The base: the top of the spec's stack, else main.
+# The base: the top of the spec's stack, else the spec's branch, else main.
 base="$(stack_top_branch "$n")"
+base="${base:-$(spec_branch "$n")}"
 base="${base:-$BASE}"
 
 # 1. Claim
