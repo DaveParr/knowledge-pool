@@ -24,6 +24,7 @@ FAKE_GH = """#!/usr/bin/env bash
 echo "gh $*" >> "$FAKE_LOG"
 case "$1 $2" in
   "--version "*) echo "gh version 2.105.0 (2026-11-17)" ;;
+  "api user") echo "karn-bot" ;;
   "repo view") echo "${FAKE_REPO:-engi-ai/knowledge-pool}" ;;
   "pr view")
     if [ -f "$FAKE_PR.$3" ]; then cat "$FAKE_PR.$3"; else cat "$FAKE_PR"; fi ;;
@@ -307,3 +308,114 @@ def test_a_round_without_its_response_is_incomplete(env):
 def test_a_response_for_another_round_does_not_count(env):
     rounds = [review(HEAD), comment("## Round 2 response\n\nok")]
     assert status(env, comments=rounds)["responsesComplete"] is False
+
+
+# --- start-ticket.sh: stacks, the extension check, the branch check before the claim ------
+
+
+def sibling(number, branch=None, pr=None, state="OPEN"):
+    """A sub-issue of the ticket's spec: a linked branch, an open PR (head, base), or both."""
+    return {
+        "number": number,
+        "state": state,
+        "linkedBranches": {"nodes": [{"ref": {"name": branch}}] if branch else []},
+        "closedByPullRequestsReferences": {
+            "nodes": [{"headRefName": pr[0], "baseRefName": pr[1], "state": "OPEN"}] if pr else []},
+    }
+
+
+def spec_with(env, *siblings):
+    nodes = {"subIssues": {"nodes": list(siblings)}}
+    Path(env["FAKE_STACK"]).write_text(json.dumps({"data": {"repository": {"issue": {"parent": nodes}}}}))
+
+
+def top(env):
+    out = sh(env, "stack_top_branch 42")
+    assert out.returncode == 0, out.stderr
+    return out.stdout.strip()
+
+
+def test_a_ticket_without_a_spec_has_no_stack(env):
+    assert top(env) == ""
+
+
+def test_the_top_of_the_specs_stack_is_the_branch_nothing_is_based_on(env):
+    spec_with(env, sibling(41, pr=("k/41-a", "main")), sibling(43, pr=("k/43-c", "k/41-a")),
+              sibling(44, pr=("k/44-d", "k/43-c")))
+    assert top(env) == "k/44-d"
+
+
+def test_tickets_that_are_closed_or_this_one_are_not_in_the_stack(env):
+    spec_with(env, sibling(41, pr=("k/41-a", "main"), state="CLOSED"), sibling(42, branch="k/42-me"))
+    assert top(env) == ""
+
+
+def test_two_open_branches_with_nothing_to_order_them_stop_the_script(env):
+    spec_with(env, sibling(41, branch="k/41-a"), sibling(43, branch="k/43-b"))
+    out = sh(env, "stack_top_branch 42")
+    assert out.returncode != 0 and "k/41-a" in out.stderr and "k/43-b" in out.stderr
+
+
+def test_a_started_ticket_with_only_a_branch_is_the_top_when_it_is_alone(env):
+    spec_with(env, sibling(41, branch="k/41-a"))
+    assert top(env) == "k/41-a"
+
+
+@pytest.fixture
+def started(env, tmp_path):
+    """A checkout with a local `origin`, and fake claude and orca on PATH."""
+    origin = tmp_path / "origin.git"
+    work = tmp_path / "work"
+    git = lambda *a, cwd=work: subprocess.run(["git", *a], cwd=cwd, check=True, capture_output=True)
+    subprocess.run(["git", "init", "-q", "--bare", "-b", "main", str(origin)], check=True)
+    subprocess.run(["git", "clone", "-q", str(origin), str(work)], check=True, capture_output=True)
+    git("-c", "user.name=t", "-c", "user.email=t@t", "commit", "-q", "--allow-empty", "-m", "init")
+    git("push", "-q", "origin", "HEAD:main")
+    git("push", "-q", "origin", "HEAD:refs/heads/k/41-a")
+    bin_dir = Path(env["PATH"].split(":")[0])
+    for name, body_ in {
+        "claude": "echo '[{\"id\": \"mattpocock-skills@mattpocock\"}]'",
+        "orca": 'echo "orca $*" >> "$FAKE_LOG"; [ "$2" = list ] && echo \'{"result":{"worktrees":[]}}\'; exit 0',
+    }.items():
+        f = bin_dir / name
+        f.write_text(f"#!/usr/bin/env bash\n{body_}\n")
+        f.chmod(0o755)
+    return {**env, "ORCA_CLI_COMMAND": str(bin_dir / "orca")}, work, origin
+
+
+def start(started):
+    env, work, _ = started
+    return subprocess.run([str(START_TICKET), "42"], env=env, cwd=work, capture_output=True, text=True)
+
+
+def log(started):
+    return Path(started[0]["FAKE_LOG"]).read_text()
+
+
+def test_start_ticket_needs_the_gh_stack_extension_before_it_claims(started):
+    Path(started[0]["FAKE_EXT"]).write_text("gh copilot\tgithub/gh-copilot\n")
+    out = start(started)
+    assert out.returncode != 0
+    assert "gh extension install github/gh-stack" in out.stderr
+    assert "issue edit" not in log(started)
+
+
+def test_start_ticket_stops_before_claiming_when_the_branch_is_on_origin(started):
+    env, work, origin = started
+    subprocess.run(["git", "push", "-q", "origin", "HEAD:refs/heads/karn-bot/42-a-ticket"], cwd=work, check=True)
+    out = start(started)
+    assert out.returncode != 0
+    assert "karn-bot/42-a-ticket" in out.stderr and "already on origin" in out.stderr
+    assert "delete" not in out.stderr.lower() and "remove" not in out.stderr.lower()
+    assert "issue edit" not in log(started) and "project item" not in log(started)
+
+
+def test_a_ticket_of_a_spec_with_a_stack_is_based_on_its_top_branch(started):
+    spec_with(started[0], sibling(41, pr=("k/41-a", "main")))
+    start(started)
+    assert "--base-branch origin/k/41-a" in log(started)
+
+
+def test_a_ticket_with_no_stack_is_based_on_main(started):
+    start(started)
+    assert "--base-branch origin/main" in log(started)

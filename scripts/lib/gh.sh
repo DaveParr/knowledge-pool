@@ -65,6 +65,30 @@ linked_branches() {
       --jq '.data.repository.issue.linkedBranches.nodes[].ref.name'
 }
 
+# stack_top_branch <issue>: the branch at the top of the stack of the issue's parent spec,
+# or nothing when the issue has no parent or its siblings have no open branch. A stack is
+# the open sibling tickets' branches (linked branches and open PR heads); the top is the
+# one no open PR is based on. When two branches have nothing to order them (a started
+# sibling that has no PR yet), it fails: wait for that PR rather than guess.
+stack_top_branch() {
+    local tops
+    tops="$(gh api graphql -F owner="$REPO_OWNER" -F name="$REPO_NAME" -F n="$1" -f query='
+      query($owner:String!,$name:String!,$n:Int!){ repository(owner:$owner,name:$name){
+        issue(number:$n){ parent{ subIssues(first:100){ nodes{ number state
+          linkedBranches(first:20){ nodes{ ref{ name } } }
+          closedByPullRequestsReferences(first:10, includeClosedPrs:false){ nodes{ headRefName baseRefName state } }
+        } } } } } }' \
+      | jq -r --argjson n "$1" '
+          [.data.repository.issue.parent.subIssues.nodes // [] | .[]
+           | select(.number != $n and .state == "OPEN")] as $sib
+          | [$sib[].closedByPullRequestsReferences.nodes[] | select(.state == "OPEN")] as $prs
+          | ([$prs[].headRefName] + [$sib[].linkedBranches.nodes[].ref.name] | unique) as $branches
+          | ($branches - [$prs[].baseRefName])[]')"
+    [ "$(grep -c . <<<"$tops")" -le 1 ] \
+        || die "Cannot tell the top of the spec's stack for #$1: $(paste -sd, <<<"$tops") are all unbased. A ticket of the spec is started but has no PR yet; wait for it."
+    echo "$tops"
+}
+
 require_gh
 GH_REPO="${GH_REPO:-$(gh repo view --json owner,name --jq '.owner.login + "/" + .name')}" \
     || die "Cannot tell which repo this is: run from the checkout, or set GH_REPO=<owner>/<name>."

@@ -3,10 +3,15 @@
 #
 #   scripts/start-ticket.sh <issue-number>
 #
-# Steps, in order (after checking the mattpocock-skills plugin is installed):
+# Checks first, before anything is claimed: the mattpocock-skills plugin and the gh stack
+# extension are installed, the branch is not already on origin, and the base is worked out.
+# The base is the top branch of the stack of the ticket's parent spec (each spec is one
+# stack of PRs, a new ticket goes on top), else main.
+#
+# Steps, in order:
 #   1. Claim: assign @me and move the card to "In progress" (adding the card if missing).
-#   2. Create an Orca worktree `ticket-<n>` on branch `DaveParr/<n>-<slug>`, based on
-#      main, with the issue linked in Orca's metadata. Orca adds a numeric
+#   2. Create an Orca worktree `ticket-<n>` on branch `<user>/<n>-<slug>` (the gh user, or
+#      $KP_BRANCH_PREFIX), based on that base, with the issue linked in Orca's metadata. Orca adds a numeric
 #      suffix if the branch name is taken, so the real name is read back from Orca.
 #   3. `gh issue develop` creates that branch on GitHub as a linked branch, which puts it
 #      in the issue's Development field before any PR exists. The script then reads the
@@ -36,18 +41,30 @@ command -v claude >/dev/null || die "claude is not on PATH; workers need Claude 
 claude plugin list --json 2>/dev/null | jq -e 'any(.[]; .id == "mattpocock-skills@mattpocock")' >/dev/null \
     || die "The mattpocock-skills plugin is not installed, so workers cannot load /mattpocock-skills:tdd or :pr. Install it once: claude plugin install mattpocock-skills@mattpocock"
 
+command -v gh >/dev/null && gh extension list | grep -q 'github/gh-stack' \
+    || die "The gh stack extension is not installed, so workers cannot stack PRs. Install it once: gh extension install github/gh-stack"
+
 title="$(gh issue view "$n" --json title --jq .title)"
 slug="$(printf '%s' "$title" | tr '[:upper:]' '[:lower:]' | sed -E 's/[^a-z0-9]+/-/g; s/^-+|-+$//g' | cut -c1-40 | sed -E 's/-+$//')"
-want_branch="DaveParr/$n-${slug:-ticket}"
+want_branch="${KP_BRANCH_PREFIX:-$(gh api user --jq .login)}/$n-${slug:-ticket}"
+
+# Nothing is claimed if the branch is taken: GitHub cannot link an existing branch.
+if git ls-remote --exit-code -q origin "refs/heads/$want_branch" >/dev/null; then
+    die "Branch '$want_branch' is already on origin; GitHub cannot link an existing branch to #$n. Nothing was claimed: leave #$n for the human to deal with that branch."
+fi
+
+# The base: the top of the spec's stack, else main.
+base="$(stack_top_branch "$n")"
+base="${base:-$BASE}"
 
 # 1. Claim
 gh issue edit "$n" --add-assignee @me >/dev/null
 board_move "$n" "In progress" >/dev/null
 
 # 2. Worktree
-git fetch -q origin "$BASE"
+git fetch -q origin "$base"
 "$ORCA" worktree create --repo "id:$REPO_ID" --name "ticket-$n" --branch "$want_branch" \
-    --base-branch "origin/$BASE" --issue "$n" --no-parent --json >/dev/null
+    --base-branch "origin/$base" --issue "$n" --no-parent --json >/dev/null
 wt="$("$ORCA" worktree list --repo "id:$REPO_ID" --json \
     | jq -c --arg n "$n" '[.result.worktrees[] | select((.linkedIssue|tostring) == $n and (.isArchived|not))] | max_by(.sortOrder)')"
 [ -n "$wt" ] && [ "$wt" != "null" ] || die "Orca created no worktree linked to #$n"
@@ -57,11 +74,11 @@ branch="$(jq -r .branch <<<"$wt")"; branch="${branch#refs/heads/}"
 
 # 3. Linked branch on GitHub (fills the issue's Development field)
 if git ls-remote --exit-code -q origin "refs/heads/$branch" >/dev/null; then
-    echo "Branch '$branch' is already on origin; GitHub cannot link an existing branch to #$n." >&2
-    echo "Remove the worktree ($path) and the remote branch, or pick another name, then retry." >&2
+    echo "Branch '$branch' (Orca's name for it, with a suffix) is already on origin; GitHub cannot link an existing branch to #$n." >&2
+    echo "The worktree at $path is made but #$n is not linked: leave it for the human." >&2
     exit 1
 fi
-gh issue develop "$n" --name "$branch" --base "$BASE" >/dev/null
+gh issue develop "$n" --name "$branch" --base "$base" >/dev/null
 linked="$(linked_branches "$n")"
 grep -qxF "$branch" <<<"$linked" \
     || die "gh issue develop did not link '$branch' to #$n (linked branches: $(paste -sd, <<<"${linked:-none}"))."
