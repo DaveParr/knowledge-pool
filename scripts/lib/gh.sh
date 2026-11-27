@@ -88,8 +88,27 @@ stack_top_branch() {
           | ([$sib[].closedByPullRequestsReferences.nodes[] | select(.state == "MERGED") | .headRefName]) as $merged
           | ($branches - $merged - [$prs[].baseRefName])[]')"
     [ "$(grep -c . <<<"$tops")" -le 1 ] \
-        || die "Cannot tell the top of the spec's stack for #$1: $(paste -sd, <<<"$tops") are all unbased: a ticket of the spec is started but has no PR yet (wait for it), or two of its PRs both target main (a human sorts out the stack)."
+        || die "Cannot tell the top of the spec's stack for #$1: $(paste -sd, <<<"$tops") are all unbased: a ticket of the spec is started but has no PR yet (wait for it), or two of its PRs both target the spec's trunk (a human sorts out the stack)."
     echo "$tops"
+}
+
+# spec_branch <issue>: the spec branch of the issue's parent spec, `spec/<the spec's title
+# without "Spec:", in kebab case>` (see **Spec branch** in CONTEXT.md), when that branch is
+# on origin; else nothing, and the spec's tickets stack onto main as they did before spec
+# branches. Reads origin from the current checkout.
+spec_branch() {
+    local title name
+    title="$(gh api graphql -F owner="$REPO_OWNER" -F name="$REPO_NAME" -F n="$1" -f query='
+      query($owner:String!,$name:String!,$n:Int!){ repository(owner:$owner,name:$name){
+        issue(number:$n){ parent{ title } } } }' --jq '.data.repository.issue.parent.title // empty')"
+    [ -n "$title" ] || return 0
+    name="spec/$(printf '%s' "${title#Spec:}" | tr '[:upper:]' '[:lower:]' | sed -E 's/[^a-z0-9]+/-/g; s/^-+|-+$//g')"
+    if git ls-remote --exit-code -q origin "refs/heads/$name" >/dev/null; then echo "$name"; fi
+}
+
+# is_trunk <branch>: a branch a stack sits on, `main` or a spec branch (`spec/...`).
+is_trunk() {
+    [ "$1" = main ] || [[ "$1" == spec/* ]]
 }
 
 # has_merge_queue [<branch>]: print true or false for whether the branch (default main) has a

@@ -34,6 +34,7 @@ case "$1 $2" in
     case "$*" in
       *mergeQueue*) [ "$(cat "$FAKE_QUEUE")" = FAIL ] && exit 1; cat "$FAKE_QUEUE" ;;
       *subIssues*) cat "$FAKE_STACK" ;;
+      *"parent{ title }"*) cat "$FAKE_SPEC" ;;
       *) cat "$FAKE_TICKET" ;;
     esac ;;
   "issue view")
@@ -99,6 +100,7 @@ def env(tmp_path):
     (tmp_path / "ext.txt").write_text("gh stack\tgithub/gh-stack\tv0.1\n")
     (tmp_path / "queue.txt").write_text("")
     (tmp_path / "stack.json").write_text(json.dumps(NO_STACK))
+    (tmp_path / "spec.txt").write_text("")
     return {
         **os.environ,
         "PATH": f"{bin_dir}:{os.environ['PATH']}",
@@ -109,6 +111,7 @@ def env(tmp_path):
         "FAKE_EXT": str(tmp_path / "ext.txt"),
         "FAKE_QUEUE": str(tmp_path / "queue.txt"),
         "FAKE_STACK": str(tmp_path / "stack.json"),
+        "FAKE_SPEC": str(tmp_path / "spec.txt"),
     }
 
 
@@ -274,7 +277,7 @@ def test_a_pr_whose_base_is_no_prs_branch_is_still_held(env):
 
 def test_a_pr_into_main_is_position_one_of_its_own_stack(env):
     s = status(env)
-    assert s["stack"] == {"position": 1, "lower": [], "lowerReady": True}
+    assert s["stack"] == {"position": 1, "lower": [], "lowerReady": True, "trunk": "main"}
 
 
 def test_conflicts_and_failures_are_still_reported_before_waiting_for_the_pr_below(env):
@@ -433,9 +436,9 @@ def merge(env, stack=False, low_state="OPEN", **over):
     return subprocess.run([str(MERGE_TICKET), "7"], env=env, capture_output=True, text=True)
 
 
-def stacked_setup(env, low_state="OPEN", low_next_ok=True):
+def stacked_setup(env, low_state="OPEN", low_next_ok=True, low_base="main"):
     Path(env["FAKE_LIST"]).write_text(json.dumps([{"number": LOW, "state": low_state}]))
-    low = pr(number=LOW, baseRefName="main", state=low_state,
+    low = pr(number=LOW, baseRefName=low_base, state=low_state,
              comments=[review(HEAD)] if low_next_ok else [], body=body().replace("#42", "#41"))
     Path(env["FAKE_PR"] + f".{LOW}").write_text(json.dumps(low))
 
@@ -525,3 +528,67 @@ def test_a_draft_or_human_held_pr_with_no_checks_is_held_not_rerun(env):
     assert status(env, statusCheckRollup=[], isDraft=True)["next"] == "hold"
     held = status(env, statusCheckRollup=[], labels=[{"name": "review-by-human"}])
     assert held["next"] == "hold"
+
+
+# --- spec branches: a spec's stack sits on spec/<name>, which reaches main in one PR ------
+
+SPEC = "spec/installable-phone-app"
+
+
+def test_a_pr_into_a_spec_branch_is_the_bottom_of_its_stack_and_may_merge(env):
+    s = status(env, baseRefName=SPEC)
+    assert s["next"] == "merge"
+    assert s["stack"] == {"position": 1, "lower": [], "lowerReady": True, "trunk": SPEC}
+
+
+def test_a_pr_above_one_into_a_spec_branch_has_that_spec_branch_as_its_trunk(env):
+    stacked_setup(env, low_base=SPEC)
+    s = status(env, baseRefName=LOW_BRANCH)
+    assert (s["next"], s["stack"]["position"], s["stack"]["trunk"]) == ("merge", 2, SPEC)
+
+
+def test_a_pr_whose_base_is_neither_a_trunk_nor_a_prs_branch_has_no_trunk(env):
+    s = status(env, baseRefName="somewhere-else")
+    assert (s["next"], s["stack"]["trunk"]) == ("hold", None)
+
+
+def test_a_pr_into_a_spec_branch_merges_directly_into_it_and_asks_about_its_queue(env):
+    out = merge(env, baseRefName=SPEC)
+    assert out.returncode == 0, out.stderr
+    log = calls(env)
+    assert f"gh pr merge 7 --merge --match-head-commit {HEAD}" in log
+    assert not any(l.startswith("gh stack merge") for l in log)
+    assert f"-F branch={SPEC}" in Path(env["FAKE_LOG"]).read_text()  # the queue asked about is the spec branch's
+
+
+def test_a_pr_stacked_above_one_into_a_spec_branch_merges_through_gh_stack(env):
+    stacked_setup(env, low_base=SPEC)
+    Path(env["FAKE_PR"]).write_text(json.dumps(pr(baseRefName=LOW_BRANCH)))
+    out = subprocess.run([str(MERGE_TICKET), "7"], env=env, capture_output=True, text=True)
+    assert out.returncode == 0, out.stderr
+    log = calls(env)
+    assert "gh stack merge 7 --yes --merge" in log
+    assert f"-F branch={SPEC}" in Path(env["FAKE_LOG"]).read_text()  # the queue asked about is the spec branch's
+
+
+def test_the_first_ticket_of_a_spec_is_based_on_its_spec_branch(started):
+    env, work, _ = started
+    Path(env["FAKE_SPEC"]).write_text("Spec: Installable phone app\n")
+    subprocess.run(["git", "push", "-q", "origin", f"HEAD:refs/heads/{SPEC}"], cwd=work, check=True)
+    out = start(started)
+    assert f"--base-branch origin/{SPEC}" in log(started), out.stderr
+
+
+def test_a_spec_whose_branch_is_not_on_origin_stacks_onto_main(started):
+    Path(started[0]["FAKE_SPEC"]).write_text("Spec: Installable phone app\n")
+    start(started)
+    assert "--base-branch origin/main" in log(started)
+
+
+def test_the_top_of_the_specs_stack_wins_over_its_spec_branch(started):
+    env, work, _ = started
+    Path(env["FAKE_SPEC"]).write_text("Spec: Installable phone app\n")
+    subprocess.run(["git", "push", "-q", "origin", f"HEAD:refs/heads/{SPEC}"], cwd=work, check=True)
+    spec_with(env, sibling(41, pr=("k/41-a", SPEC)))
+    start(started)
+    assert "--base-branch origin/k/41-a" in log(started)

@@ -34,6 +34,7 @@ The **board is the state**: a ticket's Status column says what happens to it nex
 - **Dave's card moves are instructions**: In review → In progress means more work, same worker; anything → Blocked, Backlog or Designing means leave it alone.
 - **Read the board with one small GraphQL query** of open issues and each one's Status and Priority. Never use a full `gh project item-list`: it burns the shared 5,000-points-an-hour GitHub allowance.
 - **Stacks**: a spec's tickets are one stack of PRs (see **Stack** in `CONTEXT.md`); the diagram shows where a PR sits in the loop.
+- **Spec branches**: a spec whose work collects off `main` has a **spec branch**, `spec/<the spec's title without "Spec:", in kebab case>` (see **Spec branch** in `CONTEXT.md`), made from `main` with the spec's docs when the spec is written. `scripts/start-ticket.sh` bases the spec's first ticket on it, its stack merges into it (`scripts/merge-ticket.sh` treats it as the trunk, as it does `main`), and when the last ticket is done Dave opens and merges one PR from the spec branch into `main`; the ticket loop never merges a spec branch. A spec with no spec branch on origin stacks onto `main` as before.
 
 ### The ticket loop
 
@@ -44,7 +45,7 @@ flowchart TB
     RD["Ready<br/>the queue"] -->|"I pick: P0 → P2, then lowest number;<br/>max 2 running"| IP
     RD -->|"open blocker outside<br/>the spec's stack"| BK[Blocked]
     BK -->|"blocker closed,<br/>or now in the stack"| RD
-    IP["In progress<br/>worker: implement → tdd → pr<br/>spec ticket: PR on top of the spec's stack<br/>no spec: PR into main"] -->|PR opened| IR
+    IP["In progress<br/>worker: implement → tdd → pr<br/>spec ticket: PR on top of the spec's stack<br/>(the first one into its spec branch)<br/>no spec: PR into main"] -->|PR opened| IR
     IR["In review<br/>worker: code-review rounds on its layer;<br/>restack when a PR below changes<br/>me: merge checks"] -->|"checks pass, every PR below ready,<br/>no review-by-human"| MQ
     IR -->|"round limit, but the last round<br/>needed nothing"| MQ
     MQ["Merge<br/>stack: gh stack merge, bottom-up<br/>merge queue once the repo is in the org"] --> DN[Done]
@@ -52,7 +53,7 @@ flowchart TB
     IR -->|"review-by-human, or round limit<br/>with fixes still in play"| DAVE{Dave}
     DAVE -->|merge| DN
     DAVE -->|moves back to In progress| IP
-    DN -->|a spec's last ticket| WRAP["Spec wrap-up:<br/>improve-codebase-architecture, then retro"]
+    DN -->|a spec's last ticket| WRAP["Spec wrap-up:<br/>Dave merges the spec branch into main,<br/>improve-codebase-architecture, then retro"]
 ```
 
 ## Pull requests as a triage surface

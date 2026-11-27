@@ -21,14 +21,16 @@
 #   blocked-by-lower
 #                the PR is part of a stack and a PR below it is neither merged nor ready
 #                (its own `next` is not `merge`): it waits for that one.
-#   hold         a draft, a base that is neither main nor the branch of another PR (so
-#                not a stack), or a `review-by-human` label on the PR, the ticket or the
+#   hold         a draft, a base that is neither a trunk (main, or a spec branch
+#                `spec/...`) nor the branch of another PR (so not a stack), or a `review-by-human` label on the PR, the ticket or the
 #                ticket's parent spec: leave it for the human.
 #   merge        none of the above: `scripts/merge-ticket.sh` may merge it. For a stacked
 #                PR that means every PR below it is merged or ready too.
 # A PR whose base is another PR's head branch belongs to a stack: `stack` gives its
 # `position` (1 = bottom), the `lower` PRs bottom-first, each with the `next` pr-status
-# gives it, and `lowerReady` (every lower PR is merged or `merge`).
+# gives it, `lowerReady` (every lower PR is merged or `merge`), and `trunk`, the branch the
+# bottom PR targets: main, or the spec branch a spec's stack sits on (null when the stack
+# reaches neither).
 # `responsesComplete` says every `## Code review, round <k>` has a `## Round <k> response`.
 # Whether every finding in the last round was fixed or answered stays the reader's call.
 set -euo pipefail
@@ -43,19 +45,21 @@ info="$(gh pr view "$pr" --json number,url,state,isDraft,baseRefName,headRefOid,
 ticket="$(jq -r '((.body | capture("(?m)^Ticket: #(?<n>[0-9]+)").n) // .closingIssuesReferences[0].number) // empty' <<<"$info")"
 [ -n "$ticket" ] || die "PR #$pr names no ticket: it closes no issue and has no 'Ticket: #<n>' line."
 
-# The stack: while the base is not main, the PR below is the one whose head is that base.
+# The stack: while the base is not a trunk, the PR below is the one whose head is that base.
 # Each lower PR is read by this script itself (depth-limited), so `lower` holds what each
 # one's `next` is. A base that no PR has as its head leaves the stack empty (and held).
-stack='{"position":1,"lower":[],"lowerReady":true}'
 base="$(jq -r .baseRefName <<<"$info")"
-if [ "$base" != main ] && [ "${KP_STACK_DEPTH:-0}" -lt 20 ]; then
+trunk=null
+if is_trunk "$base"; then trunk="$(jq -n --arg b "$base" '$b')"; fi
+stack="{\"position\":1,\"lower\":[],\"lowerReady\":true,\"trunk\":$trunk}"
+if ! is_trunk "$base" && [ "${KP_STACK_DEPTH:-0}" -lt 20 ]; then
     below="$(gh pr list --head "$base" --state all --json number,state \
         | jq -r '[.[] | select(.state != "CLOSED")] | sort_by(.state != "OPEN") | .[0].number // empty')"
     if [ -n "$below" ]; then
         low="$(KP_STACK_DEPTH=$(( ${KP_STACK_DEPTH:-0} + 1 )) "$0" "$below" 2>/dev/null || echo '{}')"
         stack="$(jq -n --argjson low "$low" --argjson n "$below" '
           ($low.stack // {position: 1, lower: []}) as $s
-          | {position: ($s.position + 1),
+          | {position: ($s.position + 1), trunk: ($s.trunk // null),
              lower: ($s.lower + [{pr: $n, ticket: $low.ticket, state: ($low.state // "UNKNOWN"),
                                   next: ($low.next // "unknown")}])}
           | .lowerReady = all(.lower[]; .next | IN("merge", "merged"))')"
@@ -121,7 +125,7 @@ jq --argjson t "$ticket" --argjson tl "$ticket_labels" --argjson stack "$stack" 
       elif (.stack.lowerReady | not) then
         ([.stack.lower[] | select(.next | IN("merge", "merged") | not)] | first) as $b
         | {next: "blocked-by-lower", reason: "waits for PR #\($b.pr) below it (its next: \($b.next))"}
-      elif .base != "main" and (.stack.lower | length) == 0 then {next: "hold", reason: "base is \(.base), not main, and no PR has that branch as its head"}
+      elif .stack.trunk == null and (.stack.lower | length) == 0 then {next: "hold", reason: "base is \(.base), neither main nor a spec branch, and no PR has that branch as its head"}
       elif (.reviewByHuman | length) > 0 then {next: "hold", reason: "review-by-human on \(.reviewByHuman | join(", "))"}
       else {next: "merge", reason: "reviewed and described at head, CI green, no review-by-human label"} end)
 ' <<<"$info"
