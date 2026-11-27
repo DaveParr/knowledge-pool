@@ -20,6 +20,13 @@ MERGE_TICKET = ROOT / "scripts" / "merge-ticket.sh"
 HEAD = "def5678" + "0" * 33
 OLD = "abc1234" + "0" * 33
 
+FAKE_ORCA = """#!/usr/bin/env bash
+# Logs the call and refuses: no test may create a real Orca workspace.
+echo "orca $*" >> "$FAKE_ORCA_LOG"
+echo "fake orca: refused: $*" >&2
+exit 1
+"""
+
 FAKE_GH = """#!/usr/bin/env bash
 echo "gh $*" >> "$FAKE_LOG"
 case "$1 $2" in
@@ -87,20 +94,25 @@ def pr(**over):
     return base
 
 
-@pytest.fixture
-def env(tmp_path):
+def make_env(tmp_path):
     bin_dir = tmp_path / "bin"
     bin_dir.mkdir()
     gh = bin_dir / "gh"
     gh.write_text(FAKE_GH)
     gh.chmod(gh.stat().st_mode | stat.S_IEXEC)
+    orca = bin_dir / "orca"
+    orca.write_text(FAKE_ORCA)
+    orca.chmod(orca.stat().st_mode | stat.S_IEXEC)
     (tmp_path / "ticket.json").write_text(json.dumps({"ticket": [], "parent": None, "parentLabels": []}))
     (tmp_path / "list.json").write_text("[]")
     (tmp_path / "ext.txt").write_text("gh stack\tgithub/gh-stack\tv0.1\n")
     (tmp_path / "queue.txt").write_text("")
     (tmp_path / "stack.json").write_text(json.dumps(NO_STACK))
+    inherited = {k: v for k, v in os.environ.items() if not k.startswith("ORCA_")}  # never the real Orca
     return {
-        **os.environ,
+        **inherited,
+        "ORCA_CLI_COMMAND": str(orca),
+        "FAKE_ORCA_LOG": str(tmp_path / "orca.log"),
         "PATH": f"{bin_dir}:{os.environ['PATH']}",
         "FAKE_LOG": str(tmp_path / "gh.log"),
         "FAKE_PR": str(tmp_path / "pr.json"),
@@ -110,6 +122,11 @@ def env(tmp_path):
         "FAKE_QUEUE": str(tmp_path / "queue.txt"),
         "FAKE_STACK": str(tmp_path / "stack.json"),
     }
+
+
+@pytest.fixture
+def env(tmp_path):
+    return make_env(tmp_path)
 
 
 def status(env, **over):
@@ -525,3 +542,25 @@ def test_a_draft_or_human_held_pr_with_no_checks_is_held_not_rerun(env):
     assert status(env, statusCheckRollup=[], isDraft=True)["next"] == "hold"
     held = status(env, statusCheckRollup=[], labels=[{"name": "review-by-human"}])
     assert held["next"] == "hold"
+
+
+def test_scripts_under_test_can_never_reach_the_real_orca(monkeypatch, tmp_path):
+    """Run inside an Orca terminal, ORCA_CLI_COMMAND points at the real Orca, and start-ticket.sh
+    would create a real workspace. A canary stands in for it: it must stay untouched."""
+    canary = tmp_path / "real-orca"
+    canary.write_text(f'#!/usr/bin/env bash\necho "$@" >> "{tmp_path}/canary.log"\n')
+    canary.chmod(canary.stat().st_mode | stat.S_IEXEC)
+    monkeypatch.setenv("ORCA_CLI_COMMAND", str(canary))
+    monkeypatch.setenv("ORCA_TERMINAL_HANDLE", "term_real")
+    env = make_env(tmp_path)
+    claude = tmp_path / "bin" / "claude"
+    claude.write_text("#!/usr/bin/env bash\necho '[{\"id\": \"mattpocock-skills@mattpocock\"}]'\n")
+    claude.chmod(claude.stat().st_mode | stat.S_IEXEC)
+    Path(env["FAKE_PR"]).write_text("{}")
+
+    subprocess.run([str(START_TICKET), "42"], env=env, capture_output=True, text=True)
+
+    assert not (tmp_path / "canary.log").exists()
+    assert Path(env["ORCA_CLI_COMMAND"]).parent == tmp_path / "bin"
+    assert "worktree create" in (tmp_path / "orca.log").read_text()  # the fake refused it
+    assert not [k for k in env if k.startswith("ORCA_") and k != "ORCA_CLI_COMMAND"]
