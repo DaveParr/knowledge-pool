@@ -1,3 +1,8 @@
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="docs/brand/readme-banner-dark.png">
+  <img alt="Knowledge Pool: drink deep, brew better." src="docs/brand/readme-banner.png" width="100%">
+</picture>
+
 # knowledge-pool
 
 Personal knowledge/working repo, set up with [Matt Pocock's Claude Code skills](https://github.com/mattpocock/skills) for use with Claude Code.
