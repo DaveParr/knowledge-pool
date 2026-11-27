@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Merge a ticket PR the orchestrator has decided to merge, and record that it did.
+# Merge a ticket PR the ticket loop has decided to merge, and record that it did.
 #
 #   scripts/merge-ticket.sh <pr-number>
 #

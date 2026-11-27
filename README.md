@@ -137,7 +137,7 @@ The hosted app runs on Railway at `https://knowledge-pool.engi.ai`. `scripts/dep
 - `.github/workflows/weekly-catalogue.yml` the catalogue rebuild on Railway (by hand for now)
 - `scripts/install_jac.sh` installs the Jac version `jac.toml` pins
 - `scripts/board.sh` moves an issue on the project board (`scripts/board.sh <issue> <status>`)
-- `scripts/ready-tickets.sh`, `start-ticket.sh`, `check-ticket-link.sh`, `pr-status.sh`, `merge-ticket.sh`, `park-ticket.sh` the ticket orchestrator's GitHub steps (`docs/agents/ticket-orchestrator.md`), sharing `scripts/lib/gh.sh`
+- `scripts/start-ticket.sh`, `check-ticket-link.sh`, `pr-status.sh`, `merge-ticket.sh` the ticket loop's GitHub steps (the board columns and flow are in `docs/agents/issue-tracker.md`), sharing `scripts/lib/gh.sh`
 - `scripts/fixture_cards.py` adds cards to `tests/fixtures/atomic_small.json`
 - `CODING_STANDARDS.md` recurring review findings
 

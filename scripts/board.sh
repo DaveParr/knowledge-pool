@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Set an issue's Status on the "Knowledge Pool" board (project #7), adding its card first
+# Set an issue's Status on the "Knowledge Pool" board (engi-ai org project 1), adding its card first
 # if it has none.
 #
 #   scripts/board.sh <issue-number> <status>
