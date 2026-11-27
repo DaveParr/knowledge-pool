@@ -515,3 +515,9 @@ def test_a_siblings_branch_whose_pr_is_merged_is_not_in_the_stack(env):
     merged["closedByPullRequestsReferences"]["nodes"][0]["state"] = "MERGED"
     spec_with(env, merged, sibling(43, pr=("k/43-b", "main")))
     assert top(env) == "k/43-b"
+
+
+def test_a_draft_or_human_held_pr_with_no_checks_is_held_not_rerun(env):
+    assert status(env, statusCheckRollup=[], isDraft=True)["next"] == "hold"
+    held = status(env, statusCheckRollup=[], labels=[{"name": "review-by-human"}])
+    assert held["next"] == "hold"

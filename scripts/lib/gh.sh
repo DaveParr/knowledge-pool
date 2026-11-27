@@ -86,7 +86,7 @@ stack_top_branch() {
           | ([$sib[].closedByPullRequestsReferences.nodes[] | select(.state == "MERGED") | .headRefName]) as $merged
           | ($branches - $merged - [$prs[].baseRefName])[]')"
     [ "$(grep -c . <<<"$tops")" -le 1 ] \
-        || die "Cannot tell the top of the spec's stack for #$1: $(paste -sd, <<<"$tops") are all unbased. A ticket of the spec is started but has no PR yet; wait for it."
+        || die "Cannot tell the top of the spec's stack for #$1: $(paste -sd, <<<"$tops") are all unbased: a ticket of the spec is started but has no PR yet (wait for it), or two of its PRs both target main (a human sorts out the stack)."
     echo "$tops"
 }
 

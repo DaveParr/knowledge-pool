@@ -114,7 +114,7 @@ jq --argjson t "$ticket" --argjson tl "$ticket_labels" --argjson stack "$stack" 
       elif (.bodyDescribes as $d | .headOid | startswith($d) | not) then {next: "pr-body", reason: "PR body describes \(.bodyDescribes), head is \(.head)"}
       elif .mergeable == "CONFLICTING" then {next: "conflict", reason: "conflicts with \(.base)"}
       elif .ci == "fail" then {next: "ci-failed", reason: "failing: \([.failing[].name] | join(", "))"}
-      elif .ci == "none" then {next: "no-checks", reason: "the PR has no CI checks: the workflow did not start for it (base \(.base))"}
+      elif .ci == "none" and (.draft | not) and (.reviewByHuman | length) == 0 then {next: "no-checks", reason: "the PR has no CI checks: the workflow did not start for it (base \(.base))"}
       elif .ci == "pending" then {next: "wait", reason: "CI is still running"}
       elif .mergeable == "UNKNOWN" then {next: "wait", reason: "GitHub has not worked out mergeability yet"}
       elif .draft then {next: "hold", reason: "draft PR"}
