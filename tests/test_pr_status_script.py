@@ -419,3 +419,73 @@ def test_a_ticket_of_a_spec_with_a_stack_is_based_on_its_top_branch(started):
 def test_a_ticket_with_no_stack_is_based_on_main(started):
     start(started)
     assert "--base-branch origin/main" in log(started)
+
+
+# --- merge-ticket.sh: direct, stack and queue modes --------------------------------------
+
+
+def merge(env, stack=False, **over):
+    if stack:
+        stacked_setup(env)
+        over["baseRefName"] = LOW_BRANCH
+    Path(env["FAKE_PR"]).write_text(json.dumps(pr(**over)))
+    return subprocess.run([str(MERGE_TICKET), "7"], env=env, capture_output=True, text=True)
+
+
+def stacked_setup(env):
+    Path(env["FAKE_LIST"]).write_text(json.dumps([{"number": LOW, "state": "OPEN"}]))
+    low = pr(number=LOW, baseRefName="main", body=body().replace("#42", "#41"))
+    Path(env["FAKE_PR"] + f".{LOW}").write_text(json.dumps(low))
+
+
+def calls(env):
+    return Path(env["FAKE_LOG"]).read_text().splitlines()
+
+
+def test_without_a_queue_a_pr_into_main_merges_directly_and_closes_its_ticket(env):
+    out = merge(env)
+    assert out.returncode == 0, out.stderr
+    log = calls(env)
+    assert f"gh pr merge 7 --merge --match-head-commit {HEAD}" in log
+    assert any(l.startswith("gh issue close 42") for l in log)
+    assert any(l.startswith("gh pr comment 7") and "Merged automatically" in l for l in log)
+
+
+def test_a_stacked_pr_merges_through_gh_stack_and_lands_the_ones_below(env):
+    out = merge(env, stack=True)
+    assert out.returncode == 0, out.stderr
+    log = calls(env)
+    assert "gh stack merge 7 --yes --merge" in log
+    assert not any(l.startswith("gh pr merge") for l in log)
+    closed = [l.split()[3] for l in log if l.startswith("gh issue close")]
+    assert sorted(closed) == ["41", "42"]
+
+
+def test_with_a_merge_queue_the_pr_is_enqueued_and_nothing_is_closed_yet(env):
+    Path(env["FAKE_QUEUE"]).write_text("MQ_123\n")
+    out = merge(env)
+    assert out.returncode == 0, out.stderr
+    log = calls(env)
+    assert any(l.startswith("gh pr merge 7") for l in log)
+    assert not any(l.startswith("gh issue close") for l in log)
+    assert not any("Merged" in l for l in log if l.startswith("gh pr comment"))
+    assert any(l.startswith("gh pr comment 7") and "merge queue" in l for l in log)
+    assert "queued #7" in out.stdout
+
+
+def test_a_queued_stack_goes_through_gh_stack_and_the_queue_picks_the_method(env):
+    Path(env["FAKE_QUEUE"]).write_text("MQ_123\n")
+    out = merge(env, stack=True)
+    assert out.returncode == 0, out.stderr
+    log = calls(env)
+    assert "gh stack merge 7 --yes" in log
+    assert not any(l.startswith("gh issue close") for l in log)
+
+
+def test_merging_never_deletes_a_branch(env):
+    for queue in ("", "MQ_123\n"):
+        Path(env["FAKE_QUEUE"]).write_text(queue)
+        merge(env)
+        merge(env, stack=True)
+    assert "delete" not in Path(env["FAKE_LOG"]).read_text()
+

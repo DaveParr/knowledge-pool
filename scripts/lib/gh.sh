@@ -89,6 +89,15 @@ stack_top_branch() {
     echo "$tops"
 }
 
+# has_merge_queue [<branch>]: succeed when the branch (default main) has a merge queue.
+has_merge_queue() {
+    local id
+    id="$(gh api graphql -F owner="$REPO_OWNER" -F name="$REPO_NAME" -F branch="${1:-main}" -f query='
+      query($owner:String!,$name:String!,$branch:String!){ repository(owner:$owner,name:$name){
+        mergeQueue(branch:$branch){ id } } }' --jq '.data.repository.mergeQueue.id // empty')"
+    [ -n "$id" ]
+}
+
 require_gh
 GH_REPO="${GH_REPO:-$(gh repo view --json owner,name --jq '.owner.login + "/" + .name')}" \
     || die "Cannot tell which repo this is: run from the checkout, or set GH_REPO=<owner>/<name>."
