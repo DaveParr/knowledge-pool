@@ -5,7 +5,7 @@
 #
 # Prints one JSON object: the PR, its ticket, the review rounds, CI, the review-by-human
 # labels, and `next` with a `reason`. `next` is the first of these that holds, in the
-# order docs/agents/ticket-orchestrator.md checks them:
+# order the ticket loop checks them:
 #   merged       already merged (by the human, or an earlier run); `closed` likewise.
 #   round-limit  3 `## Code review, round` comments, or a `## Code review: round limit
 #                reached` comment: hand the PR to the human, never review again.

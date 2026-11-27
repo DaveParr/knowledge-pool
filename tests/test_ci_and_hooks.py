@@ -57,3 +57,36 @@ def test_the_hook_checks_the_link_after_a_pr_is_opened(ticket_repo, command):
 @pytest.mark.parametrize("command", ["gh pr view 3", "gh stack view --json", "git push"])
 def test_the_hook_ignores_other_commands(ticket_repo, command):
     assert run_hook(ticket_repo, command).returncode == 0
+
+
+SETTINGS = json.loads((ROOT / ".claude" / "settings.json").read_text())
+
+NEVER_DELETE = [
+    "Bash(gh api * --method DELETE*)",
+    "Bash(gh api * -X DELETE*)",
+    "Bash(gh api --method DELETE *)",
+    "Bash(gh api --method=DELETE *)",
+    "Bash(gh api -X DELETE *)",
+    "Bash(gh api -XDELETE *)",
+    "Bash(gh pr merge * --delete-branch*)",
+    "Bash(gh pr merge * -d*)",
+    "Bash(gh pr merge --delete-branch*)",
+    "Bash(gh repo delete*)",
+    "Bash(git branch --delete *)",
+    "Bash(git branch -D *)",
+    "Bash(git branch -d *)",
+    "Bash(git push * --delete *)",
+    "Bash(git push * -d *)",
+    "Bash(git push * :*)",
+    "Bash(git push --delete *)",
+]
+
+
+@pytest.mark.parametrize("rule", NEVER_DELETE)
+def test_workers_may_not_delete_branches_or_repos(rule):
+    assert rule in SETTINGS["permissions"]["deny"]
+
+
+def test_no_allow_rule_names_a_removed_script():
+    for gone in ("ready-tickets.sh", "park-ticket.sh"):
+        assert not any(gone in rule for rule in SETTINGS["permissions"]["allow"])

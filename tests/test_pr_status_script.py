@@ -215,13 +215,17 @@ def test_the_repo_is_read_from_gh_not_hard_coded(env):
     assert out.stdout.strip() == "acme/widgets acme widgets"
 
 
-def test_the_board_stays_a_user_project_with_a_configurable_owner(env):
-    assert sh(env, 'echo "$BOARD_OWNER"').stdout.strip() == "DaveParr"
-    assert sh(env, 'echo "$BOARD_OWNER"', KP_BOARD_OWNER="someone").stdout.strip() == "someone"
+def test_the_board_is_the_org_project_by_default_and_both_settings_can_be_overridden(env):
+    assert sh(env, 'echo "$BOARD_OWNER $BOARD_NUMBER"').stdout.strip() == "engi-ai 1"
+    out = sh(env, 'echo "$BOARD_OWNER $BOARD_NUMBER"', KP_BOARD_OWNER="someone", KP_BOARD_NUMBER="9")
+    assert out.stdout.strip() == "someone 9"
+
+
+def test_board_calls_go_to_the_org_project(env):
     out = sh(env, 'board_move 5 "In progress"', FAKE_REPO="acme/widgets")
     assert out.returncode == 0, out.stderr
     projects = [l for l in Path(env["FAKE_LOG"]).read_text().splitlines() if l.startswith("gh project")]
-    assert projects and all("--owner DaveParr" in l for l in projects)
+    assert projects and all("--owner engi-ai" in l and " 1 " in l for l in projects)
     assert "https://github.com/acme/widgets/issues/5" in "".join(projects)
 
 
