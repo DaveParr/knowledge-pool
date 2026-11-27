@@ -1,0 +1,234 @@
+<title>Pool Icon Variations</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<!-- PROTOTYPE, throwaway. Question: which icon metaphors and which treatment should Knowledge Pool's own icons use?
+     Ten concepts x four metaphors, drawn in one 24px grid; treatment and stroke weight switch for the whole sheet.
+     Tap a variant to pick it; the preview at the top uses your picks. -->
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo:wght@700;800;900&family=Inter:wght@400;500;600;700;800&display=swap">
+<style>
+/* Layout: controls, a live preview of the picks in place, then one row per concept with its four metaphors. Pool block tokens. */
+:root {
+  --bg: #f7f6f2; --surface: #ffffff; --soft: #efede7; --fg: #1d1c1a; --muted: #55524c; --on-ink: #ffffff; --on-pool: #1d1c1a;
+  --mana-w: #f0f2c0; --mana-u: #b5cde3; --mana-b: #aca29a; --mana-r: #db8664; --mana-g: #93b483;
+  --pool: linear-gradient(110deg, var(--mana-w), var(--mana-u), var(--mana-b), var(--mana-r), var(--mana-g));
+  --ok-bg: #c9ecd0; --ok-fg: #14461b; --warn-bg: #fff8e1; --warn-fg: #7a5300; --bad-bg: #fdecea;
+  --font-display: Archivo, system-ui, sans-serif; --font-sans: Inter, system-ui, sans-serif;
+  --sw: 2.1;
+}
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) {
+  --bg: #1f1e1d; --surface: #282725; --soft: #242321; --fg: #f5f4ef; --muted: #a6a49c; --on-ink: #1d1c1a;
+  --ok-bg: #16301b; --ok-fg: #9fd8a6; --warn-bg: #33290f; --warn-fg: #f0c96a; --bad-bg: #3a1714; color-scheme: dark; } }
+:root[data-theme="dark"] {
+  --bg: #1f1e1d; --surface: #282725; --soft: #242321; --fg: #f5f4ef; --muted: #a6a49c; --on-ink: #1d1c1a;
+  --ok-bg: #16301b; --ok-fg: #9fd8a6; --warn-bg: #33290f; --warn-fg: #f0c96a; --bad-bg: #3a1714; color-scheme: dark; }
+body { margin: 0; background: var(--bg); color: var(--fg); font: 13px/1.45 var(--font-sans); }
+.wrap { max-width: 1040px; margin: 0 auto; padding-block: 22px 56px; padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px)); display: flex; flex-direction: column; gap: 16px; }
+h1 { font: 900 28px/1.05 var(--font-display); text-transform: uppercase; margin: 0; }
+h2 { font: 900 13px var(--font-display); text-transform: uppercase; letter-spacing: .06em; margin: 6px 0 0; }
+p { margin: 0; max-width: 68ch; } .muted { color: var(--muted); }
+.controls { display: flex; flex-wrap: wrap; gap: 12px; align-items: center; position: sticky; top: env(safe-area-inset-top, 0px); z-index: 5; background: var(--bg); padding-block: 8px; border-bottom: 3px solid var(--fg); }
+body::before { content: ""; position: fixed; inset: 0 0 auto; height: env(safe-area-inset-top, 0px); z-index: 10; background: var(--bg); }
+.seg { display: inline-flex; border: 2.5px solid var(--fg); border-radius: 6px; box-shadow: 3px 3px 0 var(--fg); overflow: hidden; max-width: 100%; overflow-x: auto; }
+.seg button { font: 700 12.5px var(--font-sans); color: var(--fg); background: var(--surface); border: none; border-left: 2.5px solid var(--fg); padding: 6px 11px; cursor: pointer; white-space: nowrap; }
+.seg button:first-child { border-left: none; } .seg button.on { background: var(--fg); color: var(--on-ink); }
+.lbl { font: 800 11px var(--font-display); text-transform: uppercase; letter-spacing: .08em; color: var(--muted); }
+
+/* Icons */
+.ic { width: 1.4em; height: 1.4em; flex: none; vertical-align: -0.3em; fill: none; stroke: currentColor; stroke-width: var(--sw); stroke-linecap: round; stroke-linejoin: round; overflow: visible; }
+.ic .dot { fill: currentColor; stroke: none; }
+.t-duo .ic .f.s { fill: var(--surface); } .t-duo .ic .f.w { fill: var(--mana-w); } .t-duo .ic .f.u { fill: var(--mana-u); }
+.t-duo .ic .f.r { fill: var(--mana-r); } .t-duo .ic .f.g { fill: var(--mana-g); } .t-duo .ic .f.ok { fill: var(--ok-bg); }
+.t-duo .ic .f.warn { fill: var(--warn-bg); } .t-duo .ic .f.bad { fill: var(--bad-bg); }
+.t-solid .ic .f { fill: currentColor; } .t-solid .ic .k { stroke: var(--knock, var(--surface)); }
+.t-solid .ic .f.k { stroke: var(--knock, var(--surface)); }
+.t-badge .holder, .t-token .holder { display: inline-grid; place-items: center; width: 1.9em; height: 1.9em; box-sizing: border-box; border: 2px solid var(--fg); vertical-align: middle; }
+.t-badge .holder { border-radius: 7px; background: var(--surface); box-shadow: 2px 2px 0 var(--fg); }
+.t-token .holder { border-radius: 50%; background: var(--tint, var(--mana-u)); color: #1d1c1a; }
+.t-badge .holder .ic, .t-token .holder .ic { width: 1.15em; height: 1.15em; vertical-align: 0; }
+.t-token .holder .ic { stroke-width: calc(var(--sw) * 1.05); }
+
+/* Concept rows */
+.concept { border: 3px solid var(--fg); border-radius: 8px; background: var(--surface); box-shadow: 4px 4px 0 var(--fg); overflow: hidden; }
+.chead { display: flex; justify-content: space-between; gap: 12px; padding: 10px 12px; border-bottom: 2px solid var(--fg); background: var(--soft); flex-wrap: wrap; }
+.cname { font: 900 15px var(--font-display); text-transform: uppercase; }
+.vars { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); }
+.var { --knock: var(--surface); appearance: none; font: inherit; color: var(--fg); background: var(--surface); border: none; border-left: 2px solid var(--fg); padding: 12px 10px; cursor: pointer; display: flex; flex-direction: column; gap: 8px; align-items: flex-start; text-align: left; min-width: 0; }
+.var:first-child { border-left: none; }
+.var.on { background: var(--warn-bg); --knock: var(--warn-bg); box-shadow: inset 0 0 0 3px var(--fg); }
+.var .sizes { display: flex; align-items: flex-end; gap: 12px; flex-wrap: wrap; }
+.s40 { font-size: 30px; } .s24 { font-size: 18px; } .s16 { font-size: 12px; }
+.var .vn { font-weight: 700; } .var .vm { color: var(--muted); font-size: 11.5px; }
+.pair { display: inline-flex; gap: 10px; align-items: flex-end; }
+@media (max-width: 720px) { .vars { grid-template-columns: repeat(2, minmax(0, 1fr)); } .var:nth-child(3) { border-left: none; } .var:nth-child(n+3) { border-top: 2px solid var(--fg); } }
+
+/* Preview */
+.preview { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 14px; }
+.panel { --knock: var(--surface); border: 3px solid var(--fg); border-radius: 8px; background: var(--surface); box-shadow: 4px 4px 0 var(--fg); overflow: hidden; }
+.row { display: grid; grid-template-columns: 30px minmax(0,1fr) auto; gap: 10px; align-items: center; padding: 10px 12px; border-top: 2px solid var(--fg); }
+.row:first-child { border-top: none; } .row.p { grid-template-columns: minmax(0,1fr) auto; }
+.swatch { width: 30px; height: 30px; box-sizing: border-box; border: 2px solid var(--fg); border-radius: 4px; }
+.nm { font-weight: 700; } .sub { color: var(--muted); font-size: 11.5px; }
+.badges { display: inline-flex; gap: 8px; align-items: center; }
+.bd { display: inline-flex; gap: 4px; align-items: center; font: 900 13px var(--font-display); font-variant-numeric: tabular-nums; }
+.okc { color: var(--ok-fg); } .warnc { color: var(--warn-fg); }
+.tabs { display: grid; grid-template-columns: repeat(3, 1fr); gap: 6px; padding: 8px; }
+.tab { --knock: var(--surface); display: flex; flex-direction: column; align-items: center; gap: 4px; padding: 7px 2px; border: 2.5px solid transparent; border-radius: 6px; font: 800 10.5px var(--font-display); text-transform: uppercase; letter-spacing: .05em; }
+.tab .ic { font-size: 16px; vertical-align: 0; }
+.tab.on { background: var(--pool); color: var(--on-pool); border-color: var(--fg); box-shadow: 3px 3px 0 var(--fg); --knock: var(--mana-b); }
+.bar { display: flex; align-items: center; justify-content: space-between; gap: 10px; padding: 10px 12px; border-bottom: 3px solid var(--fg); }
+.bar b { font: 900 18px var(--font-display); text-transform: uppercase; }
+.lockbtn { display: inline-grid; place-items: center; width: 40px; height: 36px; border: 2.5px solid var(--fg); border-radius: 6px; box-shadow: 3px 3px 0 var(--fg); background: var(--surface); font-size: 15px; }
+.lockbtn.on { background: var(--warn-bg); color: var(--warn-fg); --knock: var(--warn-bg); }
+.sw { display: flex; border: 2.5px solid var(--fg); border-radius: 6px; margin: 12px; box-shadow: 3px 3px 0 var(--fg); }
+.sw span { flex: 1; text-align: center; padding: 7px; font-weight: 700; position: relative; border-left: 2.5px solid var(--fg); }
+.sw span:first-child { border-left: none; background: var(--fg); color: var(--on-ink); border-radius: 3px 0 0 3px; }
+.sw .badge { position: absolute; left: -1.25px; top: 50%; transform: translate(-50%, -50%); width: 24px; height: 24px; box-sizing: border-box; display: grid; place-items: center; border: 2px solid var(--fg); border-radius: 50%; background: var(--pool); color: #1d1c1a; --knock: var(--mana-u); z-index: 1; }
+.sw .badge .ic { width: 14px; height: 14px; vertical-align: 0; }
+</style>
+
+<div class="wrap t-duo" id="root">
+  <h1>Pool icon variations</h1>
+  <p>Ten things the app shows over and over, each drawn four ways. Tap a version to pick it: the preview uses your picks. The treatment and weight switches change every icon on the page.</p>
+  <div class="controls">
+    <span class="lbl">Treatment</span>
+    <div class="seg" id="treat"></div>
+    <span class="lbl">Weight</span>
+    <div class="seg" id="weight"></div>
+  </div>
+  <h2>Your picks, in place</h2>
+  <div class="preview" id="preview"></div>
+  <h2>The variations</h2>
+  <div id="concepts" style="display:flex;flex-direction:column;gap:14px"></div>
+</div>
+
+<script>
+// Each variant: [name, what it suggests, svg (string, or function of a fraction for gauges)].
+// "f <hue>" marks a fillable shape; "k" marks a detail drawn over a fill (it knocks out in Solid).
+const C = [
+  { id: 'deck', name: 'Deck', where: 'Decks tab, deck rows', tint: 'var(--mana-u)', vars: [
+    ['Deck box', 'The box a deck lives in.', '<path class="f w" d="M7 7V4.5h10V7"/><rect class="f s" x="5" y="7" width="14" height="13" rx="2"/><path class="k" d="M5 11h14"/>'],
+    ['Fanned hand', 'Cards held in a fan.', '<rect class="f u" x="3.6" y="6.2" width="9" height="13" rx="1.5" transform="rotate(-14 8 12.7)"/><rect class="f r" x="11.4" y="6.2" width="9" height="13" rx="1.5" transform="rotate(14 16 12.7)"/><rect class="f s k" x="7.5" y="4" width="9" height="14" rx="1.5"/>'],
+    ['Stack', 'A squared-up pile of cards.', '<path d="M4 8.5v11a1.5 1.5 0 0 0 1.5 1.5h10"/><path d="M6.8 5.8v11a1.5 1.5 0 0 0 1.5 1.5h10"/><rect class="f s k" x="9.5" y="2.8" width="11" height="13" rx="1.5"/>'],
+    ['Card back', 'The back of a card, a pool swirl in the middle.', '<rect class="f u" x="5" y="2.5" width="14" height="19" rx="2"/><ellipse class="k" cx="12" cy="12" rx="3.8" ry="5.4"/><path class="k" d="M12 8.8c1.4 1 1.4 5.4 0 6.4"/>'],
+  ]},
+  { id: 'collection', name: 'Collection', where: 'Collection tab', tint: 'var(--mana-w)', vars: [
+    ['Binder', 'A ring binder with card pockets.', '<rect class="f s" x="5" y="3" width="14" height="18" rx="2"/><path class="k" d="M9 3v18"/><path class="f u k" d="M12 6.5h4V11h-4z"/><path class="f r k" d="M12 13h4v4.5h-4z"/>'],
+    ['Long box', 'The cardboard box bulk lives in.', '<path class="f w" d="M3 9.5h18v10a1.5 1.5 0 0 1-1.5 1.5h-15A1.5 1.5 0 0 1 3 19.5z"/><path d="M3 9.5l2.2-5h13.6l2.2 5"/><path class="k" d="M9.5 14h5"/>'],
+    ['Binder page', 'Nine-pocket page, from the front.', '<rect class="f s" x="3.5" y="3.5" width="17" height="17" rx="2"/><path class="k" d="M9.2 3.5v17M14.8 3.5v17M3.5 9.2h17M3.5 14.8h17"/>'],
+    ['Chest', 'Your hoard.', '<path class="f r" d="M3.5 11h17v8a1.5 1.5 0 0 1-1.5 1.5H5A1.5 1.5 0 0 1 3.5 19z"/><path class="f w k" d="M3.5 11V9a5 5 0 0 1 5-5h7a5 5 0 0 1 5 5v2z"/><path class="k" d="M10.4 11v3.2h3.2V11"/>'],
+  ]},
+  { id: 'quest', name: 'Quest list', where: 'Quests tab', tint: 'var(--mana-r)', vars: [
+    ['Treasure map', 'A map with an X on it.', '<path class="f w" d="M3 6.5l6-2 6 2 6-2v13l-6 2-6-2-6 2z"/><path class="k" d="M5.5 16c1.5-2 3-.5 4.5-2.5s2.5-2 4-3" stroke-dasharray="1.6 2.2"/><path class="k" d="M16 7l3 3M19 7l-3 3"/>'],
+    ['Scroll list', 'A written list of things to find.', '<path class="f w" d="M7 3.5h11A1.5 1.5 0 0 1 19.5 5v13.5H8.5A1.5 1.5 0 0 1 7 17z"/><path d="M7 17a2.2 2.2 0 1 0-2.5 3.5h11.5"/><path class="k" d="M10.5 8h5.5M10.5 11.5h5.5M10.5 15h3"/>'],
+    ['Compass', 'Heading out to find cards.', '<circle class="f s" cx="12" cy="12" r="8.8"/><path class="f r k" d="M15.2 8.8l-1.9 4.5-4.5 1.9 1.9-4.5z"/>'],
+    ['Seeking', 'A magnifier over a card.', '<rect class="f s" x="3.5" y="3" width="10" height="14" rx="1.5"/><circle class="f u" cx="15.2" cy="15.2" r="4.2"/><path d="M18.3 18.3l2.8 2.8"/>'],
+  ]},
+  { id: 'people', name: 'People', where: 'Others, trade leads', tint: 'var(--mana-g)', vars: [
+    ['Two players', 'You and someone else.', '<circle class="f s" cx="9" cy="8" r="3.2"/><path class="f s" d="M3.5 19.5c.5-3.6 3-5.7 5.5-5.7s5 2.1 5.5 5.7z"/><circle cx="16.8" cy="8.8" r="2.6"/><path d="M16 13.7c2.5-.3 4.5 1.6 4.9 5"/>'],
+    ['Pod', 'Players around a table.', '<circle class="f g" cx="12" cy="12.5" r="4.6"/><circle class="dot" cx="12" cy="3.8" r="2"/><circle class="dot" cx="19.6" cy="17" r="2"/><circle class="dot" cx="4.4" cy="17" r="2"/>'],
+    ['Player', 'One person.', '<circle class="f s" cx="12" cy="7.5" r="3.6"/><path class="f s" d="M4.8 20.5c.5-4.6 3.5-7.2 7.2-7.2s6.7 2.6 7.2 7.2z"/>'],
+    ['Opponents', 'Three heads, one in front.', '<circle cx="5.5" cy="9" r="2.3"/><circle cx="18.5" cy="9" r="2.3"/><path d="M2 18c.3-2.6 1.7-4.2 3.5-4.2M22 18c-.3-2.6-1.7-4.2-3.5-4.2"/><circle class="f s" cx="12" cy="8" r="3.2"/><path class="f s" d="M6.5 20c.5-3.8 2.8-5.8 5.5-5.8s5 2 5.5 5.8z"/>'],
+  ]},
+  { id: 'sleeveable', name: 'Sleeveable', where: 'Deck rows: you own every card', tint: 'var(--ok-bg)', vars: [
+    ['Sleeved card', 'A card going into its sleeve.', '<rect x="7.5" y="2.5" width="9" height="13" rx="1.2"/><path class="f ok" d="M5 7.5h14v12A1.5 1.5 0 0 1 17.5 21h-11A1.5 1.5 0 0 1 5 19.5z"/><path class="k" d="M9 14.2l2.1 2.1 3.9-4.3"/>'],
+    ['Packed box', 'Deck box shut, ready to go.', '<rect class="f ok" x="5" y="5" width="14" height="15.5" rx="2"/><path class="k" d="M5 9h14"/><path class="k" d="M9 14.2l2.1 2.1 3.9-4.3"/>'],
+    ['Shuffle up', 'Ready to shuffle and play.', '<path d="M3.5 7.5H7c4 0 6 9 10 9h3.5M17.5 13.5l3 3-3 3M3.5 16.5H7c1.5 0 2.7-1.2 3.7-2.7M13.6 9.4c1-1.2 2.1-1.9 3.4-1.9h3.5M17.5 4.5l3 3-3 3"/>'],
+    ['Check token', 'A plain tick in a circle.', '<circle class="f ok" cx="12" cy="12" r="8.8"/><path class="k" d="M8 12.3l2.7 2.7 5.3-5.8"/>'],
+  ]},
+  { id: 'missing', name: 'Missing', where: 'Deck rows, with the count', tint: 'var(--warn-bg)', vars: [
+    ['Ghost card', 'A dashed outline where a card should be.', '<rect class="f warn" x="5.5" y="3" width="13" height="18" rx="2" stroke-dasharray="3.2 2.4"/><path class="k" d="M9 12h6"/>'],
+    ['Unknown card', 'A card with a question mark.', '<rect class="f warn" x="5.5" y="3" width="13" height="18" rx="2"/><path class="k" d="M10 9.6a2 2 0 1 1 3 1.7c-.7.4-1 .9-1 1.6v.6"/><circle class="dot k" cx="12" cy="16.6" r=".2"/>'],
+    ['Empty pocket', 'A binder page with one gap.', '<rect class="f s" x="3.5" y="3.5" width="17" height="17" rx="2"/><rect class="k" x="6.2" y="6.2" width="5" height="5" rx="1"/><rect class="k" x="12.8" y="6.2" width="5" height="5" rx="1"/><rect class="k" x="6.2" y="12.8" width="5" height="5" rx="1"/><rect class="f warn k" x="12.8" y="12.8" width="5" height="5" rx="1" stroke-dasharray="1.8 1.6"/>'],
+    ['Card minus', 'A card with a minus badge.', '<rect class="f s" x="3.5" y="3" width="11" height="15" rx="1.5"/><circle class="f warn" cx="17" cy="17" r="4.4"/><path class="k" d="M14.9 17h4.2"/>'],
+  ]},
+  { id: 'unfinished', name: 'Unfinished', where: 'Deck rows: fewer cards than the format needs (shown at 42 of 100)', tint: 'var(--mana-u)', vars: [
+    ['Pie', 'A ring that fills as the deck grows.', f => { const a = f * 2 * Math.PI, r = 8.5, x = 12 + r * Math.sin(a), y = 12 - r * Math.cos(a); return `<path class="f u" d="M12 12V${12 - r}A${r} ${r} 0 ${f > .5 ? 1 : 0} 1 ${x.toFixed(2)} ${y.toFixed(2)}z"/><circle cx="12" cy="12" r="${r}"/>`; }],
+    ['Bar', 'A progress bar.', f => `<rect class="f u" x="3" y="8.5" width="${(18 * f).toFixed(1)}" height="7" rx="1.5" stroke="none"/><rect x="3" y="8.5" width="18" height="7" rx="1.5"/>`],
+    ['Filling card', 'A card filling from the bottom.', f => `<rect class="f u" x="5.5" y="${(3 + 18 * (1 - f)).toFixed(1)}" width="13" height="${(18 * f).toFixed(1)}" rx="2" stroke="none"/><rect x="5.5" y="3" width="13" height="18" rx="2"/>`],
+    ['Gap in the row', 'Two cards down, one slot open.', () => '<rect class="f s" x="2.5" y="5" width="6" height="14" rx="1"/><rect class="f s" x="9" y="5" width="6" height="14" rx="1"/><rect x="15.5" y="5" width="6" height="14" rx="1" stroke-dasharray="2 1.7"/>'],
+  ]},
+  { id: 'lock', name: 'Lock', where: 'Header toggle: locked, then unlocked', tint: 'var(--warn-bg)', pair: true, vars: [
+    ['Padlock', 'Shut, then open.', ['<path d="M8 10.5V8a4 4 0 0 1 8 0v2.5"/><rect class="f s" x="5" y="10.5" width="14" height="10" rx="2"/><path class="k" d="M12 14.5v2.5"/>', '<path d="M8 10.5V8a4 4 0 0 1 7.7-1.6"/><rect class="f warn" x="5" y="10.5" width="14" height="10" rx="2"/><path class="k" d="M12 14.5v2.5"/>']],
+    ['Eye, then pencil', 'Looking, then writing.', ['<path class="f s" d="M2.5 12s3.5-6.5 9.5-6.5S21.5 12 21.5 12 18 18.5 12 18.5 2.5 12 2.5 12z"/><circle class="k" cx="12" cy="12" r="2.8"/>', '<path class="f warn" d="M15.5 4.5l4 4L9 19l-5 1 1-5z"/><path class="k" d="M13.3 6.7l4 4"/>']],
+    ['Switch', 'A toggle, off then on.', ['<rect class="f s" x="2.5" y="7" width="19" height="10" rx="5"/><circle class="dot" cx="7.5" cy="12" r="2.8"/>', '<rect class="f warn" x="2.5" y="7" width="19" height="10" rx="5"/><circle class="dot" cx="16.5" cy="12" r="2.8"/>']],
+    ['Sleeve seal', 'A sealed deck box, then an open one.', ['<rect class="f s" x="5" y="7" width="14" height="13.5" rx="2"/><path d="M5 11h14"/><path d="M7 7V4.5h10V7"/>', '<rect class="f warn" x="5" y="9" width="14" height="11.5" rx="2"/><path d="M5 9l1.6-5.2 12.6 2.6"/>']],
+  ]},
+  { id: 'swipe', name: 'Swipe', where: 'Badge on a page switch', tint: 'var(--mana-u)', vars: [
+    ['Double arrow', 'Goes both ways.', '<path d="M4 12h16M7.5 8.5L4 12l3.5 3.5M16.5 8.5L20 12l-3.5 3.5"/>'],
+    ['Chevrons', 'Something to the left and right.', '<path d="M9.5 6l-6 6 6 6M14.5 6l6 6-6 6"/>'],
+    ['Page dots', 'You are on one of several pages.', '<circle class="dot" cx="5" cy="12" r="1.8"/><circle cx="12" cy="12" r="3"/><circle class="dot" cx="19" cy="12" r="1.8"/>'],
+    ['Sliding cards', 'One page slides over the next.', '<rect class="f s" x="2.5" y="5" width="9" height="14" rx="1.3"/><rect class="f u k" x="12.5" y="5" width="9" height="14" rx="1.3"/><path d="M9 12h6M13 10l2 2-2 2"/>'],
+  ]},
+  { id: 'trade', name: 'Has what you need', where: 'People rows: trade leads, with the count', tint: 'var(--ok-bg)', vars: [
+    ['Swap arrows', 'Back and forth.', '<path d="M4 8.5h14.5L15 5M20 15.5H5.5L9 19"/>'],
+    ['Card swap', 'Two cards changing hands.', '<rect class="f u" x="3" y="3" width="8" height="11" rx="1.2"/><rect class="f r k" x="13" y="10" width="8" height="11" rx="1.2"/><path d="M14 4.5h3.5a2 2 0 0 1 2 2V8M10 19.5H6.5a2 2 0 0 1-2-2V16"/>'],
+    ['Offered card', 'Someone holding out a card.', '<circle cx="7" cy="7.5" r="3"/><path d="M2.5 19.5c.4-3.6 2.4-5.6 4.5-5.6"/><rect class="f ok" x="12.5" y="5" width="8.5" height="13" rx="1.2"/><path d="M9 14.5h5"/>'],
+    ['Handshake', 'A deal.', '<path class="f ok" d="M2.5 10.5l4-3.5 4 1.5 2.5-1.5 5 1 3.5 3-3 4.5-3.5 3.5a1.4 1.4 0 0 1-2-.2L7 14.5z"/><path class="k" d="M10.5 8.5l-2.8 2.7a1.3 1.3 0 0 0 1.8 1.8l2.3-1.7M12 15.5l1.6 1.4M14 13.5l1.8 1.5"/>'],
+  ]},
+];
+const TREATS = [['line','Line'],['duo','Duotone'],['solid','Solid'],['badge','Badge'],['token','Token']];
+const WEIGHTS = [['1.6','Thin'],['2.1','Regular'],['2.8','Heavy']];
+const st = { treat: 'duo', weight: '2.1', pick: {} };
+try { Object.assign(st, JSON.parse(localStorage.getItem('kp-icon-picks') || '{}')); } catch (e) {}
+const save = () => { try { localStorage.setItem('kp-icon-picks', JSON.stringify(st)); } catch (e) {} };
+const esc = s => String(s).replace(/[&<>"']/g, c => ({ '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;' }[c]));
+
+function svgOf(c, v, opt = {}) {
+  let inner = c.vars[v][2];
+  if (typeof inner === 'function') inner = inner(opt.frac ?? .42);
+  if (Array.isArray(inner)) inner = inner[opt.on ? 1 : 0];
+  const svg = `<svg class="ic" viewBox="0 0 24 24" aria-hidden="true" focusable="false">${inner}</svg>`;
+  return (st.treat === 'badge' || st.treat === 'token') && !opt.bare ? `<span class="holder" style="--tint:${c.tint}">${svg}</span>` : svg;
+}
+const byId = id => C.find(c => c.id === id);
+const pickOf = id => st.pick[id] ?? 0;
+const ic = (id, opt) => svgOf(byId(id), pickOf(id), opt);
+
+function renderControls() {
+  document.getElementById('treat').innerHTML = TREATS.map(([k, l]) => `<button class="${st.treat === k ? 'on' : ''}" data-treat="${k}">${l}</button>`).join('');
+  document.getElementById('weight').innerHTML = WEIGHTS.map(([k, l]) => `<button class="${st.weight === k ? 'on' : ''}" data-weight="${k}">${l}</button>`).join('');
+  const root = document.getElementById('root');
+  root.className = 'wrap t-' + (st.treat === 'line' ? 'line' : st.treat === 'solid' ? 'solid' : 'duo') + (st.treat === 'badge' ? ' t-badge' : '') + (st.treat === 'token' ? ' t-token' : '');
+  root.style.setProperty('--sw', st.weight);
+}
+function renderConcepts() {
+  document.getElementById('concepts').innerHTML = C.map(c => `<section class="concept"><div class="chead"><span class="cname">${esc(c.name)}</span><span class="muted">${esc(c.where)}</span></div>
+    <div class="vars">${c.vars.map((v, i) => `<button class="var ${pickOf(c.id) === i ? 'on' : ''}" data-c="${c.id}" data-v="${i}" aria-pressed="${pickOf(c.id) === i}">
+      <span class="sizes">${c.pair
+        ? `<span class="pair s40">${svgOf(c, i)}${svgOf(c, i, { on: true })}</span><span class="pair s16">${svgOf(c, i)}${svgOf(c, i, { on: true })}</span>`
+        : `<span class="s40">${svgOf(c, i)}</span><span class="s24">${svgOf(c, i)}</span><span class="s16">${svgOf(c, i)}</span>`}</span>
+      <span class="vn">${esc(v[0])}</span><span class="vm">${esc(v[1])}</span></button>`).join('')}</div></section>`).join('');
+}
+function renderPreview() {
+  const decks = [
+    ['Izzet Prowess', 'Modern · 60/60', 'UR', 60, 60, 0], ['Izzet Tempo', 'Pioneer · 60/60', 'UR', 60, 60, 10],
+    ['Atraxa Superfriends', 'Commander · 42/100', 'WUBG', 42, 100, 6], ['Azorius Control', 'Pioneer · Priya Natarajan', 'WU', 54, 60, 3]];
+  const stripes = cols => { const l = [...cols], w = 100 / l.length; return `linear-gradient(90deg, ${l.map((c, i) => `var(--mana-${c.toLowerCase()}) ${i*w}% ${(i+1)*w}%`).join(', ')})`; };
+  const rows = decks.map(([n, sub, cols, t, sz, m]) => {
+    const b = [];
+    if (t < sz) b.push(`<span class="bd" title="Unfinished">${ic('unfinished', { frac: t / sz })}${t}</span>`);
+    b.push(m ? `<span class="bd warnc" title="${m} missing">${ic('missing')}${m}</span>` : `<span class="bd okc" title="Sleeveable">${ic('sleeveable')}</span>`);
+    return `<div class="row"><span class="swatch" style="background:${stripes(cols)}"></span><span><div class="nm">${n}</div><div class="sub">${sub}</div></span><span class="badges">${b.join('')}</span></div>`;
+  }).join('');
+  const people = [['Jo Whitfield', '0 decks · 47 cards', 11], ['Sam Okafor', '1 deck · 104 cards', 6]].map(([n, s, k]) =>
+    `<div class="row p"><span><div class="nm">${n}</div><div class="sub">${s}</div></span><span class="bd okc">${ic('trade')}${k}</span></div>`).join('');
+  document.getElementById('preview').innerHTML = `
+    <div class="panel"><div class="bar"><b>Decks</b><span style="display:flex;gap:8px"><span class="lockbtn" title="Locked">${ic('lock', { bare: true })}</span><span class="lockbtn on" title="Unlocked">${ic('lock', { on: true, bare: true })}</span></span></div>
+      <div class="sw"><span>Mine</span><span><i class="badge">${ic('swipe', { bare: true })}</i>Others</span></div>${rows}</div>
+    <div style="display:flex;flex-direction:column;gap:14px">
+      <div class="panel">${people}</div>
+      <div class="panel"><div class="tabs">${[['deck','Decks',1],['collection','Collection',0],['quest','Quests',0]].map(([k, l, on]) => `<div class="tab ${on ? 'on' : ''}">${ic(k, { bare: true })}${l}</div>`).join('')}</div></div>
+      <p class="muted">The tab bar, lock button and swipe badge always use plain icons: they already sit in their own boxes.</p>
+    </div>`;
+}
+function renderAll() { renderControls(); renderConcepts(); renderPreview(); }
+document.addEventListener('click', e => {
+  const t = e.target.closest('[data-treat]'), w = e.target.closest('[data-weight]'), v = e.target.closest('[data-c]');
+  if (t) st.treat = t.dataset.treat;
+  else if (w) st.weight = w.dataset.weight;
+  else if (v) st.pick[v.dataset.c] = +v.dataset.v;
+  else return;
+  save(); renderAll();
+});
+renderAll();
+</script>
