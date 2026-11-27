@@ -7,9 +7,11 @@ name: Test
 # `check` script in jac.toml.
 
 on:
+  # Any base, so a stacked PR (based on the branch below it) gets its checks too.
   pull_request:
-    branches: [main]
     types: [opened, synchronize, reopened]
+  # The merge queue builds main plus the queued PRs and waits for these same checks.
+  merge_group:
   push:
     branches: [main]
 

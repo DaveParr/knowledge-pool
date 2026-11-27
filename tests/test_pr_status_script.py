@@ -24,8 +24,22 @@ FAKE_GH = """#!/usr/bin/env bash
 echo "gh $*" >> "$FAKE_LOG"
 case "$1 $2" in
   "--version "*) echo "gh version 2.105.0 (2026-11-17)" ;;
-  "pr view") cat "$FAKE_PR" ;;
-  "api graphql") cat "$FAKE_TICKET" ;;
+  "repo view") echo "${FAKE_REPO:-engi-ai/knowledge-pool}" ;;
+  "pr view")
+    if [ -f "$FAKE_PR.$3" ]; then cat "$FAKE_PR.$3"; else cat "$FAKE_PR"; fi ;;
+  "pr list") cat "$FAKE_LIST" ;;
+  "extension list") cat "$FAKE_EXT" ;;
+  "api graphql")
+    case "$*" in
+      *mergeQueue*) cat "$FAKE_QUEUE" ;;
+      *subIssues*) cat "$FAKE_STACK" ;;
+      *) cat "$FAKE_TICKET" ;;
+    esac ;;
+  "issue view")
+    case "$*" in *title*) echo "A ticket" ;; *) echo "OPEN" ;; esac ;;
+  "issue edit"|"issue close"|"issue develop"|"pr merge"|"pr edit"|"pr comment"|"stack merge") ;;
+  "project field-list") printf 'Backlog\nIn progress\nDone\n' ;;
+  "project item-add"|"project item-edit") ;;
   *) echo "fake gh: unexpected: $*" >&2; exit 1 ;;
 esac
 """
@@ -43,8 +57,11 @@ def body(describes=HEAD[:7], drop=()):
     return "\n\n".join(v for k, v in parts.items() if k not in drop)
 
 
-def review(sha):
-    return {"body": f"## Code review, round 1\n\nReviewed head `{sha[:7]}`.\n\n## Standards\n\nNone."}
+NO_STACK = {"data": {"repository": {"issue": {"parent": None}}}}
+
+
+def review(sha, k=1):
+    return {"body": f"## Code review, round {k}\n\nReviewed head `{sha[:7]}`.\n\n## Standards\n\nNone."}
 
 
 def pr(**over):
@@ -77,12 +94,20 @@ def env(tmp_path):
     gh.write_text(FAKE_GH)
     gh.chmod(gh.stat().st_mode | stat.S_IEXEC)
     (tmp_path / "ticket.json").write_text(json.dumps({"ticket": [], "parent": None, "parentLabels": []}))
+    (tmp_path / "list.json").write_text("[]")
+    (tmp_path / "ext.txt").write_text("gh stack\tgithub/gh-stack\tv0.1\n")
+    (tmp_path / "queue.txt").write_text("")
+    (tmp_path / "stack.json").write_text(json.dumps(NO_STACK))
     return {
         **os.environ,
         "PATH": f"{bin_dir}:{os.environ['PATH']}",
         "FAKE_LOG": str(tmp_path / "gh.log"),
         "FAKE_PR": str(tmp_path / "pr.json"),
         "FAKE_TICKET": str(tmp_path / "ticket.json"),
+        "FAKE_LIST": str(tmp_path / "list.json"),
+        "FAKE_EXT": str(tmp_path / "ext.txt"),
+        "FAKE_QUEUE": str(tmp_path / "queue.txt"),
+        "FAKE_STACK": str(tmp_path / "stack.json"),
     }
 
 
@@ -174,3 +199,111 @@ def test_start_ticket_stops_before_claiming_when_the_plugin_is_missing(env, tmp_
     else:
         assert "claude plugin install mattpocock-skills@mattpocock" in out.stderr
         assert "issue" not in log
+
+
+GH_LIB = ROOT / "scripts" / "lib" / "gh.sh"
+
+
+def sh(env, snippet, **extra):
+    return subprocess.run(["bash", "-c", f'source "{GH_LIB}"; {snippet}'], env={**env, **extra},
+                          capture_output=True, text=True)
+
+
+def test_the_repo_is_read_from_gh_not_hard_coded(env):
+    out = sh(env, 'echo "$GH_REPO $REPO_OWNER $REPO_NAME"', FAKE_REPO="acme/widgets")
+    assert out.stdout.strip() == "acme/widgets acme widgets"
+
+
+def test_the_board_stays_a_user_project_with_a_configurable_owner(env):
+    assert sh(env, 'echo "$BOARD_OWNER"').stdout.strip() == "DaveParr"
+    assert sh(env, 'echo "$BOARD_OWNER"', KP_BOARD_OWNER="someone").stdout.strip() == "someone"
+    out = sh(env, 'board_move 5 "In progress"', FAKE_REPO="acme/widgets")
+    assert out.returncode == 0, out.stderr
+    projects = [l for l in Path(env["FAKE_LOG"]).read_text().splitlines() if l.startswith("gh project")]
+    assert projects and all("--owner DaveParr" in l for l in projects)
+    assert "https://github.com/acme/widgets/issues/5" in "".join(projects)
+
+
+def test_pr_status_asks_graphql_about_the_repo_gh_reports(env):
+    Path(env["FAKE_PR"]).write_text(json.dumps(pr()))
+    subprocess.run([str(PR_STATUS), "7"], env={**env, "FAKE_REPO": "acme/widgets"}, capture_output=True, check=True)
+    assert "owner=acme" in Path(env["FAKE_LOG"]).read_text()
+
+
+# --- stacks, no checks, responses -------------------------------------------------------
+
+LOW, LOW_BRANCH = 5, "karn/41-below"
+
+
+def stacked(env, *, low_state="OPEN", low_next_ok=True, **over):
+    """PR 7 sits on the branch of PR 5; PR 5 targets main. Returns pr-status for PR 7."""
+    Path(env["FAKE_LIST"]).write_text(json.dumps([{"number": LOW, "state": low_state}]))
+    low = pr(number=LOW, baseRefName="main", state=low_state,
+             comments=[review(HEAD)] if low_next_ok else [], body=body().replace("#42", "#41"))
+    Path(env["FAKE_PR"] + f".{LOW}").write_text(json.dumps(low))
+    return status(env, baseRefName=LOW_BRANCH, **over)
+
+
+def test_a_pr_on_the_branch_of_a_ready_lower_pr_is_not_held(env):
+    s = stacked(env)
+    assert s["next"] == "merge"
+    assert s["stack"]["position"] == 2
+    assert s["stack"]["lower"] == [{"pr": LOW, "ticket": 41, "state": "OPEN", "next": "merge"}]
+    assert s["stack"]["lowerReady"] is True
+
+
+def test_a_pr_waits_for_a_lower_pr_that_is_not_ready(env):
+    s = stacked(env, low_next_ok=False)
+    assert s["next"] == "blocked-by-lower"
+    assert s["stack"]["lowerReady"] is False
+    assert f"#{LOW}" in s["reason"]
+
+
+def test_a_pr_above_a_merged_lower_pr_counts_it_as_ready(env):
+    s = stacked(env, low_state="MERGED")
+    assert (s["next"], s["stack"]["lowerReady"]) == ("merge", True)
+
+
+def test_a_pr_whose_base_is_no_prs_branch_is_still_held(env):
+    s = status(env, baseRefName="somewhere-else")
+    assert s["next"] == "hold"
+    assert "somewhere-else" in s["reason"]
+
+
+def test_a_pr_into_main_is_position_one_of_its_own_stack(env):
+    s = status(env)
+    assert s["stack"] == {"position": 1, "lower": [], "lowerReady": True}
+
+
+def test_conflicts_and_failures_are_still_reported_before_waiting_for_the_pr_below(env):
+    s = stacked(env, low_next_ok=False, mergeable="CONFLICTING")
+    assert s["next"] == "conflict"
+
+
+def test_no_checks_at_all_is_its_own_state_not_pending_for_ever(env):
+    s = status(env, statusCheckRollup=[])
+    assert s["ci"] == "none"
+    assert s["next"] == "no-checks"
+    assert "no CI checks" in s["reason"]
+
+
+def comment(text):
+    return {"body": text}
+
+
+def test_responses_are_complete_when_every_round_has_its_response(env):
+    rounds = [review(OLD), comment("## Round 1 response\n\n- Standards 1: fixed in abc."),
+              review(HEAD, 2), comment("## Round 2 response\n\nNothing to fix.")]
+    s = status(env, comments=rounds)
+    assert s["responsesComplete"] is True
+
+
+def test_a_round_without_its_response_is_incomplete(env):
+    rounds = [{"body": "## Code review, round 1\n\nhead `abc1234`"}, comment("## Round 1 response\n\nok"),
+              {"body": f"## Code review, round 2\n\nhead `{HEAD[:7]}`"}]
+    assert status(env, comments=rounds)["responsesComplete"] is False
+
+
+def test_a_response_for_another_round_does_not_count(env):
+    rounds = [review(HEAD), comment("## Round 2 response\n\nok")]
+    assert status(env, comments=rounds)["responsesComplete"] is False
