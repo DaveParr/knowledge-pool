@@ -144,3 +144,15 @@ The hosted app runs on Railway at `https://knowledge-pool.engi.ai`. `scripts/dep
 ### Spikes
 
 - [S02: Jac go/no-go](docs/spikes/s02-jac-go-no-go.md): go, with the catalogue graph held in memory. Code in `spike/`.
+
+## Licence
+
+Knowledge Pool is source-available under the [PolyForm Noncommercial License 1.0.0](LICENSE): free for noncommercial use. It is not OSI-approved open source.
+
+Parts of this repo are under their own licences and are not covered by that one:
+
+- `.claude/skills/` files copied from Matt Pocock's skills stay MIT: [.claude/skills/LICENSE-mattpocock-skills](.claude/skills/LICENSE-mattpocock-skills).
+- The Mana font (OFL 1.1) and its CSS (MIT): [licenses/mana-font-OFL.txt](licenses/mana-font-OFL.txt).
+- Card data comes from [MTGJSON](https://mtgjson.com/) (MIT). It is downloaded at build time and is not in this repo.
+
+Knowledge Pool is unofficial Fan Content permitted under the Fan Content Policy. Not approved/endorsed by Wizards. Portions of the materials used are property of Wizards of the Coast. ©Wizards of the Coast LLC.
