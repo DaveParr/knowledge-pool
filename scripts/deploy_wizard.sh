@@ -201,7 +201,7 @@ APP_URL="https://$APP_HOST"
 MCP_URL="$APP_URL/mcp"
 HEALTH_PATH="/healthz"
 CALLBACK_URL="$APP_URL/auth/callback"
-REPO="DaveParr/knowledge-pool"
+REPO="$(gh repo view --json nameWithOwner --jq .nameWithOwner 2>/dev/null || echo engi-ai/knowledge-pool)"
 # The app service: .github/workflows/weekly-catalogue.yml and scripts/backup.sh name it too.
 APP_SERVICE="knowledge-pool"
 BASE="main"   # the branch every ticket merges into and Railway deploys
