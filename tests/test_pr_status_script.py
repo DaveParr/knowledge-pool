@@ -94,15 +94,17 @@ def pr(**over):
     return base
 
 
+def fake_command(path, script):
+    path.write_text(script)
+    path.chmod(path.stat().st_mode | stat.S_IEXEC)
+    return path
+
+
 def make_env(tmp_path):
     bin_dir = tmp_path / "bin"
     bin_dir.mkdir()
-    gh = bin_dir / "gh"
-    gh.write_text(FAKE_GH)
-    gh.chmod(gh.stat().st_mode | stat.S_IEXEC)
-    orca = bin_dir / "orca"
-    orca.write_text(FAKE_ORCA)
-    orca.chmod(orca.stat().st_mode | stat.S_IEXEC)
+    fake_command(bin_dir / "gh", FAKE_GH)
+    orca = fake_command(bin_dir / "orca", FAKE_ORCA)
     (tmp_path / "ticket.json").write_text(json.dumps({"ticket": [], "parent": None, "parentLabels": []}))
     (tmp_path / "list.json").write_text("[]")
     (tmp_path / "ext.txt").write_text("gh stack\tgithub/gh-stack\tv0.1\n")
@@ -547,15 +549,11 @@ def test_a_draft_or_human_held_pr_with_no_checks_is_held_not_rerun(env):
 def test_scripts_under_test_can_never_reach_the_real_orca(monkeypatch, tmp_path):
     """Run inside an Orca terminal, ORCA_CLI_COMMAND points at the real Orca, and start-ticket.sh
     would create a real workspace. A canary stands in for it: it must stay untouched."""
-    canary = tmp_path / "real-orca"
-    canary.write_text(f'#!/usr/bin/env bash\necho "$@" >> "{tmp_path}/canary.log"\n')
-    canary.chmod(canary.stat().st_mode | stat.S_IEXEC)
+    canary = fake_command(tmp_path / "real-orca", f'#!/usr/bin/env bash\necho "$@" >> "{tmp_path}/canary.log"\n')
     monkeypatch.setenv("ORCA_CLI_COMMAND", str(canary))
     monkeypatch.setenv("ORCA_TERMINAL_HANDLE", "term_real")
     env = make_env(tmp_path)
-    claude = tmp_path / "bin" / "claude"
-    claude.write_text("#!/usr/bin/env bash\necho '[{\"id\": \"mattpocock-skills@mattpocock\"}]'\n")
-    claude.chmod(claude.stat().st_mode | stat.S_IEXEC)
+    fake_command(tmp_path / "bin" / "claude", "#!/usr/bin/env bash\necho '[{\"id\": \"mattpocock-skills@mattpocock\"}]'\n")
     Path(env["FAKE_PR"]).write_text("{}")
 
     subprocess.run([str(START_TICKET), "42"], env=env, capture_output=True, text=True)
