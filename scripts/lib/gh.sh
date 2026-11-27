@@ -14,7 +14,7 @@ shopt -s inherit_errexit   # `die` inside $(...) stops the script, not just the 
 GH_MIN_VERSION="2.97.0"
 # The repo is whatever `gh repo view` says for the checkout (or $GH_REPO, if set), so a
 # move to another owner needs no edit here. The board is the "Knowledge Pool" project of
-# the engi-ai organization (project 1, which replaced DaveParr's user project 7); `gh
+# the engi-ai organization (project 1); `gh
 # project` finds an organization or a user owner by itself. KP_BOARD_OWNER and
 # KP_BOARD_NUMBER name another board.
 BOARD_OWNER="${KP_BOARD_OWNER:-engi-ai}"

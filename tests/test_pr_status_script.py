@@ -1,4 +1,4 @@
-"""scripts/pr-status.sh and scripts/merge-ticket.sh: what the ticket orchestrator does next
+"""scripts/pr-status.sh and scripts/merge-ticket.sh: what the ticket loop does next
 with a ticket PR; and scripts/start-ticket.sh's check for the mattpocock-skills plugin.
 
 `gh` is a fake on PATH: `gh pr view` prints the PR JSON a test writes, `gh api graphql`
