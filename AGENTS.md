@@ -39,7 +39,7 @@ When planning a dispatch, every worker's task spec must require a review before 
 
 ### Issue tracker
 
-GitHub issues in `DaveParr/knowledge-pool`, with work prepared on the Knowledge Pool project board. See `docs/agents/issue-tracker.md`.
+GitHub issues in `engi-ai/knowledge-pool`, with work prepared on the Knowledge Pool project board. See `docs/agents/issue-tracker.md`.
 
 ### Triage labels
 

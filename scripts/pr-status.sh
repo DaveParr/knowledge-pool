@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Read a ticket PR's state and say what the orchestrator does next. Reads only.
+# Read a ticket PR's state and say what the ticket loop does next. Reads only.
 #
 #   scripts/pr-status.sh <pr-number>
 #
