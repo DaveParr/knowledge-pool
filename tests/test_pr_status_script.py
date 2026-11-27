@@ -32,7 +32,7 @@ case "$1 $2" in
   "extension list") cat "$FAKE_EXT" ;;
   "api graphql")
     case "$*" in
-      *mergeQueue*) cat "$FAKE_QUEUE" ;;
+      *mergeQueue*) [ "$(cat "$FAKE_QUEUE")" = FAIL ] && exit 1; cat "$FAKE_QUEUE" ;;
       *subIssues*) cat "$FAKE_STACK" ;;
       *) cat "$FAKE_TICKET" ;;
     esac ;;
@@ -238,10 +238,7 @@ LOW, LOW_BRANCH = 5, "karn/41-below"
 
 def stacked(env, *, low_state="OPEN", low_next_ok=True, **over):
     """PR 7 sits on the branch of PR 5; PR 5 targets main. Returns pr-status for PR 7."""
-    Path(env["FAKE_LIST"]).write_text(json.dumps([{"number": LOW, "state": low_state}]))
-    low = pr(number=LOW, baseRefName="main", state=low_state,
-             comments=[review(HEAD)] if low_next_ok else [], body=body().replace("#42", "#41"))
-    Path(env["FAKE_PR"] + f".{LOW}").write_text(json.dumps(low))
+    stacked_setup(env, low_state=low_state, low_next_ok=low_next_ok)
     return status(env, baseRefName=LOW_BRANCH, **over)
 
 
@@ -424,17 +421,18 @@ def test_a_ticket_with_no_stack_is_based_on_main(started):
 # --- merge-ticket.sh: direct, stack and queue modes --------------------------------------
 
 
-def merge(env, stack=False, **over):
+def merge(env, stack=False, low_state="OPEN", **over):
     if stack:
-        stacked_setup(env)
+        stacked_setup(env, low_state=low_state)
         over["baseRefName"] = LOW_BRANCH
     Path(env["FAKE_PR"]).write_text(json.dumps(pr(**over)))
     return subprocess.run([str(MERGE_TICKET), "7"], env=env, capture_output=True, text=True)
 
 
-def stacked_setup(env):
-    Path(env["FAKE_LIST"]).write_text(json.dumps([{"number": LOW, "state": "OPEN"}]))
-    low = pr(number=LOW, baseRefName="main", body=body().replace("#42", "#41"))
+def stacked_setup(env, low_state="OPEN", low_next_ok=True):
+    Path(env["FAKE_LIST"]).write_text(json.dumps([{"number": LOW, "state": low_state}]))
+    low = pr(number=LOW, baseRefName="main", state=low_state,
+             comments=[review(HEAD)] if low_next_ok else [], body=body().replace("#42", "#41"))
     Path(env["FAKE_PR"] + f".{LOW}").write_text(json.dumps(low))
 
 
@@ -489,3 +487,31 @@ def test_merging_never_deletes_a_branch(env):
         merge(env, stack=True)
     assert "delete" not in Path(env["FAKE_LOG"]).read_text()
 
+
+
+def test_a_pr_still_based_on_a_merged_lower_branch_goes_through_gh_stack(env):
+    out = merge(env, stack=True, low_state="MERGED")
+    assert out.returncode == 0, out.stderr
+    log = calls(env)
+    assert "gh stack merge 7 --yes --merge" in log
+    assert not any(l.startswith("gh pr merge") for l in log)
+
+
+def test_a_failing_merge_queue_lookup_stops_the_merge(env):
+    Path(env["FAKE_QUEUE"]).write_text("FAIL")
+    out = merge(env)
+    assert out.returncode != 0
+    assert not any(l.startswith(("gh pr merge", "gh stack merge")) for l in calls(env))
+
+
+def test_the_extension_check_survives_a_gh_that_stops_writing_early(started):
+    Path(started[0]["FAKE_EXT"]).write_text("gh stack\tgithub/gh-stack\n" * 20000)
+    start(started)
+    assert "issue edit" in log(started)
+
+
+def test_a_siblings_branch_whose_pr_is_merged_is_not_in_the_stack(env):
+    merged = sibling(41, branch="k/41-a", pr=("k/41-a", "main"))
+    merged["closedByPullRequestsReferences"]["nodes"][0]["state"] = "MERGED"
+    spec_with(env, merged, sibling(43, pr=("k/43-b", "main")))
+    assert top(env) == "k/43-b"

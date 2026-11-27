@@ -67,8 +67,8 @@ linked_branches() {
 
 # stack_top_branch <issue>: the branch at the top of the stack of the issue's parent spec,
 # or nothing when the issue has no parent or its siblings have no open branch. A stack is
-# the open sibling tickets' branches (linked branches and open PR heads); the top is the
-# one no open PR is based on. When two branches have nothing to order them (a started
+# the open sibling tickets' branches (linked branches and open PR heads, not branches whose
+# PR is merged); the top is the one no open PR is based on. When two branches have nothing to order them (a started
 # sibling that has no PR yet), it fails: wait for that PR rather than guess.
 stack_top_branch() {
     local tops
@@ -76,26 +76,29 @@ stack_top_branch() {
       query($owner:String!,$name:String!,$n:Int!){ repository(owner:$owner,name:$name){
         issue(number:$n){ parent{ subIssues(first:100){ nodes{ number state
           linkedBranches(first:20){ nodes{ ref{ name } } }
-          closedByPullRequestsReferences(first:10, includeClosedPrs:false){ nodes{ headRefName baseRefName state } }
+          closedByPullRequestsReferences(first:10, includeClosedPrs:true){ nodes{ headRefName baseRefName state } }
         } } } } } }' \
       | jq -r --argjson n "$1" '
           [.data.repository.issue.parent.subIssues.nodes // [] | .[]
            | select(.number != $n and .state == "OPEN")] as $sib
           | [$sib[].closedByPullRequestsReferences.nodes[] | select(.state == "OPEN")] as $prs
           | ([$prs[].headRefName] + [$sib[].linkedBranches.nodes[].ref.name] | unique) as $branches
-          | ($branches - [$prs[].baseRefName])[]')"
+          | ([$sib[].closedByPullRequestsReferences.nodes[] | select(.state == "MERGED") | .headRefName]) as $merged
+          | ($branches - $merged - [$prs[].baseRefName])[]')"
     [ "$(grep -c . <<<"$tops")" -le 1 ] \
         || die "Cannot tell the top of the spec's stack for #$1: $(paste -sd, <<<"$tops") are all unbased. A ticket of the spec is started but has no PR yet; wait for it."
     echo "$tops"
 }
 
-# has_merge_queue [<branch>]: succeed when the branch (default main) has a merge queue.
+# has_merge_queue [<branch>]: print true or false for whether the branch (default main) has a
+# merge queue. Call it as `queue="$(has_merge_queue)"`, not in an `&&` list: a failing
+# lookup must stop the script, not read as "no queue".
 has_merge_queue() {
     local id
     id="$(gh api graphql -F owner="$REPO_OWNER" -F name="$REPO_NAME" -F branch="${1:-main}" -f query='
       query($owner:String!,$name:String!,$branch:String!){ repository(owner:$owner,name:$name){
         mergeQueue(branch:$branch){ id } } }' --jq '.data.repository.mergeQueue.id // empty')"
-    [ -n "$id" ]
+    [ -n "$id" ] && echo true || echo false
 }
 
 require_gh

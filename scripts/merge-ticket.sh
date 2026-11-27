@@ -9,7 +9,7 @@
 # the parent spec is never merged here. Branches are never deleted.
 #
 # Two things pick how it merges:
-#   stack  the PR sits on other open PRs of its spec's stack: `gh stack merge <pr> --yes`,
+#   stack  the PR sits on other PRs of its spec's stack (or its base is not main): `gh stack merge <pr> --yes`,
 #          which lands the PRs below it too, all or none (GitHub retargets the next PR up
 #          to main). Without a merge queue the method is a merge commit.
 #   queue  main has a merge queue: the PR (or stack) is enqueued and GitHub merges it once
@@ -30,13 +30,16 @@ next="$(jq -r .next <<<"$status")"
 [ "$next" = merge ] || die "Not merging PR #$pr: next is '$next' ($(jq -r .reason <<<"$status"))."
 ticket="$(jq -r .ticket <<<"$status")"
 base="$(jq -r .base <<<"$status")"
+# A PR in a stack: open PRs below it, or a base that is not main (the PR below merged but
+# its branch stays, so GitHub may not have retargeted this one). `gh stack merge` handles both.
 below="$(jq -r '[.stack.lower[] | select(.state == "OPEN")] | length' <<<"$status")"
+stacked=false
+{ [ "$below" -gt 0 ] || [ "$base" != main ]; } && stacked=true
 
-queue=false
-has_merge_queue main && queue=true
+queue="$(has_merge_queue main)"
 
 if [ "$queue" = true ]; then
-    if [ "$below" -gt 0 ]; then
+    if [ "$stacked" = true ]; then
         gh stack merge "$pr" --yes
     else
         gh pr merge "$pr" --merge --match-head-commit "$(jq -r .headOid <<<"$status")"
@@ -46,7 +49,7 @@ if [ "$queue" = true ]; then
     exit 0
 fi
 
-if [ "$below" -gt 0 ]; then
+if [ "$stacked" = true ]; then
     gh stack merge "$pr" --yes --merge
 else
     gh pr merge "$pr" --merge --match-head-commit "$(jq -r .headOid <<<"$status")"

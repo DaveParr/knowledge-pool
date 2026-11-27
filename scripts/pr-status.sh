@@ -27,7 +27,7 @@
 #   merge        none of the above: `scripts/merge-ticket.sh` may merge it. For a stacked
 #                PR that means every PR below it is merged or ready too.
 # A PR whose base is another PR's head branch belongs to a stack: `stack` gives its
-# `position` (1 = bottom), the `lower` PRs bottom-last, each with the `next` pr-status
+# `position` (1 = bottom), the `lower` PRs bottom-first, each with the `next` pr-status
 # gives it, and `lowerReady` (every lower PR is merged or `merge`).
 # `responsesComplete` says every `## Code review, round <k>` has a `## Round <k> response`.
 # Whether every finding in the last round was fixed or answered stays the reader's call.

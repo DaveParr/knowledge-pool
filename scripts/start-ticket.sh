@@ -41,7 +41,8 @@ command -v claude >/dev/null || die "claude is not on PATH; workers need Claude 
 claude plugin list --json 2>/dev/null | jq -e 'any(.[]; .id == "mattpocock-skills@mattpocock")' >/dev/null \
     || die "The mattpocock-skills plugin is not installed, so workers cannot load /mattpocock-skills:tdd or :pr. Install it once: claude plugin install mattpocock-skills@mattpocock"
 
-command -v gh >/dev/null && gh extension list | grep -q 'github/gh-stack' \
+extensions="$(gh extension list)"   # not piped to grep -q: pipefail would read its early exit as a miss
+grep -q 'github/gh-stack' <<<"$extensions" \
     || die "The gh stack extension is not installed, so workers cannot stack PRs. Install it once: gh extension install github/gh-stack"
 
 title="$(gh issue view "$n" --json title --jq .title)"
